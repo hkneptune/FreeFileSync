@@ -2003,24 +2003,24 @@ std::vector<Grid::ColAttributes> Grid::getColumnConfig() const
     //get non-visible columns (+ outdated visible ones)
     std::vector<ColAttributes> output = oldColAttributes_;
 
-    auto iterVcols    = visibleCols_.begin();
-    auto iterVcolsend = visibleCols_.end();
+    auto itVcols    = visibleCols_.begin();
+    auto itVcolsend = visibleCols_.end();
 
     //update visible columns but keep order of non-visible ones!
     for (ColAttributes& ca : output)
         if (ca.visible)
         {
-            if (iterVcols != iterVcolsend)
+            if (itVcols != itVcolsend)
             {
-                ca.type    = iterVcols->type;
-                ca.stretch = iterVcols->stretch;
-                ca.offset  = iterVcols->offset;
-                ++iterVcols;
+                ca.type    = itVcols->type;
+                ca.stretch = itVcols->stretch;
+                ca.offset  = itVcols->offset;
+                ++itVcols;
             }
             else
                 assert(false);
         }
-    assert(iterVcols == iterVcolsend);
+    assert(itVcols == itVcolsend);
 
     return output;
 }

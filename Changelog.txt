@@ -1,3 +1,17 @@
+FreeFileSync 11.9 [2021-04-01]
+------------------------------
+Save different layouts depending on screen resolution
+Fixed large file icon scaling quality (Windows)
+Fixed broken default filter excluding DocumentRevisions (macOS)
+Don't immediately exit terminal when installer error is showing (Linux)
+Explicitly set file permissions when installing missing directories (Linux)
+Support installation using noexec temp directory (Linux)
+Don't fail installation if root is the only user (Linux)
+Added automatic socket close on execv (Linux, macOS)
+Fixed Google Drive login hanging after authentication (Linux)
+Correctly generate and parse Windows epoch time (Windows, macOS)
+
+
 FreeFileSync 11.8 [2021-03-03]
 ------------------------------
 Fixed unexpected file size error when copying to (S)FTP, and Google Drive

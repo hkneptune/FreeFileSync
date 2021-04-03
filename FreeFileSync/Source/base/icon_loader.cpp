@@ -80,8 +80,8 @@ ImageHolder copyToImageHolder(const GdkPixbuf& pixBuf, int maxSize) //throw SysE
     const auto imgWriter = [rgb = imgOut.getRgb(), alpha = imgOut.getAlpha()](const xbrz::BytePixel& pix) mutable
     {
         const unsigned char a = pix[0];
-        *alpha++ = a;
-        *rgb++   = xbrz::demultiply(pix[1], a); //r
+        * alpha++ = a;
+        * rgb++   = xbrz::demultiply(pix[1], a); //r
         *rgb++   = xbrz::demultiply(pix[2], a); //g
         *rgb++   = xbrz::demultiply(pix[3], a); //b
     };

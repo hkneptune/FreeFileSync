@@ -580,7 +580,7 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
 
 
     std::set<AbstractPath> logFilePathsToKeep;
-    for (const ConfigFileItem& item : globalCfg.mainDlg.cfgFileHistory)
+    for (const ConfigFileItem& item : globalCfg.mainDlg.config.fileHistory)
         logFilePathsToKeep.insert(item.logFilePath);
 
     const std::chrono::system_clock::time_point syncStartTime = std::chrono::system_clock::now();
@@ -593,7 +593,8 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
                                      batchCfg.mainCfg.autoRetryCount,
                                      batchCfg.mainCfg.autoRetryDelay,
                                      globalCfg.soundFileSyncFinished,
-                                     globalCfg.progressDlg.dlgSize, globalCfg.progressDlg.isMaximized,
+                                     globalCfg.dpiLayouts[getDpiScalePercent()].progressDlg.dlgSize,
+                                     globalCfg.dpiLayouts[getDpiScalePercent()].progressDlg.isMaximized,
                                      batchCfg.batchExCfg.autoCloseSummary,
                                      batchCfg.batchExCfg.postSyncAction,
                                      batchCfg.batchExCfg.batchErrorHandling);
@@ -643,8 +644,8 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
         //*INDENT-ON*
     }
 
-    globalCfg.progressDlg.dlgSize     = r.dlgSize;
-    globalCfg.progressDlg.isMaximized = r.dlgIsMaximized;
+    globalCfg.dpiLayouts[getDpiScalePercent()].progressDlg.dlgSize     = r.dlgSize;
+    globalCfg.dpiLayouts[getDpiScalePercent()].progressDlg.isMaximized = r.dlgIsMaximized;
 
     //email sending, or saving log file failed? at the very least this should affect the exit code:
     if (r.logStats.error > 0)
@@ -654,7 +655,7 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
 
 
     //update last sync stats for the selected cfg file
-    for (ConfigFileItem& cfi : globalCfg.mainDlg.cfgFileHistory)
+    for (ConfigFileItem& cfi : globalCfg.mainDlg.config.fileHistory)
         if (equalNativePath(cfi.cfgFilePath, cfgFilePath))
         {
             if (r.syncResult != SyncResult::aborted)

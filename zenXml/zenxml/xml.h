@@ -126,25 +126,28 @@ public:
       </Root>
       \endverbatim
     */
-    XmlOut(XmlDoc& doc) : ref_(&doc.root()) {}
-    ///Construct an output proxy for a single XML element
-    /**
-      \sa XmlOut(XmlDoc& doc)
-    */
-    XmlOut(XmlElement& element) : ref_(&element) {}
+    explicit XmlOut(XmlDoc& doc) : ref_(&doc.root()) {}
 
     ///Retrieve a handle to an XML child element for writing
     /**
     The child element will be created if it is not yet existing.
+    \param name The name of the child element
+    */
+    XmlOut operator[](std::string name) const
+    {
+        XmlElement* child = ref_->getChild(name);
+        return XmlOut(child ? *child : ref_->addChild(std::move(name)));
+    }
+
+    ///Retrieve a handle to an XML child element for writing
+    /**
+    The child element will be added, allowing for multiple elements with the same name.
     \tparam String Arbitrary string-like type: e.g. std::string, wchar_t*, char[], wchar_t, wxString, MyStringClass, ...
     \param name The name of the child element
     */
-    template <class String>
-    XmlOut operator[](const String& name) const
+    XmlOut addChild(std::string name) const
     {
-        const std::string utf8name = utfTo<std::string>(name);
-        XmlElement* child = ref_->getChild(utf8name);
-        return child ? *child : ref_->addChild(utf8name);
+        return XmlOut(ref_->addChild(std::move(name)));
     }
 
     ///Write user data to the underlying XML element
@@ -176,17 +179,19 @@ public:
       </Root>
       \endverbatim
 
-    \tparam String Arbitrary string-like type: e.g. std::string, wchar_t*, char[], wchar_t, wxString, MyStringClass, ...
     \tparam T String-convertible user data type: e.g. any string-like type, all built-in arithmetic numbers
     \sa XmlElement::setAttribute()
     */
-    template <class String, class T>
-    void attribute(const String& name, const T& value) { ref_->setAttribute(name, value); }
-
-    ///Return a reference to the underlying Xml element
-    XmlElement& ref() { return *ref_; }
+    template <class T>
+    void attribute(std::string name, const T& value) { ref_->setAttribute(std::move(name), value); }
 
 private:
+    ///Construct an output proxy for a single XML element
+    /**
+      \sa XmlOut(XmlDoc& doc)
+    */
+    explicit XmlOut(XmlElement& element) : ref_(&element) {}
+
     XmlElement* ref_; //always bound!
 };
 
@@ -208,37 +213,28 @@ public:
         in["elem3"](value3); //
       \endcode
     */
-    XmlIn(const XmlDoc& doc) { refList_.push_back(&doc.root()); }
-    ///Construct an input proxy for a single XML element, may be nullptr
-    /**
-      \sa XmlIn(const XmlDoc& doc)
-    */
-    XmlIn(const XmlElement* element) { refList_.push_back(element); }
-    ///Construct an input proxy for a single XML element
-    /**
-      \sa XmlIn(const XmlDoc& doc)
-    */
-    XmlIn(const XmlElement& element) { refList_.push_back(&element); }
+    explicit XmlIn(const XmlDoc& doc) : nodeNameFormatted_('<' + doc.root().getName() + '>')
+    {
+        refList_.push_back(&doc.root());
+    }
 
     ///Retrieve a handle to an XML child element for reading
     /**
     It is \b not an error if the child element does not exist, but only later if a conversion to user data is attempted.
-    \tparam String Arbitrary string-like type: e.g. std::string, wchar_t*, char[], wchar_t, wxString, MyStringClass, ...
     \param name The name of the child element
     */
-    template <class String>
-    XmlIn operator[](const String& name) const
+    XmlIn operator[](const std::string& name) const
     {
         std::vector<const XmlElement*> childList;
 
-        if (refIndex_ < refList_.size())
+        if (const XmlElement* elem = get())
         {
-            auto iterPair = refList_[refIndex_]->getChildren(name);
-            std::for_each(iterPair.first, iterPair.second,
-            [&](const XmlElement& child) { childList.push_back(&child); });
+            auto itPair = elem->getChildren(name);
+            std::for_each(itPair.first, itPair.second, [&](const XmlElement& child)
+            { childList.push_back(&child); });
         }
 
-        return XmlIn(childList, childList.empty() ? getChildNameFormatted(name) : std::string(), log_);
+        return XmlIn(childList, getChildNameFormatted(name), log_);
     }
 
     ///Refer to next sibling element with the same name
@@ -264,6 +260,18 @@ public:
     */
     void next() { ++refIndex_; }
 
+    ///Test whether the underlying XML element exists
+    /**
+      \code
+         XmlIn in(doc);
+         XmlIn child = in["elem1"];
+         if (child)
+           ...
+      \endcode
+      Use member pointer as implicit conversion to bool (C++ Templates - Vandevoorde/Josuttis; chapter 20)
+    */
+    explicit operator bool() const { return get() != nullptr; }
+
     ///Read user data from the underlying XML element
     /**
     This conversion requires a specialization of zen::readText() or zen::readStruc() for type T.
@@ -273,18 +281,25 @@ public:
     template <class T>
     bool operator()(T& value) const
     {
-        if (refIndex_ < refList_.size())
+        if (const XmlElement* elem = get())
         {
-            const bool success = readStruc(*refList_[refIndex_], value);
-            if (!success)
-                log_.ref().notifyConversionError(getNameFormatted());
-            return success;
+            if (readStruc(*elem, value))
+                return true;
+
+            log_.ref().notifyConversionError(getNameFormatted());
         }
         else
-        {
             log_.ref().notifyMissingElement(getNameFormatted());
-            return false;
-        }
+
+        return false;
+    }
+
+    bool hasAttribute(const std::string& name) const
+    {
+        if (const XmlElement* elem = get())
+            if (elem->hasAttribute(name))
+                return true;
+        return false;
     }
 
     ///Read user data from an XML attribute
@@ -305,37 +320,21 @@ public:
     \returns "true" if the attribute was found and the conversion to the output value was successful.
     \sa XmlElement::getAttribute()
     */
-    template <class String, class T>
-    bool attribute(const String& name, T& value) const
+    template <class T>
+    bool attribute(const std::string& name, T& value) const
     {
-        if (refIndex_ < refList_.size())
+        if (const XmlElement* elem = get())
         {
-            const bool success = refList_[refIndex_]->getAttribute(name, value);
-            if (!success)
-                log_.ref().notifyMissingAttribute(getNameFormatted(), utfTo<std::string>(name));
-            return success;
+            if (elem->getAttribute(name, value))
+                return true;
+
+            log_.ref().notifyMissingAttribute(getNameFormatted(), name);
         }
         else
-        {
             log_.ref().notifyMissingElement(getNameFormatted());
-            return false;
-        }
+
+        return false;
     }
-
-    ///Return a pointer to the underlying Xml element, may be nullptr
-    const XmlElement* get() const { return refIndex_ < refList_.size() ? refList_[refIndex_] : nullptr; }
-
-    ///Test whether the underlying XML element exists
-    /**
-      \code
-         XmlIn in(doc);
-         XmlIn child = in["elem1"];
-         if (child)
-           ...
-      \endcode
-      Use member pointer as implicit conversion to bool (C++ Templates - Vandevoorde/Josuttis; chapter 20)
-    */
-    explicit operator bool() const { return get() != nullptr; }
 
     ///Notifies errors while mapping the XML to user data
     /**
@@ -357,56 +356,47 @@ public:
       However be aware that the chain of connected proxy instances will be broken once you call XmlIn::get() to retrieve the underlying pointer.
       Errors that occur when working with this pointer are not logged by the original set of related instances.
     */
-    bool haveErrors() const { return !log_.ref().elementList().empty(); }
 
     ///Get a list of XML element and attribute names which failed to convert to user data.
     /**
-      \tparam String Arbitrary string class: e.g. std::string, std::wstring, wxString, MyStringClass, ...
       \returns A list of XML element and attribute names, empty list if no errors occured.
     */
-    template <class String>
-    std::vector<String> getErrorsAs() const
+    std::vector<std::wstring> getErrors() const
     {
-        std::vector<String> output;
+        std::vector<std::wstring> output;
 
         for (const std::string& str : log_.ref().elementList())
-            output.push_back(utfTo<String>(str));
+            output.push_back(utfTo<std::wstring>(str));
 
         return output;
     }
 
 private:
-    XmlIn(const std::vector<const XmlElement*>& siblingList, const std::string& elementNameFmt, const SharedRef<ErrorLog>& sharedlog) :
-        refList_(siblingList), formattedName_(elementNameFmt), log_(sharedlog)
-    { assert((!siblingList.empty() && elementNameFmt.empty()) || (siblingList.empty() && !elementNameFmt.empty())); }
+    XmlIn(const std::vector<const XmlElement*>& siblingList,
+          const std::string& nodeNameFormatted,
+          const SharedRef<ErrorLog>& sharedlog) : refList_(siblingList), nodeNameFormatted_(nodeNameFormatted), log_(sharedlog) {}
 
-    static std::string getNameFormatted(const XmlElement& elem) //"<Root> <Level1> <Level2>"
-    {
-        return (elem.parent() ? getNameFormatted(*elem.parent()) + ' ' : std::string()) + '<' + elem.getName() + '>';
-    }
+    ///Return a pointer to the underlying Xml element, may be nullptr
+    const XmlElement* get() const { return refIndex_ < refList_.size() ? refList_[refIndex_] : nullptr; }
 
-    std::string getNameFormatted() const
+    std::string getNameFormatted() const //"<Root> <Level1> <Level2>"
     {
-        if (refIndex_ < refList_.size())
-        {
-            assert(formattedName_.empty());
-            return getNameFormatted(*refList_[refIndex_]);
-        }
+        if (refIndex_ == 0 && refList_.size() <= 1)
+            return nodeNameFormatted_;
         else
-            return formattedName_;
+            return nodeNameFormatted_ + '[' + numberTo<std::string>(refIndex_ + 1) + ']';
     }
 
     std::string getChildNameFormatted(const std::string& childName) const
     {
-        std::string parentName = getNameFormatted();
-        return (parentName.empty() ? std::string() : (parentName + ' ')) + '<' + childName + '>';
+        return getNameFormatted() + " <" + childName + '>';
     }
 
     class ErrorLog
     {
     public:
-        void notifyConversionError (const std::string& displayName)  { insert(displayName); }
-        void notifyMissingElement  (const std::string& displayName)  { insert(displayName); }
+        void notifyConversionError (const std::string& displayName) { insert(displayName); }
+        void notifyMissingElement  (const std::string& displayName) { insert(displayName); }
         void notifyMissingAttribute(const std::string& displayName, const std::string& attribName) { insert(displayName + " @" + attribName); }
 
         const std::vector<std::string>& elementList() const { return failedElements; }
@@ -424,7 +414,7 @@ private:
 
     std::vector<const XmlElement*> refList_; //all sibling elements with same name (all pointers bound!)
     size_t refIndex_ = 0;                    //this sibling's index in refList_
-    std::string formattedName_;              //contains full and formatted element name if (and only if) refList_ is empty
+    std::string nodeNameFormatted_;
     mutable SharedRef<ErrorLog> log_ = makeSharedRef<ErrorLog>();
 };
 
@@ -438,10 +428,11 @@ private:
 inline
 void checkXmlMappingErrors(const XmlIn& xmlInput, const Zstring& filePath) //throw FileError
 {
-    if (xmlInput.haveErrors())
+    if (const std::vector<std::wstring>& errors = xmlInput.getErrors();
+        !errors.empty())
     {
         std::wstring msg = _("The following XML elements could not be read:") + L'\n';
-        for (const std::wstring& elem : xmlInput.getErrorsAs<std::wstring>())
+        for (const std::wstring& elem : errors)
             msg += L'\n' + elem;
 
         throw FileError(replaceCpy(_("Configuration file %x is incomplete. The missing elements will be set to their default values."), L"%x", fmtPath(filePath)) + L"\n\n" + msg);

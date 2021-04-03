@@ -206,13 +206,13 @@ void serialize(const XmlElement& element, std::string& stream,
     for (auto it = attr.first; it != attr.second; ++it)
         stream += ' ' + normalizeName(it->name) + "=\"" + normalizeAttribValue(it->value) + '"';
 
-    auto iterPair = element.getChildren();
-    if (iterPair.first != iterPair.second) //structured element
+    auto itPair = element.getChildren();
+    if (itPair.first != itPair.second) //structured element
     {
         //no support for mixed-mode content
         stream += '>' + lineBreak;
 
-        std::for_each(iterPair.first, iterPair.second,
+        std::for_each(itPair.first, itPair.second,
         [&](const XmlElement& el) { serialize(el, stream, lineBreak, indent, indentLevel + 1); });
 
         for (size_t i = 0; i < indentLevel; ++i)

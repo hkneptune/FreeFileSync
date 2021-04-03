@@ -23,7 +23,7 @@ using namespace fff; //functionally needed for correct overload resolution!!!
 namespace
 {
 //-------------------------------------------------------------------------------------------------------------------------------
-const int XML_FORMAT_GLOBAL_CFG = 20; //2020-12-03
+const int XML_FORMAT_GLOBAL_CFG = 21; //2021-03-06
 const int XML_FORMAT_SYNC_CFG   = 17; //2020-10-14
 //-------------------------------------------------------------------------------------------------------------------------------
 }
@@ -476,19 +476,6 @@ bool readText(const std::string& input, GridViewType& value)
     return true;
 }
 
-//TODO: remove after migration! 2020-10-14
-bool readGridViewTypeV16(const std::string& input, GridViewType& value)
-{
-    const std::string tmp = trimCpy(input);
-    if (tmp == "Category")
-        value = GridViewType::difference;
-    else if (tmp == "Action")
-        value = GridViewType::action;
-    else
-        return false;
-    return true;
-}
-
 
 template <> inline
 void writeText(const ColumnTypeRim& value, std::string& output)
@@ -594,32 +581,32 @@ bool readText(const std::string& input, ColumnTypeCfg& value)
 
 
 template <> inline
-void writeText(const ColumnTypeTree& value, std::string& output)
+void writeText(const ColumnTypeOverview& value, std::string& output)
 {
     switch (value)
     {
-        case ColumnTypeTree::folder:
+        case ColumnTypeOverview::folder:
             output = "Tree";
             break;
-        case ColumnTypeTree::itemCount:
+        case ColumnTypeOverview::itemCount:
             output = "Count";
             break;
-        case ColumnTypeTree::bytes:
+        case ColumnTypeOverview::bytes:
             output = "Bytes";
             break;
     }
 }
 
 template <> inline
-bool readText(const std::string& input, ColumnTypeTree& value)
+bool readText(const std::string& input, ColumnTypeOverview& value)
 {
     const std::string tmp = trimCpy(input);
     if (tmp == "Tree")
-        value = ColumnTypeTree::folder;
+        value = ColumnTypeOverview::folder;
     else if (tmp == "Count")
-        value = ColumnTypeTree::itemCount;
+        value = ColumnTypeOverview::itemCount;
     else if (tmp == "Bytes")
-        value = ColumnTypeTree::bytes;
+        value = ColumnTypeOverview::bytes;
     else
         return false;
     return true;
@@ -808,180 +795,78 @@ bool readText(const std::string& input, SyncVariant& value)
 template <> inline
 void writeStruc(const ColAttributesRim& value, XmlElement& output)
 {
-    XmlOut out(output);
-    out.attribute("Type",    value.type);
-    out.attribute("Visible", value.visible);
-    out.attribute("Width",   value.offset);
-    out.attribute("Stretch", value.stretch);
+    output.setAttribute("Type",    value.type);
+    output.setAttribute("Visible", value.visible);
+    output.setAttribute("Width",   value.offset);
+    output.setAttribute("Stretch", value.stretch);
 }
 
 template <> inline
 bool readStruc(const XmlElement& input, ColAttributesRim& value)
 {
-    XmlIn in(input);
-    bool rv1 = in.attribute("Type",    value.type);
-    bool rv2 = in.attribute("Visible", value.visible);
-    bool rv3 = in.attribute("Width",   value.offset); //offset == width if stretch is 0
-    bool rv4 = in.attribute("Stretch", value.stretch);
-    return rv1 && rv2 && rv3 && rv4;
+    bool success = true;
+    success = input.getAttribute("Type",    value.type)    && success;
+    success = input.getAttribute("Visible", value.visible) && success;
+    success = input.getAttribute("Width",   value.offset)  && success; //offset == width if stretch is 0
+    success = input.getAttribute("Stretch", value.stretch) && success;
+    return success; //[!] avoid short-circuit evaluation
 }
 
 
 template <> inline
 void writeStruc(const ColAttributesCfg& value, XmlElement& output)
 {
-    XmlOut out(output);
-    out.attribute("Type",    value.type);
-    out.attribute("Visible", value.visible);
-    out.attribute("Width",   value.offset);
-    out.attribute("Stretch", value.stretch);
+    output.setAttribute("Type",    value.type);
+    output.setAttribute("Visible", value.visible);
+    output.setAttribute("Width",   value.offset);
+    output.setAttribute("Stretch", value.stretch);
 }
 
 template <> inline
 bool readStruc(const XmlElement& input, ColAttributesCfg& value)
 {
-    XmlIn in(input);
-    bool rv1 = in.attribute("Type",    value.type);
-    bool rv2 = in.attribute("Visible", value.visible);
-    bool rv3 = in.attribute("Width",   value.offset); //offset == width if stretch is 0
-    bool rv4 = in.attribute("Stretch", value.stretch);
-    return rv1 && rv2 && rv3 && rv4;
-}
-
-
-template <> inline
-void writeStruc(const ColAttributesTree& value, XmlElement& output)
-{
-    XmlOut out(output);
-    out.attribute("Type",    value.type);
-    out.attribute("Visible", value.visible);
-    out.attribute("Width",   value.offset);
-    out.attribute("Stretch", value.stretch);
-}
-
-template <> inline
-bool readStruc(const XmlElement& input, ColAttributesTree& value)
-{
-    XmlIn in(input);
-    bool rv1 = in.attribute("Type",    value.type);
-    bool rv2 = in.attribute("Visible", value.visible);
-    bool rv3 = in.attribute("Width",   value.offset); //offset == width if stretch is 0
-    bool rv4 = in.attribute("Stretch", value.stretch);
-    return rv1 && rv2 && rv3 && rv4;
-}
-
-
-template <> inline
-void writeStruc(const ViewFilterDefault& value, XmlElement& output)
-{
-    XmlOut out(output);
-
-    out.attribute("Equal",    value.equal);
-    out.attribute("Conflict", value.conflict);
-    out.attribute("Excluded", value.excluded);
-
-    XmlOut catView = out["Difference"];
-    catView.attribute("LeftOnly",   value.leftOnly);
-    catView.attribute("RightOnly",  value.rightOnly);
-    catView.attribute("LeftNewer",  value.leftNewer);
-    catView.attribute("RightNewer", value.rightNewer);
-    catView.attribute("Different",  value.different);
-
-    XmlOut actView = out["Action"];
-    actView.attribute("CreateLeft",  value.createLeft);
-    actView.attribute("CreateRight", value.createRight);
-    actView.attribute("UpdateLeft",  value.updateLeft);
-    actView.attribute("UpdateRight", value.updateRight);
-    actView.attribute("DeleteLeft",  value.deleteLeft);
-    actView.attribute("DeleteRight", value.deleteRight);
-    actView.attribute("DoNothing",   value.doNothing);
-}
-
-template <> inline
-bool readStruc(const XmlElement& input, ViewFilterDefault& value)
-{
-    XmlIn in(input);
-
     bool success = true;
-    auto readAttr = [&](XmlIn& elemIn, const char name[], bool& v)
-    {
-        if (!elemIn.attribute(name, v))
-            success = false;
-    };
-
-    readAttr(in, "Equal",    value.equal);
-    readAttr(in, "Conflict", value.conflict);
-    readAttr(in, "Excluded", value.excluded);
-
-    XmlIn diffView = in["Difference"];
-    readAttr(diffView, "LeftOnly",   value.leftOnly);
-    readAttr(diffView, "RightOnly",  value.rightOnly);
-    readAttr(diffView, "LeftNewer",  value.leftNewer);
-    readAttr(diffView, "RightNewer", value.rightNewer);
-    readAttr(diffView, "Different",  value.different);
-
-    XmlIn actView = in["Action"];
-    readAttr(actView, "CreateLeft",  value.createLeft);
-    readAttr(actView, "CreateRight", value.createRight);
-    readAttr(actView, "UpdateLeft",  value.updateLeft);
-    readAttr(actView, "UpdateRight", value.updateRight);
-    readAttr(actView, "DeleteLeft",  value.deleteLeft);
-    readAttr(actView, "DeleteRight", value.deleteRight);
-    readAttr(actView, "DoNothing",   value.doNothing);
-
-    return success; //[!] avoid short-circuit evaluation above
+    success = input.getAttribute("Type",    value.type)    && success;
+    success = input.getAttribute("Visible", value.visible) && success;
+    success = input.getAttribute("Width",   value.offset)  && success; //offset == width if stretch is 0
+    success = input.getAttribute("Stretch", value.stretch) && success;
+    return success; //[!] avoid short-circuit evaluation
 }
 
-//TODO: remove after migration! 2020-10-13
-bool readViewFilterDefaultV19(const XmlElement& input, ViewFilterDefault& value)
+
+template <> inline
+void writeStruc(const ColumnAttribOverview& value, XmlElement& output)
 {
-    XmlIn in(input);
+    output.setAttribute("Type",    value.type);
+    output.setAttribute("Visible", value.visible);
+    output.setAttribute("Width",   value.offset);
+    output.setAttribute("Stretch", value.stretch);
+}
 
+template <> inline
+bool readStruc(const XmlElement& input, ColumnAttribOverview& value)
+{
     bool success = true;
-    auto readAttr = [&](XmlIn& elemIn, const char name[], bool& v)
-    {
-        if (!elemIn.attribute(name, v))
-            success = false;
-    };
-
-    readAttr(in, "Equal",    value.equal);
-    readAttr(in, "Conflict", value.conflict);
-    readAttr(in, "Excluded", value.excluded);
-
-    XmlIn diffView = in["CategoryView"];
-    readAttr(diffView, "LeftOnly",   value.leftOnly);
-    readAttr(diffView, "RightOnly",  value.rightOnly);
-    readAttr(diffView, "LeftNewer",  value.leftNewer);
-    readAttr(diffView, "RightNewer", value.rightNewer);
-    readAttr(diffView, "Different",  value.different);
-
-    XmlIn actView = in["ActionView"];
-    readAttr(actView, "CreateLeft",  value.createLeft);
-    readAttr(actView, "CreateRight", value.createRight);
-    readAttr(actView, "UpdateLeft",  value.updateLeft);
-    readAttr(actView, "UpdateRight", value.updateRight);
-    readAttr(actView, "DeleteLeft",  value.deleteLeft);
-    readAttr(actView, "DeleteRight", value.deleteRight);
-    readAttr(actView, "DoNothing",   value.doNothing);
-
-    return success; //[!] avoid short-circuit evaluation above
+    success = input.getAttribute("Type",    value.type)    && success;
+    success = input.getAttribute("Visible", value.visible) && success;
+    success = input.getAttribute("Width",   value.offset)  && success; //offset == width if stretch is 0
+    success = input.getAttribute("Stretch", value.stretch) && success;
+    return success; //[!] avoid short-circuit evaluation
 }
 
 
 template <> inline
 void writeStruc(const ExternalApp& value, XmlElement& output)
 {
-    XmlOut out(output);
-    out(value.cmdLine);
-    out.attribute("Label", value.description);
+    output.setValue(value.cmdLine);
+    output.setAttribute("Label", value.description);
 }
 
 template <> inline
 bool readStruc(const XmlElement& input, ExternalApp& value)
 {
-    XmlIn in(input);
-    const bool rv1 = in(value.cmdLine);
-    const bool rv2 = in.attribute("Label", value.description);
+    const bool rv1 = input.getValue(value.cmdLine);
+    const bool rv2 = input.getAttribute("Label", value.description);
     return rv1 && rv2;
 }
 
@@ -1062,56 +947,55 @@ namespace zen
 template <> inline
 bool readStruc(const XmlElement& input, ConfigFileItem& value)
 {
-    XmlIn in(input);
-
-    const bool rv1 = in.attribute("Result",  value.logResult);
+    bool success = true;
+    success = input.getAttribute("Result",  value.logResult) && success;
 
     Zstring cfgPathRaw;
-    bool rv2 = in.attribute("Config", cfgPathRaw);
-    if (!rv2)                                      //TODO: remove after migration! 2020-02-09
-        rv2 = in.attribute("CfgPath", cfgPathRaw); //
+    if (input.hasAttribute("CfgPath")) //TODO: remove after migration! 2020-02-09
+        success = input.getAttribute("CfgPath", cfgPathRaw) && success; //
+    else
+        success = input.getAttribute("Config", cfgPathRaw) && success;
 
     //FFS portable: use special syntax for config file paths: e.g. "FFS:\SyncJob.ffs_gui"
-    if (rv2) value.cfgFilePath = resolveFreeFileSyncDriveMacro(cfgPathRaw);
+    value.cfgFilePath = resolveFreeFileSyncDriveMacro(cfgPathRaw);
 
-    const bool rv3 = in.attribute("LastSync", value.lastSyncTime);
+    success = input.getAttribute("LastSync", value.lastSyncTime) && success;
 
     Zstring logPathPhrase;
-    bool rv4 = in.attribute("Log", logPathPhrase);
-    if (!rv4)                                         //TODO: remove after migration! 2020-02-09
-        rv4 = in.attribute("LogPath", logPathPhrase); //
+    if (input.hasAttribute("LogPath")) //TODO: remove after migration! 2020-02-09
+        success = input.getAttribute("LogPath", logPathPhrase) && success; //
+    else
+        success = input.getAttribute("Log", logPathPhrase) && success;
 
-    if (rv4) value.logFilePath = createAbstractPath(resolveFreeFileSyncDriveMacro(logPathPhrase));
+    value.logFilePath = createAbstractPath(resolveFreeFileSyncDriveMacro(logPathPhrase));
 
     std::string hexColor; //optional XML attribute!
-    if (in.attribute("Color", hexColor) && hexColor.size() == 6)
+    if (input.getAttribute("Color", hexColor) && hexColor.size() == 6)
         value.backColor.Set(unhexify(hexColor[0], hexColor[1]),
                             unhexify(hexColor[2], hexColor[3]),
                             unhexify(hexColor[4], hexColor[5]));
-
-    return rv1 && rv2 && rv3 && rv4;
+    return success; //[!] avoid short-circuit evaluation
 }
 
 template <> inline
 void writeStruc(const ConfigFileItem& value, XmlElement& output)
 {
-    XmlOut out(output);
-    out.attribute("Result",  value.logResult);
-    out.attribute("Config", substituteFreeFileSyncDriveLetter(value.cfgFilePath));
-    out.attribute("LastSync", value.lastSyncTime);
+    output.setAttribute("Result", value.logResult);
+    output.setAttribute("Config", substituteFreeFileSyncDriveLetter(value.cfgFilePath));
+    output.setAttribute("LastSync", value.lastSyncTime);
 
     if (const Zstring& nativePath = getNativeItemPath(value.logFilePath);
         !nativePath.empty())
-        out.attribute("Log", substituteFreeFileSyncDriveLetter(nativePath));
+        output.setAttribute("Log", substituteFreeFileSyncDriveLetter(nativePath));
     else
-        out.attribute("Log", AFS::getInitPathPhrase(value.logFilePath));
+        output.setAttribute("Log", AFS::getInitPathPhrase(value.logFilePath));
 
     if (value.backColor.IsOk())
     {
         const auto& [highR, lowR] = hexify(value.backColor.Red  ());
         const auto& [highG, lowG] = hexify(value.backColor.Green());
         const auto& [highB, lowB] = hexify(value.backColor.Blue ());
-        out.attribute("Color", std::string({highR, lowR, highG, lowG, highB, lowB}));
+        output.setAttribute("Color", std::string({highR, lowR, highG, lowG, highB, lowB}));
     }
 }
 
@@ -1124,13 +1008,11 @@ struct ConfigFileItemV9
 template <> inline
 bool readStruc(const XmlElement& input, ConfigFileItemV9& value)
 {
-    XmlIn in(input);
-
     Zstring rawPath;
-    const bool rv1 = in(rawPath);
+    const bool rv1 = input.getValue(rawPath);
     if (rv1) value.filePath = resolveFreeFileSyncDriveMacro(rawPath);
 
-    const bool rv2 = in.attribute("LastSync", value.lastSyncTime);
+    const bool rv2 = input.getAttribute("LastSync", value.lastSyncTime);
     return rv1 && rv2;
 }
 }
@@ -1203,8 +1085,11 @@ void readConfig(const XmlIn& in, SyncConfig& syncCfg, std::map<AfsDevice, size_t
     }
     else
     {
+        XmlIn verFolder = in["VersioningFolder"];
+
         size_t parallelOps = 1;
-        if (const XmlElement* e = in["VersioningFolder"].get()) e->getAttribute("Threads", parallelOps); //try to get attribute
+        if (verFolder.hasAttribute("Threads")) //*no error* if not available
+            verFolder.attribute("Threads", parallelOps); //try to get attribute
 
         const size_t parallelOpsPrev = getDeviceParallelOps(deviceParallelOps, syncCfg.versioningFolderPhrase);
         /**/                           setDeviceParallelOps(deviceParallelOps, syncCfg.versioningFolderPhrase, std::max(parallelOps, parallelOpsPrev));
@@ -1212,22 +1097,26 @@ void readConfig(const XmlIn& in, SyncConfig& syncCfg, std::map<AfsDevice, size_t
         in["VersioningFolder"].attribute("Style", syncCfg.versioningStyle);
 
         if (syncCfg.versioningStyle != VersioningStyle::replace)
-            if (const XmlElement* e = in["VersioningFolder"].get())
-            {
-                e->getAttribute("MaxAge", syncCfg.versionMaxAgeDays); //try to get attributes if available
+        {
+            if (verFolder.hasAttribute("MaxAge")) //try to get attributes if available => *no error* if not available
+                verFolder.attribute("MaxAge", syncCfg.versionMaxAgeDays);
 
-                //TODO: remove if clause after migration! 2018-07-12
-                if (formatVer < 13)
-                {
-                    e->getAttribute("CountMin", syncCfg.versionCountMin); // => *no error* if not available
-                    e->getAttribute("CountMax", syncCfg.versionCountMax); //
-                }
-                else
-                {
-                    e->getAttribute("MinCount", syncCfg.versionCountMin); // => *no error* if not available
-                    e->getAttribute("MaxCount", syncCfg.versionCountMax); //
-                }
+            //TODO: remove if clause after migration! 2018-07-12
+            if (formatVer < 13)
+            {
+                if (verFolder.hasAttribute("CountMin"))
+                    verFolder.attribute("CountMin", syncCfg.versionCountMin); // => *no error* if not available
+                if (verFolder.hasAttribute("CountMax"))
+                    verFolder.attribute("CountMax", syncCfg.versionCountMax); //
             }
+            else
+            {
+                if (verFolder.hasAttribute("MinCount"))
+                    verFolder.attribute("MinCount", syncCfg.versionCountMin); // => *no error* if not available
+                if (verFolder.hasAttribute("MaxCount"))
+                    verFolder.attribute("MaxCount", syncCfg.versionCountMax); //
+            }
+        }
     }
 }
 
@@ -1284,10 +1173,8 @@ void readConfig(const XmlIn& in, LocalPairConfig& lpc, std::map<AfsDevice, size_
     }
     else
     {
-        if (const XmlElement* e = in["Left" ].get()) e->getAttribute("Threads", parallelOpsL); //try to get attributes:
-        if (const XmlElement* e = in["Right"].get()) e->getAttribute("Threads", parallelOpsR); // => *no error* if not available
-        //in["Left" ].attribute("Threads", parallelOpsL);
-        //in["Right"].attribute("Threads", parallelOpsR);
+        if (in["Left" ].hasAttribute("Threads")) in["Left" ].attribute("Threads", parallelOpsL); //try to get attributes:
+        if (in["Right"].hasAttribute("Threads")) in["Right"].attribute("Threads", parallelOpsR); // => *no error* if not available
     }
 
     auto setParallelOps = [&](const Zstring& folderPathPhrase, size_t parallelOps)
@@ -1459,9 +1346,16 @@ void readConfig(const XmlIn& in, XmlGuiConfig& cfg, int formatVer)
     //TODO: remove after migration! 2020-10-14
     if (formatVer < 17)
     {
-        if (const XmlElement* elem = inGuiCfg["MiddleGridView"].get())
-            if (std::string val; elem->getValue<std::string>(val))
-                readGridViewTypeV16(val, cfg.gridViewType);
+        if (inGuiCfg["MiddleGridView"])
+        {
+            std::string tmp;
+            inGuiCfg["MiddleGridView"](tmp);
+
+            if (tmp == "Category")
+                cfg.gridViewType = GridViewType::difference;
+            else if (tmp == "Action")
+                cfg.gridViewType = GridViewType::action;
+        }
     }
     else
         inGuiCfg["GridViewType"](cfg.gridViewType);
@@ -1601,10 +1495,15 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     in2["NotificationSound"        ].attribute("CompareFinished", cfg.soundFileCompareFinished);
     in2["NotificationSound"        ].attribute("SyncFinished",    cfg.soundFileSyncFinished);
 
-    in2["ProgressDialog"].attribute("Width",     cfg.progressDlg.dlgSize.x);
-    in2["ProgressDialog"].attribute("Height",    cfg.progressDlg.dlgSize.y);
-    in2["ProgressDialog"].attribute("Maximized", cfg.progressDlg.isMaximized);
-    in2["ProgressDialog"].attribute("AutoClose", cfg.progressDlg.autoClose);
+    //TODO: remove old parameter after migration! 2021-03-06
+    if (formatVer < 21)
+    {
+        in2["ProgressDialog"].attribute("Width",     cfg.dpiLayouts[getDpiScalePercent()].progressDlg.dlgSize.x);
+        in2["ProgressDialog"].attribute("Height",    cfg.dpiLayouts[getDpiScalePercent()].progressDlg.dlgSize.y);
+        in2["ProgressDialog"].attribute("Maximized", cfg.dpiLayouts[getDpiScalePercent()].progressDlg.isMaximized);
+    }
+
+    in2["ProgressDialog"].attribute("AutoClose", cfg.progressDlgAutoClose);
 
     //TODO: remove if parameter migration after some time! 2019-05-29
     if (formatVer < 13)
@@ -1671,12 +1570,15 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     if (in["Gui"])
         inMainWin = in["Gui"]["MainDialog"];
 
-    //read application window size and position
-    inMainWin.attribute("Width",     cfg.mainDlg.dlgSize.x);
-    inMainWin.attribute("Height",    cfg.mainDlg.dlgSize.y);
-    inMainWin.attribute("PosX",      cfg.mainDlg.dlgPos.x);
-    inMainWin.attribute("PosY",      cfg.mainDlg.dlgPos.y);
-    inMainWin.attribute("Maximized", cfg.mainDlg.isMaximized);
+    //TODO: remove old parameter after migration! 2021-03-06
+    if (formatVer < 21)
+    {
+        inMainWin.attribute("Width",     cfg.dpiLayouts[getDpiScalePercent()].mainDlg.dlgSize.x);
+        inMainWin.attribute("Height",    cfg.dpiLayouts[getDpiScalePercent()].mainDlg.dlgSize.y);
+        inMainWin.attribute("PosX",      cfg.dpiLayouts[getDpiScalePercent()].mainDlg.dlgPos.x);
+        inMainWin.attribute("PosY",      cfg.dpiLayouts[getDpiScalePercent()].mainDlg.dlgPos.y);
+        inMainWin.attribute("Maximized", cfg.dpiLayouts[getDpiScalePercent()].mainDlg.isMaximized);
+    }
 
     //###########################################################
 
@@ -1697,56 +1599,58 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     //###########################################################
 
     XmlIn inConfig = inMainWin["ConfigPanel"];
-    inConfig.attribute("ScrollPos",     cfg.mainDlg.cfgGridTopRowPos);
-    inConfig.attribute("SyncOverdue",   cfg.mainDlg.cfgGridSyncOverdueDays);
-    inConfig.attribute("SortByColumn",  cfg.mainDlg.cfgGridLastSortColumn);
-    inConfig.attribute("SortAscending", cfg.mainDlg.cfgGridLastSortAscending);
+    inConfig.attribute("ScrollPos",     cfg.mainDlg.config.topRowPos);
+    inConfig.attribute("SyncOverdue",   cfg.mainDlg.config.syncOverdueDays);
+    inConfig.attribute("SortByColumn",  cfg.mainDlg.config.lastSortColumn);
+    inConfig.attribute("SortAscending", cfg.mainDlg.config.lastSortAscending);
 
-    inConfig["Columns"](cfg.mainDlg.cfgGridColumnAttribs);
+    //TODO: remove old parameter after migration! 2021-03-06
+    if (formatVer < 21)
+        inConfig["Columns"](cfg.dpiLayouts[getDpiScalePercent()].configColumnAttribs);
 
     //TODO: remove after migration! 2018-07-27
     if (formatVer < 10) //reset once to show the new log column
-        cfg.mainDlg.cfgGridColumnAttribs = XmlGlobalSettings().mainDlg.cfgGridColumnAttribs;
+        cfg.dpiLayouts[getDpiScalePercent()].configColumnAttribs = DpiLayout().configColumnAttribs;
 
     //TODO: remove parameter migration after some time! 2018-01-08
     if (formatVer < 6)
     {
-        in["Gui"]["ConfigHistory"].attribute("MaxSize", cfg.mainDlg.cfgHistItemsMax);
+        in["Gui"]["ConfigHistory"].attribute("MaxSize", cfg.mainDlg.config.histItemsMax);
 
         //TODO: remove parameter migration after some time! 2016-09-23
         if (formatVer < 4)
-            cfg.mainDlg.cfgHistItemsMax = std::max<size_t>(cfg.mainDlg.cfgHistItemsMax, 100);
+            cfg.mainDlg.config.histItemsMax = std::max<size_t>(cfg.mainDlg.config.histItemsMax, 100);
 
         std::vector<Zstring> cfgHist;
         in["Gui"]["ConfigHistory"](cfgHist);
 
         for (const Zstring& cfgPath : cfgHist)
-            cfg.mainDlg.cfgFileHistory.emplace_back(
+            cfg.mainDlg.config.fileHistory.emplace_back(
                 cfgPath,
                 0, getNullPath(), SyncResult::finishedSuccess, wxNullColour);
     }
     //TODO: remove after migration! 2018-07-27
     else if (formatVer < 10)
     {
-        inConfig["Configurations"].attribute("MaxSize", cfg.mainDlg.cfgHistItemsMax);
+        inConfig["Configurations"].attribute("MaxSize", cfg.mainDlg.config.histItemsMax);
 
         std::vector<ConfigFileItemV9> cfgFileHistory;
         inConfig["Configurations"](cfgFileHistory);
 
         for (const ConfigFileItemV9& item : cfgFileHistory)
-            cfg.mainDlg.cfgFileHistory.emplace_back(item.filePath, item.lastSyncTime, getNullPath(), SyncResult::finishedSuccess, wxNullColour);
+            cfg.mainDlg.config.fileHistory.emplace_back(item.filePath, item.lastSyncTime, getNullPath(), SyncResult::finishedSuccess, wxNullColour);
     }
     else
     {
-        inConfig["Configurations"].attribute("MaxSize", cfg.mainDlg.cfgHistItemsMax);
-        inConfig["Configurations"].attribute("LastSelected", cfg.mainDlg.cfgFileLastSelected);
-        inConfig["Configurations"](cfg.mainDlg.cfgFileHistory);
+        inConfig["Configurations"].attribute("MaxSize", cfg.mainDlg.config.histItemsMax);
+        inConfig["Configurations"].attribute("LastSelected", cfg.mainDlg.config.lastSelectedFile);
+        inConfig["Configurations"](cfg.mainDlg.config.fileHistory);
     }
     //TODO: remove after migration! 2019-11-30
     if (formatVer < 15)
     {
         const Zstring lastRunConfigPath = getConfigDirPathPf() + Zstr("LastRun.ffs_gui");
-        for (ConfigFileItem& item : cfg.mainDlg.cfgFileHistory)
+        for (ConfigFileItem& item : cfg.mainDlg.config.fileHistory)
             if (equalNativePath(item.cfgFilePath, lastRunConfigPath))
                 item.backColor = wxColor(0xdd, 0xdd, 0xdd); //light grey from onCfgGridContext()
     }
@@ -1754,7 +1658,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     //TODO: remove parameter migration after some time! 2018-01-08
     if (formatVer < 6)
     {
-        in["Gui"]["LastUsedConfig"](cfg.mainDlg.cfgFilesLastUsed);
+        in["Gui"]["LastUsedConfig"](cfg.mainDlg.config.lastUsedFiles);
     }
     else
     {
@@ -1764,20 +1668,20 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
             for (Zstring& filePath : cfgPaths)
                 filePath = resolveFreeFileSyncDriveMacro(filePath);
 
-            cfg.mainDlg.cfgFilesLastUsed = cfgPaths;
+            cfg.mainDlg.config.lastUsedFiles = cfgPaths;
         }
     }
 
     //###########################################################
 
     XmlIn inOverview = inMainWin["OverviewPanel"];
-    inOverview.attribute("ShowPercentage", cfg.mainDlg.treeGridShowPercentBar);
-    inOverview.attribute("SortByColumn",   cfg.mainDlg.treeGridLastSortColumn);
-    inOverview.attribute("SortAscending",  cfg.mainDlg.treeGridLastSortAscending);
+    inOverview.attribute("ShowPercentage", cfg.mainDlg.overview.showPercentBar);
+    inOverview.attribute("SortByColumn",   cfg.mainDlg.overview.lastSortColumn);
+    inOverview.attribute("SortAscending",  cfg.mainDlg.overview.lastSortAscending);
 
-    //read column attributes
-    XmlIn inColTree = inOverview["Columns"];
-    inColTree(cfg.mainDlg.treeGridColumnAttribs);
+    //TODO: remove old parameter after migration! 2021-03-06
+    if (formatVer < 21)
+        inOverview["Columns"](cfg.dpiLayouts[getDpiScalePercent()].overviewColumnAttribs);
 
     XmlIn inFileGrid = inMainWin["FilePanel"];
     //TODO: remove parameter migration after some time! 2018-01-08
@@ -1803,11 +1707,20 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     else
         inFileGrid.attribute("FolderPairsMax", cfg.mainDlg.folderPairsVisibleMax);
 
-    inFileGrid["ColumnsLeft"].attribute("PathFormat", cfg.mainDlg.itemPathFormatLeftGrid);
-    inFileGrid["ColumnsLeft"](cfg.mainDlg.columnAttribLeft);
+    //TODO: remove old parameter after migration! 2021-03-06
+    if (formatVer < 21)
+    {
+        inFileGrid["ColumnsLeft"](cfg.dpiLayouts[getDpiScalePercent()].fileColumnAttribsLeft);
+        inFileGrid["ColumnsRight"](cfg.dpiLayouts[getDpiScalePercent()].fileColumnAttribsRight);
 
-    inFileGrid["ColumnsRight"].attribute("PathFormat", cfg.mainDlg.itemPathFormatRightGrid);
-    inFileGrid["ColumnsRight"](cfg.mainDlg.columnAttribRight);
+        inFileGrid["ColumnsLeft"].attribute("PathFormat", cfg.mainDlg.itemPathFormatLeftGrid);
+        inFileGrid["ColumnsRight"].attribute("PathFormat", cfg.mainDlg.itemPathFormatRightGrid);
+    }
+    else
+    {
+        inFileGrid.attribute("PathFormatLeft",  cfg.mainDlg.itemPathFormatLeftGrid);
+        inFileGrid.attribute("PathFormatRight", cfg.mainDlg.itemPathFormatRightGrid);
+    }
 
     inFileGrid["FolderHistoryLeft" ](cfg.mainDlg.folderHistoryLeft);
     inFileGrid["FolderHistoryRight"](cfg.mainDlg.folderHistoryRight);
@@ -1833,32 +1746,46 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     inCopyToHistory.attribute("LastSelected", cfg.mainDlg.copyToCfg.targetFolderLastSelected);
     //###########################################################
 
-    //TODO: remove after migration! 2020-10-13
-    if (formatVer < 19)
-    {
-        if (const XmlElement* elem = inMainWin["DefaultViewFilter"].get())
-            readViewFilterDefaultV19(*elem, cfg.mainDlg.viewFilterDefault);
-    }
-    else
-    {
-        inMainWin["DefaultViewFilter"](cfg.mainDlg.viewFilterDefault);
-    }
-
-
+    XmlIn inDefFilter = inMainWin["DefaultViewFilter"];
     //TODO: remove old parameter after migration! 2018-02-04
     if (formatVer < 8)
-    {
-        XmlIn sharedView = inMainWin["DefaultViewFilter"]["Shared"];
-        sharedView.attribute("Equal",    cfg.mainDlg.viewFilterDefault.equal);
-        sharedView.attribute("Conflict", cfg.mainDlg.viewFilterDefault.conflict);
-        sharedView.attribute("Excluded", cfg.mainDlg.viewFilterDefault.excluded);
-    }
+        inDefFilter = inMainWin["DefaultViewFilter"]["Shared"];
+
+    inDefFilter.attribute("Equal",    cfg.mainDlg.viewFilterDefault.equal);
+    inDefFilter.attribute("Conflict", cfg.mainDlg.viewFilterDefault.conflict);
+    inDefFilter.attribute("Excluded", cfg.mainDlg.viewFilterDefault.excluded);
+
+    XmlIn diffView = inDefFilter["Difference"];
+    //TODO: remove after migration! 2020-10-13
+    if (formatVer < 19)
+        diffView = inDefFilter["CategoryView"];
+
+    diffView.attribute("LeftOnly",   cfg.mainDlg.viewFilterDefault.leftOnly);
+    diffView.attribute("RightOnly",  cfg.mainDlg.viewFilterDefault.rightOnly);
+    diffView.attribute("LeftNewer",  cfg.mainDlg.viewFilterDefault.leftNewer);
+    diffView.attribute("RightNewer", cfg.mainDlg.viewFilterDefault.rightNewer);
+    diffView.attribute("Different",  cfg.mainDlg.viewFilterDefault.different);
+
+    XmlIn actView = inDefFilter["Action"];
+    //TODO: remove after migration! 2020-10-13
+    if (formatVer < 19)
+        actView = inDefFilter["ActionView"];
+
+    actView.attribute("CreateLeft",  cfg.mainDlg.viewFilterDefault.createLeft);
+    actView.attribute("CreateRight", cfg.mainDlg.viewFilterDefault.createRight);
+    actView.attribute("UpdateLeft",  cfg.mainDlg.viewFilterDefault.updateLeft);
+    actView.attribute("UpdateRight", cfg.mainDlg.viewFilterDefault.updateRight);
+    actView.attribute("DeleteLeft",  cfg.mainDlg.viewFilterDefault.deleteLeft);
+    actView.attribute("DeleteRight", cfg.mainDlg.viewFilterDefault.deleteRight);
+    actView.attribute("DoNothing",   cfg.mainDlg.viewFilterDefault.doNothing);
+
 
     //TODO: remove old parameter after migration! 2018-01-16
     if (formatVer < 7)
-        inMainWin["Perspective5"](cfg.mainDlg.guiPerspectiveLast);
-    else
-        inMainWin["Perspective"](cfg.mainDlg.guiPerspectiveLast);
+        inMainWin["Perspective5"](cfg.dpiLayouts[getDpiScalePercent()].mainDlg.panelLayout);
+    //TODO: remove old parameter after migration! 2021-03-06
+    else if (formatVer < 21)
+        inMainWin["Perspective"](cfg.dpiLayouts[getDpiScalePercent()].mainDlg.panelLayout);
 
     //TODO: remove after migration! 2019-11-30
     auto splitEditMerge = [](wxString& perspective, wchar_t delim, const std::function<void(wxString& item)>& editItem)
@@ -1879,7 +1806,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
 
     //TODO: remove after migration! 2018-07-27
     if (formatVer < 10)
-        splitEditMerge(cfg.mainDlg.guiPerspectiveLast, L'|', [&](wxString& paneCfg)
+        splitEditMerge(cfg.dpiLayouts[getDpiScalePercent()].mainDlg.panelLayout, L'|', [&](wxString& paneCfg)
     {
         if (contains(paneCfg, L"name=TopPanel"))
             replace(paneCfg, L";row=2;", L";row=3;");
@@ -1892,7 +1819,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
         std::optional<int> tpDir;
         std::optional<int> tpLayer;
         std::optional<int> tpRow;
-        splitEditMerge(cfg.mainDlg.guiPerspectiveLast, L'|', [&](wxString& paneCfg)
+        splitEditMerge(cfg.dpiLayouts[getDpiScalePercent()].mainDlg.panelLayout, L'|', [&](wxString& paneCfg)
         {
             if (contains(paneCfg, L"name=TopPanel"))
                 splitEditMerge(paneCfg, L';', [&](wxString& paneAttr)
@@ -1913,7 +1840,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
                                     numberTo<wxString>(*tpLayer) + L"," +
                                     numberTo<wxString>(*tpRow  ) + L")=";
 
-            splitEditMerge(cfg.mainDlg.guiPerspectiveLast, L'|', [&](wxString& paneCfg)
+            splitEditMerge(cfg.dpiLayouts[getDpiScalePercent()].mainDlg.panelLayout, L'|', [&](wxString& paneCfg)
             {
                 if (startsWith(paneCfg, tpSize))
                     paneCfg = tpSize + L"0";
@@ -2039,22 +1966,41 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
         in["LastOnlineVersion"](cfg.lastOnlineVersion);
     }
 
-    //batch specific global settings
-    //XmlIn inBatch = in["Batch"];
 
+    cfg.dpiLayouts.clear();
+
+    for (XmlIn inLayout = in["DpiLayouts"]["Layout"]; inLayout; inLayout.next())
+        if (std::string scaleTxt;
+            inLayout.attribute("Scale", scaleTxt))
+        {
+            const int scalePercent = stringTo<int>(beforeLast(scaleTxt, '%', IfNotFoundReturn::none));
+            DpiLayout layout;
+
+            XmlIn inLayoutMain = inLayout["MainDialog"];
+            inLayoutMain.attribute("Width",     layout.mainDlg.dlgSize.x);
+            inLayoutMain.attribute("Height",    layout.mainDlg.dlgSize.y);
+            inLayoutMain.attribute("PosX",      layout.mainDlg.dlgPos.x);
+            inLayoutMain.attribute("PosY",      layout.mainDlg.dlgPos.y);
+            inLayoutMain.attribute("Maximized", layout.mainDlg.isMaximized);
+
+            inLayoutMain["PanelLayout"   ](layout.mainDlg.panelLayout);
+            inLayoutMain["ConfigPanel"   ](layout.configColumnAttribs);
+            inLayoutMain["OverviewPanel" ](layout.overviewColumnAttribs);
+            inLayoutMain["FilePanelLeft" ](layout.fileColumnAttribsLeft);
+            inLayoutMain["FilePanelRight"](layout.fileColumnAttribsRight);
+
+            XmlIn inLayoutProgress = inLayout["ProgressDialog"];
+            inLayoutProgress.attribute("Width",     layout.progressDlg.dlgSize.x);
+            inLayoutProgress.attribute("Height",    layout.progressDlg.dlgSize.y);
+            inLayoutProgress.attribute("Maximized", layout.progressDlg.isMaximized);
+
+            cfg.dpiLayouts.emplace(scalePercent, std::move(layout));
+        }
 
     //TODO: remove parameter migration after some time! 2018-03-14
     if (formatVer < 9)
         if (fastFromDIP(96) > 96) //high-DPI monitor => one-time migration
-        {
-            const XmlGlobalSettings defaultCfg;
-            cfg.mainDlg.dlgSize               = defaultCfg.mainDlg.dlgSize;
-            cfg.mainDlg.guiPerspectiveLast    = defaultCfg.mainDlg.guiPerspectiveLast;
-            cfg.mainDlg.cfgGridColumnAttribs  = defaultCfg.mainDlg.cfgGridColumnAttribs;
-            cfg.mainDlg.treeGridColumnAttribs = defaultCfg.mainDlg.treeGridColumnAttribs;
-            cfg.mainDlg.columnAttribLeft      = defaultCfg.mainDlg.columnAttribLeft;
-            cfg.mainDlg.columnAttribRight     = defaultCfg.mainDlg.columnAttribRight;
-        }
+            cfg.dpiLayouts[getDpiScalePercent()] = DpiLayout();
 }
 
 
@@ -2254,7 +2200,7 @@ void writeConfig(const FilterConfig& filter, XmlOut& out)
 
 void writeConfig(const LocalPairConfig& lpc, const std::map<AfsDevice, size_t>& deviceParallelOps, XmlOut& out)
 {
-    XmlOut outPair = out.ref().addChild("Pair");
+    XmlOut outPair = out.addChild("Pair");
 
     //read folder pairs
     outPair["Left" ](lpc.folderPathPhraseLeft);
@@ -2379,10 +2325,7 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
     out["NotificationSound"        ].attribute("CompareFinished", substituteFfsResourcePath(cfg.soundFileCompareFinished));
     out["NotificationSound"        ].attribute("SyncFinished",    substituteFfsResourcePath(cfg.soundFileSyncFinished));
 
-    out["ProgressDialog"].attribute("Width",     cfg.progressDlg.dlgSize.x);
-    out["ProgressDialog"].attribute("Height",    cfg.progressDlg.dlgSize.y);
-    out["ProgressDialog"].attribute("Maximized", cfg.progressDlg.isMaximized);
-    out["ProgressDialog"].attribute("AutoClose", cfg.progressDlg.autoClose);
+    out["ProgressDialog"].attribute("AutoClose", cfg.progressDlgAutoClose);
 
     XmlOut outOpt = out["OptionalDialogs"];
     outOpt["ConfirmStartSync"              ].attribute("Show", cfg.confirmDlgs.confirmSyncStart);
@@ -2405,29 +2348,21 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
     //gui specific global settings (optional)
     XmlOut outMainWin = out["MainDialog"];
 
-    //write application window size and position
-    outMainWin.attribute("Width",     cfg.mainDlg.dlgSize.x);
-    outMainWin.attribute("Height",    cfg.mainDlg.dlgSize.y);
-    outMainWin.attribute("PosX",      cfg.mainDlg.dlgPos.x);
-    outMainWin.attribute("PosY",      cfg.mainDlg.dlgPos.y);
-    outMainWin.attribute("Maximized", cfg.mainDlg.isMaximized);
-
     //###########################################################
     outMainWin["SearchPanel"].attribute("CaseSensitive", cfg.mainDlg.textSearchRespectCase);
     //###########################################################
 
     XmlOut outConfig = outMainWin["ConfigPanel"];
-    outConfig.attribute("ScrollPos",     cfg.mainDlg.cfgGridTopRowPos);
-    outConfig.attribute("SyncOverdue",   cfg.mainDlg.cfgGridSyncOverdueDays);
-    outConfig.attribute("SortByColumn",  cfg.mainDlg.cfgGridLastSortColumn);
-    outConfig.attribute("SortAscending", cfg.mainDlg.cfgGridLastSortAscending);
+    outConfig.attribute("ScrollPos",     cfg.mainDlg.config.topRowPos);
+    outConfig.attribute("SyncOverdue",   cfg.mainDlg.config.syncOverdueDays);
+    outConfig.attribute("SortByColumn",  cfg.mainDlg.config.lastSortColumn);
+    outConfig.attribute("SortAscending", cfg.mainDlg.config.lastSortAscending);
 
-    outConfig["Columns"](cfg.mainDlg.cfgGridColumnAttribs);
-    outConfig["Configurations"].attribute("MaxSize", cfg.mainDlg.cfgHistItemsMax);
-    outConfig["Configurations"].attribute("LastSelected", cfg.mainDlg.cfgFileLastSelected);
-    outConfig["Configurations"](cfg.mainDlg.cfgFileHistory);
+    outConfig["Configurations"].attribute("MaxSize", cfg.mainDlg.config.histItemsMax);
+    outConfig["Configurations"].attribute("LastSelected", cfg.mainDlg.config.lastSelectedFile);
+    outConfig["Configurations"](cfg.mainDlg.config.fileHistory);
     {
-        std::vector<Zstring> cfgPaths = cfg.mainDlg.cfgFilesLastUsed;
+        std::vector<Zstring> cfgPaths = cfg.mainDlg.config.lastUsedFiles;
         for (Zstring& filePath : cfgPaths)
             filePath = substituteFreeFileSyncDriveLetter(filePath);
 
@@ -2437,25 +2372,17 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
     //###########################################################
 
     XmlOut outOverview = outMainWin["OverviewPanel"];
-    outOverview.attribute("ShowPercentage", cfg.mainDlg.treeGridShowPercentBar);
-    outOverview.attribute("SortByColumn",   cfg.mainDlg.treeGridLastSortColumn);
-    outOverview.attribute("SortAscending",  cfg.mainDlg.treeGridLastSortAscending);
-
-    //write column attributes
-    XmlOut outColTree = outOverview["Columns"];
-    outColTree(cfg.mainDlg.treeGridColumnAttribs);
+    outOverview.attribute("ShowPercentage", cfg.mainDlg.overview.showPercentBar);
+    outOverview.attribute("SortByColumn",   cfg.mainDlg.overview.lastSortColumn);
+    outOverview.attribute("SortAscending",  cfg.mainDlg.overview.lastSortAscending);
 
     XmlOut outFileGrid = outMainWin["FilePanel"];
     outFileGrid.attribute("ShowIcons",  cfg.mainDlg.showIcons);
     outFileGrid.attribute("IconSize",   cfg.mainDlg.iconSize);
     outFileGrid.attribute("SashOffset", cfg.mainDlg.sashOffset);
     outFileGrid.attribute("FolderPairsMax", cfg.mainDlg.folderPairsVisibleMax);
-
-    outFileGrid["ColumnsLeft"].attribute("PathFormat", cfg.mainDlg.itemPathFormatLeftGrid);
-    outFileGrid["ColumnsLeft"](cfg.mainDlg.columnAttribLeft);
-
-    outFileGrid["ColumnsRight"].attribute("PathFormat", cfg.mainDlg.itemPathFormatRightGrid);
-    outFileGrid["ColumnsRight"](cfg.mainDlg.columnAttribRight);
+    outFileGrid.attribute("PathFormatLeft",  cfg.mainDlg.itemPathFormatLeftGrid);
+    outFileGrid.attribute("PathFormatRight", cfg.mainDlg.itemPathFormatRightGrid);
 
     outFileGrid["FolderHistoryLeft" ](cfg.mainDlg.folderHistoryLeft);
     outFileGrid["FolderHistoryRight"](cfg.mainDlg.folderHistoryRight);
@@ -2474,8 +2401,26 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
     outCopyToHistory.attribute("LastSelected", cfg.mainDlg.copyToCfg.targetFolderLastSelected);
     //###########################################################
 
-    outMainWin["DefaultViewFilter"](cfg.mainDlg.viewFilterDefault);
-    outMainWin["Perspective"      ](cfg.mainDlg.guiPerspectiveLast);
+    XmlOut outDefFilter = outMainWin["DefaultViewFilter"];
+    outDefFilter.attribute("Equal",    cfg.mainDlg.viewFilterDefault.equal);
+    outDefFilter.attribute("Conflict", cfg.mainDlg.viewFilterDefault.conflict);
+    outDefFilter.attribute("Excluded", cfg.mainDlg.viewFilterDefault.excluded);
+
+    XmlOut catView = outDefFilter["Difference"];
+    catView.attribute("LeftOnly",   cfg.mainDlg.viewFilterDefault.leftOnly);
+    catView.attribute("RightOnly",  cfg.mainDlg.viewFilterDefault.rightOnly);
+    catView.attribute("LeftNewer",  cfg.mainDlg.viewFilterDefault.leftNewer);
+    catView.attribute("RightNewer", cfg.mainDlg.viewFilterDefault.rightNewer);
+    catView.attribute("Different",  cfg.mainDlg.viewFilterDefault.different);
+
+    XmlOut actView = outDefFilter["Action"];
+    actView.attribute("CreateLeft",  cfg.mainDlg.viewFilterDefault.createLeft);
+    actView.attribute("CreateRight", cfg.mainDlg.viewFilterDefault.createRight);
+    actView.attribute("UpdateLeft",  cfg.mainDlg.viewFilterDefault.updateLeft);
+    actView.attribute("UpdateRight", cfg.mainDlg.viewFilterDefault.updateRight);
+    actView.attribute("DeleteLeft",  cfg.mainDlg.viewFilterDefault.deleteLeft);
+    actView.attribute("DeleteRight", cfg.mainDlg.viewFilterDefault.deleteRight);
+    actView.attribute("DoNothing",   cfg.mainDlg.viewFilterDefault.doNothing);
 
     out["FolderHistory" ].attribute("MaxSize", cfg.folderHistoryMax);
 
@@ -2503,8 +2448,30 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
     out["LastOnlineCheck"  ](cfg.lastUpdateCheck);
     out["LastOnlineVersion"](cfg.lastOnlineVersion);
 
-    //batch specific global settings
-    //XmlOut outBatch = out["Batch"];
+
+    for (const auto& [scalePercent, layout] : cfg.dpiLayouts)
+    {
+        XmlOut outLayout = out["DpiLayouts"].addChild("Layout");
+        outLayout.attribute("Scale", numberTo<std::string>(scalePercent) + '%');
+
+        XmlOut outLayoutMain = outLayout["MainDialog"];
+        outLayoutMain.attribute("Width",     layout.mainDlg.dlgSize.x);
+        outLayoutMain.attribute("Height",    layout.mainDlg.dlgSize.y);
+        outLayoutMain.attribute("PosX",      layout.mainDlg.dlgPos.x);
+        outLayoutMain.attribute("PosY",      layout.mainDlg.dlgPos.y);
+        outLayoutMain.attribute("Maximized", layout.mainDlg.isMaximized);
+
+        outLayoutMain["PanelLayout"   ](layout.mainDlg.panelLayout);
+        outLayoutMain["ConfigPanel"   ](layout.configColumnAttribs);
+        outLayoutMain["OverviewPanel" ](layout.overviewColumnAttribs);
+        outLayoutMain["FilePanelLeft" ](layout.fileColumnAttribsLeft);
+        outLayoutMain["FilePanelRight"](layout.fileColumnAttribsRight);
+
+        XmlOut outLayoutProgress = outLayout["ProgressDialog"];
+        outLayoutProgress.attribute("Width",     layout.progressDlg.dlgSize.x);
+        outLayoutProgress.attribute("Height",    layout.progressDlg.dlgSize.y);
+        outLayoutProgress.attribute("Maximized", layout.progressDlg.isMaximized);
+    }
 }
 
 

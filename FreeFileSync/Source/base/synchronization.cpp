@@ -194,7 +194,7 @@ void SyncStatistics::processLink(const SymlinkPair& link)
         case SO_MOVE_LEFT_TO:
         case SO_MOVE_RIGHT_TO:
             assert(false);
-            [[fallthrough]];
+            break;
         case SO_DO_NOTHING:
         case SO_EQUAL:
             break;

@@ -10,7 +10,6 @@
 #include <zen/string_tools.h>
 #include <zen/i18n.h>
 #include <zen/utf.h>
-//#include <zen/file_access.h>
 #include <zen/scope_guard.h>
 #include <zen/build_info.h>
 #include <zen/basic_math.h>

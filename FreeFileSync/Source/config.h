@@ -120,6 +120,29 @@ struct ViewFilterDefault
 Zstring getGlobalConfigFile();
 
 
+struct DpiLayout
+{
+    struct
+    {
+        wxPoint dlgPos;
+        wxSize dlgSize;
+        bool isMaximized = false;
+        wxString panelLayout; //for wxAuiManager::LoadPerspective
+    } mainDlg;
+
+    std::vector<ColAttributesCfg> configColumnAttribs = getCfgGridDefaultColAttribs();
+    std::vector<ColumnAttribOverview> overviewColumnAttribs = getOverviewDefaultColAttribs();
+    std::vector<ColAttributesRim> fileColumnAttribsLeft  = getFileGridDefaultColAttribsLeft();
+    std::vector<ColAttributesRim> fileColumnAttribsRight = getFileGridDefaultColAttribsRight();
+
+    struct
+    {
+        wxSize dlgSize;
+        bool isMaximized = false;
+    } progressDlg;
+};
+
+
 struct XmlGlobalSettings
 {
     XmlGlobalSettings(); //clang needs this anyway
@@ -145,29 +168,30 @@ struct XmlGlobalSettings
     WarningDialogs warnDlgs;
 
     //---------------------------------------------------------------------
+
     struct
     {
-        wxPoint dlgPos;
-        wxSize dlgSize;
-        bool isMaximized = false;
-
         bool textSearchRespectCase = false; //good default for Linux, too!
         int folderPairsVisibleMax = 6;
 
-        size_t        cfgGridTopRowPos = 0;
-        int           cfgGridSyncOverdueDays = 7;
-        ColumnTypeCfg cfgGridLastSortColumn    = cfgGridLastSortColumnDefault;
-        bool          cfgGridLastSortAscending = getDefaultSortDirection(cfgGridLastSortColumnDefault);
-        std::vector<ColAttributesCfg> cfgGridColumnAttribs = getCfgGridDefaultColAttribs();
-        size_t cfgHistItemsMax = 100;
-        Zstring cfgFileLastSelected;
-        std::vector<ConfigFileItem> cfgFileHistory;
-        std::vector<Zstring>        cfgFilesLastUsed;
+        struct
+        {
+            size_t        topRowPos = 0;
+            int           syncOverdueDays = 7;
+            ColumnTypeCfg lastSortColumn = cfgGridLastSortColumnDefault;
+            bool          lastSortAscending = getDefaultSortDirection(cfgGridLastSortColumnDefault);
+            size_t histItemsMax = 100;
+            Zstring lastSelectedFile;
+            std::vector<ConfigFileItem> fileHistory;
+            std::vector<Zstring>        lastUsedFiles;
+        } config;
 
-        bool treeGridShowPercentBar = treeGridShowPercentageDefault;
-        ColumnTypeTree treeGridLastSortColumn    = treeGridLastSortColumnDefault;    //remember sort on overview panel
-        bool           treeGridLastSortAscending = getDefaultSortDirection(treeGridLastSortColumnDefault); //
-        std::vector<ColAttributesTree> treeGridColumnAttribs = getTreeGridDefaultColAttribs();
+        struct
+        {
+            bool               showPercentBar = overviewPanelShowPercentageDefault;
+            ColumnTypeOverview lastSortColumn = overviewPanelLastSortColumnDefault; //remember sort on overview panel
+            bool               lastSortAscending = getDefaultSortDirection(overviewPanelLastSortColumnDefault); //
+        } overview;
 
         struct
         {
@@ -190,19 +214,10 @@ struct XmlGlobalSettings
         ItemPathFormat itemPathFormatLeftGrid  = defaultItemPathFormatLeftGrid;
         ItemPathFormat itemPathFormatRightGrid = defaultItemPathFormatRightGrid;
 
-        std::vector<ColAttributesRim> columnAttribLeft  = getFileGridDefaultColAttribsLeft();
-        std::vector<ColAttributesRim> columnAttribRight = getFileGridDefaultColAttribsRight();
-
         ViewFilterDefault viewFilterDefault;
-        wxString guiPerspectiveLast; //for wxAuiManager
     } mainDlg;
 
-    struct
-    {
-        wxSize dlgSize;
-        bool isMaximized = false;
-        bool autoClose = false;
-    } progressDlg;
+    bool progressDlgAutoClose = false;
 
     Zstring defaultExclusionFilter = "*/.Trash-*/" "\n"
                                      "*/.recycle/";
@@ -235,6 +250,8 @@ struct XmlGlobalSettings
 
     time_t lastUpdateCheck = 0; //number of seconds since 00:00 hours, Jan 1, 1970 UTC
     std::string lastOnlineVersion;
+
+    std::unordered_map<int /*scale percent*/, DpiLayout> dpiLayouts;
 };
 
 //read/write specific config types

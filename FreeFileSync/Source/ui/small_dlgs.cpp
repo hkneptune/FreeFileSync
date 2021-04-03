@@ -1181,7 +1181,7 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
     OptionsDlgGenerated(parent),
     confirmDlgs_(globalSettings.confirmDlgs),
     warnDlgs_   (globalSettings.warnDlgs),
-    autoCloseProgressDialog_(globalSettings.progressDlg.autoClose),
+    autoCloseProgressDialog_(globalSettings.progressDlgAutoClose),
     globalCfgOut_(globalSettings)
 {
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
@@ -1238,9 +1238,9 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
 
     //temporarily set dummy value for window height calculations:
     setExtApp(std::vector<ExternalApp>(globalSettings.externalApps.size() + 1));
-    confirmDlgs_             = defaultCfg_.confirmDlgs;           //
-    warnDlgs_                = defaultCfg_.warnDlgs;              //make sure m_staticTextAllDialogsShown is shown
-    autoCloseProgressDialog_ = defaultCfg_.progressDlg.autoClose; //
+    confirmDlgs_             = defaultCfg_.confirmDlgs;          //
+    warnDlgs_                = defaultCfg_.warnDlgs;             //make sure m_staticTextAllDialogsShown is shown
+    autoCloseProgressDialog_ = defaultCfg_.progressDlgAutoClose; //
     updateGui();
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
@@ -1251,7 +1251,7 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
     setExtApp(globalSettings.externalApps);
     confirmDlgs_             = globalSettings.confirmDlgs;
     warnDlgs_                = globalSettings.warnDlgs;
-    autoCloseProgressDialog_ = globalSettings.progressDlg.autoClose;
+    autoCloseProgressDialog_ = globalSettings.progressDlgAutoClose;
     updateGui();
 
     //automatically fit column width to match total grid width
@@ -1283,7 +1283,7 @@ void OptionsDlg::updateGui()
 {
     const bool haveHiddenDialogs = confirmDlgs_             != defaultCfg_.confirmDlgs ||
                                    warnDlgs_                != defaultCfg_.warnDlgs    ||
-                                   autoCloseProgressDialog_ != defaultCfg_.progressDlg.autoClose;
+                                   autoCloseProgressDialog_ != defaultCfg_.progressDlgAutoClose;
 
     m_buttonRestoreDialogs->Enable(haveHiddenDialogs);
     m_staticTextAllDialogsShown->Show(!haveHiddenDialogs);
@@ -1300,7 +1300,7 @@ void OptionsDlg::onRestoreDialogs(wxCommandEvent& event)
 {
     confirmDlgs_             = defaultCfg_.confirmDlgs;
     warnDlgs_                = defaultCfg_.warnDlgs;
-    autoCloseProgressDialog_ = defaultCfg_.progressDlg.autoClose;
+    autoCloseProgressDialog_ = defaultCfg_.progressDlgAutoClose;
     updateGui();
 }
 
@@ -1380,9 +1380,9 @@ void OptionsDlg::onOkay(wxCommandEvent& event)
 
     globalCfgOut_.externalApps = getExtApp();
 
-    globalCfgOut_.confirmDlgs             = confirmDlgs_;
-    globalCfgOut_.warnDlgs                = warnDlgs_;
-    globalCfgOut_.progressDlg.autoClose = autoCloseProgressDialog_;
+    globalCfgOut_.confirmDlgs          = confirmDlgs_;
+    globalCfgOut_.warnDlgs             = warnDlgs_;
+    globalCfgOut_.progressDlgAutoClose = autoCloseProgressDialog_;
 
     EndModal(static_cast<int>(ConfirmationButton::accept));
 }

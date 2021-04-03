@@ -147,11 +147,56 @@ TimeComp getLocalTime(time_t utc)
 }
 
 
+//FILETIME: number of 100-nanosecond intervals since January 1, 1601 UTC
+//time_t:   number of seconds since Jan. 1st 1970 UTC
+constexpr auto fileTimeTimetOffset = 11'644'473'600;
+
+
+warn_static("remove after test")
+#if 0
+inline
+TimeComp getUtcTime2(time_t utc)
+{
+    utc += year100UnixOffset; //first century not divisible by 400
+
+    long long remSecs = year100UnixOffset % (24 * 3600);
+    long long remDays = year100UnixOffset / (24 * 3600);
+
+    constexpr int daysPer400Years = 400 * 365 /*usual days per year*/ + 100 /*leap days */ - 3 /*no leap days for centuries not divisible by 400 */;
+
+    int year = 100 + (remDays / daysPer400Years) * 400;
+    remDays %= 400;
+
+    constexpr int daysPer100Years = 100 * 365 /*usual days per year*/ + 25 /*leap days */ - 1 /*no leap days for centuries not divisible by 400 */;
+
+    int addCenturies = remDays / daysPer100Years;
+    if (addCenturies == 4)
+        --addCenturies;
+
+    year += addCenturies * 100;
+    remDays -= addCenturies * daysPer100Years;
+
+    constexpr int daysPer4Years = 4 * 365 /*usual days per year*/ + 1 /*leap day */;
+
+
+
+    constexpr int daysPer100Years = 100 * 365 /*usual days per year*/ + 25 /*leap days */ - 1 /*no leap days for centuries not divisible by 400 */;
+    constexpr int daysPer100Years = 100 * 365 /*usual days per year*/ + 25 /*leap days */ - 1 /*no leap days for centuries not divisible by 400 */;
+    constexpr int daysPer100Years = 100 * 365 /*usual days per year*/ + 25 /*leap days */ - 1 /*no leap days for centuries not divisible by 400 */;
+    constexpr int daysPer100Years = 100 * 365 /*usual days per year*/ + 25 /*leap days */;
+
+
+
+}
+#endif
+
+
 inline
 TimeComp getUtcTime(time_t utc)
 {
     if (utc == -1) //failure code from std::time(nullptr)
         return TimeComp();
+
 
     std::tm ctc = {};
     if (::gmtime_r(&utc, &ctc) == nullptr)
@@ -177,6 +222,7 @@ time_t utcToTimeT(const TimeComp& tc) //returns -1 on error
 {
     if (tc == TimeComp())
         return -1;
+
 
     std::tm ctc = impl::toClibTimeComponents(tc);
     ctc.tm_isdst = 0; //"Zero (0) to indicate that standard time is in effect" => unused by _mkgmtime, but take no chances

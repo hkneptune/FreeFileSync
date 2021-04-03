@@ -218,7 +218,7 @@ struct TreeView::LessShortName
 
 
 template <bool ascending>
-void TreeView::sortSingleLevel(std::vector<TreeLine>& items, ColumnTypeTree columnType)
+void TreeView::sortSingleLevel(std::vector<TreeLine>& items, ColumnTypeOverview columnType)
 {
     auto getBytes = [](const TreeLine& line) -> uint64_t
     {
@@ -254,13 +254,13 @@ void TreeView::sortSingleLevel(std::vector<TreeLine>& items, ColumnTypeTree colu
 
     switch (columnType)
     {
-        case ColumnTypeTree::folder:
+        case ColumnTypeOverview::folder:
             std::sort(items.begin(), items.end(), LessShortName<ascending>());
             break;
-        case ColumnTypeTree::itemCount:
+        case ColumnTypeOverview::itemCount:
             std::sort(items.begin(), items.end(), makeSortDirection(lessCount, std::bool_constant<ascending>()));
             break;
-        case ColumnTypeTree::bytes:
+        case ColumnTypeOverview::bytes:
             std::sort(items.begin(), items.end(), makeSortDirection(lessBytes, std::bool_constant<ascending>()));
             break;
     }
@@ -318,8 +318,8 @@ void TreeView::applySubView(std::vector<RootNodeImpl>&& newView)
     if (!flatTree_.empty())
     {
         auto it = flatTree_.begin();
-        for (auto iterNext = flatTree_.begin() + 1; iterNext != flatTree_.end(); ++iterNext, ++it)
-            if (it->level < iterNext->level)
+        for (auto itNext = flatTree_.begin() + 1; itNext != flatTree_.end(); ++itNext, ++it)
+            if (it->level < itNext->level)
                 if (auto hierObj = getHierAlias(*it))
                     expandedNodes.insert(hierObj);
     }
@@ -406,7 +406,7 @@ void TreeView::updateView(Predicate pred)
 }
 
 
-void TreeView::setSortDirection(ColumnTypeTree colType, bool ascending) //apply permanently!
+void TreeView::setSortDirection(ColumnTypeOverview colType, bool ascending) //apply permanently!
 {
     currentSort_ = SortInfo{colType, ascending};
 
@@ -718,9 +718,9 @@ private:
 
     std::wstring getToolTip(size_t row, ColumnType colType, HoverArea rowHover) override
     {
-        switch (static_cast<ColumnTypeTree>(colType))
+        switch (static_cast<ColumnTypeOverview>(colType))
         {
-            case ColumnTypeTree::folder:
+            case ColumnTypeOverview::folder:
                 if (std::unique_ptr<TreeView::Node> node = getDataView().getLine(row))
                     if (const TreeView::RootNode* root = dynamic_cast<const TreeView::RootNode*>(node.get()))
                     {
@@ -734,8 +734,8 @@ private:
                     }
                 break;
 
-            case ColumnTypeTree::itemCount:
-            case ColumnTypeTree::bytes:
+            case ColumnTypeOverview::itemCount:
+            case ColumnTypeOverview::bytes:
                 break;
         }
         return std::wstring();
@@ -744,9 +744,9 @@ private:
     std::wstring getValue(size_t row, ColumnType colType) const override
     {
         if (std::unique_ptr<TreeView::Node> node = getDataView().getLine(row))
-            switch (static_cast<ColumnTypeTree>(colType))
+            switch (static_cast<ColumnTypeOverview>(colType))
             {
-                case ColumnTypeTree::folder:
+                case ColumnTypeOverview::folder:
                     if (const TreeView::RootNode* root = dynamic_cast<const TreeView::RootNode*>(node.get()))
                         return root->displayName;
                     else if (const TreeView::DirNode* dir = dynamic_cast<const TreeView::DirNode*>(node.get()))
@@ -755,10 +755,10 @@ private:
                         return _("Files");
                     break;
 
-                case ColumnTypeTree::itemCount:
+                case ColumnTypeOverview::itemCount:
                     return formatNumber(node->itemCount_);
 
-                case ColumnTypeTree::bytes:
+                case ColumnTypeOverview::bytes:
                     return formatFilesizeShort(node->bytes_);
             }
 
@@ -767,7 +767,7 @@ private:
 
     void renderColumnLabel(wxDC& dc, const wxRect& rect, ColumnType colType, bool enabled, bool highlighted) override
     {
-        const auto colTypeTree = static_cast<ColumnTypeTree>(colType);
+        const auto colTypeTree = static_cast<ColumnTypeOverview>(colType);
 
         const wxRect rectInner = drawColumnLabelBackground(dc, rect, highlighted);
         wxRect rectRemain = rectInner;
@@ -814,7 +814,7 @@ private:
         //   --------------------------------------------------------------------------------
         // -> synchronize renderCell() <-> getBestSize() <-> getMouseHover()
 
-        if (static_cast<ColumnTypeTree>(colType) == ColumnTypeTree::folder)
+        if (static_cast<ColumnTypeOverview>(colType) == ColumnTypeOverview::folder)
         {
             if (std::unique_ptr<TreeView::Node> node = getDataView().getLine(row))
             {
@@ -919,8 +919,8 @@ private:
             int alignment = wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL;
 
             //have file size and item count right-justified (but don't change for RTL languages)
-            if ((static_cast<ColumnTypeTree>(colType) == ColumnTypeTree::bytes ||
-                 static_cast<ColumnTypeTree>(colType) == ColumnTypeTree::itemCount) && grid_.GetLayoutDirection() != wxLayout_RightToLeft)
+            if ((static_cast<ColumnTypeOverview>(colType) == ColumnTypeOverview::bytes ||
+                 static_cast<ColumnTypeOverview>(colType) == ColumnTypeOverview::itemCount) && grid_.GetLayoutDirection() != wxLayout_RightToLeft)
             {
                 rectTmp.width -= 2 * gapSize_;
                 alignment = wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL;
@@ -939,7 +939,7 @@ private:
     {
         // -> synchronize renderCell() <-> getBestSize() <-> getMouseHover()
 
-        if (static_cast<ColumnTypeTree>(colType) == ColumnTypeTree::folder)
+        if (static_cast<ColumnTypeOverview>(colType) == ColumnTypeOverview::folder)
         {
             if (std::unique_ptr<TreeView::Node> node = getDataView().getLine(row))
                 return node->level_ * widthLevelStep_ + gapSize_ + (showPercentBar_ ? percentageBarWidth_ + 2 * gapSize_ : 0) + widthNodeStatus_ + gapSize_
@@ -955,9 +955,9 @@ private:
 
     HoverArea getMouseHover(wxDC& dc, size_t row, ColumnType colType, int cellRelativePosX, int cellWidth) override
     {
-        switch (static_cast<ColumnTypeTree>(colType))
+        switch (static_cast<ColumnTypeOverview>(colType))
         {
-            case ColumnTypeTree::folder:
+            case ColumnTypeOverview::folder:
                 if (std::unique_ptr<TreeView::Node> node = getDataView().getLine(row))
                 {
                     const int tolerance = 2;
@@ -970,8 +970,8 @@ private:
                 }
                 break;
 
-            case ColumnTypeTree::itemCount:
-            case ColumnTypeTree::bytes:
+            case ColumnTypeOverview::itemCount:
+            case ColumnTypeOverview::bytes:
                 break;
         }
         return HoverArea::none;
@@ -979,13 +979,13 @@ private:
 
     std::wstring getColumnLabel(ColumnType colType) const override
     {
-        switch (static_cast<ColumnTypeTree>(colType))
+        switch (static_cast<ColumnTypeOverview>(colType))
         {
-            case ColumnTypeTree::folder:
+            case ColumnTypeOverview::folder:
                 return _("Folder");
-            case ColumnTypeTree::itemCount:
+            case ColumnTypeOverview::itemCount:
                 return _("Items");
-            case ColumnTypeTree::bytes:
+            case ColumnTypeOverview::bytes:
                 return _("Size");
         }
         return std::wstring();
@@ -1096,7 +1096,7 @@ private:
             Grid::ColAttributes* caToggle     = nullptr;
 
             for (Grid::ColAttributes& ca : colAttr)
-                if (ca.type == static_cast<ColumnType>(ColumnTypeTree::folder))
+                if (ca.type == static_cast<ColumnType>(ColumnTypeOverview::folder))
                     caFolderName = &ca;
                 else if (ca.type == ct)
                     caToggle = &ca;
@@ -1118,15 +1118,15 @@ private:
         for (const Grid::ColAttributes& ca : grid_.getColumnConfig())
         {
             menu.addCheckBox(getColumnLabel(ca.type), [ct = ca.type, toggleColumn] { toggleColumn(ct); },
-                             ca.visible, ca.type != static_cast<ColumnType>(ColumnTypeTree::folder)); //do not allow user to hide file name column!
+                             ca.visible, ca.type != static_cast<ColumnType>(ColumnTypeOverview::folder)); //do not allow user to hide file name column!
         }
         //--------------------------------------------------------------------------------------------------------
         menu.addSeparator();
 
         auto setDefaultColumns = [&]
         {
-            setShowPercentage(treeGridShowPercentageDefault);
-            grid_.setColumnConfig(convertColAttributes(getTreeGridDefaultColAttribs(), getTreeGridDefaultColAttribs()));
+            setShowPercentage(overviewPanelShowPercentageDefault);
+            grid_.setColumnConfig(convertColAttributes(getOverviewDefaultColAttribs(), getOverviewDefaultColAttribs()));
         };
         menu.addItem(_("&Default"), setDefaultColumns); //'&' -> reuse text from "default" buttons elsewhere
         //--------------------------------------------------------------------------------------------------------
@@ -1137,7 +1137,7 @@ private:
 
     void onGridLabelLeftClick(GridLabelClickEvent& event)
     {
-        const auto colTypeTree = static_cast<ColumnTypeTree>(event.colType_);
+        const auto colTypeTree = static_cast<ColumnTypeOverview>(event.colType_);
 
         bool sortAscending = getDefaultSortDirection(colTypeTree);
         const auto [sortCol, ascending] = getDataView().getSortConfig();

@@ -14,47 +14,47 @@
 
 namespace fff
 {
-enum class ColumnTypeTree
+enum class ColumnTypeOverview
 {
     folder,
     itemCount,
     bytes,
 };
 
-struct ColAttributesTree
+struct ColumnAttribOverview
 {
-    ColumnTypeTree type    = ColumnTypeTree::folder;
-    int            offset  = 0;
-    int            stretch = 0;
-    bool           visible = false;
+    ColumnTypeOverview type = ColumnTypeOverview::folder;
+    int                offset  = 0;
+    int                stretch = 0;
+    bool               visible = false;
 };
 
 
 inline
-std::vector<ColAttributesTree> getTreeGridDefaultColAttribs()
+std::vector<ColumnAttribOverview> getOverviewDefaultColAttribs()
 {
     using namespace zen;
     return //harmonize with tree_view.cpp::onGridLabelContext() => expects stretched folder and non-stretched other columns!
     {
-        {ColumnTypeTree::folder,    - 2 * fastFromDIP(60), 1, true}, //stretch to full width and substract sum of fixed size widths
-        {ColumnTypeTree::itemCount, fastFromDIP(60), 0, true},
-        {ColumnTypeTree::bytes,     fastFromDIP(60), 0, true}, //GTK needs a few pixels more width
+        {ColumnTypeOverview::folder,    - 2 * fastFromDIP(60), 1, true}, //stretch to full width and substract sum of fixed size widths
+        {ColumnTypeOverview::itemCount, fastFromDIP(60), 0, true},
+        {ColumnTypeOverview::bytes,     fastFromDIP(60), 0, true}, //GTK needs a few pixels more width
     };
 }
 
-const           bool treeGridShowPercentageDefault = true;
-const ColumnTypeTree treeGridLastSortColumnDefault = ColumnTypeTree::bytes;
+const           bool overviewPanelShowPercentageDefault = true;
+const ColumnTypeOverview overviewPanelLastSortColumnDefault = ColumnTypeOverview::bytes;
 
 inline
-bool getDefaultSortDirection(ColumnTypeTree colType)
+bool getDefaultSortDirection(ColumnTypeOverview colType)
 {
     switch (colType)
     {
-        case ColumnTypeTree::folder:
+        case ColumnTypeOverview::folder:
             return true;
-        case ColumnTypeTree::itemCount:
+        case ColumnTypeOverview::itemCount:
             return false;
-        case ColumnTypeTree::bytes:
+        case ColumnTypeOverview::bytes:
             return false;
     }
     assert(false);

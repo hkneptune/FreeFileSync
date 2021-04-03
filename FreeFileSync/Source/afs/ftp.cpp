@@ -15,6 +15,7 @@
 #include "ftp_common.h"
 #include "abstract_impl.h"
     #include <glib.h>
+    #include <fcntl.h>
 
 using namespace zen;
 using namespace fff;
@@ -357,6 +358,29 @@ public:
         options.emplace_back(CURLOPT_TCP_KEEPALIVE, 1L);
 
 
+        std::optional<SysError> callbackException;
+        //libcurl does *not* set FD_CLOEXEC for us! https://github.com/curl/curl/issues/2252
+        auto onSocketCreate = [&](curl_socket_t curlfd, curlsocktype purpose)
+        {
+            assert(::fcntl(curlfd, F_GETFD) == 0);
+            if (::fcntl(curlfd, F_SETFD, FD_CLOEXEC) == -1) //=> RACE-condition if other thread calls fork/execv before this thread sets FD_CLOEXEC!
+            {
+                callbackException = SysError(formatSystemError("fcntl(FD_CLOEXEC)", errno));
+                return CURL_SOCKOPT_ERROR;
+            }
+            return CURL_SOCKOPT_OK;
+        };
+
+        using SocketCbType = decltype(onSocketCreate);
+        using SocketCbWrapperType =            int (*)(SocketCbType* clientp, curl_socket_t curlfd, curlsocktype purpose); //needed for cdecl function pointer cast
+        SocketCbWrapperType onSocketCreateWrapper = [](SocketCbType* clientp, curl_socket_t curlfd, curlsocktype purpose)
+        {
+            return (*clientp)(curlfd, purpose); //free this poor little C-API from its shackles and redirect to a proper lambda
+        };
+
+        options.emplace_back(CURLOPT_SOCKOPTFUNCTION, onSocketCreateWrapper);
+        options.emplace_back(CURLOPT_SOCKOPTDATA, &onSocketCreate);
+
         //Use share interface? https://curl.haxx.se/libcurl/c/libcurl-share.html
         //perf test, 4 and 8 parallel threads:
         //  CURL_LOCK_DATA_DNS         => no measurable total time difference
@@ -456,6 +480,9 @@ public:
         const CURLcode rcPerf = ::curl_easy_perform(easyHandle_);
         //WTF: curl_easy_perform() considers FTP response codes 4XX, 5XX as failure, but for HTTP response codes 4XX are considered success!! CONSISTENCY, people!!!
         //note: CURLOPT_FAILONERROR(default:off) is only available for HTTP => BUT at least we can prefix FTP commands with * for same effect
+
+        if (callbackException)
+            throw* callbackException; //throw SysError
 
         //long ftpStatusCode = 0; //optional
         ///*const CURLcode rc =*/ ::curl_easy_getinfo(easyHandle_, CURLINFO_RESPONSE_CODE, &ftpStatusCode);
@@ -978,15 +1005,9 @@ FtpItem getFtpSymlinkInfo(const FtpLogin& login, const AfsPath& linkPath) //thro
 
                     if (const TimeComp tc = parseTime("%Y%m%d%H%M%S", makeStringView(itStart, itEnd));
                         tc != TimeComp())
-                    {
                         if (const time_t modTime = utcToTimeT(tc); //returns -1 on error
                             modTime != -1)
                             return modTime;
-
-                        if (tc.year == 1600 || //FTP on Windows phone: zero-initialized FILETIME equals "December 31, 1600" or "January 1, 1601"
-                            tc.year == 1601)   //
-                            return time_t(0);
-                    }
                     break;
                 }
             throw SysError(L"Unexpected FTP response. (" + utfTo<std::wstring>(mdtmBuf) + L')');
@@ -1133,13 +1154,7 @@ private:
 
                     item.modTime = utcToTimeT(tc); //returns -1 on error
                     if (item.modTime == -1)
-                    {
-                        if (tc.year == 1600 || //FTP on Windows phone: zero-initialized FILETIME equals "December 31, 1600" or "January 1, 1601"
-                            tc.year == 1601)   // => is this also relevant in this context of MLST UTC time??
-                            item.modTime = 0;
-                        else
-                            throw SysError(L"Modification time could not be parsed.");
-                    }
+                        throw SysError(L"Modification time could not be parsed.");
                 }
                 else if (startsWithAsciiNoCase(fact, "unique="))
                 {
@@ -1353,15 +1368,9 @@ private:
 
             //let's pretend the time listing is UTC (same behavior as FileZilla): hopefully MLSD will make this mess obsolete soon...
             //  => find exact offset with some MDTM hackery? yes, could do that, but this doesn't solve the bigger problem of imprecise LIST file times, so why bother?
-            time_t utcTime = utcToTimeT(timeComp); //returns -1 on error
+            const time_t utcTime = utcToTimeT(timeComp); //returns -1 on error
             if (utcTime == -1)
-            {
-                if (timeComp.year == 1600 || //FTP on Windows phone: zero-initialized FILETIME equals "December 31, 1600" or "January 1, 1601"
-                    timeComp.year == 1601)   //
-                    utcTime = 0;
-                else
-                    throw SysError(L"Modification time could not be parsed.");
-            }
+                throw SysError(L"Modification time could not be parsed.");
             //------------------------------------------------------------------------------------
             const std::string trail = parser.readRange([](char) { return true; }); //throw SysError
             std::string itemName;
@@ -1481,15 +1490,9 @@ private:
                 timeComp.minute = minute;
                 //let's pretend the time listing is UTC (same behavior as FileZilla): hopefully MLSD will make this mess obsolete soon...
                 //  => find exact offset with some MDTM hackery? yes, could do that, but this doesn't solve the bigger problem of imprecise LIST file times, so why bother?
-                time_t utcTime = utcToTimeT(timeComp); //returns -1 on error
+                const time_t utcTime = utcToTimeT(timeComp); //returns -1 on error
                 if (utcTime == -1)
-                {
-                    if (timeComp.year == 1600 || //FTP on Windows phone: zero-initialized FILETIME equals "December 31, 1600" or "January 1, 1601"
-                        timeComp.year == 1601)   //
-                        utcTime = 0;
-                    else
-                        throw SysError(L"Modification time could not be parsed.");
-                }
+                    throw SysError(L"Modification time could not be parsed.");
                 //------------------------------------------------------------------------------------
                 const std::string dirTagOrSize = parser.readRange(std::not_fn(isWhiteSpace<char>)); //throw SysError
                 parser.readRange(&isWhiteSpace<char>); //throw SysError

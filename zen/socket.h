@@ -14,6 +14,7 @@
     #include <netdb.h> //getaddrinfo
 
 
+
 namespace zen
 {
 #define THROW_LAST_SYS_ERROR_WSA(functionName)                       \
@@ -48,10 +49,14 @@ public:
 
         const auto getConnectedSocket = [](const auto& /*::addrinfo*/ ai)
         {
-            SocketType testSocket = ::socket(ai.ai_family, ai.ai_socktype, ai.ai_protocol);
+            SocketType testSocket = ::socket(ai.ai_family,    //int socket_family
+                                             SOCK_CLOEXEC |
+                                             ai.ai_socktype,  //int socket_type
+                                             ai.ai_protocol); //int protocol
             if (testSocket == invalidSocket)
                 THROW_LAST_SYS_ERROR_WSA("socket");
             ZEN_ON_SCOPE_FAIL(closeSocket(testSocket));
+
 
             if (::connect(testSocket, ai.ai_addr, static_cast<int>(ai.ai_addrlen)) != 0)
                 THROW_LAST_SYS_ERROR_WSA("connect");

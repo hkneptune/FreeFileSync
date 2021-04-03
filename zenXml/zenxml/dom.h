@@ -24,8 +24,7 @@ public:
     XmlElement() {}
 
     //Construct an empty XML element
-    template <class String>
-    explicit XmlElement(const String& name, XmlElement* parent = nullptr) : name_(utfTo<std::string>(name)), parent_(parent) {}
+    explicit XmlElement(std::string name, XmlElement* parent = nullptr) : name_(std::move(name)), parent_(parent) {}
 
     ///Retrieve the name of this XML element.
     /**
@@ -52,52 +51,46 @@ public:
 
     ///Retrieve an attribute by name.
     /**
-      \tparam String Arbitrary string-like type: e.g. std::string, wchar_t*, char[], wchar_t, wxString, MyStringClass, ...
       \tparam T String-convertible user data type: e.g. any string class, all built-in arithmetic numbers
       \param name The name of the attribute to retrieve.
       \param value The value of the attribute converted to T.
       \return "true" if value was retrieved successfully.
     */
-    template <class String, class T>
-    bool getAttribute(const String& name, T& value) const
+    template <class T>
+    bool getAttribute(const std::string& name, T& value) const
     {
-        auto it = attributesSorted_.find(utfTo<std::string>(name));
+        auto it = attributesSorted_.find(name);
         return it == attributesSorted_.end() ? false : readText(it->second->value, value);
     }
 
+    bool hasAttribute(const std::string& name) const { return attributesSorted_.contains(name); }
+
     ///Create or update an XML attribute.
     /**
-      \tparam String Arbitrary string-like type: e.g. std::string, wchar_t*, char[], wchar_t, wxString, MyStringClass, ...
       \tparam T String-convertible user data type: e.g. any string-like type, all built-in arithmetic numbers
       \param name The name of the attribute to create or update.
       \param value The value to set.
     */
-    template <class String, class T>
-    void setAttribute(const String& name, const T& value)
+    template <class T>
+    void setAttribute(std::string name, const T& value)
     {
-        std::string attrName = utfTo<std::string>(name);
-
         std::string attrValue;
         writeText(value, attrValue);
 
-        auto it = attributesSorted_.find(attrName);
+        auto it = attributesSorted_.find(name);
         if (it != attributesSorted_.end())
             it->second->value = std::move(attrValue);
         else
         {
-            auto itBack = attributes_.insert(attributes_.end(), {attrName, std::move(attrValue)});
-            attributesSorted_.emplace(std::move(attrName), itBack);
+            auto itBack = attributes_.insert(attributes_.end(), {name, std::move(attrValue)});
+            attributesSorted_.emplace(std::move(name), itBack);
         }
     }
 
     ///Remove the attribute with the given name.
-    /**
-      \tparam String Arbitrary string-like type: e.g. std::string, wchar_t*, char[], wchar_t, wxString, MyStringClass, ...
-    */
-    template <class String>
-    void removeAttribute(const String& name)
+    void removeAttribute(const std::string& name)
     {
-        auto it = attributesSorted_.find(utfTo<std::string>(name));
+        auto it = attributesSorted_.find(name);
         if (it != attributesSorted_.end())
         {
             attributes_.erase(it->second);
@@ -107,42 +100,36 @@ public:
 
     ///Create a new child element and return a reference to it.
     /**
-      \tparam String Arbitrary string-like type: e.g. std::string, wchar_t*, char[], wchar_t, wxString, MyStringClass, ...
       \param name The name of the child element to be created.
     */
-    template <class String>
-    XmlElement& addChild(const String& name)
+    XmlElement& addChild(std::string name)
     {
-        std::string elemName = utfTo<std::string>(name);
-        childElements_.emplace_back(elemName, this);
+        childElements_.emplace_back(name, this);
         XmlElement& newElement = childElements_.back();
-        childElementsSorted_.emplace(std::move(elemName), &newElement);
+        childElementsSorted_.emplace(std::move(name), &newElement);
         return newElement;
     }
 
     ///Retrieve a child element with the given name.
     /**
-      \tparam String Arbitrary string-like type: e.g. std::string, wchar_t*, char[], wchar_t, wxString, MyStringClass, ...
       \param name The name of the child element to be retrieved.
       \return A pointer to the child element or nullptr if none was found.
     */
-    template <class String>
-    const XmlElement* getChild(const String& name) const
+    const XmlElement* getChild(const std::string& name) const
     {
-        auto it = childElementsSorted_.find(utfTo<std::string>(name));
+        auto it = childElementsSorted_.find(name);
         return it == childElementsSorted_.end() ? nullptr : it->second;
     }
 
     ///\sa getChild
-    template <class String>
-    XmlElement* getChild(const String& name)
+    XmlElement* getChild(const std::string& name)
     {
         return const_cast<XmlElement*>(static_cast<const XmlElement*>(this)->getChild(name));
     }
 
-    template < class IterTy,        //underlying iterator type
-               class T,             //target object type
-               class AccessPolicy > //access policy: see AccessPtrMap
+    template <class IterTy,        //underlying iterator type
+              class T,             //target object type
+              class AccessPolicy> //access policy: see AccessPtrMap
     class PtrIter : private AccessPolicy //get rid of shared_ptr indirection
     {
     public:
@@ -175,19 +162,17 @@ public:
     ///Access all child elements with the given name via STL iterators.
     /**
       \code
-      auto iterPair = elem.getChildren("Item");
+      auto itPair = elem.getChildren("Item");
       std::for_each(iterPair.first, iterPair.second,
             [](const XmlElement& child) { ... });
       \endcode
       \param name The name of the child elements to be retrieved.
       \return A pair of STL begin/end iterators to access the child elements sequentially.
     */
-    template <class String>
-    std::pair<ChildIterConst2, ChildIterConst2> getChildren(const String& name) const { return childElementsSorted_.equal_range(utfTo<std::string>(name)); }
+    std::pair<ChildIterConst2, ChildIterConst2> getChildren(const std::string& name) const { return childElementsSorted_.equal_range(name); }
 
     ///\sa getChildren
-    template <class String>
-    std::pair<ChildIter2, ChildIter2> getChildren(const String& name) { return childElementsSorted_.equal_range(utfTo<std::string>(name)); }
+    std::pair<ChildIter2, ChildIter2> getChildren(const std::string& name) { return childElementsSorted_.equal_range(name); }
 
     struct AccessListElement
     {
@@ -201,8 +186,8 @@ public:
     ///Access all child elements sequentially via STL iterators.
     /**
       \code
-      auto iterPair = elem.getChildren();
-      std::for_each(iterPair.first, iterPair.second,
+      auto itPair = elem.getChildren();
+      std::for_each(itPair.first, itPair.second,
             [](const XmlElement& child) { ... });
       \endcode
       \return A pair of STL begin/end iterators to access all child elements sequentially.
@@ -227,8 +212,8 @@ public:
     /* -> disabled documentation extraction
       \brief Get all attributes associated with the element.
       \code
-        auto iterPair = elem.getAttributes();
-        for (auto it = iterPair.first; it != iterPair.second; ++it)
+        auto itPair = elem.getAttributes();
+        for (auto it = itPair.first; it != itPair.second; ++it)
            std::cout << "name: " << it->name << " value: " << it->value << '\n';
       \endcode
       \return A pair of STL begin/end iterators to access all attributes sequentially as a list of name/value pairs of std::string.   */
@@ -286,11 +271,9 @@ public:
 
     //Setup an empty XML document
     /**
-      \tparam String Arbitrary string-like type: e.g. std::string, wchar_t*, char[], wchar_t, wxString, MyStringClass, ...
       \param rootName The name of the XML document's root element.
     */
-    template <class String>
-    XmlDoc(String rootName) : root_(rootName) {}
+    explicit XmlDoc(std::string rootName) : root_(std::move(rootName)) {}
 
     ///Get a const reference to the document's root element.
     const XmlElement& root() const { return root_; }
@@ -334,7 +317,6 @@ private:
 
     XmlElement root_{"Root"};
 };
-
 }
 
 #endif //DOM_H_82085720723894567204564256

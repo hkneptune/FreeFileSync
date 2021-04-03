@@ -321,7 +321,7 @@ void MainDialog::create(const Zstring& globalConfigFilePath)
 {
     const XmlGlobalSettings globalSettings = tryLoadGlobalConfig(globalConfigFilePath);
 
-    std::vector<Zstring> cfgFilePaths = globalSettings.mainDlg.cfgFilesLastUsed;
+    std::vector<Zstring> cfgFilePaths = globalSettings.mainDlg.config.lastUsedFiles;
 
     //------------------------------------------------------------------------------------------
     //check existence of all files in parallel:
@@ -837,7 +837,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     //1. setConfig() indirectly calls cfggrid::addAndSelect() which changes cfg history scroll position
     //2. Grid::makeRowVisible() requires final window height! => do this after window resizing is complete
     if (m_gridCfgHistory->getRowCount() > 0)
-        m_gridCfgHistory->scrollTo(std::clamp<size_t>(globalSettings.mainDlg.cfgGridTopRowPos, //must be set *after* wxAuiManager::LoadPerspective() to have any effect
+        m_gridCfgHistory->scrollTo(std::clamp<size_t>(globalSettings.mainDlg.config.topRowPos, //must be set *after* wxAuiManager::LoadPerspective() to have any effect
                                                       0,  m_gridCfgHistory->getRowCount() - 1));
 
     //first selected item should always be visible:
@@ -986,38 +986,43 @@ void MainDialog::setGlobalCfgOnInit(const XmlGlobalSettings& globalSettings)
 {
     globalCfg_ = globalSettings;
 
+    DpiLayout layout;
+    if (auto it = globalSettings.dpiLayouts.find(getDpiScalePercent());
+        it != globalSettings.dpiLayouts.end())
+        layout = it->second;
+
     //caveat: set/get language asymmmetry! setLanguage(globalSettings.programLanguage); //throw FileError
     //we need to set language before creating this class!
 
     setInitialWindowSize(*this,
-                         globalSettings.mainDlg.dlgSize,
-                         globalSettings.mainDlg.dlgPos,
-                         globalSettings.mainDlg.isMaximized,
+                         layout.mainDlg.dlgSize,
+                         layout.mainDlg.dlgPos,
+                         layout.mainDlg.isMaximized,
                          wxSize{fastFromDIP(900), fastFromDIP(600)} /*defaultSize*/);
 
     //set column attributes
-    m_gridMainL   ->setColumnConfig(convertColAttributes(globalSettings.mainDlg.columnAttribLeft,  getFileGridDefaultColAttribsLeft()));
-    m_gridMainR   ->setColumnConfig(convertColAttributes(globalSettings.mainDlg.columnAttribRight, getFileGridDefaultColAttribsLeft()));
+    m_gridMainL   ->setColumnConfig(convertColAttributes(layout.fileColumnAttribsLeft,  getFileGridDefaultColAttribsLeft()));
+    m_gridMainR   ->setColumnConfig(convertColAttributes(layout.fileColumnAttribsRight, getFileGridDefaultColAttribsLeft()));
     m_splitterMain->setSashOffset(globalSettings.mainDlg.sashOffset);
 
-    m_gridOverview->setColumnConfig(convertColAttributes(globalSettings.mainDlg.treeGridColumnAttribs, getTreeGridDefaultColAttribs()));
-    treegrid::setShowPercentage(*m_gridOverview, globalSettings.mainDlg.treeGridShowPercentBar);
+    m_gridOverview->setColumnConfig(convertColAttributes(layout.overviewColumnAttribs, getOverviewDefaultColAttribs()));
+    treegrid::setShowPercentage(*m_gridOverview, globalSettings.mainDlg.overview.showPercentBar);
 
-    treegrid::getDataView(*m_gridOverview).setSortDirection(globalSettings.mainDlg.treeGridLastSortColumn, globalSettings.mainDlg.treeGridLastSortAscending);
+    treegrid::getDataView(*m_gridOverview).setSortDirection(globalSettings.mainDlg.overview.lastSortColumn, globalSettings.mainDlg.overview.lastSortAscending);
 
     //--------------------------------------------------------------------------------
     //load list of configuration files
-    cfggrid::getDataView(*m_gridCfgHistory).set(globalSettings.mainDlg.cfgFileHistory);
+    cfggrid::getDataView(*m_gridCfgHistory).set(globalSettings.mainDlg.config.fileHistory);
 
     //globalSettings.mainDlg.cfgGridTopRowPos => defer evaluation until later within MainDialog constructor
-    m_gridCfgHistory->setColumnConfig(convertColAttributes(globalSettings.mainDlg.cfgGridColumnAttribs, getCfgGridDefaultColAttribs()));
-    cfggrid::getDataView(*m_gridCfgHistory).setSortDirection(globalSettings.mainDlg.cfgGridLastSortColumn, globalSettings.mainDlg.cfgGridLastSortAscending);
-    cfggrid::setSyncOverdueDays(*m_gridCfgHistory, globalSettings.mainDlg.cfgGridSyncOverdueDays);
+    m_gridCfgHistory->setColumnConfig(convertColAttributes(layout.configColumnAttribs, getCfgGridDefaultColAttribs()));
+    cfggrid::getDataView(*m_gridCfgHistory).setSortDirection(globalSettings.mainDlg.config.lastSortColumn, globalSettings.mainDlg.config.lastSortAscending);
+    cfggrid::setSyncOverdueDays(*m_gridCfgHistory, globalSettings.mainDlg.config.syncOverdueDays);
     //m_gridCfgHistory->Refresh(); <- implicit in last call
 
     //remove non-existent items (we need this only on startup)
     std::vector<Zstring> cfgFilePaths;
-    for (const ConfigFileItem& item : globalSettings.mainDlg.cfgFileHistory)
+    for (const ConfigFileItem& item : globalSettings.mainDlg.config.fileHistory)
         cfgFilePaths.push_back(item.cfgFilePath);
 
     cfgHistoryRemoveObsolete(cfgFilePaths);
@@ -1053,7 +1058,7 @@ void MainDialog::setGlobalCfgOnInit(const XmlGlobalSettings& globalSettings)
     preserveConstraint(auiMgr_.GetPane(m_panelViewFilter));
     preserveConstraint(auiMgr_.GetPane(m_panelConfig));
 
-    auiMgr_.LoadPerspective(globalSettings.mainDlg.guiPerspectiveLast, false /*update: don't call wxAuiManager::Update() yet*/);
+    auiMgr_.LoadPerspective(layout.mainDlg.panelLayout, false /*update: don't call wxAuiManager::Update() yet*/);
 
     //restore original captions
     for (const auto& [paneInfo, caption] : paneCaptions)
@@ -1089,16 +1094,16 @@ XmlGlobalSettings MainDialog::getGlobalCfgBeforeExit()
     globalSettings.programLanguage = getLanguage();
 
     //retrieve column attributes
-    globalSettings.mainDlg.columnAttribLeft  = convertColAttributes<ColAttributesRim>(m_gridMainL->getColumnConfig());
-    globalSettings.mainDlg.columnAttribRight = convertColAttributes<ColAttributesRim>(m_gridMainR->getColumnConfig());
+    globalSettings.dpiLayouts[getDpiScalePercent()].fileColumnAttribsLeft  = convertColAttributes<ColAttributesRim>(m_gridMainL->getColumnConfig());
+    globalSettings.dpiLayouts[getDpiScalePercent()].fileColumnAttribsRight = convertColAttributes<ColAttributesRim>(m_gridMainR->getColumnConfig());
     globalSettings.mainDlg.sashOffset        = m_splitterMain->getSashOffset();
 
-    globalSettings.mainDlg.treeGridColumnAttribs  = convertColAttributes<ColAttributesTree>(m_gridOverview->getColumnConfig());
-    globalSettings.mainDlg.treeGridShowPercentBar = treegrid::getShowPercentage(*m_gridOverview);
+    globalSettings.dpiLayouts[getDpiScalePercent()].overviewColumnAttribs = convertColAttributes<ColumnAttribOverview>(m_gridOverview->getColumnConfig());
+    globalSettings.mainDlg.overview.showPercentBar = treegrid::getShowPercentage(*m_gridOverview);
 
     const auto [sortCol, ascending] = treegrid::getDataView(*m_gridOverview).getSortConfig();
-    globalSettings.mainDlg.treeGridLastSortColumn    = sortCol;
-    globalSettings.mainDlg.treeGridLastSortAscending = ascending;
+    globalSettings.mainDlg.overview.lastSortColumn = sortCol;
+    globalSettings.mainDlg.overview.lastSortAscending = ascending;
 
     //--------------------------------------------------------------------------------
     //write list of configuration files
@@ -1116,18 +1121,18 @@ XmlGlobalSettings MainDialog::getGlobalCfgBeforeExit()
             cfgHistory.push_back(item);
 
     //trim excess elements (oldest first)
-    if (cfgHistory.size() > globalSettings.mainDlg.cfgHistItemsMax)
-        cfgHistory.resize(globalSettings.mainDlg.cfgHistItemsMax);
+    if (cfgHistory.size() > globalSettings.mainDlg.config.histItemsMax)
+        cfgHistory.resize(globalSettings.mainDlg.config.histItemsMax);
 
-    globalSettings.mainDlg.cfgFileHistory         = std::move(cfgHistory);
-    globalSettings.mainDlg.cfgGridTopRowPos       = m_gridCfgHistory->getTopRow();
-    globalSettings.mainDlg.cfgGridColumnAttribs   = convertColAttributes<ColAttributesCfg>(m_gridCfgHistory->getColumnConfig());
-    globalSettings.mainDlg.cfgGridSyncOverdueDays = cfggrid::getSyncOverdueDays(*m_gridCfgHistory);
+    globalSettings.mainDlg.config.fileHistory         = std::move(cfgHistory);
+    globalSettings.mainDlg.config.topRowPos       = m_gridCfgHistory->getTopRow();
+    globalSettings.dpiLayouts[getDpiScalePercent()].configColumnAttribs = convertColAttributes<ColAttributesCfg>(m_gridCfgHistory->getColumnConfig());
+    globalSettings.mainDlg.config.syncOverdueDays = cfggrid::getSyncOverdueDays(*m_gridCfgHistory);
 
-    std::tie(globalSettings.mainDlg.cfgGridLastSortColumn,
-             globalSettings.mainDlg.cfgGridLastSortAscending) = cfggrid::getDataView(*m_gridCfgHistory).getSortDirection();
+    std::tie(globalSettings.mainDlg.config.lastSortColumn,
+             globalSettings.mainDlg.config.lastSortAscending) = cfggrid::getDataView(*m_gridCfgHistory).getSortDirection();
     //--------------------------------------------------------------------------------
-    globalSettings.mainDlg.cfgFilesLastUsed = activeConfigFiles_;
+    globalSettings.mainDlg.config.lastUsedFiles = activeConfigFiles_;
 
     //write list of last used folders
     globalSettings.mainDlg.folderHistoryLeft  = folderHistoryLeft_ ->getList();
@@ -1147,14 +1152,14 @@ XmlGlobalSettings MainDialog::getGlobalCfgBeforeExit()
     //else: logPane.best_size already contains non-maximized value
 
     //auiMgr_.Update(); //[!] not needed
-    globalSettings.mainDlg.guiPerspectiveLast = auiMgr_.SavePerspective(); //does not need wxAuiManager::Update()!
+    globalSettings.dpiLayouts[getDpiScalePercent()].mainDlg.panelLayout = auiMgr_.SavePerspective(); //does not need wxAuiManager::Update()!
 
     const auto& [size, pos, isMaximized] = getWindowSizeBeforeClose(*this); //call *after* wxAuiManager::SavePerspective()!
     if (size)
-        globalSettings.mainDlg.dlgSize = *size;
+        globalSettings.dpiLayouts[getDpiScalePercent()].mainDlg.dlgSize = *size;
     if (pos)
-        globalSettings.mainDlg.dlgPos = *pos;
-    globalSettings.mainDlg.isMaximized = isMaximized;
+        globalSettings.dpiLayouts[getDpiScalePercent()].mainDlg.dlgPos = *pos;
+    globalSettings.dpiLayouts[getDpiScalePercent()].mainDlg.isMaximized = isMaximized;
 
     return globalSettings;
 }
@@ -2663,10 +2668,9 @@ void MainDialog::onGridLabelContextRim(GridLabelClickEvent& event, bool leftSide
 
     auto setDefault = [&]
     {
+        grid.setColumnConfig(convertColAttributes(leftSide ? getFileGridDefaultColAttribsLeft() : getFileGridDefaultColAttribsRight(), getFileGridDefaultColAttribsLeft()));
+
         const XmlGlobalSettings defaultCfg;
-
-        grid.setColumnConfig(convertColAttributes(leftSide ? defaultCfg.mainDlg.columnAttribLeft : defaultCfg.mainDlg.columnAttribRight, defaultCfg.mainDlg.columnAttribLeft));
-
         setItemPathFormat(leftSide ? defaultCfg.mainDlg.itemPathFormatLeftGrid : defaultCfg.mainDlg.itemPathFormatRightGrid);
 
         setIconSize(defaultCfg.mainDlg.iconSize, defaultCfg.mainDlg.showIcons);
@@ -2979,7 +2983,7 @@ bool MainDialog::trySaveConfig(const Zstring* guiCfgPath) //return true if saved
 
         const std::optional<Zstring> defaultFolderPath = !activeCfgFilePath.empty() ?
                                                          getParentFolderPath(activeCfgFilePath) :
-                                                         getParentFolderPath(globalCfg_.mainDlg.cfgFileLastSelected);
+                                                         getParentFolderPath(globalCfg_.mainDlg.config.lastSelectedFile);
 
         Zstring defaultFileName = !activeCfgFilePath.empty() ?
                                   afterLast(activeCfgFilePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all) :
@@ -2993,7 +2997,7 @@ bool MainDialog::trySaveConfig(const Zstring* guiCfgPath) //return true if saved
                                   wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
         if (fileSelector.ShowModal() != wxID_OK)
             return false;
-        cfgFilePath = globalCfg_.mainDlg.cfgFileLastSelected = utfTo<Zstring>(fileSelector.GetPath());
+        cfgFilePath = globalCfg_.mainDlg.config.lastSelectedFile = utfTo<Zstring>(fileSelector.GetPath());
     }
 
     const XmlGuiConfig guiCfg = getConfig();
@@ -3060,7 +3064,7 @@ bool MainDialog::trySaveBatchConfig(const Zstring* batchCfgPath)
 
         const std::optional<Zstring> defaultFolderPath = !activeCfgFilePath.empty() ?
                                                          getParentFolderPath(activeCfgFilePath) :
-                                                         getParentFolderPath(globalCfg_.mainDlg.cfgFileLastSelected);
+                                                         getParentFolderPath(globalCfg_.mainDlg.config.lastSelectedFile);
 
         Zstring defaultFileName = !activeCfgFilePath.empty() ?
                                   afterLast(activeCfgFilePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all) :
@@ -3074,7 +3078,7 @@ bool MainDialog::trySaveBatchConfig(const Zstring* batchCfgPath)
                                   wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
         if (fileSelector.ShowModal() != wxID_OK)
             return false;
-        cfgFilePath = globalCfg_.mainDlg.cfgFileLastSelected = utfTo<Zstring>(fileSelector.GetPath());
+        cfgFilePath = globalCfg_.mainDlg.config.lastSelectedFile = utfTo<Zstring>(fileSelector.GetPath());
     }
 
     const XmlGuiConfig guiCfg = getConfig();
@@ -3160,7 +3164,7 @@ bool MainDialog::saveOldConfig() //return false on user abort
 
 void MainDialog::onConfigLoad(wxCommandEvent& event)
 {
-    std::optional<Zstring> defaultFolderPath = getParentFolderPath(globalCfg_.mainDlg.cfgFileLastSelected);
+    std::optional<Zstring> defaultFolderPath = getParentFolderPath(globalCfg_.mainDlg.config.lastSelectedFile);
 
     wxFileDialog fileSelector(this, wxString() /*message*/,  utfTo<wxString>(defaultFolderPath ? *defaultFolderPath : Zstr("")), wxString() /*default file name*/,
                               wxString(L"FreeFileSync (*.ffs_gui; *.ffs_batch)|*.ffs_gui;*.ffs_batch") + L"|" +_("All files") + L" (*.*)|*",
@@ -3176,7 +3180,7 @@ void MainDialog::onConfigLoad(wxCommandEvent& event)
         filePaths.push_back(utfTo<Zstring>(path));
 
     if (!filePaths.empty())
-        globalCfg_.mainDlg.cfgFileLastSelected = filePaths[0];
+        globalCfg_.mainDlg.config.lastSelectedFile = filePaths[0];
 
     assert(!filePaths.empty());
     loadConfiguration(filePaths);
@@ -3566,8 +3570,8 @@ void MainDialog::onCfgGridLabelContext(GridLabelClickEvent& event)
 
     auto setDefault = [&]
     {
-        const XmlGlobalSettings defaultCfg;
-        m_gridCfgHistory->setColumnConfig(convertColAttributes(defaultCfg.mainDlg.cfgGridColumnAttribs, getCfgGridDefaultColAttribs()));
+        const DpiLayout defaultLayout;
+        m_gridCfgHistory->setColumnConfig(convertColAttributes(defaultLayout.configColumnAttribs, getCfgGridDefaultColAttribs()));
     };
     menu.addItem(_("&Default"), setDefault); //'&' -> reuse text from "default" buttons elsewhere
     //--------------------------------------------------------------------------------------------------------
@@ -4249,8 +4253,9 @@ void MainDialog::onStartSync(wxCommandEvent& event)
                                                   guiCfg.mainCfg.autoRetryCount,
                                                   guiCfg.mainCfg.autoRetryDelay,
                                                   globalCfg_.soundFileSyncFinished,
-                                                  globalCfg_.progressDlg.dlgSize, globalCfg_.progressDlg.isMaximized,
-                                                  globalCfg_.progressDlg.autoClose);
+                                                  globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.dlgSize,
+                                                  globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.isMaximized,
+                                                  globalCfg_.progressDlgAutoClose);
         try
         {
             //PERF_START;
@@ -4300,9 +4305,9 @@ void MainDialog::onStartSync(wxCommandEvent& event)
         //---------------------------------------------------------------------------
         setLastOperationLog(r.summary, r.errorLog.ptr());
 
-        globalCfg_.progressDlg.autoClose   = r.autoCloseDialog;
-        globalCfg_.progressDlg.dlgSize     = r.dlgSize;
-        globalCfg_.progressDlg.isMaximized = r.dlgIsMaximized;
+        globalCfg_.progressDlgAutoClose = r.autoCloseDialog;
+        globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.dlgSize     = r.dlgSize;
+        globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.isMaximized = r.dlgIsMaximized;
 
         //update last sync stats for the selected cfg files
         updateConfigLastRunStats(std::chrono::system_clock::to_time_t(syncStartTime), r.summary.syncResult, r.logFilePath);

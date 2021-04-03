@@ -153,7 +153,7 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
 
     struct FinalizeResult
     {
-        FingerPrint filePrint; //optional
+        FingerPrint filePrint = 0; //optional
         std::optional<zen::FileError> errorModTime;
     };
 
@@ -262,8 +262,8 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     {
         uint64_t fileSize = 0;
         time_t modTime = 0; //number of seconds since Jan. 1st 1970 UTC
-        FingerPrint sourceFilePrint; //optional
-        FingerPrint targetFilePrint; //
+        FingerPrint sourceFilePrint = 0; //optional
+        FingerPrint targetFilePrint = 0; //
         std::optional<zen::FileError> errorModTime; //failure to set modification time
     };
 

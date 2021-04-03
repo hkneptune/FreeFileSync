@@ -446,7 +446,10 @@ GdriveAccessInfo gdriveAuthorizeAccess(const std::string& gdriveLoginHint, const
 
     const auto getBoundSocket = [](const auto& /*::addrinfo*/ ai)
     {
-        SocketType testSocket = ::socket(ai.ai_family, ai.ai_socktype, ai.ai_protocol);
+            SocketType testSocket = ::socket(ai.ai_family,    //int socket_family
+                                             SOCK_CLOEXEC |
+                                             ai.ai_socktype,  //int socket_type
+                                             ai.ai_protocol); //int protocol
         if (testSocket == invalidSocket)
             THROW_LAST_SYS_ERROR_WSA("socket");
         ZEN_ON_SCOPE_FAIL(closeSocket(testSocket));
@@ -456,6 +459,7 @@ GdriveAccessInfo gdriveAuthorizeAccess(const std::string& gdriveLoginHint, const
 
         return testSocket;
     };
+
 
     SocketType socket = invalidSocket;
 
@@ -474,14 +478,13 @@ GdriveAccessInfo gdriveAuthorizeAccess(const std::string& gdriveLoginHint, const
     ZEN_ON_SCOPE_EXIT(closeSocket(socket));
 
 
-    sockaddr_storage addr = {}; //"sufficiently large to store address information for IPv4 or IPv6" => sockaddr_in and sockaddr_in6
+    sockaddr_storage addr = {}; //"sufficiently large to store address information for IPv4 (AF_INET) or IPv6 (AF_INET6)" => sockaddr_in and sockaddr_in6
     socklen_t addrLen = sizeof(addr);
     if (::getsockname(socket, reinterpret_cast<sockaddr*>(&addr), &addrLen) != 0)
         THROW_LAST_SYS_ERROR_WSA("getsockname");
 
-    if (addr.ss_family != AF_INET &&
-        addr.ss_family != AF_INET6)
-        throw SysError(formatSystemError("getsockname", L"", L"Unknown protocol family: " + numberTo<std::wstring>(addr.ss_family)));
+    if (addr.ss_family != AF_INET)
+        throw SysError(formatSystemError("getsockname", L"", L"Unexpected protocol family: " + numberTo<std::wstring>(addr.ss_family)));
 
     const int port = ntohs(reinterpret_cast<const sockaddr_in&>(addr).sin_port);
     //the socket is not bound to a specific local IP => inet_ntoa(reinterpret_cast<const sockaddr_in&>(addr).sin_addr) == "0.0.0.0"
@@ -523,17 +526,15 @@ GdriveAccessInfo gdriveAuthorizeAccess(const std::string& gdriveLoginHint, const
         {
             if (updateGui) updateGui(); //throw X
 
-            fd_set rfd = {};
-            FD_ZERO(&rfd);
-            FD_SET(socket, &rfd);
-            fd_set* readfds = &rfd;
+            fd_set readfds = {}; //covers FD_ZERO
+            FD_SET(socket, &readfds);
 
             timeval tv = {};
             tv.tv_usec = static_cast<long>(100 /*ms*/) * 1000;
 
             //WSAPoll broken, even ::poll() on OS X? https://daniel.haxx.se/blog/2012/10/10/wsapoll-is-broken/
             //perf: no significant difference compared to ::WSAPoll()
-            if (const int rc = ::select(socket + 1, readfds, nullptr /*writefds*/, nullptr /*errorfds*/, &tv);
+            if (const int rc = ::select(socket + 1, &readfds, nullptr /*writefds*/, nullptr /*errorfds*/, &tv);
                 rc < 0)
                 THROW_LAST_SYS_ERROR_WSA("select");
             else if (rc != 0)
@@ -541,11 +542,13 @@ GdriveAccessInfo gdriveAuthorizeAccess(const std::string& gdriveLoginHint, const
             //else: time-out!
         }
         //potential race! if the connection is gone right after ::select() and before ::accept(), latter will hang
-        const SocketType clientSocket = ::accept(socket,   //SOCKET   s,
-                                                 nullptr,  //sockaddr *addr,
-                                                 nullptr); //int      *addrlen
+        const int clientSocket = ::accept4(socket,        //int sockfd
+                                           nullptr,       //sockaddr* addr
+                                           nullptr,       //socklen_t* addrlen
+                                           SOCK_CLOEXEC); //int flags
         if (clientSocket == invalidSocket)
             THROW_LAST_SYS_ERROR_WSA("accept");
+
 
         //receive first line of HTTP request
         std::string reqLine;
@@ -813,7 +816,7 @@ struct GdriveItemDetails
 };
 
 
-GdriveItemDetails extractItemDetails(JsonValue jvalue) //throw SysError
+GdriveItemDetails extractItemDetails(const JsonValue& jvalue) //throw SysError
 {
     assert(jvalue.type == JsonValue::Type::object);
 
@@ -835,6 +838,27 @@ GdriveItemDetails extractItemDetails(JsonValue jvalue) //throw SysError
     const FileOwner owner = ownedByMe ? (*ownedByMe == "true" ? FileOwner::me : FileOwner::other) : FileOwner::none; //"Not populated for items in Shared Drives"
     const uint64_t fileSize = size ? stringTo<uint64_t>(*size) : 0; //not available for folders and shortcuts
 
+    warn_static("remove after test")
+        #if 0
+        {
+    //RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
+    const TimeComp tc = parseTime("%Y-%m-%dT%H:%M:%S", "1968-05-03T11:30:00");
+    if (tc == TimeComp() ) 
+        throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L')');
+
+    time_t modTime = utcToTimeT(tc); //returns -1 on error
+    if (modTime == -1)
+    {
+        warn_static("should utcToTimeT handle this, too?")
+
+        if (tc.year == 1) //WTF: 0001-01-01T00:00:00.000Z https://freefilesync.org/forum/viewtopic.php?t=7403
+            modTime = 0;
+        else
+            throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L')');
+    }
+        }
+        #endif
+
     //RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
     const TimeComp tc = parseTime("%Y-%m-%dT%H:%M:%S", beforeLast(*modifiedTime, '.', IfNotFoundReturn::all));
     if (tc == TimeComp() || !endsWith(*modifiedTime, 'Z')) //'Z' means "UTC" => it seems Google doesn't use the time-zone offset postfix
@@ -843,9 +867,9 @@ GdriveItemDetails extractItemDetails(JsonValue jvalue) //throw SysError
     time_t modTime = utcToTimeT(tc); //returns -1 on error
     if (modTime == -1)
     {
-        if (tc.year == 1600 || //zero-initialized FILETIME equals "December 31, 1600" or "January 1, 1601"
-            tc.year == 1601 || // => yes, possible even on Google Drive: https://freefilesync.org/forum/viewtopic.php?t=6602
-            tc.year == 1) //WTF: 0001-01-01T00:00:00.000Z https://freefilesync.org/forum/viewtopic.php?t=7403
+        warn_static("should utcToTimeT handle this, too?")
+
+        if (tc.year == 1) //WTF: 0001-01-01T00:00:00.000Z https://freefilesync.org/forum/viewtopic.php?t=7403
             modTime = 0;
         else
             throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L')');

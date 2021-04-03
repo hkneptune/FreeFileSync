@@ -7,6 +7,7 @@
 #include "rest.h"
 #include <zen/sys_info.h>
 #include <zen/http.h>
+    #include <fcntl.h>
 
 using namespace zen;
 
@@ -61,14 +62,36 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
     options.emplace_back(CURLOPT_LOW_SPEED_LIMIT, 1L); //[bytes], can't use "0" which means "inactive", so use some low number
 
 
+    std::exception_ptr userCallbackException;
+
+    //libcurl does *not* set FD_CLOEXEC for us! https://github.com/curl/curl/issues/2252
+    auto onSocketCreate = [&](curl_socket_t curlfd, curlsocktype purpose)
+    {
+        assert(::fcntl(curlfd, F_GETFD) == 0);
+        if (::fcntl(curlfd, F_SETFD, FD_CLOEXEC) == -1) //=> RACE-condition if other thread calls fork/execv before this thread sets FD_CLOEXEC!
+        {
+            userCallbackException = std::make_exception_ptr(SysError(formatSystemError("fcntl(FD_CLOEXEC)", errno)));
+            return CURL_SOCKOPT_ERROR;
+        }
+        return CURL_SOCKOPT_OK;
+    };
+
+    using SocketCbType = decltype(onSocketCreate);
+    using SocketCbWrapperType =            int (*)(SocketCbType* clientp, curl_socket_t curlfd, curlsocktype purpose); //needed for cdecl function pointer cast
+    SocketCbWrapperType onSocketCreateWrapper = [](SocketCbType* clientp, curl_socket_t curlfd, curlsocktype purpose)
+    {
+        return (*clientp)(curlfd, purpose); //free this poor little C-API from its shackles and redirect to a proper lambda
+    };
+
+    options.emplace_back(CURLOPT_SOCKOPTFUNCTION, onSocketCreateWrapper);
+    options.emplace_back(CURLOPT_SOCKOPTDATA, &onSocketCreate);
+
     //libcurl forwards this char-string to OpenSSL as is, which - thank god - accepts UTF8
     options.emplace_back(CURLOPT_CAINFO, caCertFilePath_.c_str()); //hopefully latest version from https://curl.haxx.se/docs/caextract.html
     //CURLOPT_SSL_VERIFYPEER => already active by default
     //CURLOPT_SSL_VERIFYHOST =>
 
     //---------------------------------------------------
-    std::exception_ptr userCallbackException;
-
     auto onBytesReceived = [&](const void* buffer, size_t len)
     {
         try

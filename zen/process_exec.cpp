@@ -81,11 +81,11 @@ std::pair<int /*exit code*/, std::string> processExecuteImpl(const Zstring& file
     if (::pipe2(pipe, O_CLOEXEC) != 0)
         THROW_LAST_SYS_ERROR("pipe2");
 
-
     const int fdLifeSignR = pipe[0]; //for parent process
     const int fdLifeSignW = pipe[1]; //for child process
     ZEN_ON_SCOPE_EXIT(::close(fdLifeSignR));
     auto guardFdLifeSignW = makeGuard<ScopeGuardRunMode::onExit>([&] { ::close(fdLifeSignW ); });
+
     //--------------------------------------------------------------
 
     //follow implemenation of ::system(): https://github.com/lattera/glibc/blob/master/sysdeps/posix/system.c
@@ -237,14 +237,17 @@ void zen::openWithDefaultApp(const Zstring& itemPath) //throw FileError
 {
     try
     {
-        const Zstring cmdTemplate = R"(xdg-open "%x")"; //doesn't block => no need for time out!
+        std::optional<int> timeoutMs;
+        const Zstring cmdTemplate = R"(xdg-open "%x")"; //*might* block! 
+        timeoutMs = 0; //e.g. on Lubuntu if Firefox is started and not already running => no need time out! https://freefilesync.org/forum/viewtopic.php?t=8260
         const Zstring cmdLine = replaceCpy(cmdTemplate, Zstr("%x"), itemPath);
 
-        if (const auto& [exitCode, output] = consoleExecute(cmdLine, std::nullopt /*timeoutMs*/); //throw SysError, (SysErrorTimeOut)
+        if (const auto& [exitCode, output] = consoleExecute(cmdLine, timeoutMs); //throw SysError, SysErrorTimeOut
             exitCode != 0)
             throw SysError(formatSystemError(utfTo<std::string>(cmdTemplate),
                                              replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), utfTo<std::wstring>(output)));
     }
+    catch (SysErrorTimeOut&) {} //child process not failed yet => probably fine :>
     catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot open file %x."), L"%x", fmtPath(itemPath)), e.toString()); }
 }
 

@@ -21,8 +21,8 @@ class TreeView
 public:
     struct SortInfo
     {
-        ColumnTypeTree sortCol = treeGridLastSortColumnDefault;
-        bool ascending = getDefaultSortDirection(treeGridLastSortColumnDefault);
+        ColumnTypeOverview sortCol = overviewPanelLastSortColumnDefault;
+        bool ascending = getDefaultSortDirection(overviewPanelLastSortColumnDefault);
     };
 
     TreeView() {}
@@ -102,7 +102,7 @@ public:
     NodeStatus getStatus(size_t row) const;
     ptrdiff_t getParent(size_t row) const; //return < 0 if none
 
-    void setSortDirection(ColumnTypeTree colType, bool ascending); //apply permanently!
+    void setSortDirection(ColumnTypeOverview colType, bool ascending); //apply permanently!
     SortInfo getSortConfig() { return currentSort_; }
 
 private:
@@ -158,7 +158,7 @@ private:
     template <class Predicate> void updateView(Predicate pred);
     void applySubView(std::vector<RootNodeImpl>&& newView);
 
-    template <bool ascending> static void sortSingleLevel(std::vector<TreeLine>& items, ColumnTypeTree columnType);
+    template <bool ascending> static void sortSingleLevel(std::vector<TreeLine>& items, ColumnTypeOverview columnType);
     template <bool ascending> struct LessShortName;
 
     std::vector<TreeLine> flatTree_; //collapsable/expandable sub-tree of folderCmpView -> always sorted!

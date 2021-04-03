@@ -118,22 +118,22 @@ public:
 
 
 //Conversion from arbitrary types to text (for use with XML elements and attributes)
-enum TextType
+enum class TextType
 {
-    TEXT_TYPE_BOOL,
-    TEXT_TYPE_NUMBER,
-    TEXT_TYPE_CHRONO,
-    TEXT_TYPE_STRING,
-    TEXT_TYPE_OTHER,
+    boolean,
+    number,
+    chrono,
+    string,
+    other,
 };
 
 template <class T>
 struct GetTextType : std::integral_constant<TextType,
-    std::is_same_v<T, bool>    ? TEXT_TYPE_BOOL   :
-    IsStringLikeV<T>           ? TEXT_TYPE_STRING : //string before number to correctly handle char/wchar_t -> this was an issue with Loki only!
-    IsArithmeticV<T>           ? TEXT_TYPE_NUMBER : //
-    IsChronoDuration<T>::value ? TEXT_TYPE_CHRONO :
-    TEXT_TYPE_OTHER> {};
+    std::is_same_v<T, bool>    ? TextType::boolean :
+    IsStringLikeV<T>           ? TextType::string : //string before number to correctly handle char/wchar_t -> this was an issue with Loki only!
+    IsArithmeticV<T>           ? TextType::number : //
+    IsChronoDuration<T>::value ? TextType::chrono :
+    TextType::other> {};
 
 //######################################################################################
 
@@ -148,7 +148,7 @@ struct ConvertText;
 
 //partial specialization: type bool
 template <class T>
-struct ConvertText<T, TEXT_TYPE_BOOL>
+struct ConvertText<T, TextType::boolean>
 {
     void writeText(bool value, std::string& output) const
     {
@@ -169,7 +169,7 @@ struct ConvertText<T, TEXT_TYPE_BOOL>
 
 //partial specialization: handle conversion for all built-in arithmetic types!
 template <class T>
-struct ConvertText<T, TEXT_TYPE_NUMBER>
+struct ConvertText<T, TextType::number>
 {
     void writeText(const T& value, std::string& output) const
     {
@@ -183,7 +183,7 @@ struct ConvertText<T, TEXT_TYPE_NUMBER>
 };
 
 template <class T>
-struct ConvertText<T, TEXT_TYPE_CHRONO>
+struct ConvertText<T, TextType::chrono>
 {
     void writeText(const T& value, std::string& output) const
     {
@@ -198,7 +198,7 @@ struct ConvertText<T, TEXT_TYPE_CHRONO>
 
 //partial specialization: handle conversion for all string-like types!
 template <class T>
-struct ConvertText<T, TEXT_TYPE_STRING>
+struct ConvertText<T, TextType::string>
 {
     void writeText(const T& value, std::string& output) const
     {
@@ -214,7 +214,7 @@ struct ConvertText<T, TEXT_TYPE_STRING>
 
 //partial specialization: unknown type
 template <class T>
-struct ConvertText<T, TEXT_TYPE_OTHER>
+struct ConvertText<T, TextType::other>
 {
     //###########################################################################################################################################
     static_assert(sizeof(T) == -1);

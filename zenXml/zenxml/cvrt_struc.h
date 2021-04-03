@@ -84,17 +84,17 @@ public:
 //Conversion from arbitrary types to an XML element
 enum class ValueType
 {
-    STL_CONTAINER,
-    STL_PAIR,
-    OTHER,
+    stlContainer,
+    stlPair,
+    other,
 };
 
 template <class T>
 using GetValueType = std::integral_constant<ValueType,
-      GetTextType   <T>::value != TEXT_TYPE_OTHER ? ValueType::OTHER : //some string classes are also STL containers, so check this first
-      IsStlContainer<T>::value ? ValueType::STL_CONTAINER :
-      IsStlPair     <T>::value ? ValueType::STL_PAIR :
-      ValueType::OTHER>;
+      GetTextType   <T>::value != TextType::other ? ValueType::other : //some string classes are also STL containers, so check this first
+      IsStlContainer<T>::value ? ValueType::stlContainer :
+      IsStlPair     <T>::value ? ValueType::stlPair :
+      ValueType::other>;
 
 
 template <class T, ValueType type>
@@ -109,7 +109,7 @@ struct ConvertElement;
 
 //partial specialization: handle conversion for all STL-container types!
 template <class T>
-struct ConvertElement<T, ValueType::STL_CONTAINER>
+struct ConvertElement<T, ValueType::stlContainer>
 {
     void writeStruc(const T& value, XmlElement& output) const
     {
@@ -121,19 +121,20 @@ struct ConvertElement<T, ValueType::STL_CONTAINER>
     }
     bool readStruc(const XmlElement& input, T& value) const
     {
-        bool success = true;
         value.clear();
 
-        auto itPair = input.getChildren("Item");
-        for (auto it = itPair.first; it != itPair.second; ++it)
+        bool success = true;
+        const auto itPair = input.getChildren("Item");
+
+        std::for_each(itPair.first, itPair.second, [&](const XmlElement& xmlChild)
         {
-            typename T::value_type childVal; //MSVC 2010 bug: cannot put this into a lambda body
-            if (zen::readStruc(*it, childVal))
-                value.insert(value.end(), childVal);
+            typename T::value_type childVal;
+            if (zen::readStruc(xmlChild, childVal))
+                value.insert(value.end(), std::move(childVal));
             else
                 success = false;
             //should we support insertion of partially-loaded struct??
-        }
+        });
         return success;
     }
 };
@@ -141,7 +142,7 @@ struct ConvertElement<T, ValueType::STL_CONTAINER>
 
 //partial specialization: handle conversion for std::pair
 template <class T>
-struct ConvertElement<T, ValueType::STL_PAIR>
+struct ConvertElement<T, ValueType::stlPair>
 {
     void writeStruc(const T& value, XmlElement& output) const
     {
@@ -169,7 +170,7 @@ struct ConvertElement<T, ValueType::STL_PAIR>
 
 //partial specialization: not a pure structured type, try text conversion (thereby respect user specializations of writeText()/readText())
 template <class T>
-struct ConvertElement<T, ValueType::OTHER>
+struct ConvertElement<T, ValueType::other>
 {
     void writeStruc(const T& value, XmlElement& output) const
     {

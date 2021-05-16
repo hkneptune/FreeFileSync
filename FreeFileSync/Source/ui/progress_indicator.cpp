@@ -173,8 +173,8 @@ private:
     std::chrono::nanoseconds timeLastSpeedEstimate_ = std::chrono::seconds(-100); //used for calculating intervals between showing and collecting perf samples
     //initial value: just some big number
 
-    std::shared_ptr<CurveDataProgressBar> curveDataBytes_{std::make_shared<CurveDataProgressBar>(true  /*drawTop*/)};
-    std::shared_ptr<CurveDataProgressBar> curveDataItems_{std::make_shared<CurveDataProgressBar>(false /*drawTop*/)};
+    SharedRef<CurveDataProgressBar> curveDataBytes_{makeSharedRef<CurveDataProgressBar>(true  /*drawTop*/)};
+    SharedRef<CurveDataProgressBar> curveDataItems_{makeSharedRef<CurveDataProgressBar>(false /*drawTop*/)};
 
     bool ignoreErrors_ = false;
 };
@@ -206,7 +206,7 @@ CompareProgressPanel::Impl::Impl(wxFrame& parentWindow) :
     m_panelProgressGraph->addCurve(curveDataBytes_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(1)).fillPolygonArea(getColorBytes()).setColor(Graph2D::getBorderColor()));
     m_panelProgressGraph->addCurve(curveDataItems_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(1)).fillPolygonArea(getColorItems()).setColor(Graph2D::getBorderColor()));
 
-    m_panelProgressGraph->addCurve(std::make_shared<CurveDataProgressSeparatorLine>(), Graph2D::CurveAttributes().setLineWidth(fastFromDIP(1)).setColor(Graph2D::getBorderColor()));
+    m_panelProgressGraph->addCurve(makeSharedRef<CurveDataProgressSeparatorLine>(), Graph2D::CurveAttributes().setLineWidth(fastFromDIP(1)).setColor(Graph2D::getBorderColor()));
 
     Layout();
     m_panelItemStats->Layout();
@@ -332,8 +332,8 @@ void CompareProgressPanel::Impl::updateProgressGui()
         //progress indicators
         if (taskbar_.get()) taskbar_->setProgress(fractionTotal);
 
-        curveDataBytes_->setFraction(fractionBytes);
-        curveDataItems_->setFraction(fractionItems);
+        curveDataBytes_.ref().setFraction(fractionBytes);
+        curveDataItems_.ref().setFraction(fractionItems);
     }
 
     //item and data stats
@@ -723,14 +723,14 @@ private:
     //help calculate total speed
     std::chrono::nanoseconds phaseStart_{}; //begin of current phase
 
-    std::shared_ptr<CurveDataStatistics> curveBytes_          = std::make_shared<CurveDataStatistics>();
-    std::shared_ptr<CurveDataStatistics> curveItems_          = std::make_shared<CurveDataStatistics>();
-    std::shared_ptr<CurveDataEstimate  > curveBytesEstim_     = std::make_shared<CurveDataEstimate>  ();
-    std::shared_ptr<CurveDataEstimate  > curveItemsEstim_     = std::make_shared<CurveDataEstimate>  ();
-    std::shared_ptr<CurveDataTimeMarker> curveBytesTimeNow_   = std::make_shared<CurveDataTimeMarker>();
-    std::shared_ptr<CurveDataTimeMarker> curveItemsTimeNow_   = std::make_shared<CurveDataTimeMarker>();
-    std::shared_ptr<CurveDataTimeMarker> curveBytesTimeEstim_ = std::make_shared<CurveDataTimeMarker>();
-    std::shared_ptr<CurveDataTimeMarker> curveItemsTimeEstim_ = std::make_shared<CurveDataTimeMarker>();
+    SharedRef<CurveDataStatistics> curveBytes_          = makeSharedRef<CurveDataStatistics>();
+    SharedRef<CurveDataStatistics> curveItems_          = makeSharedRef<CurveDataStatistics>();
+    SharedRef<CurveDataEstimate  > curveBytesEstim_     = makeSharedRef<CurveDataEstimate  >();
+    SharedRef<CurveDataEstimate  > curveItemsEstim_     = makeSharedRef<CurveDataEstimate  >();
+    SharedRef<CurveDataTimeMarker> curveBytesTimeNow_   = makeSharedRef<CurveDataTimeMarker>();
+    SharedRef<CurveDataTimeMarker> curveItemsTimeNow_   = makeSharedRef<CurveDataTimeMarker>();
+    SharedRef<CurveDataTimeMarker> curveBytesTimeEstim_ = makeSharedRef<CurveDataTimeMarker>();
+    SharedRef<CurveDataTimeMarker> curveItemsTimeEstim_ = makeSharedRef<CurveDataTimeMarker>();
 
     wxString parentTitleBackup_;
     std::unique_ptr<FfsTrayIcon> trayIcon_; //optional: if filled all other windows should be hidden and conversely
@@ -963,14 +963,14 @@ void SyncProgressDialogImpl<TopLevelDialog>::initNewPhase()
     updateStaticGui(); //evaluates "syncStat_->currentPhase()"
 
     //reset graphs (e.g. after binary comparison)
-    curveBytes_         ->clear();
-    curveItems_         ->clear();
-    curveBytesEstim_    ->setValue(0, 0, 0, 0);
-    curveItemsEstim_    ->setValue(0, 0, 0, 0);
-    curveBytesTimeNow_  ->setValue(0, 0);
-    curveItemsTimeNow_  ->setValue(0, 0);
-    curveBytesTimeEstim_->setValue(0, 0);
-    curveItemsTimeEstim_->setValue(0, 0);
+    curveBytes_         .ref().clear();
+    curveItems_         .ref().clear();
+    curveBytesEstim_    .ref().setValue(0, 0, 0, 0);
+    curveItemsEstim_    .ref().setValue(0, 0, 0, 0);
+    curveBytesTimeNow_  .ref().setValue(0, 0);
+    curveItemsTimeNow_  .ref().setValue(0, 0);
+    curveBytesTimeEstim_.ref().setValue(0, 0);
+    curveItemsTimeEstim_.ref().setValue(0, 0);
 
     notifyProgressChange(); //make sure graphs get initial values
 
@@ -989,8 +989,8 @@ void SyncProgressDialogImpl<TopLevelDialog>::notifyProgressChange() //noexcept!
     if (syncStat_) //sync running
     {
         const ProgressStats stats = syncStat_->getStatsCurrent();
-        curveBytes_->addRecord(stopWatch_.elapsed(), stats.bytes);
-        curveItems_->addRecord(stopWatch_.elapsed(), stats.items);
+        curveBytes_.ref().addRecord(stopWatch_.elapsed(), stats.bytes);
+        curveItems_.ref().addRecord(stopWatch_.elapsed(), stats.items);
     }
 }
 
@@ -1091,23 +1091,23 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
         if (trayIcon_.get()) trayIcon_->setProgress(fractionTotal);
         if (taskbar_ .get()) taskbar_ ->setProgress(fractionTotal);
 
-        const double timeTotalSecTentative = bytesCurrent == bytesTotal ? timeElapsedDouble : std::max(curveBytesEstim_->getTotalTime(), timeElapsedDouble);
+        const double timeTotalSecTentative = bytesCurrent == bytesTotal ? timeElapsedDouble : std::max(curveBytesEstim_.ref().getTotalTime(), timeElapsedDouble);
 
-        curveBytesEstim_->setValue(timeElapsedDouble, timeTotalSecTentative, bytesCurrent, bytesTotal);
-        curveItemsEstim_->setValue(timeElapsedDouble, timeTotalSecTentative, itemsCurrent, itemsTotal);
+        curveBytesEstim_.ref().setValue(timeElapsedDouble, timeTotalSecTentative, bytesCurrent, bytesTotal);
+        curveItemsEstim_.ref().setValue(timeElapsedDouble, timeTotalSecTentative, itemsCurrent, itemsTotal);
 
         //tentatively update total time, may be improved on below:
-        curveBytesTimeNow_  ->setValue(timeElapsedDouble, bytesCurrent);
-        curveItemsTimeNow_  ->setValue(timeElapsedDouble, itemsCurrent);
+        curveBytesTimeNow_.ref().setValue(timeElapsedDouble, bytesCurrent);
+        curveItemsTimeNow_.ref().setValue(timeElapsedDouble, itemsCurrent);
 
-        curveBytesTimeEstim_->setValue(timeTotalSecTentative, bytesTotal);
-        curveItemsTimeEstim_->setValue(timeTotalSecTentative, itemsTotal);
+        curveBytesTimeEstim_.ref().setValue(timeTotalSecTentative, bytesTotal);
+        curveItemsTimeEstim_.ref().setValue(timeTotalSecTentative, itemsTotal);
     }
 
     //even though notifyProgressChange() already set the latest data, let's add another sample to have all curves consider "timeNowMs"
     //no problem with adding too many records: CurveDataStatistics will remove duplicate entries!
-    curveBytes_->addRecord(timeElapsed, bytesCurrent);
-    curveItems_->addRecord(timeElapsed, itemsCurrent);
+    curveBytes_.ref().addRecord(timeElapsed, bytesCurrent);
+    curveItems_.ref().addRecord(timeElapsed, itemsCurrent);
 
     //item and data stats
     if (!haveTotalStats)
@@ -1165,7 +1165,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
             const double timeRemainingSec = remTimeSec ? *remTimeSec : 0;
             const double timeTotalSec = timeElapsedDouble + timeRemainingSec;
             //update estimated total time marker only with precision of "15% remaining time" to avoid needless jumping around:
-            if (numeric::dist(curveBytesEstim_->getTotalTime(), timeTotalSec) > 0.15 * timeRemainingSec)
+            if (numeric::dist(curveBytesEstim_.ref().getTotalTime(), timeTotalSec) > 0.15 * timeRemainingSec)
             {
                 //avoid needless flicker and don't update total time graph too often:
                 static_assert(std::chrono::duration_cast<std::chrono::milliseconds>(GRAPH_TOTAL_TIME_UPDATE_INTERVAL).count() % SPEED_ESTIMATE_UPDATE_INTERVAL.count() == 0);
@@ -1173,11 +1173,11 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
                 {
                     timeLastGraphTotalUpdate_ = timeElapsed;
 
-                    curveBytesEstim_->setTotalTime(timeTotalSec);
-                    curveItemsEstim_->setTotalTime(timeTotalSec);
+                    curveBytesEstim_.ref().setTotalTime(timeTotalSec);
+                    curveItemsEstim_.ref().setTotalTime(timeTotalSec);
 
-                    curveBytesTimeEstim_->setTime(timeTotalSec);
-                    curveItemsTimeEstim_->setTime(timeTotalSec);
+                    curveBytesTimeEstim_.ref().setTime(timeTotalSec);
+                    curveItemsTimeEstim_.ref().setTime(timeTotalSec);
                 }
             }
         }

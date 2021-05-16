@@ -377,13 +377,13 @@ std::wstring fff::getCategoryDescription(const FileSystemObject& fsObj)
             [&](const FilePair& file)
             {
                 descr += std::wstring(L"\n") +
-                         arrowLeft  + L' ' + formatUtcToLocalTime(file.getLastWriteTime< SelectSide::left>()) + L'\n' +
+                         arrowLeft  + L' ' + formatUtcToLocalTime(file.getLastWriteTime<SelectSide::left >()) + L'\n' +
                          arrowRight + L' ' + formatUtcToLocalTime(file.getLastWriteTime<SelectSide::right>());
             },
             [&](const SymlinkPair& symlink)
             {
                 descr += std::wstring(L"\n") +
-                         arrowLeft  + L' ' + formatUtcToLocalTime(symlink.getLastWriteTime< SelectSide::left>()) + L'\n' +
+                         arrowLeft  + L' ' + formatUtcToLocalTime(symlink.getLastWriteTime<SelectSide::left >()) + L'\n' +
                          arrowRight + L' ' + formatUtcToLocalTime(symlink.getLastWriteTime<SelectSide::right>());
             });
             return descr + footer;
@@ -458,7 +458,7 @@ std::wstring fff::getSyncOpDescription(const FileSystemObject& fsObj)
             //harmonize with synchronization.cpp::FolderPairSyncer::synchronizeFileInt, ect!!
         {
             Zstring itemNameOld = fsObj.getItemName<SelectSide::right>();
-            Zstring itemNameNew = fsObj.getItemName< SelectSide::left>();
+            Zstring itemNameNew = fsObj.getItemName<SelectSide::left >();
             if (op == SO_COPY_METADATA_TO_LEFT)
                 std::swap(itemNameOld, itemNameNew);
 

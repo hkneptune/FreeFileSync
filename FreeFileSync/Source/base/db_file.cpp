@@ -577,8 +577,8 @@ private:
 
                     //create or update new "in-sync" state
                     dbFiles.insert_or_assign(file.getItemNameAny(),
-                                             InSyncFile(InSyncDescrFile(file.getLastWriteTime< SelectSide::left>(),
-                                                                        file.getFilePrint    < SelectSide::left>()),
+                                             InSyncFile(InSyncDescrFile(file.getLastWriteTime<SelectSide::left >(),
+                                                                        file.getFilePrint    <SelectSide::left >()),
                                                         InSyncDescrFile(file.getLastWriteTime<SelectSide::right>(),
                                                                         file.getFilePrint    <SelectSide::right>()),
                                                         activeCmpVar_,
@@ -587,7 +587,7 @@ private:
                 }
                 else //not in sync: preserve last synchronous state
                 {
-                    toPreserve.insert(file.getItemName< SelectSide::left>()); //left/right may differ in case!
+                    toPreserve.insert(file.getItemName<SelectSide::left >()); //left/right may differ in case!
                     toPreserve.insert(file.getItemName<SelectSide::right>()); //
                 }
             }
@@ -617,14 +617,14 @@ private:
 
                     //create or update new "in-sync" state
                     dbSymlinks.insert_or_assign(symlink.getItemNameAny(),
-                                                InSyncSymlink(InSyncDescrLink(symlink.getLastWriteTime< SelectSide::left>()),
+                                                InSyncSymlink(InSyncDescrLink(symlink.getLastWriteTime<SelectSide::left >()),
                                                               InSyncDescrLink(symlink.getLastWriteTime<SelectSide::right>()),
                                                               activeCmpVar_));
                     toPreserve.insert(symlink.getItemNameAny());
                 }
                 else //not in sync: preserve last synchronous state
                 {
-                    toPreserve.insert(symlink.getItemName< SelectSide::left>()); //left/right may differ in case!
+                    toPreserve.insert(symlink.getItemName<SelectSide::left >()); //left/right may differ in case!
                     toPreserve.insert(symlink.getItemName<SelectSide::right>()); //
                 }
             }
@@ -659,7 +659,7 @@ private:
                 }
                 else //not in sync: preserve last synchronous state
                 {
-                    toPreserve.emplace(folder.getItemName< SelectSide::left>(), &folder); //names differing in case? => treat like any other folder rename
+                    toPreserve.emplace(folder.getItemName<SelectSide::left >(), &folder); //names differing in case? => treat like any other folder rename
                     toPreserve.emplace(folder.getItemName<SelectSide::right>(), &folder); //=> no *new* database entries even if child items are in sync
                 }
             }
@@ -766,10 +766,10 @@ std::unordered_map<const BaseFolderPair*, SharedRef<const InSyncFolder>> fff::lo
 
     for (const BaseFolderPair* baseFolder : baseFolders)
         //avoid race condition with directory existence check: reading sync.ffs_db may succeed although first dir check had failed => conflicts!
-        if (baseFolder->isAvailable< SelectSide::left>() &&
-            baseFolder->isAvailable<SelectSide::right>())
+        if (baseFolder->getFolderStatus<SelectSide::left >() == BaseFolderStatus::existing &&
+            baseFolder->getFolderStatus<SelectSide::right>() == BaseFolderStatus::existing)
         {
-            dbFilePaths.insert(getDatabaseFilePath< SelectSide::left>(*baseFolder));
+            dbFilePaths.insert(getDatabaseFilePath<SelectSide::left >(*baseFolder));
             dbFilePaths.insert(getDatabaseFilePath<SelectSide::right>(*baseFolder));
         }
     //else: ignore; there's no value in reporting it other than to confuse users
@@ -805,10 +805,10 @@ std::unordered_map<const BaseFolderPair*, SharedRef<const InSyncFolder>> fff::lo
     std::unordered_map<const BaseFolderPair*, SharedRef<const InSyncFolder>> output;
 
     for (const BaseFolderPair* baseFolder : baseFolders)
-        if (baseFolder->isAvailable< SelectSide::left>() &&
-            baseFolder->isAvailable<SelectSide::right>())
+        if (baseFolder->getFolderStatus<SelectSide::left >() == BaseFolderStatus::existing &&
+            baseFolder->getFolderStatus<SelectSide::right>() == BaseFolderStatus::existing)
         {
-            const AbstractPath dbPathL = getDatabaseFilePath< SelectSide::left>(*baseFolder);
+            const AbstractPath dbPathL = getDatabaseFilePath<SelectSide::left >(*baseFolder);
             const AbstractPath dbPathR = getDatabaseFilePath<SelectSide::right>(*baseFolder);
 
             auto itL = dbStreamsByPath.find(dbPathL);
@@ -846,7 +846,7 @@ std::unordered_map<const BaseFolderPair*, SharedRef<const InSyncFolder>> fff::lo
 void fff::saveLastSynchronousState(const BaseFolderPair& baseFolder, bool transactionalCopy,
                                    PhaseCallback& callback /*throw X*/) //throw X
 {
-    const AbstractPath dbPathL = getDatabaseFilePath< SelectSide::left>(baseFolder);
+    const AbstractPath dbPathL = getDatabaseFilePath<SelectSide::left >(baseFolder);
     const AbstractPath dbPathR = getDatabaseFilePath<SelectSide::right>(baseFolder);
 
     //------------ (try to) load DB files in parallel -------------------------

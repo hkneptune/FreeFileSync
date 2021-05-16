@@ -439,11 +439,14 @@ public:
             locale_ = std::make_unique<wxLocale>(sysLng_, wxLOCALE_DONT_LOAD_DEFAULT /*we're not using wxwin.mo*/);
             assert(locale_->IsOk());
 
-            //*needed* for Linux: wxWidgets overwrites the default locale "C" with a locale matching sysLng_, e.g. "en_US.UTF-8"
-            //which may be *different* from actual user-preferred locale as set up in "Region & Language/Formats"!
-            [[maybe_unused]]const char* newLocale = std::setlocale(LC_ALL, "" /*== user-preferred locale*/);
-            assert(newLocale);
             //const char* currentLocale = std::setlocale(LC_ALL, nullptr);
+
+            //call std::setlocale()?
+            //wxWidgets overwrites the default locale "C" with a locale matching sysLng_, e.g. "en_US.UTF-8"
+            //which may be *different* from actual user-preferred locale as set up in "Region & Language/Formats"! => fix:
+            [[maybe_unused]] const char* newLocale = std::setlocale(LC_ALL, "" /*== user-preferred locale*/);
+            assert(newLocale);
+
         }
     }
 

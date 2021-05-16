@@ -25,7 +25,7 @@ namespace zen
                                 setLabelX(Graph2D::LABEL_X_BOTTOM, 20, std::make_shared<LabelFormatterTimeElapsed>()).
                                 setLabelY(Graph2D::LABEL_Y_RIGHT,  60, std::make_shared<LabelFormatterBytes>()));
     //set graph data
-    std::shared_ptr<CurveData> curveDataBytes_ = ...
+    SharedRef<CurveData> curveDataBytes_ = ...
     m_panelGraph->setCurve(curveDataBytes_, Graph2D::CurveAttributes().setLineWidth(2).setColor(wxColor(0, 192, 0)));              */
 
 struct CurvePoint
@@ -215,7 +215,7 @@ public:
         int lineWidth = fastFromDIP(2);
     };
 
-    void addCurve(const std::shared_ptr<CurveData>& data, const CurveAttributes& ca = CurveAttributes());
+    void addCurve(const SharedRef<CurveData>& data, const CurveAttributes& ca = CurveAttributes());
     void clearCurves() { curves_.clear(); }
 
     static wxColor getBorderColor() { return {130, 135, 144}; } //medium grey, the same Win7 uses for other frame borders => not accessible! but no big deal...
@@ -326,7 +326,7 @@ private:
 
     std::optional<wxBitmap> doubleBuffer_;
 
-    using CurveList = std::vector<std::pair<std::shared_ptr<CurveData>, CurveAttributes>>;
+    using CurveList = std::vector<std::pair<SharedRef<CurveData>, CurveAttributes>>;
     CurveList curves_;
 
     //perf!!! generating the font is *very* expensive! => buffer for Graph2D::render()!

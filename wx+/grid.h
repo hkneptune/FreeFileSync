@@ -12,6 +12,7 @@
 #include <optional>
 #include <set>
 #include <vector>
+#include <zen/stl_tools.h>
 //#include <zen/basic_math.h>
 #include <wx/scrolwin.h>
 
@@ -366,18 +367,9 @@ private:
 template <class ColAttrReal>
 std::vector<ColAttrReal> makeConsistent(const std::vector<ColAttrReal>& attribs, const std::vector<ColAttrReal>& defaults)
 {
-    using ColTypeReal = decltype(ColAttrReal().type);
-    std::vector<ColAttrReal> output;
-
-    std::set<ColTypeReal> usedTypes; //remove duplicates
-    auto appendUnique = [&](const std::vector<ColAttrReal>& attr)
-    {
-        std::copy_if(attr.begin(), attr.end(), std::back_inserter(output),
-        [&](const ColAttrReal& a) { return usedTypes.insert(a.type).second; });
-    };
-    appendUnique(attribs);
-    appendUnique(defaults); //make sure each type is existing!
-
+    std::vector<ColAttrReal> output = attribs;
+    append(output, defaults); //make sure each type is existing!
+    removeDuplicatesStable(output, [](const ColAttrReal& lhs, const ColAttrReal& rhs) { return lhs.type < rhs.type; });
     return output;
 }
 

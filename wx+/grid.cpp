@@ -1641,6 +1641,12 @@ void Grid::updateWindowSizes(bool updateScrollbar)
 
 wxSize Grid::GetSizeAvailableForScrollTarget(const wxSize& size)
 {
+        //1. "size == GetSize() == (0, 0)" happens temporarily during initialization
+        //2. often it's even (0, 20)
+        //3. fuck knows why, but we *temporarily* get "size == GetSize() == (1, 1)" when wxAUI panel containing Grid is dropped
+    if (size.x <= 1 || size.y <= 1) 
+        return {}; //probably best considering calling code in generic/scrlwing.cpp: wxScrollHelper::AdjustScrollbars()
+
     //1. calculate row label width independent from scrollbars
     const int mainWinHeightGross = std::max(0, size.GetHeight() - getColumnLabelHeight()); //independent from client sizes and scrollbars!
     const ptrdiff_t logicalHeight = rowLabelWin_->getLogicalHeight();                      //

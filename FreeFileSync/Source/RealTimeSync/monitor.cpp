@@ -26,10 +26,10 @@ std::set<Zstring, LessNativePath> waitForMissingDirs(const std::vector<Zstring>&
                                                      const std::function<void(const Zstring& folderPath)>& requestUiUpdate, std::chrono::milliseconds cbInterval)
 {
     //early failure! check for unsupported folder paths:
-    for (const std::string& protoName : {"ftp", "sftp", "mtp", "gdrive"})
+    for (const char* protoName : {"ftp", "sftp", "mtp", "gdrive"})
         for (const Zstring& phrase : folderPathPhrases)
             //hopefully clear enough now: https://freefilesync.org/forum/viewtopic.php?t=4302
-            if (startsWithAsciiNoCase(trimCpy(phrase), protoName + ':'))
+            if (startsWithAsciiNoCase(trimCpy(phrase), std::string(protoName) + ':'))
                 throw FileError(replaceCpy(_("The %x protocol does not support directory monitoring:"), L"%x", utfTo<std::wstring>(protoName)) + L"\n\n" + fmtPath(phrase));
 
     for (;;)

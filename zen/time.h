@@ -152,20 +152,116 @@ TimeComp getLocalTime(time_t utc)
 constexpr auto fileTimeTimetOffset = 11'644'473'600;
 
 
-warn_static("remove after test")
 #if 0
+warn_static("remove after test")
 inline
 TimeComp getUtcTime2(time_t utc)
 {
-    utc += year100UnixOffset; //first century not divisible by 400
+    //1. convert: seconds since year 1:
+    //...
 
-    long long remSecs = year100UnixOffset % (24 * 3600);
-    long long remDays = year100UnixOffset / (24 * 3600);
+    //TODO: what if < 0?
+    long long remDays = utc / (24 * 3600);
+    long long remSecs = utc % (24 * 3600);
 
-    constexpr int daysPer400Years = 400 * 365 /*usual days per year*/ + 100 /*leap days */ - 3 /*no leap days for centuries not divisible by 400 */;
+    const int daysPer4Years = 4 * 365 /*usual days per year*/ + 1 /*including leap day*/;
+    const int daysPerYear = 365; //non-leap
+    const int daysPer100Years = 25 * daysPer4Years - 1;
+    const int daysPer400Years = 100 * daysPer4Years - 3 /*no leap days for centuries, except if divisible by 400 */;
 
-    int year = 100 + (remDays / daysPer400Years) * 400;
-    remDays %= 400;
+    const lldiv_t cycles400 = std::lldiv(remDays, daysPer400Years);
+    remDays = cycles400.rem;
+
+
+    int cycles100 = (remDays / daysPer100Years);
+    if (cycles100 == 4)
+        --cycles100;
+
+    remDays -= cycles100 * daysPer100Years;
+
+
+    int cycles4 = (remDays / daysPer4Years);
+    if (cycles4 == 25)
+        --cycles4;
+
+    remDays -= cycles4 * daysPer4Years;
+
+
+    int cycles1 = remDays / daysPerYear;
+    if (cycles1 == 4)
+        --cycles1;
+
+    remDays -= cycles1 * daysPerYears;
+
+    const int year = 1 + cycles400.quot * 400 + cycles100 * 100; + cycles4 * 4 + cycles1;;
+
+
+
+
+
+    //first four years of century:
+    if (skipCenturyLeapDay)
+    {
+        if (remDays < 4 * daysPerYear)
+        {
+            year += remDays / daysPerYear;
+            remDays %= daysPerYear;
+        }
+        else
+        {
+            remDays -= 4 * daysPerYear;
+            year += 4;
+            => go to if block;
+        }
+    }
+    else
+    {
+        year += (remDays / daysPer4Years) * 4;
+        remDays %= daysPer4Years;
+
+        if (remDays < daysPerYear + 1 /*including leap day*/)
+            isLeapYear = true;
+        else
+        {
+            remDays -= daysPerYear + 1;
+            ++year;
+
+            year += remDays / daysPerYear;
+            remDays %= daysPerYear;
+        }
+    }
+
+
+
+
+
+
+
+
+    const int daysPer100Years = 25 * (4 * 365 /*usual days per year*/ +  1)/*leap days */;
+
+
+    const int daysPer100Years = 100 * 365 /*usual days per year*/ +  25 /*leap days */;
+    const int daysPer200Years = 200 * 365 /*usual days per year*/ +  50 /*leap days */ - 1 /*no leap days for centuries, except if divisible by 400 */;
+    const int daysPer300Years = 300 * 365 /*usual days per year*/ +  75 /*leap days */ - 2 /*no leap days for centuries, except if divisible by 400 */;
+
+    if (remDays >= daysPer300Years)
+    {
+        year += 300;
+        remDays -= daysPer300Years;
+    }
+    else if (remDays >= daysPer200Years)
+    {
+        year += 200;
+        remDays -= daysPer200Years;
+    }
+    else if (remDays >= daysPer100Years)
+    {
+        year += 100;
+        remDays -= daysPer100Years;
+    }
+
+
 
     constexpr int daysPer100Years = 100 * 365 /*usual days per year*/ + 25 /*leap days */ - 1 /*no leap days for centuries not divisible by 400 */;
 
@@ -188,6 +284,8 @@ TimeComp getUtcTime2(time_t utc)
 
 
 }
+
+warn_static("get rid of fileTimeTimetOffset!")
 #endif
 
 

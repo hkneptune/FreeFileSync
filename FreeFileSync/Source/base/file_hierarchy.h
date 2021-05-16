@@ -184,10 +184,10 @@ private:
     virtual Zstring getRelativePathR() const = 0; //
 };
 
-template <> inline AbstractPath PathInformation::getAbstractPath< SelectSide::left>() const { return getAbstractPathL(); }
+template <> inline AbstractPath PathInformation::getAbstractPath<SelectSide::left >() const { return getAbstractPathL(); }
 template <> inline AbstractPath PathInformation::getAbstractPath<SelectSide::right>() const { return getAbstractPathR(); }
 
-template <> inline Zstring PathInformation::getRelativePath< SelectSide::left>() const { return getRelativePathL(); }
+template <> inline Zstring PathInformation::getRelativePath<SelectSide::left >() const { return getRelativePathL(); }
 template <> inline Zstring PathInformation::getRelativePath<SelectSide::right>() const { return getRelativePathR(); }
 
 //------------------------------------------------------------------
@@ -279,28 +279,35 @@ private:
 
 //------------------------------------------------------------------
 
+enum class BaseFolderStatus
+{
+    existing,
+    notExisting,
+    failure,
+};
+
 class BaseFolderPair : public ContainerObject //synchronization base directory
 {
 public:
     BaseFolderPair(const AbstractPath& folderPathLeft,
-                   bool folderAvailableLeft,
+                   BaseFolderStatus folderStatusLeft,
                    const AbstractPath& folderPathRight,
-                   bool folderAvailableRight,
+                   BaseFolderStatus folderStatusRight,
                    const FilterRef& filter,
                    CompareVariant cmpVar,
                    int fileTimeTolerance,
                    const std::vector<unsigned int>& ignoreTimeShiftMinutes) :
         ContainerObject(*this), //trust that ContainerObject knows that *this is not yet fully constructed!
         filter_(filter), cmpVar_(cmpVar), fileTimeTolerance_(fileTimeTolerance), ignoreTimeShiftMinutes_(ignoreTimeShiftMinutes),
-        folderAvailableLeft_ (folderAvailableLeft),
-        folderAvailableRight_(folderAvailableRight),
+        folderStatusLeft_ (folderStatusLeft),
+        folderStatusRight_(folderStatusRight),
         folderPathLeft_(folderPathLeft),
         folderPathRight_(folderPathRight) {}
 
     static void removeEmpty(BaseFolderPair& baseFolder) { baseFolder.removeEmptyRec(); } //physically remove all invalid entries (where both sides are empty) recursively
 
-    template <SelectSide side> bool isAvailable() const; //base folder status at the time of comparison!
-    template <SelectSide side> void setAvailable(bool value); //update after creating the directory in FFS
+    template <SelectSide side> BaseFolderStatus getFolderStatus() const; //base folder status at the time of comparison!
+    template <SelectSide side> void setFolderStatus(BaseFolderStatus value); //update after creating the directory in FFS
 
     //get settings which were used while creating BaseFolderPair
     const PathFilter&   getFilter() const { return filter_.ref(); }
@@ -319,8 +326,8 @@ private:
     const int fileTimeTolerance_;
     const std::vector<unsigned int> ignoreTimeShiftMinutes_;
 
-    bool folderAvailableLeft_;
-    bool folderAvailableRight_;
+    BaseFolderStatus folderStatusLeft_;
+    BaseFolderStatus folderStatusRight_;
 
     AbstractPath folderPathLeft_;
     AbstractPath folderPathRight_;
@@ -473,7 +480,7 @@ private:
     FileSystemObject           (const FileSystemObject&) = delete;
     FileSystemObject& operator=(const FileSystemObject&) = delete;
 
-    AbstractPath getAbstractPathL() const override { return AFS::appendRelPath(base().getAbstractPath< SelectSide::left>(), getRelativePath< SelectSide::left>()); }
+    AbstractPath getAbstractPathL() const override { return AFS::appendRelPath(base().getAbstractPath<SelectSide::left >(), getRelativePath<SelectSide::left >()); }
     AbstractPath getAbstractPathR() const override { return AFS::appendRelPath(base().getAbstractPath<SelectSide::right>(), getRelativePath<SelectSide::right>()); }
 
     virtual void removeObjectL() = 0;
@@ -588,7 +595,7 @@ public:
                      bool isSymlinkSrc);
 
 private:
-    Zstring getRelativePathL() const override { return nativeAppendPaths(parent().getRelativePath< SelectSide::left>(), getItemName< SelectSide::left>()); }
+    Zstring getRelativePathL() const override { return nativeAppendPaths(parent().getRelativePath<SelectSide::left >(), getItemName<SelectSide::left >()); }
     Zstring getRelativePathR() const override { return nativeAppendPaths(parent().getRelativePath<SelectSide::right>(), getItemName<SelectSide::right>()); }
 
     SyncOperation applyMoveOptimization(SyncOperation op) const;
@@ -632,7 +639,7 @@ public:
                      int64_t lastWriteTimeSrc);
 
 private:
-    Zstring getRelativePathL() const override { return nativeAppendPaths(parent().getRelativePath< SelectSide::left>(), getItemName< SelectSide::left>()); }
+    Zstring getRelativePathL() const override { return nativeAppendPaths(parent().getRelativePath<SelectSide::left >(), getItemName<SelectSide::left >()); }
     Zstring getRelativePathR() const override { return nativeAppendPaths(parent().getRelativePath<SelectSide::right>(), getItemName<SelectSide::right>()); }
 
     void flip()          override;
@@ -781,7 +788,8 @@ bool FileSystemObject::isPairEmpty() const
 template <SelectSide side> inline
 Zstring FileSystemObject::getItemName() const
 {
-    //assert(!itemNameL_.empty() || !itemNameR_.empty()); -> file pair might be empty (until removed after sync)
+    assert(!itemNameL_.empty() || !itemNameR_.empty()); //-> file pair might be empty (until removed after sync)
+    //=> okay, but where does this trigger!? calling this function in this case is a bug!
 
     const Zstring& itemName = SelectParam<side>::ref(itemNameL_, itemNameR_); //empty if not existing
     if (!itemName.empty()) //avoid ternary-WTF! (implicit copy-constructor call!!!!!!)
@@ -836,7 +844,7 @@ void FileSystemObject::setSynced(const Zstring& itemName)
     cmpResult_ = FILE_EQUAL;
     setSyncDir(SyncDirection::none);
 
-    propagateChangedItemName< SelectSide::left>(itemNameOldL);
+    propagateChangedItemName<SelectSide::left >(itemNameOldL);
     propagateChangedItemName<SelectSide::right>(itemNameOldR);
 }
 
@@ -927,7 +935,7 @@ ContainerObject::ContainerObject(const FileSystemObject& fsAlias) :
     relPathR_(
         fsAlias.parent().relPathL_.c_str() ==        //
         fsAlias.parent().relPathR_.c_str() &&        //take advantage of FileSystemObject's Zstring reuse:
-        fsAlias.getItemName< SelectSide::left>().c_str() == //=> perf: 12% faster merge phase; -4% peak memory
+        fsAlias.getItemName<SelectSide::left >().c_str() == //=> perf: 12% faster merge phase; -4% peak memory
         fsAlias.getItemName<SelectSide::right>().c_str() ?  //
         relPathL_ : //ternary-WTF! (implicit copy-constructor call!!) => no big deal for a Zstring
         nativeAppendPaths(fsAlias.parent().relPathR_, fsAlias.getItemName<SelectSide::right>())),
@@ -1039,8 +1047,8 @@ inline
 void BaseFolderPair::flip()
 {
     ContainerObject::flip();
-    std::swap(folderAvailableLeft_, folderAvailableRight_);
-    std::swap(folderPathLeft_,      folderPathRight_);
+    std::swap(folderStatusLeft_, folderStatusRight_);
+    std::swap(folderPathLeft_,   folderPathRight_);
 }
 
 
@@ -1082,16 +1090,16 @@ void FolderPair::removeObjectR()
 
 
 template <SelectSide side> inline
-bool BaseFolderPair::isAvailable() const
+BaseFolderStatus BaseFolderPair::getFolderStatus() const
 {
-    return SelectParam<side>::ref(folderAvailableLeft_, folderAvailableRight_);
+    return SelectParam<side>::ref(folderStatusLeft_, folderStatusRight_);
 }
 
 
 template <SelectSide side> inline
-void BaseFolderPair::setAvailable(bool value)
+void BaseFolderPair::setFolderStatus(BaseFolderStatus value)
 {
-    SelectParam<side>::ref(folderAvailableLeft_, folderAvailableRight_) = value;
+    SelectParam<side>::ref(folderStatusLeft_, folderStatusRight_) = value;
 }
 
 

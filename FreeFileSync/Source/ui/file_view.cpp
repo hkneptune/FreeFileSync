@@ -62,7 +62,7 @@ FileView::FileView(FolderComparison& folderCmp)
         serializeHierarchy(baseObj, sortedRef_);
 
         folderPairs_.emplace_back(&baseObj,
-                                  baseObj.getAbstractPath< SelectSide::left>(),
+                                  baseObj.getAbstractPath<SelectSide::left >(),
                                   baseObj.getAbstractPath<SelectSide::right>());
     });
 }

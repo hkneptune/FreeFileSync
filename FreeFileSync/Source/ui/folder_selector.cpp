@@ -128,11 +128,11 @@ void FolderSelector::onMouseWheel(wxMouseEvent& event)
 
     //redirect to parent scrolled window!
     for (wxWindow* wnd = folderComboBox_.GetParent(); wnd; wnd = wnd->GetParent())
-        if (dynamic_cast<wxScrolledWindow*>(wnd) != nullptr)
+        if (dynamic_cast<wxScrolledWindow*>(wnd))
             if (wxEvtHandler* evtHandler = wnd->GetEventHandler())
                 return evtHandler->AddPendingEvent(event);
-    assert(false);
-    event.Skip();
+    assert(false); //get here when attempting to scroll first folder pair (which is not inside a wxScrolledWindow)
+    //event.Skip();
 }
 
 

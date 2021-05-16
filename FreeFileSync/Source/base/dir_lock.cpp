@@ -168,7 +168,7 @@ LockInformation getLockInfoFromCurrentProcess() //throw FileError
 {
     LockInformation lockInfo = {};
     lockInfo.lockId = generateGUID();
-    lockInfo.userId = utfTo<std::string>(getUserName()); //throw FileError
+    lockInfo.userId = utfTo<std::string>(getLoginUser()); //throw FileError
 
     const std::string osName = "Linux";
 

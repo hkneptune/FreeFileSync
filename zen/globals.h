@@ -211,10 +211,6 @@ void registerGlobalForDestruction(CleanUpEntry& entry)
 }
 
 //------------------------------------------------------------------------------------------
-    #ifdef __cpp_lib_atomic_wait
-        #error implement + rewiew improvements
-    #endif
-
 
 inline
 bool PodSpinMutex::tryLock()
@@ -227,11 +223,7 @@ inline
 void PodSpinMutex::lock()
 {
     while (!tryLock())
-#ifdef __cpp_lib_atomic_wait
         flag_.wait(true, std::memory_order_relaxed);
-#else
-        ;
-#endif
 }
 
 
@@ -239,9 +231,7 @@ inline
 void PodSpinMutex::unlock()
 {
     flag_.clear(std::memory_order_release);
-#ifdef __cpp_lib_atomic_wait
     flag_.notify_one();
-#endif
 }
 
 

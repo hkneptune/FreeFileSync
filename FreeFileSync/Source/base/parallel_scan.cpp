@@ -409,12 +409,11 @@ DirCallback::HandleError DirCallback::reportError(const ErrorInfo& errorInfo, co
 }
 
 
-void fff::parallelDeviceTraversal(const std::set<DirectoryKey>& foldersToRead,
-                                  std::map<DirectoryKey, DirectoryValue>& output,
-                                  const TravErrorCb& onError, const TravStatusCb& onStatusUpdate,
-                                  std::chrono::milliseconds cbInterval)
+std::map<DirectoryKey, DirectoryValue> fff::parallelDeviceTraversal(const std::set<DirectoryKey>& foldersToRead,
+                                                                    const TravErrorCb& onError, const TravStatusCb& onStatusUpdate,
+                                                                    std::chrono::milliseconds cbInterval)
 {
-    output.clear();
+    std::map<DirectoryKey, DirectoryValue> output;
 
     //aggregate folder paths that are on the same root device:
     // => one worker thread *per device*: avoid excessive parallelism
@@ -463,6 +462,7 @@ void fff::parallelDeviceTraversal(const std::set<DirectoryKey>& foldersToRead,
             AFS::traverseFolderRecursive(afsDevice, travWorkload, parallelOps); //throw ThreadStopRequest
         });
     }
-
     acb.waitUntilDone(cbInterval, onError, onStatusUpdate); //throw X
+
+    return output;
 }

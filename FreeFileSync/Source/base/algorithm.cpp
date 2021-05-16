@@ -366,7 +366,7 @@ private:
     {
         recurse(baseFolder, &dbFolder, &dbFolder);
 
-        purgeDuplicates< SelectSide::left>(filesL_,  exLeftOnlyById_);
+        purgeDuplicates<SelectSide::left >(filesL_,  exLeftOnlyById_);
         purgeDuplicates<SelectSide::right>(filesR_, exRightOnlyById_);
 
         if ((!exLeftOnlyById_ .empty() || !exLeftOnlyByPath_ .empty()) &&
@@ -378,7 +378,7 @@ private:
     {
         for (FilePair& file : hierObj.refSubFiles())
         {
-            const AFS::FingerPrint filePrintL = file.getFilePrint< SelectSide::left>();
+            const AFS::FingerPrint filePrintL = file.getFilePrint<SelectSide::left >();
             const AFS::FingerPrint filePrintR = file.getFilePrint<SelectSide::right>();
 
             if (filePrintL != 0) filesL_.push_back(&file); //collect *all* prints for uniqueness check!
@@ -419,7 +419,7 @@ private:
             const InSyncFolder* dbEntryL = getDbEntry(dbFolderL, folder.getItemName<SelectSide::left>());
             const InSyncFolder* dbEntryR = dbEntryL;
             if (dbFolderL != dbFolderR ||
-                getUnicodeNormalForm(folder.getItemName< SelectSide::left>()) !=
+                getUnicodeNormalForm(folder.getItemName<SelectSide::left >()) !=
                 getUnicodeNormalForm(folder.getItemName<SelectSide::right>()))
                 dbEntryR = getDbEntry(dbFolderR, folder.getItemName<SelectSide::right>());
 
@@ -627,7 +627,7 @@ private:
             dbEntryR = getDbEntry(dbFolderR, file.getItemName<SelectSide::right>());
 
         //evaluation
-        const bool changeOnLeft  = !matchesDbEntry< SelectSide::left>(file, dbEntryL, ignoreTimeShiftMinutes_);
+        const bool changeOnLeft  = !matchesDbEntry<SelectSide::left >(file, dbEntryL, ignoreTimeShiftMinutes_);
         const bool changeOnRight = !matchesDbEntry<SelectSide::right>(file, dbEntryR, ignoreTimeShiftMinutes_);
 
         if (changeOnLeft != changeOnRight)
@@ -671,7 +671,7 @@ private:
             dbEntryR = getDbEntry(dbFolderR, symlink.getItemName<SelectSide::right>());
 
         //evaluation
-        const bool changeOnLeft  = !matchesDbEntry< SelectSide::left>(symlink, dbEntryL, ignoreTimeShiftMinutes_);
+        const bool changeOnLeft  = !matchesDbEntry<SelectSide::left >(symlink, dbEntryL, ignoreTimeShiftMinutes_);
         const bool changeOnRight = !matchesDbEntry<SelectSide::right>(symlink, dbEntryR, ignoreTimeShiftMinutes_);
 
         if (changeOnLeft != changeOnRight)
@@ -722,7 +722,7 @@ private:
         if (cat != DIR_EQUAL)
         {
             //evaluation
-            const bool changeOnLeft  = !matchesDbEntry< SelectSide::left>(folder, dbEntryL);
+            const bool changeOnLeft  = !matchesDbEntry<SelectSide::left >(folder, dbEntryL);
             const bool changeOnRight = !matchesDbEntry<SelectSide::right>(folder, dbEntryR);
 
             if (changeOnLeft != changeOnRight)
@@ -813,7 +813,7 @@ void fff::redetermineSyncDirection(const std::vector<std::pair<BaseFolderPair*, 
                     {
                         std::wstring msg = _("Setting directions for first synchronization: Old files will be overwritten with newer files.");
                         if (directCfgs.size() > 1)
-                            msg += L'\n' + AFS::getDisplayPath(baseFolder->getAbstractPath< SelectSide::left>()) + L' ' + getVariantNameWithSymbol(dirCfg.var) + L' ' +
+                            msg += L'\n' + AFS::getDisplayPath(baseFolder->getAbstractPath<SelectSide::left >()) + L' ' + getVariantNameWithSymbol(dirCfg.var) + L' ' +
                                           AFS::getDisplayPath(baseFolder->getAbstractPath<SelectSide::right>());
 
                         try { callback.logInfo(msg); /*throw X*/} catch (...) {};
@@ -1417,7 +1417,7 @@ void fff::copyToAlternateFolder(std::span<const FileSystemObject* const> rowsToC
 {
     std::vector<const FileSystemObject*> itemSelectionLeft (rowsToCopyOnLeft .begin(), rowsToCopyOnLeft .end());
     std::vector<const FileSystemObject*> itemSelectionRight(rowsToCopyOnRight.begin(), rowsToCopyOnRight.end());
-    std::erase_if(itemSelectionLeft,  [](const FileSystemObject* fsObj) { return fsObj->isEmpty< SelectSide::left>(); }); //needed for correct stats!
+    std::erase_if(itemSelectionLeft,  [](const FileSystemObject* fsObj) { return fsObj->isEmpty<SelectSide::left >(); }); //needed for correct stats!
     std::erase_if(itemSelectionRight, [](const FileSystemObject* fsObj) { return fsObj->isEmpty<SelectSide::right>(); }); //
 
     const int itemTotal = static_cast<int>(itemSelectionLeft.size() + itemSelectionRight.size());
@@ -1437,7 +1437,7 @@ void fff::copyToAlternateFolder(std::span<const FileSystemObject* const> rowsToC
 
     const AbstractPath targetFolderPath = createAbstractPath(targetFolderPathPhrase);
 
-    copyToAlternateFolderFrom< SelectSide::left>(itemSelectionLeft,  targetFolderPath, keepRelPaths, overwriteIfExists, callback);
+    copyToAlternateFolderFrom<SelectSide::left >(itemSelectionLeft,  targetFolderPath, keepRelPaths, overwriteIfExists, callback);
     copyToAlternateFolderFrom<SelectSide::right>(itemSelectionRight, targetFolderPath, keepRelPaths, overwriteIfExists, callback);
 }
 
@@ -1595,7 +1595,7 @@ void fff::deleteFromGridAndHD(const std::vector<FileSystemObject*>& rowsToDelete
     std::vector<FileSystemObject*> deleteLeft  = rowsToDeleteOnLeft;
     std::vector<FileSystemObject*> deleteRight = rowsToDeleteOnRight;
 
-    std::erase_if(deleteLeft,  [](const FileSystemObject* fsObj) { return fsObj->isEmpty< SelectSide::left>(); }); //needed?
+    std::erase_if(deleteLeft,  [](const FileSystemObject* fsObj) { return fsObj->isEmpty<SelectSide::left >(); }); //needed?
     std::erase_if(deleteRight, [](const FileSystemObject* fsObj) { return fsObj->isEmpty<SelectSide::right>(); }); //yes, for correct stats:
 
     const int itemCount = static_cast<int>(deleteLeft.size() + deleteRight.size());
@@ -1650,7 +1650,7 @@ void fff::deleteFromGridAndHD(const std::vector<FileSystemObject*>& rowsToDelete
     std::vector<FileSystemObject*> deleteRecylerRight;
 
     std::map<AbstractPath, bool> recyclerSupported;
-    categorize< SelectSide::left>(deleteLeft,  deletePermanentLeft,  deleteRecylerLeft,  useRecycleBin, recyclerSupported, callback); //throw X
+    categorize<SelectSide::left >(deleteLeft,  deletePermanentLeft,  deleteRecylerLeft,  useRecycleBin, recyclerSupported, callback); //throw X
     categorize<SelectSide::right>(deleteRight, deletePermanentRight, deleteRecylerRight, useRecycleBin, recyclerSupported, callback); //
 
     //windows: check if recycle bin really exists; if not, Windows will silently delete, which is wrong

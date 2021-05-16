@@ -24,7 +24,7 @@
 using namespace zen;
 
 
-Zstring zen::getUserName() //throw FileError
+Zstring zen::getLoginUser() //throw FileError
 {
     const uid_t userIdNo = ::getuid(); //never fails
 
@@ -66,7 +66,8 @@ Zstring zen::getUserName() //throw FileError
     if (const char* userName = tryGetNonRootUser("SUDO_USER")) return userName;
     if (const char* userName = tryGetNonRootUser("LOGNAME"))   return userName;
 
-    throw FileError(_("Cannot get process information."), L"Failed to determine non-root user name"); //should not happen?
+    //apparently the current user really IS root: https://freefilesync.org/forum/viewtopic.php?t=8405
+    return "root";
 
 }
 
@@ -152,6 +153,19 @@ Zstring zen::getRealProcessPath() //throw FileError
 }
 
 
+namespace
+{
+Zstring getUserDir() //throw FileError
+{
+    const Zstring loginUser = getLoginUser(); //throw FileError
+    if (loginUser == "root")
+        return "/root";
+    else
+        return "/home/" + loginUser;
+}
+}
+
+
 Zstring zen::getUserDataPath() //throw FileError
 {
     if (::getuid() != 0) //nofail; root(0) => consider as request for elevation, NOT impersonation
@@ -159,7 +173,7 @@ Zstring zen::getUserDataPath() //throw FileError
             xdgCfgPath && xdgCfgPath[0] != 0)
             return xdgCfgPath;
 
-    return "/home/" + getUserName() + "/.config"; //throw FileError
+    return getUserDir() + "/.config"; //throw FileError
 }
 
 
@@ -167,18 +181,17 @@ Zstring zen::getUserDownloadsPath() //throw FileError
 {
     try
     {
-        const Zstring cmdLine = ::getuid() == 0 ? //nofail; root(0) => consider as request for elevation, NOT impersonation
-                                //sudo better be installed :>
-                                "sudo -u " + getUserName() + " xdg-user-dir DOWNLOAD" : //throw FileError
-                                "xdg-user-dir DOWNLOAD";
+        if (::getuid() != 0) //nofail; root(0) => consider as request for elevation, NOT impersonation
+            if (const auto& [exitCode, output] = consoleExecute("xdg-user-dir DOWNLOAD", std::nullopt /*timeoutMs*/); //throw SysError
+                exitCode == 0)
+            {
+                const Zstring& downloadsPath = trimCpy(output);
+                ASSERT_SYSERROR(!downloadsPath.empty());
+                return downloadsPath;
+            }
 
-        const auto& [exitCode, output] = consoleExecute(cmdLine, std::nullopt /*timeoutMs*/); //throw SysError
-        if (exitCode != 0) //fallback: probably correct 99.9% of the time anyway...
-            return "/home/" + getUserName() + "/Downloads"; //throw FileError
-
-        const Zstring& downloadsPath = trimCpy(output);
-        ASSERT_SYSERROR(!downloadsPath.empty());
-        return downloadsPath;
+        //fallback: probably correct 99.9% of the time anyway...
+        return getUserDir() + "/Downloads"; //throw FileError
     }
     catch (const SysError& e) { throw FileError(_("Cannot get process information."), e.toString()); }
 }

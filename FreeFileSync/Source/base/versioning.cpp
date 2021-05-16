@@ -442,8 +442,6 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
     }
 
     //--------- traverse all versioning folders ---------
-    std::map<DirectoryKey, DirectoryValue> folderBuf;
-
     const std::wstring textScanning = _("Searching for old file versions:") + L' ';
 
     auto onStatusUpdate = [&](const std::wstring& statusLine, int itemsTotal)
@@ -451,7 +449,7 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
         callback.updateStatus(textScanning + statusLine); //throw X
     };
 
-    parallelDeviceTraversal(foldersToRead, folderBuf,
+    const std::map<DirectoryKey, DirectoryValue> folderBuf = parallelDeviceTraversal(foldersToRead,
     [&](const PhaseCallback::ErrorInfo& errorInfo) { return callback.reportError(errorInfo); }, //throw X
     onStatusUpdate, //throw X
     UI_UPDATE_INTERVAL / 2); //every ~50 ms

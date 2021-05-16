@@ -433,7 +433,7 @@ std::optional<SelectSide> getTargetDirection(SyncOperation syncOp)
 bool significantDifferenceDetected(const SyncStatistics& folderPairStat)
 {
     //initial file copying shall not be detected as major difference
-    if ((folderPairStat.createCount< SelectSide::left>() == 0 ||
+    if ((folderPairStat.createCount<SelectSide::left >() == 0 ||
          folderPairStat.createCount<SelectSide::right>() == 0) &&
         folderPairStat.updateCount  () == 0 &&
         folderPairStat.deleteCount  () == 0 &&
@@ -1020,7 +1020,7 @@ private:
     const std::wstring txtVerifyingFile_     {_("Verifying file %x"        )};
     const std::wstring txtUpdatingAttributes_{_("Updating attributes of %x")};
     const std::wstring txtMovingFileXtoY_    {_("Moving file %x to %y"     )};
-    const std::wstring txtSourceItemNotFound_{_("Source item %x not found" )};
+    const std::wstring txtSourceItemNotExist_{_("Source item %x not found" )};
 };
 
 //===================================================================================================
@@ -1542,10 +1542,11 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
                 //do not check on type (symlink, file, folder) -> if there is a type change, FFS should not be quiet about it!
                 if (!sourceExists)
                 {
+                    logInfo(txtSourceItemNotExist_, AFS::getDisplayPath(file.getAbstractPath<sideSrc>())); //throw ThreadStopRequest
+
                     statReporter.reportDelta(1, 0); //even if the source item does not exist anymore, significant I/O work was done => report
                     file.removeObject<sideSrc>(); //source deleted meanwhile...nothing was done (logical point of view!)
-
-                    logInfo(txtSourceItemNotFound_, AFS::getDisplayPath(file.getAbstractPath<sideSrc>())); //throw ThreadStopRequest
+                    //remove only *after* evaluating "file, sideSrc"!
                 }
                 else
                     throw;
@@ -1773,11 +1774,11 @@ void FolderPairSyncer::synchronizeLinkInt(SymlinkPair& symlink, SyncOperation sy
                 //do not check on type (symlink, file, folder) -> if there is a type change, FFS should not be quiet about it!
                 if (!sourceExists)
                 {
+                    logInfo(txtSourceItemNotExist_, AFS::getDisplayPath(symlink.getAbstractPath<sideSrc>())); //throw ThreadStopRequest
+
                     //even if the source item does not exist anymore, significant I/O work was done => report
                     statReporter.reportDelta(1, 0);
                     symlink.removeObject<sideSrc>(); //source deleted meanwhile...nothing was done (logical point of view!)
-
-                    logInfo(txtSourceItemNotFound_, AFS::getDisplayPath(symlink.getAbstractPath<sideSrc>())); //throw ThreadStopRequest
                 }
                 else
                     throw;
@@ -1927,6 +1928,8 @@ void FolderPairSyncer::synchronizeFolderInt(FolderPair& folder, SyncOperation sy
             }
             else //source deleted meanwhile...
             {
+                logInfo(txtSourceItemNotExist_, AFS::getDisplayPath(folder.getAbstractPath<sideSrc>())); //throw ThreadStopRequest
+
                 //attention when fixing statistics due to missing folder: child items may be scheduled for move, so deletion will have move-references flip back to copy + delete!
                 const SyncStatistics statsBefore(folder.base()); //=> don't bother considering individual move operations, just calculate over the whole tree
                 folder.refSubFiles  ().clear(); //
@@ -1937,8 +1940,6 @@ void FolderPairSyncer::synchronizeFolderInt(FolderPair& folder, SyncOperation sy
 
                 acb_.updateDataProcessed(1, 0); //even if the source item does not exist anymore, significant I/O work was done => report
                 acb_.updateDataTotal(getCUD(statsAfter) - getCUD(statsBefore) + 1, statsAfter.getBytesToProcess() - statsBefore.getBytesToProcess()); //noexcept
-
-                logInfo(txtSourceItemNotFound_, AFS::getDisplayPath(folder.getAbstractPath<sideSrc>())); //throw ThreadStopRequest
             }
         }
         break;
@@ -2055,95 +2056,107 @@ AFS::FileCopyResult FolderPairSyncer::copyFileWithCallback(const FileDescriptor&
 //###########################################################################################
 
 template <SelectSide side>
-bool baseFolderDrop(BaseFolderPair& baseFolder, PhaseCallback& callback)
+bool checkBaseFolderStatus(BaseFolderPair& baseFolder, PhaseCallback& callback /*throw X*/)
 {
     const AbstractPath folderPath = baseFolder.getAbstractPath<side>();
 
-    if (baseFolder.isAvailable<side>())
+    if (baseFolder.getFolderStatus<side>() == BaseFolderStatus::failure)
     {
-        const std::wstring errMsg = tryReportingError([&]
-        {
-            const FolderStatus status = getFolderStatusNonBlocking({folderPath},
-            false /*allowUserInteraction*/, callback);
-
-            static_assert(std::is_same_v<decltype(status.failedChecks.begin()->second), FileError>);
-            if (!status.failedChecks.empty())
-                throw status.failedChecks.begin()->second;
-
-            if (!status.existing.contains(folderPath))
-                throw FileError(replaceCpy(_("Cannot find folder %x."), L"%x", fmtPath(AFS::getDisplayPath(folderPath))));
-            //should really be logged as a "fatal error" if ignored by the user...
-        }, callback); //throw X
-        if (!errMsg.empty())
-            return true;
+        //e.g. TEMPORARY network drop! base directory not found during comparison
+        //=> sync-directions are based on false assumptions! Abort.
+        callback.reportFatalError(replaceCpy(_("Skipping folder pair because %x could not be accessed during comparison."),
+                                             L"%x", fmtPath(AFS::getDisplayPath(folderPath)))); //throw X
+        return false;
     }
 
-    return false;
-}
+    bool folderExisting = false;
 
-
-template <SelectSide side> //create base directories first (if not yet existing) -> no symlink or attribute copying!
-bool createBaseFolder(BaseFolderPair& baseFolder, bool copyFilePermissions, PhaseCallback& callback) //return false if fatal error occurred
-{
-    static const SelectSide sideSrc = OtherSide<side>::value;
-    const AbstractPath baseFolderPath = baseFolder.getAbstractPath<side>();
-
-    if (AFS::isNullPath(baseFolderPath))
-        return true;
-
-    if (!baseFolder.isAvailable<side>()) //create target directory: user presumably ignored error "dir existing" in order to have it created automatically
+    const std::wstring errMsg = tryReportingError([&]
     {
-        bool temporaryNetworkDrop = false;
-        const std::wstring errMsg = tryReportingError([&]
-        {
-            const FolderStatus status = getFolderStatusNonBlocking({baseFolderPath},
-            false /*allowUserInteraction*/, callback);
+        const FolderStatus status = getFolderStatusNonBlocking({folderPath},
+        false /*allowUserInteraction*/, callback);
 
-            static_assert(std::is_same_v<decltype(status.failedChecks.begin()->second), FileError>);
-            if (!status.failedChecks.empty())
-                throw status.failedChecks.begin()->second;
+        static_assert(std::is_same_v<decltype(status.failedChecks.begin()->second), FileError>);
+        if (!status.failedChecks.empty())
+            throw status.failedChecks.begin()->second; //throw FileError
 
-            if (status.notExisting.contains(baseFolderPath))
+        folderExisting = status.existing.contains(folderPath);
+    }, callback); //throw X
+    if (!errMsg.empty())
+        return false;
+
+
+    switch (baseFolder.getFolderStatus<side>())
+    {
+        case BaseFolderStatus::existing:
+            if (!folderExisting)
             {
-                if (baseFolder.isAvailable<sideSrc>()) //copy file permissions
-                {
-                    if (const std::optional<AbstractPath> parentPath = AFS::getParentPath(baseFolderPath))
-                        AFS::createFolderIfMissingRecursion(*parentPath); //throw FileError
-
-                    AFS::copyNewFolder(baseFolder.getAbstractPath<sideSrc>(), baseFolderPath, copyFilePermissions); //throw FileError
-                }
-                else
-                    AFS::createFolderIfMissingRecursion(baseFolderPath); //throw FileError
-
-                baseFolder.setAvailable<side>(true); //update our model!
+                callback.reportFatalError(replaceCpy(_("Cannot find folder %x."), L"%x", fmtPath(AFS::getDisplayPath(folderPath)))); //throw X
+                return false;
             }
-            else
+            break;
+
+        case BaseFolderStatus::notExisting:
+            if (folderExisting) //=> somebody else created it: problem?
             {
-                assert(status.existing.contains(baseFolderPath));
-                //TEMPORARY network drop! base directory not found during comparison, but reappears during synchronization
-                //=> sync-directions are based on false assumptions! Abort.
-                callback.reportFatalError(replaceCpy(_("Target folder %x is already existing, but was not available during folder comparison."),
-                                                     L"%x", fmtPath(AFS::getDisplayPath(baseFolderPath))));
-                temporaryNetworkDrop = true;
-
-                //Is it possible we're catching a "false positive" here, could FFS have created the directory indirectly after comparison?
-                //  1. deletion handling: recycler       -> no, temp directory created only at first deletion
-                //  2. deletion handling: versioning     -> "
-                //  3. log file creates containing folder -> no, log only created in batch mode, and only *before* comparison
+                /* Is it possible we're catching a "false positive" here, could FFS have created the directory indirectly after comparison?
+                      1. deletion handling: recycler       -> no, temp directory created only at first deletion
+                      2. deletion handling: versioning     -> "
+                      3. log file creates containing folder -> no, log only created in batch mode, and only *before* comparison
+                      4. yes, could be us! e.g. multiple folder pairs to non-yet-existing target folder => too obscure!?            */
+                callback.reportFatalError(replaceCpy(_("Base folder %x is already existing, but was not found earlier during comparison."),
+                                                     L"%x", fmtPath(AFS::getDisplayPath(folderPath)))); //throw X
+                return false;
             }
-        }, callback); //throw X
-        return errMsg.empty() && !temporaryNetworkDrop;
+            break;
+
+        case BaseFolderStatus::failure:
+            assert(false); //already handled above
+            break;
     }
     return true;
 }
 
 
-enum class FolderPairJobType
+template <SelectSide side> //create base directories first (if not yet existing) -> no symlink or attribute copying!
+bool createBaseFolder(BaseFolderPair& baseFolder, bool copyFilePermissions, PhaseCallback& callback /*throw X*/) //return false if fatal error occurred
 {
-    PROCESS,
-    ALREADY_IN_SYNC,
-    SKIP,
-};
+    switch (baseFolder.getFolderStatus<side>())
+    {
+        case BaseFolderStatus::existing:
+            break;
+
+        case BaseFolderStatus::notExisting:
+        {
+            //create target directory: user presumably ignored warning "dir not yet existing" in order to have it created automatically
+            const AbstractPath folderPath = baseFolder.getAbstractPath<side>();
+            static const SelectSide sideSrc = OtherSide<side>::value;
+
+            const std::wstring errMsg = tryReportingError([&]
+            {
+                if (baseFolder.getFolderStatus<sideSrc>() == BaseFolderStatus::existing) //copy file permissions
+                {
+                    if (const std::optional<AbstractPath> parentPath = AFS::getParentPath(folderPath))
+                        AFS::createFolderIfMissingRecursion(*parentPath); //throw FileError
+
+                    AFS::copyNewFolder(baseFolder.getAbstractPath<sideSrc>(), folderPath, copyFilePermissions); //throw FileError
+                }
+                else
+                    AFS::createFolderIfMissingRecursion(folderPath); //throw FileError
+                assert(baseFolder.getFolderStatus<sideSrc>() != BaseFolderStatus::failure);
+
+                baseFolder.setFolderStatus<side>(BaseFolderStatus::existing); //update our model!
+            }, callback); //throw X
+
+            return errMsg.empty();
+        }
+
+        case BaseFolderStatus::failure:
+            assert(false); //already skipped after checkBaseFolderStatus()
+            break;
+    }
+    return true;
+}
 }
 
 
@@ -2207,7 +2220,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
 
     //-------------------execute basic checks all at once BEFORE starting sync--------------------------------------
 
-    std::vector<FolderPairJobType> jobType(folderCmp.size(), FolderPairJobType::PROCESS); //folder pairs may be skipped after fatal errors were found
+    std::vector<int /*we really want bool*/> skipFolderPair(folderCmp.size(), false); //folder pairs may be skipped after fatal errors were found
 
     std::map<const BaseFolderPair*, std::pair<int, std::vector<SyncStatistics::ConflictInfo>>> checkUnresolvedConflicts;
 
@@ -2249,18 +2262,18 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
         //===============================================================================
 
         //exclude a few pathological cases (including empty left, right folders)
-        if (baseFolder.getAbstractPath< SelectSide::left>() ==
+        if (baseFolder.getAbstractPath<SelectSide::left >() ==
             baseFolder.getAbstractPath<SelectSide::right>())
         {
-            jobType[folderIndex] = FolderPairJobType::SKIP;
+            skipFolderPair[folderIndex] = true;
             continue;
         }
 
-        //skip folder pair if there is nothing to do (except for two-way mode and move-detection, where DB files need to be updated)
-        //-> skip creating (not yet existing) base directories in particular if there's no need
-        if (getCUD(folderPairStat) == 0)
+        //skip folder pair if there is nothing to do (except when DB files need to be updated for two-way mode and move-detection)
+        //=> avoid redundant errors in checkBaseFolderStatus() if base folder existence test failed during comparison
+        if (getCUD(folderPairStat) == 0 && !folderPairCfg.saveSyncDB)
         {
-            jobType[folderIndex] = FolderPairJobType::ALREADY_IN_SYNC;
+            skipFolderPair[folderIndex] = true;
             continue;
         }
 
@@ -2273,43 +2286,43 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
                                 folderPairStat.deleteCount<SelectSide::right>() > 0;
 
         //check for empty target folder paths: this only makes sense if empty field is source (and no DB files need to be created)
-        if ((AFS::isNullPath(baseFolder.getAbstractPath< SelectSide::left>()) && (writeLeft  || folderPairCfg.saveSyncDB)) ||
+        if ((AFS::isNullPath(baseFolder.getAbstractPath<SelectSide::left >()) && (writeLeft  || folderPairCfg.saveSyncDB)) ||
             (AFS::isNullPath(baseFolder.getAbstractPath<SelectSide::right>()) && (writeRight || folderPairCfg.saveSyncDB)))
         {
             callback.reportFatalError(_("Target folder input field must not be empty."));
-            jobType[folderIndex] = FolderPairJobType::SKIP;
+            skipFolderPair[folderIndex] = true;
             continue;
         }
 
         //check for network drops after comparison
         // - convenience: exit sync right here instead of showing tons of errors during file copy
         // - early failure! there's no point in evaluating subsequent warnings
-        if (baseFolderDrop< SelectSide::left>(baseFolder, callback) ||
-            baseFolderDrop<SelectSide::right>(baseFolder, callback))
+        if (!checkBaseFolderStatus<SelectSide::left >(baseFolder, callback) ||
+            !checkBaseFolderStatus<SelectSide::right>(baseFolder, callback))
         {
-            jobType[folderIndex] = FolderPairJobType::SKIP;
+            skipFolderPair[folderIndex] = true;
             continue;
         }
 
         //allow propagation of deletions only from *null-* or *existing* source folder:
-        auto sourceFolderMissing = [&](const AbstractPath& baseFolderPath, bool wasAvailable) //we need to evaluate existence status from time of comparison!
+        auto sourceFolderMissing = [&](const AbstractPath& baseFolderPath, BaseFolderStatus folderStatus) //we need to evaluate existence status from time of comparison!
         {
             if (!AFS::isNullPath(baseFolderPath))
                 //PERMANENT network drop: avoid data loss when source directory is not found AND user chose to ignore errors (else we wouldn't arrive here)
                 if (folderPairStat.deleteCount() > 0) //check deletions only... (respect filtered items!)
                     //folderPairStat.conflictCount() == 0 && -> there COULD be conflicts for <Two way> variant if directory existence check fails, but loading sync.ffs_db succeeds
                     //https://sourceforge.net/tracker/?func=detail&atid=1093080&aid=3531351&group_id=234430 -> fixed, but still better not consider conflicts!
-                    if (!wasAvailable) //avoid race-condition: we need to evaluate existence status from time of comparison!
+                    if (folderStatus != BaseFolderStatus::existing) //avoid race-condition: we need to evaluate existence status from time of comparison!
                     {
                         callback.reportFatalError(replaceCpy(_("Source folder %x not found."), L"%x", fmtPath(AFS::getDisplayPath(baseFolderPath))));
                         return true;
                     }
             return false;
         };
-        if (sourceFolderMissing(baseFolder.getAbstractPath< SelectSide::left>(), baseFolder.isAvailable< SelectSide::left>()) ||
-            sourceFolderMissing(baseFolder.getAbstractPath<SelectSide::right>(), baseFolder.isAvailable<SelectSide::right>()))
+        if (sourceFolderMissing(baseFolder.getAbstractPath<SelectSide::left >(), baseFolder.getFolderStatus<SelectSide:: left>()) ||
+            sourceFolderMissing(baseFolder.getAbstractPath<SelectSide::right>(), baseFolder.getFolderStatus<SelectSide::right>()))
         {
-            jobType[folderIndex] = FolderPairJobType::SKIP;
+            skipFolderPair[folderIndex] = true;
             continue;
         }
 
@@ -2320,7 +2333,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
             {
                 //should never arrive here: already checked in SyncCfgDialog
                 callback.reportFatalError(_("Please enter a target folder for versioning."));
-                jobType[folderIndex] = FolderPairJobType::SKIP;
+                skipFolderPair[folderIndex] = true;
                 continue;
             }
             //===============================================================================================
@@ -2329,25 +2342,25 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
 
             //prepare: check if versioning path itself will be synchronized (and was not excluded via filter)
             checkVersioningPaths.insert(versioningFolderPath);
-            checkVersioningBasePaths.emplace_back(baseFolder.getAbstractPath< SelectSide::left>(), &baseFolder.getFilter());
+            checkVersioningBasePaths.emplace_back(baseFolder.getAbstractPath<SelectSide::left >(), &baseFolder.getFilter());
             checkVersioningBasePaths.emplace_back(baseFolder.getAbstractPath<SelectSide::right>(), &baseFolder.getFilter());
         }
 
         //prepare: check if folders are used by multiple pairs in read/write access
-        checkReadWriteBaseFolders.emplace_back(baseFolder.getAbstractPath< SelectSide::left>(), &baseFolder.getFilter(), writeLeft);
+        checkReadWriteBaseFolders.emplace_back(baseFolder.getAbstractPath<SelectSide::left >(), &baseFolder.getFilter(), writeLeft);
         checkReadWriteBaseFolders.emplace_back(baseFolder.getAbstractPath<SelectSide::right>(), &baseFolder.getFilter(), writeRight);
 
         //check if more than 50% of total number of files/dirs are to be created/overwritten/deleted
-        if (!AFS::isNullPath(baseFolder.getAbstractPath< SelectSide::left>()) &&
+        if (!AFS::isNullPath(baseFolder.getAbstractPath<SelectSide::left >()) &&
             !AFS::isNullPath(baseFolder.getAbstractPath<SelectSide::right>()))
             if (significantDifferenceDetected(folderPairStat))
-                checkSignificantDiffPairs.emplace_back(baseFolder.getAbstractPath< SelectSide::left>(),
+                checkSignificantDiffPairs.emplace_back(baseFolder.getAbstractPath<SelectSide::left >(),
                                                        baseFolder.getAbstractPath<SelectSide::right>());
 
         //check for sufficient free diskspace
         auto checkSpace = [&](const AbstractPath& baseFolderPath, int64_t minSpaceNeeded)
         {
-            if (!AFS::isNullPath(baseFolderPath))
+            if (!AFS::isNullPath(baseFolderPath) && minSpaceNeeded > 0)
                 try
                 {
                     const int64_t freeSpace = AFS::getFreeDiskSpace(baseFolderPath); //throw FileError, returns < 0 if not available
@@ -2356,35 +2369,35 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
                         freeSpace < minSpaceNeeded)
                         checkDiskSpaceMissing.push_back({baseFolderPath, {minSpaceNeeded, freeSpace}});
                 }
-                catch (const FileError& e) //failure is not critical => log only
+                catch (const FileError& e) //not critical => log only
                 {
                     callback.logInfo(e.toString()); //throw X
                 }
         };
         const std::pair<int64_t, int64_t> spaceNeeded = MinimumDiskSpaceNeeded::calculate(baseFolder);
-        checkSpace(baseFolder.getAbstractPath< SelectSide::left>(), spaceNeeded.first);
+        checkSpace(baseFolder.getAbstractPath<SelectSide::left >(), spaceNeeded.first);
         checkSpace(baseFolder.getAbstractPath<SelectSide::right>(), spaceNeeded.second);
 
         //Windows: check if recycle bin really exists; if not, Windows will silently delete, which is just wrong
-        auto checkRecycler = [&](const AbstractPath& baseFolderPath)
-        {
-            assert(!AFS::isNullPath(baseFolderPath));
-            if (!AFS::isNullPath(baseFolderPath))
-                if (!recyclerSupported.contains(baseFolderPath)) //perf: avoid duplicate checks!
-                {
-                    callback.updateStatus(replaceCpy(_("Checking recycle bin availability for folder %x..."), L"%x", //throw X
-                                                     fmtPath(AFS::getDisplayPath(baseFolderPath))));
-                    bool recSupported = false;
-                    tryReportingError([&]
-                    {
-                        recSupported = AFS::supportsRecycleBin(baseFolderPath); //throw FileError
-                    }, callback); //throw X
-
-                    recyclerSupported.emplace(baseFolderPath, recSupported);
-                }
-        };
         if (folderPairCfg.handleDeletion == DeletionPolicy::recycler)
         {
+            auto checkRecycler = [&](const AbstractPath& baseFolderPath)
+            {
+                assert(!AFS::isNullPath(baseFolderPath));
+                if (!AFS::isNullPath(baseFolderPath))
+                    if (!recyclerSupported.contains(baseFolderPath)) //perf: avoid duplicate checks!
+                    {
+                        callback.updateStatus(replaceCpy(_("Checking recycle bin availability for folder %x..."), L"%x", //throw X
+                                                         fmtPath(AFS::getDisplayPath(baseFolderPath))));
+                        bool recSupported = false;
+                        tryReportingError([&]
+                        {
+                            recSupported = AFS::supportsRecycleBin(baseFolderPath); //throw FileError
+                        }, callback); //throw X
+
+                        recyclerSupported.emplace(baseFolderPath, recSupported);
+                    }
+            };
             if (folderPairStat.expectPhysicalDeletion<SelectSide::left>())
                 checkRecycler(baseFolder.getAbstractPath<SelectSide::left>());
 
@@ -2405,7 +2418,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
             if (conflictCount > 0)
             {
                 msg += L"\n\n" + _("Folder pair:") + L' ' +
-                       AFS::getDisplayPath(baseFolder->getAbstractPath< SelectSide::left>()) + L" <-> " +
+                       AFS::getDisplayPath(baseFolder->getAbstractPath<SelectSide::left >()) + L" <-> " +
                        AFS::getDisplayPath(baseFolder->getAbstractPath<SelectSide::right>());
 
                 for (const SyncStatistics::ConflictInfo& item : conflictPreview)
@@ -2609,24 +2622,25 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
             const FolderPairSyncCfg& folderPairCfg  = syncConfig     [folderIndex];
             const SyncStatistics&    folderPairStat = folderPairStats[folderIndex];
 
-            if (jobType[folderIndex] == FolderPairJobType::SKIP) //folder pairs may be skipped after fatal errors were found
+            if (skipFolderPair[folderIndex]) //folder pairs may be skipped after fatal errors were found
                 continue;
 
             //------------------------------------------------------------------------------------------
             if (folderCmp.size() > 1)
                 callback.logInfo(_("Synchronizing folder pair:") + L' ' + getVariantNameWithSymbol(folderPairCfg.syncVar) + L'\n' + //throw X
-                                 L"    " + AFS::getDisplayPath(baseFolder.getAbstractPath< SelectSide::left>()) + L'\n' +
+                                 L"    " + AFS::getDisplayPath(baseFolder.getAbstractPath<SelectSide::left >()) + L'\n' +
                                  L"    " + AFS::getDisplayPath(baseFolder.getAbstractPath<SelectSide::right>()));
             //------------------------------------------------------------------------------------------
 
-            //checking a second time: (a long time may have passed since syncing the previous folder pairs!)
-            if (baseFolderDrop< SelectSide::left>(baseFolder, callback) ||
-                baseFolderDrop<SelectSide::right>(baseFolder, callback))
+            //checking a second time: 1. a long time may have passed since syncing the previous folder pairs!
+            //                        2. expected to be run directly *before* createBaseFolder()!
+            if (!checkBaseFolderStatus<SelectSide::left >(baseFolder, callback) ||
+                !checkBaseFolderStatus<SelectSide::right>(baseFolder, callback))
                 continue;
 
             //create base folders if not yet existing
             if (folderPairStat.createCount() > 0 || folderPairCfg.saveSyncDB) //else: temporary network drop leading to deletions already caught by "sourceFolderMissing" check!
-                if (!createBaseFolder< SelectSide::left>(baseFolder, copyFilePermissions, callback) || //+ detect temporary network drop!!
+                if (!createBaseFolder<SelectSide::left >(baseFolder, copyFilePermissions, callback) || //+ detect temporary network drop!!
                     !createBaseFolder<SelectSide::right>(baseFolder, copyFilePermissions, callback))   //
                     continue;
 
@@ -2641,78 +2655,75 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
                                              callbackNoThrow);
             });
 
-            if (jobType[folderIndex] == FolderPairJobType::PROCESS)
+            //guarantee removal of invalid entries (where element is empty on both sides)
+            ZEN_ON_SCOPE_EXIT(BaseFolderPair::removeEmpty(baseFolder));
+
+            bool copyPermissionsFp = false;
+            tryReportingError([&]
             {
-                //guarantee removal of invalid entries (where element is empty on both sides)
-                ZEN_ON_SCOPE_EXIT(BaseFolderPair::removeEmpty(baseFolder));
+                copyPermissionsFp = copyFilePermissions && //copy permissions only if asked for and supported by *both* sides!
+                !AFS::isNullPath(baseFolder.getAbstractPath<SelectSide::left >()) && //scenario: directory selected on one side only
+                !AFS::isNullPath(baseFolder.getAbstractPath<SelectSide::right>()) && //
+                AFS::supportPermissionCopy(baseFolder.getAbstractPath<SelectSide::left>(),
+                                           baseFolder.getAbstractPath<SelectSide::right>()); //throw FileError
+            }, callback); //throw X
 
-                bool copyPermissionsFp = false;
-                tryReportingError([&]
+
+            auto getEffectiveDeletionPolicy = [&](const AbstractPath& baseFolderPath) -> DeletionPolicy
+            {
+                if (folderPairCfg.handleDeletion == DeletionPolicy::recycler)
                 {
-                    copyPermissionsFp = copyFilePermissions && //copy permissions only if asked for and supported by *both* sides!
-                    !AFS::isNullPath(baseFolder.getAbstractPath< SelectSide::left>()) && //scenario: directory selected on one side only
-                    !AFS::isNullPath(baseFolder.getAbstractPath<SelectSide::right>()) && //
-                    AFS::supportPermissionCopy(baseFolder.getAbstractPath<SelectSide::left>(),
-                                               baseFolder.getAbstractPath<SelectSide::right>()); //throw FileError
-                }, callback); //throw X
+                    auto it = recyclerSupported.find(baseFolderPath);
+                    if (it != recyclerSupported.end()) //buffer filled during intro checks (but only if deletions are expected)
+                        if (!it->second)
+                            return DeletionPolicy::permanent; //Windows' ::SHFileOperation() will do this anyway, but we have a better and faster deletion routine (e.g. on networks)
+                }
+                return folderPairCfg.handleDeletion;
+            };
+            const AbstractPath versioningFolderPath = createAbstractPath(folderPairCfg.versioningFolderPhrase);
+
+            DeletionHandler delHandlerL(baseFolder.getAbstractPath<SelectSide::left>(),
+                                        getEffectiveDeletionPolicy(baseFolder.getAbstractPath<SelectSide::left>()),
+                                        versioningFolderPath,
+                                        folderPairCfg.versioningStyle,
+                                        std::chrono::system_clock::to_time_t(syncStartTime));
+
+            DeletionHandler delHandlerR(baseFolder.getAbstractPath<SelectSide::right>(),
+                                        getEffectiveDeletionPolicy(baseFolder.getAbstractPath<SelectSide::right>()),
+                                        versioningFolderPath,
+                                        folderPairCfg.versioningStyle,
+                                        std::chrono::system_clock::to_time_t(syncStartTime));
+
+            //always (try to) clean up, even if synchronization is aborted!
+            auto guardDelCleanup = makeGuard<ScopeGuardRunMode::onFail>([&]
+            {
+                delHandlerL.tryCleanup(callbackNoThrow);
+                delHandlerR.tryCleanup(callbackNoThrow);
+            });
 
 
-                auto getEffectiveDeletionPolicy = [&](const AbstractPath& baseFolderPath) -> DeletionPolicy
-                {
-                    if (folderPairCfg.handleDeletion == DeletionPolicy::recycler)
-                    {
-                        auto it = recyclerSupported.find(baseFolderPath);
-                        if (it != recyclerSupported.end()) //buffer filled during intro checks (but only if deletions are expected)
-                            if (!it->second)
-                                return DeletionPolicy::permanent; //Windows' ::SHFileOperation() will do this anyway, but we have a better and faster deletion routine (e.g. on networks)
-                    }
-                    return folderPairCfg.handleDeletion;
-                };
-                const AbstractPath versioningFolderPath = createAbstractPath(folderPairCfg.versioningFolderPhrase);
+            FolderPairSyncer::SyncCtx syncCtx =
+            {
+                verifyCopiedFiles, copyPermissionsFp, failSafeFileCopy,
+                errorsModTime,
+                delHandlerL, delHandlerR,
+            };
+            FolderPairSyncer::runSync(syncCtx, baseFolder, callback);
 
-                DeletionHandler delHandlerL(baseFolder.getAbstractPath<SelectSide::left>(),
-                                            getEffectiveDeletionPolicy(baseFolder.getAbstractPath<SelectSide::left>()),
-                                            versioningFolderPath,
-                                            folderPairCfg.versioningStyle,
-                                            std::chrono::system_clock::to_time_t(syncStartTime));
+            //(try to gracefully) clean up temporary Recycle Bin folders and versioning
+            delHandlerL.tryCleanup(callback); //throw X
+            delHandlerR.tryCleanup(callback); //
+            guardDelCleanup.dismiss();
 
-                DeletionHandler delHandlerR(baseFolder.getAbstractPath<SelectSide::right>(),
-                                            getEffectiveDeletionPolicy(baseFolder.getAbstractPath<SelectSide::right>()),
-                                            versioningFolderPath,
-                                            folderPairCfg.versioningStyle,
-                                            std::chrono::system_clock::to_time_t(syncStartTime));
-
-                //always (try to) clean up, even if synchronization is aborted!
-                auto guardDelCleanup = makeGuard<ScopeGuardRunMode::onFail>([&]
-                {
-                    delHandlerL.tryCleanup(callbackNoThrow);
-                    delHandlerR.tryCleanup(callbackNoThrow);
-                });
-
-
-                FolderPairSyncer::SyncCtx syncCtx =
-                {
-                    verifyCopiedFiles, copyPermissionsFp, failSafeFileCopy,
-                    errorsModTime,
-                    delHandlerL, delHandlerR,
-                };
-                FolderPairSyncer::runSync(syncCtx, baseFolder, callback);
-
-                //(try to gracefully) clean up temporary Recycle Bin folders and versioning
-                delHandlerL.tryCleanup(callback); //throw X
-                delHandlerR.tryCleanup(callback); //
-                guardDelCleanup.dismiss();
-
-                if (folderPairCfg.handleDeletion == DeletionPolicy::versioning &&
-                    folderPairCfg.versioningStyle != VersioningStyle::replace)
-                    versionLimitFolders.insert(
-                {
-                    versioningFolderPath,
-                    folderPairCfg.versionMaxAgeDays,
-                    folderPairCfg.versionCountMin,
-                    folderPairCfg.versionCountMax
-                });
-            }
+            if (folderPairCfg.handleDeletion == DeletionPolicy::versioning &&
+                folderPairCfg.versioningStyle != VersioningStyle::replace)
+                versionLimitFolders.insert(
+            {
+                versioningFolderPath,
+                folderPairCfg.versionMaxAgeDays,
+                folderPairCfg.versionCountMin,
+                folderPairCfg.versionCountMax
+            });
 
             //(try to gracefully) write database file
             if (folderPairCfg.saveSyncDB)

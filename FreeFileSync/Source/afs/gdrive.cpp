@@ -838,26 +838,26 @@ GdriveItemDetails extractItemDetails(const JsonValue& jvalue) //throw SysError
     const FileOwner owner = ownedByMe ? (*ownedByMe == "true" ? FileOwner::me : FileOwner::other) : FileOwner::none; //"Not populated for items in Shared Drives"
     const uint64_t fileSize = size ? stringTo<uint64_t>(*size) : 0; //not available for folders and shortcuts
 
+#if 0
     warn_static("remove after test")
-        #if 0
-        {
-    //RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
-    const TimeComp tc = parseTime("%Y-%m-%dT%H:%M:%S", "1968-05-03T11:30:00");
-    if (tc == TimeComp() ) 
-        throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L')');
-
-    time_t modTime = utcToTimeT(tc); //returns -1 on error
-    if (modTime == -1)
     {
-        warn_static("should utcToTimeT handle this, too?")
-
-        if (tc.year == 1) //WTF: 0001-01-01T00:00:00.000Z https://freefilesync.org/forum/viewtopic.php?t=7403
-            modTime = 0;
-        else
+        //RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
+        const TimeComp tc = parseTime("%Y-%m-%dT%H:%M:%S", "1968-05-03T11:30:00");
+        if (tc == TimeComp() )
             throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L')');
-    }
+
+        time_t modTime = utcToTimeT(tc); //returns -1 on error
+        if (modTime == -1)
+        {
+            warn_static("should utcToTimeT handle this, too?")
+
+            if (tc.year == 1) //WTF: 0001-01-01T00:00:00.000Z https://freefilesync.org/forum/viewtopic.php?t=7403
+                modTime = 0;
+            else
+                throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L')');
         }
-        #endif
+    }
+#endif
 
     //RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
     const TimeComp tc = parseTime("%Y-%m-%dT%H:%M:%S", beforeLast(*modifiedTime, '.', IfNotFoundReturn::all));

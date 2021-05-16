@@ -1474,6 +1474,8 @@ void readConfig(const XmlIn& in, XmlBatchConfig& cfg, int formatVer)
 
 void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
 {
+    assert(cfg.dpiLayouts.empty());
+
     XmlIn in2 = in;
 
     if (in["Shared"]) //TODO: remove old parameter after migration! 2016-01-18
@@ -1967,7 +1969,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     }
 
 
-    cfg.dpiLayouts.clear();
+    //cfg.dpiLayouts.clear(); -> NO: honor migration code above!
 
     for (XmlIn inLayout = in["DpiLayouts"]["Layout"]; inLayout; inLayout.next())
         if (std::string scaleTxt;

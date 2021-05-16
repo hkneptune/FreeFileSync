@@ -48,7 +48,7 @@ struct EnumDescrList
     using DescrList = std::vector<std::pair<Enum, std::pair<wxString, wxString>>>;
     DescrList descrList;
 
-    std::unordered_map<const wxChoice*, std::vector<wxString>> itemsSetLast;
+    std::unordered_map<const wxChoice*, std::vector<wxString>> labelsSetLast;
 };
 template <class Enum> void setEnumVal(const EnumDescrList<Enum>& mapping, wxChoice& ctrl, Enum value);
 template <class Enum> Enum getEnumVal(const EnumDescrList<Enum>& mapping, const wxChoice& ctrl);
@@ -71,16 +71,16 @@ template <class Enum> void updateTooltipEnumVal(const EnumDescrList<Enum>& mappi
 template <class Enum>
 void setEnumVal(EnumDescrList<Enum>& mapping, wxChoice& ctrl, Enum value)
 {
-    auto& itemsSetLast = mapping.itemsSetLast[&ctrl];
+    auto& labelsSetLast = mapping.labelsSetLast[&ctrl];
 
-    std::vector<wxString> items;
-    for (auto it = mapping.descrList.begin(); it != mapping.descrList.end(); ++it)
-        items.push_back(it->second.first);
+    std::vector<wxString> labels;
+    for (const auto& [val, texts] : mapping.descrList)
+        labels.push_back(texts.first);
 
-    if (items != itemsSetLast)
+    if (labels != labelsSetLast)
     {
-        ctrl.Set(items); //expensive as fuck! => only call when absolutely needed!
-        itemsSetLast = std::move(items);
+        ctrl.Set(labels); //expensive as fuck! => only call when absolutely needed!
+        labelsSetLast = std::move(labels);
     }
     //-----------------------------------------------------------------
 

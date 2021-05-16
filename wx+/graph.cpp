@@ -511,7 +511,7 @@ void Graph2D::onMouseCaptureLost(wxMouseCaptureLostEvent& event)
 }
 
 
-void Graph2D::addCurve(const std::shared_ptr<CurveData>& data, const CurveAttributes& ca)
+void Graph2D::addCurve(const SharedRef<CurveData>& data, const CurveAttributes& ca)
 {
     CurveAttributes newAttr = ca;
     if (newAttr.autoColor)
@@ -587,10 +587,9 @@ void Graph2D::render(wxDC& dc) const
     //detect x value range
     double minX = attr_.minX ? *attr_.minX :  std::numeric_limits<double>::infinity(); //automatic: ensure values are initialized by first curve
     double maxX = attr_.maxX ? *attr_.maxX : -std::numeric_limits<double>::infinity(); //
-    for (auto it = curves_.begin(); it != curves_.end(); ++it)
-        if (const CurveData* curve = it->first.get())
+    for (const auto& [curve, attrib] : curves_)
         {
-            const std::pair<double, double> rangeX = curve->getRangeX();
+            const std::pair<double, double> rangeX = curve.ref().getRangeX();
             assert(rangeX.first <= rangeX.second + 1.0e-9);
             //GCC fucks up badly when comparing two *binary identical* doubles and finds "begin > end" with diff of 1e-18
 
@@ -620,12 +619,12 @@ void Graph2D::render(wxDC& dc) const
         std::vector<std::vector<char>>       oobMarker  (curves_.size()); //effectively a std::vector<bool> marking points that start an out-of-bounds line
 
         for (size_t index = 0; index < curves_.size(); ++index)
-            if (const CurveData* curve = curves_[index].first.get())
             {
+                const CurveData&         curve  = curves_    [index].first.ref();
                 std::vector<CurvePoint>& points = curvePoints[index];
                 auto&                    marker = oobMarker  [index];
 
-                points = curve->getPoints(minX, maxX, graphArea.GetSize());
+                points = curve.getPoints(minX, maxX, graphArea.GetSize());
                 marker.resize(points.size()); //default value: false
                 if (!points.empty())
                 {

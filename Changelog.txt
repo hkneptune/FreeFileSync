@@ -1,3 +1,18 @@
+FreeFileSync 11.10 [2021-05-09]
+-------------------------------
+Fixed comparison results cleared after mouse-scrolling the first folder pair
+Stricter base folder existence checks before synchronization
+Disable all file pairs when base folder status cannot be determined
+Fixed sync statistics if base folder existence test failed
+Work around glitch in grid scrollbar size calculation
+Fixed folder drag and drop failing after locale conflict (macOS)
+Fixed incorrect mime permissions after installation (Linux)
+Stricter server response validation during update check
+Fixed incomplete item path in log if source item is missing
+Fixed installation error when running ConEmu
+Support starting FreeFileSync as root login user (Linux)
+
+
 FreeFileSync 11.9 [2021-04-01]
 ------------------------------
 Save different layouts depending on screen resolution

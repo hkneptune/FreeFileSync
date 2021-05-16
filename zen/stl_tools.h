@@ -36,6 +36,12 @@ void removeDuplicates(std::vector<T, Alloc>& v);
 template <class T, class Alloc, class CompLess>
 void removeDuplicates(std::vector<T, Alloc>& v, CompLess less);
 
+template <class T, class Alloc, class CompLess>
+void removeDuplicatesStable(std::vector<T, Alloc>& v, CompLess less);
+
+template <class T, class Alloc> 
+void removeDuplicatesStable(std::vector<T, Alloc>& v);
+
 //searching STL containers
 template <class BidirectionalIterator, class T>
 BidirectionalIterator findLast(BidirectionalIterator first, BidirectionalIterator last, const T& value);
@@ -129,6 +135,22 @@ template <class T, class Alloc> inline
 void removeDuplicates(std::vector<T, Alloc>& v)
 {
     removeDuplicates(v, std::less(), std::equal_to());
+}
+
+
+template <class T, class Alloc, class CompLess> inline
+void removeDuplicatesStable(std::vector<T, Alloc>& v, CompLess less)
+{
+    std::set<T, CompLess> usedItems(less);
+    v.erase(std::remove_if(v.begin(), v.end(), 
+        [&usedItems](const T& e) { return !usedItems.insert(e).second; }), v.end());
+}
+
+
+template <class T, class Alloc> inline
+void removeDuplicatesStable(std::vector<T, Alloc>& v)
+{
+    removeDuplicatesStable(v, std::less());
 }
 
 

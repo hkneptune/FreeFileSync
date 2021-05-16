@@ -1082,9 +1082,9 @@ SyncConfirmationDlg::SyncConfirmationDlg(wxWindow* parent,
     };
 
     setValue(*m_staticTextData, st.getBytesToProcess() == 0, formatFilesizeShort(st.getBytesToProcess()), *m_bitmapData, "data");
-    setIntValue(*m_staticTextCreateLeft,  st.createCount< SelectSide::left>(), *m_bitmapCreateLeft,  "so_create_left_sicon");
-    setIntValue(*m_staticTextUpdateLeft,  st.updateCount< SelectSide::left>(), *m_bitmapUpdateLeft,  "so_update_left_sicon");
-    setIntValue(*m_staticTextDeleteLeft,  st.deleteCount< SelectSide::left>(), *m_bitmapDeleteLeft,  "so_delete_left_sicon");
+    setIntValue(*m_staticTextCreateLeft,  st.createCount<SelectSide::left >(), *m_bitmapCreateLeft,  "so_create_left_sicon");
+    setIntValue(*m_staticTextUpdateLeft,  st.updateCount<SelectSide::left >(), *m_bitmapUpdateLeft,  "so_update_left_sicon");
+    setIntValue(*m_staticTextDeleteLeft,  st.deleteCount<SelectSide::left >(), *m_bitmapDeleteLeft,  "so_delete_left_sicon");
     setIntValue(*m_staticTextCreateRight, st.createCount<SelectSide::right>(), *m_bitmapCreateRight, "so_create_right_sicon");
     setIntValue(*m_staticTextUpdateRight, st.updateCount<SelectSide::right>(), *m_bitmapUpdateRight, "so_update_right_sicon");
     setIntValue(*m_staticTextDeleteRight, st.deleteCount<SelectSide::right>(), *m_bitmapDeleteRight, "so_delete_right_sicon");

@@ -1343,7 +1343,7 @@ std::vector<FileSystemObject*> MainDialog::getTreeSelection() const
 void MainDialog::copyToAlternateFolder(const std::vector<FileSystemObject*>& selectionLeft,
                                        const std::vector<FileSystemObject*>& selectionRight)
 {
-    if (std::all_of(selectionLeft .begin(), selectionLeft .end(), [](const FileSystemObject* fsObj) { return fsObj->isEmpty< SelectSide::left>(); }) &&
+    if (std::all_of(selectionLeft .begin(), selectionLeft .end(), [](const FileSystemObject* fsObj) { return fsObj->isEmpty<SelectSide::left >(); }) &&
     /**/std::all_of(selectionRight.begin(), selectionRight.end(), [](const FileSystemObject* fsObj) { return fsObj->isEmpty<SelectSide::right>(); }))
     /**/return; //harmonize with onGridContextRim(): this function should be a no-op iff context menu option is disabled!
 
@@ -1392,7 +1392,7 @@ void MainDialog::copyToAlternateFolder(const std::vector<FileSystemObject*>& sel
 void MainDialog::deleteSelectedFiles(const std::vector<FileSystemObject*>& selectionLeft,
                                      const std::vector<FileSystemObject*>& selectionRight, bool moveToRecycler)
 {
-    if (std::all_of(selectionLeft .begin(), selectionLeft .end(), [](const FileSystemObject* fsObj) { return fsObj->isEmpty< SelectSide::left>(); }) &&
+    if (std::all_of(selectionLeft .begin(), selectionLeft .end(), [](const FileSystemObject* fsObj) { return fsObj->isEmpty<SelectSide::left >(); }) &&
     /**/std::all_of(selectionRight.begin(), selectionRight.end(), [](const FileSystemObject* fsObj) { return fsObj->isEmpty<SelectSide::right>(); }))
     /**/return; //harmonize with onGridContextRim(): this function should be a no-op iff context menu option is disabled!
 
@@ -1637,13 +1637,13 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
         std::set<FileDescriptor> nonNativeFiles;
         if (contains(commandLinePhrase, Zstr("%local_path%")))
         {
-            collectNonNativeFiles< SelectSide::left>(selectionLeft,  tempFileBuf_, nonNativeFiles);
+            collectNonNativeFiles<SelectSide::left >(selectionLeft,  tempFileBuf_, nonNativeFiles);
             collectNonNativeFiles<SelectSide::right>(selectionRight, tempFileBuf_, nonNativeFiles);
         }
         if (contains(commandLinePhrase, Zstr("%local_path2%")))
         {
             collectNonNativeFiles<SelectSide::right>(selectionLeft,  tempFileBuf_, nonNativeFiles);
-            collectNonNativeFiles< SelectSide::left>(selectionRight, tempFileBuf_, nonNativeFiles);
+            collectNonNativeFiles<SelectSide::left >(selectionRight, tempFileBuf_, nonNativeFiles);
         }
 
         //##################### create temporary files for non-native paths ######################
@@ -1678,7 +1678,7 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
         }
         //########################################################################################
 
-        invokeCommandLine< SelectSide::left>(commandLinePhrase, openWithDefaultAppRequested, selectionLeft,  tempFileBuf_); //throw FileError
+        invokeCommandLine<SelectSide::left >(commandLinePhrase, openWithDefaultAppRequested, selectionLeft,  tempFileBuf_); //throw FileError
         invokeCommandLine<SelectSide::right>(commandLinePhrase, openWithDefaultAppRequested, selectionRight, tempFileBuf_); //
     }
     catch (const FileError& e) { showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString())); }
@@ -1855,14 +1855,11 @@ void MainDialog::onResizeViewPanel(wxEvent& event)
     {
         //apply opposite orientation for child sizers
         const int childOrient = newOrientation == wxHORIZONTAL ? wxVERTICAL : wxHORIZONTAL;
-        wxSizerItemList& sl = bSizerStatistics->GetChildren();
-        for (auto it = sl.begin(); it != sl.end(); ++it) //yet another wxWidgets bug keeps us from using std::for_each
-        {
-            wxSizerItem& szItem = **it;
-            if (auto sizerChild = dynamic_cast<wxBoxSizer*>(szItem.GetSizer()))
+
+        for (wxSizerItem* szItem : bSizerStatistics->GetChildren())
+            if (auto sizerChild = dynamic_cast<wxBoxSizer*>(szItem->GetSizer()))
                 if (sizerChild->GetOrientation() != childOrient)
                     sizerChild->SetOrientation(childOrient);
-        }
 
         bSizerStatistics->SetOrientation(newOrientation);
         bSizerViewFilter->SetOrientation(newOrientation);
@@ -2487,7 +2484,7 @@ void MainDialog::onGridContextRim(const std::vector<FileSystemObject*>& selectio
         }
     }
     //----------------------------------------------------------------------------------------------------
-    const bool haveNonEmptyItemsL = std::any_of(selectionLeft .begin(), selectionLeft .end(), [](const FileSystemObject* fsObj) { return !fsObj->isEmpty< SelectSide::left>(); });
+    const bool haveNonEmptyItemsL = std::any_of(selectionLeft .begin(), selectionLeft .end(), [](const FileSystemObject* fsObj) { return !fsObj->isEmpty<SelectSide::left >(); });
     const bool haveNonEmptyItemsR = std::any_of(selectionRight.begin(), selectionRight.end(), [](const FileSystemObject* fsObj) { return !fsObj->isEmpty<SelectSide::right>(); });
 
     menu.addSeparator();
@@ -4167,9 +4164,9 @@ void MainDialog::updateStatistics()
     const SyncStatistics st(folderCmp_);
 
     setValue(*m_staticTextData, st.getBytesToProcess() == 0, formatFilesizeShort(st.getBytesToProcess()), *m_bitmapData, "data");
-    setIntValue(*m_staticTextCreateLeft,  st.createCount< SelectSide::left>(), *m_bitmapCreateLeft,  "so_create_left_sicon");
-    setIntValue(*m_staticTextUpdateLeft,  st.updateCount< SelectSide::left>(), *m_bitmapUpdateLeft,  "so_update_left_sicon");
-    setIntValue(*m_staticTextDeleteLeft,  st.deleteCount< SelectSide::left>(), *m_bitmapDeleteLeft,  "so_delete_left_sicon");
+    setIntValue(*m_staticTextCreateLeft,  st.createCount<SelectSide::left >(), *m_bitmapCreateLeft,  "so_create_left_sicon");
+    setIntValue(*m_staticTextUpdateLeft,  st.updateCount<SelectSide::left >(), *m_bitmapUpdateLeft,  "so_update_left_sicon");
+    setIntValue(*m_staticTextDeleteLeft,  st.deleteCount<SelectSide::left >(), *m_bitmapDeleteLeft,  "so_delete_left_sicon");
     setIntValue(*m_staticTextCreateRight, st.createCount<SelectSide::right>(), *m_bitmapCreateRight, "so_create_right_sicon");
     setIntValue(*m_staticTextUpdateRight, st.updateCount<SelectSide::right>(), *m_bitmapUpdateRight, "so_update_right_sicon");
     setIntValue(*m_staticTextDeleteRight, st.deleteCount<SelectSide::right>(), *m_bitmapDeleteRight, "so_delete_right_sicon");
@@ -4272,12 +4269,12 @@ void MainDialog::onStartSync(wxCommandEvent& event)
                 std::set<Zstring> folderPathsToLock;
                 for (auto it = begin(folderCmp_); it != end(folderCmp_); ++it)
                 {
-                    if (it->isAvailable<SelectSide::left>()) //do NOT check directory existence again!
+                    if (it->getFolderStatus<SelectSide::left>() == BaseFolderStatus::existing) //do NOT check directory existence again!
                         if (const Zstring& nativePath = getNativeItemPath(it->getAbstractPath<SelectSide::left>()); //restrict directory locking to native paths until further
                             !nativePath.empty())
                             folderPathsToLock.insert(nativePath);
 
-                    if (it->isAvailable<SelectSide::right>())
+                    if (it->getFolderStatus<SelectSide::right>() == BaseFolderStatus::existing)
                         if (const Zstring& nativePath = getNativeItemPath(it->getAbstractPath<SelectSide::right>());
                             !nativePath.empty())
                             folderPathsToLock.insert(nativePath);
@@ -5512,7 +5509,7 @@ void MainDialog::onMenuExportFileList(wxCommandEvent& event)
     header += fmtValue(_("Folder Pairs")) + LINE_BREAK;
     std::for_each(begin(folderCmp_), end(folderCmp_), [&](BaseFolderPair& baseFolder)
     {
-        header += fmtValue(AFS::getDisplayPath(baseFolder.getAbstractPath< SelectSide::left>())) + CSV_SEP;
+        header += fmtValue(AFS::getDisplayPath(baseFolder.getAbstractPath<SelectSide::left >())) + CSV_SEP;
         header += fmtValue(AFS::getDisplayPath(baseFolder.getAbstractPath<SelectSide::right>())) + LINE_BREAK;
     });
     header += LINE_BREAK;

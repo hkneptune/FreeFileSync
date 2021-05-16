@@ -39,7 +39,7 @@ TreeView::TreeView(FolderComparison& folderCmp, const SortInfo& si) : folderCmp_
     //remove truly empty folder pairs as early as this: we want to distinguish single/multiple folder pair cases by looking at "folderCmp"
     std::erase_if(folderCmp_, [](const std::shared_ptr<BaseFolderPair>& baseObj)
     {
-        return AFS::isNullPath(baseObj->getAbstractPath< SelectSide::left>()) &&
+        return AFS::isNullPath(baseObj->getAbstractPath<SelectSide::left >()) &&
                AFS::isNullPath(baseObj->getAbstractPath<SelectSide::right>());
     });
 }
@@ -394,7 +394,7 @@ void TreeView::updateView(Predicate pred)
         else
         {
             root.baseFolder = baseObj;
-            root.displayName = getShortDisplayNameForFolderPair(baseObj->getAbstractPath< SelectSide::left>(),
+            root.displayName = getShortDisplayNameForFolderPair(baseObj->getAbstractPath<SelectSide::left >(),
                                                                 baseObj->getAbstractPath<SelectSide::right>());
 
             this->compressNode(root); //"this->" required by two-pass lookup as enforced by GCC 4.7
@@ -724,7 +724,7 @@ private:
                 if (std::unique_ptr<TreeView::Node> node = getDataView().getLine(row))
                     if (const TreeView::RootNode* root = dynamic_cast<const TreeView::RootNode*>(node.get()))
                     {
-                        const std::wstring& dirLeft  = AFS::getDisplayPath(root->baseFolder.getAbstractPath< SelectSide::left>());
+                        const std::wstring& dirLeft  = AFS::getDisplayPath(root->baseFolder.getAbstractPath<SelectSide::left >());
                         const std::wstring& dirRight = AFS::getDisplayPath(root->baseFolder.getAbstractPath<SelectSide::right>());
                         if (dirLeft.empty())
                             return dirRight;

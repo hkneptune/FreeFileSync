@@ -184,30 +184,33 @@ std::string getOnlineVersion(const std::vector<std::pair<std::string, std::strin
 {
     const std::string response = sendHttpPost(Zstr("https://api.freefilesync.org/latest_version"), postParams,
                                               ffsUpdateCheckUserAgent, nullptr /*caCertFilePath*/, nullptr /*notifyUnbufferedIO*/).readAll(); //throw SysError
-    return trimCpy(response);
-}
 
+    if (response.empty() ||
+    !std::all_of(response.begin(), response.end(), [](char c) { return isDigit(c) || c == FFS_VERSION_SEPARATOR; }) ||
+    startsWith(response, FFS_VERSION_SEPARATOR) ||
+    endsWith(response, FFS_VERSION_SEPARATOR) ||
+    contains(response, std::string() + FFS_VERSION_SEPARATOR + FFS_VERSION_SEPARATOR))
+    throw SysError(L"Unexpected server response: \"" +  utfTo<std::wstring>(response) + L'"');
+    //response may be "This website has been moved...", or a Javascript challenge: https://freefilesync.org/forum/viewtopic.php?t=8400
 
-std::vector<size_t> parseVersion(const std::string& version)
-{
-    std::vector<size_t> output;
-    for (const std::string& digit : split(version, FFS_VERSION_SEPARATOR, SplitOnEmpty::allow))
-        output.push_back(stringTo<size_t>(digit));
-    return output;
+    return response;
 }
 }
 
 
 bool fff::haveNewerVersionOnline(const std::string& onlineVersion)
 {
+    auto parseVersion = [](const std::string& version)
+    {
+        std::vector<size_t> output;
+        for (const std::string& digit : split(version, FFS_VERSION_SEPARATOR, SplitOnEmpty::allow))
+            output.push_back(stringTo<size_t>(digit));
+        assert(!output.empty());
+        return output;
+    };
     const std::vector<size_t> current = parseVersion(ffsVersion);
     const std::vector<size_t> online  = parseVersion(onlineVersion);
-
-    if (online.empty() || online[0] == 0) //online version string may be "This website has been moved..." In this case better check for an update
-        return true;
-
-    return std::lexicographical_compare(current.begin(), current.end(),
-                                        online .begin(), online .end());
+    return online > current; //std::vector compares lexicographically
 }
 
 

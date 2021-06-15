@@ -113,7 +113,7 @@ std::vector<FsItem> getDirContentFlat(const Zstring& dirPath) //throw FileError
     std::vector<FsItem> output;
     for (;;)
     {
-        /* Linux: http://man7.org/linux/man-pages/man3/readdir_r.3.html
+        /* Linux: https://man7.org/linux/man-pages/man3/readdir_r.3.html
                 "It is recommended that applications use readdir(3) instead of readdir_r"
                 "... in modern implementations (including the glibc implementation), concurrent calls to readdir(3) that specify different directory streams are thread-safe"
 
@@ -312,7 +312,7 @@ void traverseFolderRecursiveNative(const std::vector<std::pair<Zstring, std::sha
 class RecycleSessionNative : public AFS::RecycleSession
 {
 public:
-    RecycleSessionNative(const Zstring& baseFolderPath) : baseFolderPath_(baseFolderPath) {}
+    explicit RecycleSessionNative(const Zstring& baseFolderPath) : baseFolderPath_(baseFolderPath) {}
 
     void recycleItemIfExists(const AbstractPath& itemPath, const Zstring& logicalRelPath) override; //throw FileError
     void tryCleanup(const std::function<void (const std::wstring& displayPath)>& notifyDeletionStatus /*throw X*/) override; //throw FileError, X
@@ -398,7 +398,7 @@ private:
 class NativeFileSystem : public AbstractFileSystem
 {
 public:
-    NativeFileSystem(const Zstring& rootPath) : rootPath_(rootPath) {}
+    explicit NativeFileSystem(const Zstring& rootPath) : rootPath_(rootPath) {}
 
     Zstring getNativePath(const AfsPath& afsPath) const { return isNullFileSystem() ? Zstring() : nativeAppendPaths(rootPath_, afsPath.value); }
 

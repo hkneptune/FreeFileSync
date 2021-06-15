@@ -136,11 +136,12 @@ std::wstring formatCurlStatusCode(CURLcode sc)
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_RECURSIVE_API_CALL);
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_AUTH_ERROR);
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_HTTP3);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURL_LAST);
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_QUIC_CONNECT_ERROR);
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_PROXY);
+            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_SSL_CLIENTCERT);
+            ZEN_CHECK_CASE_FOR_CONSTANT(CURL_LAST);
     }
-    static_assert(CURL_LAST == CURLE_PROXY + 1);
+    static_assert(CURL_LAST == CURLE_SSL_CLIENTCERT + 1);
 
     return replaceCpy<std::wstring>(L"Curl status %x", L"%x", numberTo<std::wstring>(static_cast<int>(sc)));
 }

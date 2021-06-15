@@ -815,7 +815,7 @@ CopyToDialog::CopyToDialog(wxWindow* parent,
         it re-enables all windows that are supposed to be disabled during the current modal loop!
         This only affects Ubuntu/wxGTK! No such issue on Debian/wxGTK or Suse/wxGTK
         => another Unity problem like the following?
-        http://trac.wxwidgets.org/ticket/14823 "Menu not disabled when showing modal dialogs in wxGTK under Unity"        */
+        https://trac.wxwidgets.org/ticket/14823 "Menu not disabled when showing modal dialogs in wxGTK under Unity"        */
 
     const auto& [itemList, itemCount] = getSelectedItemsAsString(rowsOnLeft, rowsOnRight);
 
@@ -941,7 +941,7 @@ DeleteDialog::DeleteDialog(wxWindow* parent,
         it re-enables all windows that are supposed to be disabled during the current modal loop!
         This only affects Ubuntu/wxGTK! No such issue on Debian/wxGTK or Suse/wxGTK
         => another Unity problem like the following?
-        http://trac.wxwidgets.org/ticket/14823 "Menu not disabled when showing modal dialogs in wxGTK under Unity"             */
+        https://trac.wxwidgets.org/ticket/14823 "Menu not disabled when showing modal dialogs in wxGTK under Unity"             */
 
     m_checkBoxUseRecycler->SetValue(useRecycleBin);
 

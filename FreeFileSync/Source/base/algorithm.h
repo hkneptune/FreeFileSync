@@ -90,14 +90,19 @@ public:
     TempFileBuffer() {}
     ~TempFileBuffer();
 
+    Zstring getAndCreateFolderPath(); //throw FileError
+
     Zstring getTempPath(const FileDescriptor& descr) const; //returns empty if not in buffer (item not existing, error during copy)
 
     //contract: only add files not yet in the buffer!
     void createTempFiles(const std::set<FileDescriptor>& workLoad, ProcessCallback& callback);
 
+
 private:
     TempFileBuffer           (const TempFileBuffer&) = delete;
     TempFileBuffer& operator=(const TempFileBuffer&) = delete;
+
+void createTempFolderPath(); //throw FileError
 
     std::map<FileDescriptor, Zstring> tempFilePaths_;
     Zstring tempFolderPath_;

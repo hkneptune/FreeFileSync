@@ -442,8 +442,10 @@ public:
             //const char* currentLocale = std::setlocale(LC_ALL, nullptr);
 
             //call std::setlocale()?
-            //wxWidgets overwrites the default locale "C" with a locale matching sysLng_, e.g. "en_US.UTF-8"
-            //which may be *different* from actual user-preferred locale as set up in "Region & Language/Formats"! => fix:
+            //Linux: wxWidgets overwrites the default locale "C" with a locale matching sysLng_, e.g. "en_US.UTF-8"
+            //       which may be *different* from actual user-preferred locale as set up in "Region & Language/Formats"! => fix:
+
+            //Windows: apparently needed: https://freefilesync.org/forum/viewtopic.php?t=8455
             [[maybe_unused]] const char* newLocale = std::setlocale(LC_ALL, "" /*== user-preferred locale*/);
             assert(newLocale);
 

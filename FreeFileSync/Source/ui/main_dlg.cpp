@@ -1971,7 +1971,7 @@ void MainDialog::onGridKeyEvent(wxKeyEvent& event, Grid& grid, bool leftSide)
         {
             case 'C':
             case WXK_INSERT: //CTRL + C || CTRL + INS
-                copySelectionToClipboard({ m_gridMainL, m_gridMainR} );
+                copySelectionToClipboard({m_gridMainL, m_gridMainR});
                 return; // -> swallow event! don't allow default grid commands!
 
             case 'T': //CTRL + T
@@ -2882,15 +2882,20 @@ void MainDialog::cfgHistoryRemoveObsolete(const std::vector<Zstring>& filePaths)
 }
 
 
-void MainDialog::updateUnsavedCfgStatus()
+std::vector<std::wstring> MainDialog::getJobNames() const
 {
-    const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalNativePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
-
     std::vector<std::wstring> jobNames;
     for (const Zstring& cfgFilePath : activeConfigFiles_)
         jobNames.push_back(equalNativePath(cfgFilePath, lastRunConfigPath_) ?
                            L'[' + _("Last session") + L']' :
                            extractJobName(cfgFilePath));
+    return jobNames;
+}
+
+
+void MainDialog::updateUnsavedCfgStatus()
+{
+    const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalNativePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
 
     const bool haveUnsavedCfg = lastSavedCfg_ != getConfig();
 
@@ -2918,9 +2923,10 @@ void MainDialog::updateUnsavedCfgStatus()
         title += utfTo<wxString>(activeCfgFilePath);
     else if (activeConfigFiles_.size() > 1)
     {
-        title += jobNames[0];
-        std::for_each(jobNames.begin() + 1, jobNames.end(), [&](const std::wstring& jobName)
-        { title += L" + " + jobName; });
+        for (const std::wstring& jobName : getJobNames())
+            title += jobName + L" + ";
+        if (endsWith(title, L" + "))
+            title.resize(title.size() - 3);
     }
     else
     {
@@ -4117,7 +4123,7 @@ void MainDialog::updateGui()
     updateTopButton(*m_buttonSync,    loadImage("start_sync"), getVariantName(syncVar), syncVarIconName, folderCmp_.empty());
     m_panelTopButtons->Layout();
 
-    m_menuItemExportList->Enable(!folderCmp_.empty()); //a CSV without even folder names confuses users: https://freefilesync.org/forum/viewtopic.php?t=4787
+    m_menuItemExportList->Enable(!folderCmp_.empty()); //empty CSV confuses users: https://freefilesync.org/forum/viewtopic.php?t=4787
 
     //auiMgr_.Update(); -> doesn't seem to be needed
 }
@@ -4231,12 +4237,6 @@ void MainDialog::onStartSync(wxCommandEvent& event)
 
     const std::chrono::system_clock::time_point syncStartTime = std::chrono::system_clock::now();
 
-    std::vector<std::wstring> jobNames;
-    for (const Zstring& cfgFilePath : activeConfigFiles_)
-        jobNames.push_back(equalNativePath(cfgFilePath, lastRunConfigPath_) ?
-                           L'[' + _("Last session") + L']' :
-                           extractJobName(cfgFilePath));
-
     using FinalRequest = StatusHandlerFloatingDialog::FinalRequest;
     FinalRequest finalRequest = FinalRequest::none;
     {
@@ -4245,7 +4245,7 @@ void MainDialog::onStartSync(wxCommandEvent& event)
         //run this->enableGuiElements() BEFORE "finalRequest" buf AFTER StatusHandlerFloatingDialog::reportResults()
 
         //class handling status updates and error messages
-        StatusHandlerFloatingDialog statusHandler(this, jobNames, syncStartTime,
+        StatusHandlerFloatingDialog statusHandler(this, getJobNames(), syncStartTime,
                                                   guiCfg.mainCfg.ignoreErrors,
                                                   guiCfg.mainCfg.autoRetryCount,
                                                   guiCfg.mainCfg.autoRetryDelay,
@@ -5470,20 +5470,6 @@ void MainDialog::onMenuOptions(wxCommandEvent& event)
 
 void MainDialog::onMenuExportFileList(wxCommandEvent& event)
 {
-    std::optional<Zstring> defaultFolderPath = getParentFolderPath(globalCfg_.csvFileLastSelected);
-
-    const Zstring defaultFileName = !globalCfg_.csvFileLastSelected.empty() ?
-                                    afterLast(globalCfg_.csvFileLastSelected, FILE_NAME_SEPARATOR, IfNotFoundReturn::all) :
-                                    Zstr("FileList.csv");
-
-    wxFileDialog fileSelector(this, wxString() /*message*/,  utfTo<wxString>(defaultFolderPath ? *defaultFolderPath : Zstr("")), utfTo<wxString>(defaultFileName),
-                              _("Comma-separated values") + L" (*.csv)|*.csv" + L"|" +_("All files") + L" (*.*)|*",
-                              wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
-    if (fileSelector.ShowModal() != wxID_OK)
-        return;
-    const Zstring csvFilePath = globalCfg_.csvFileLastSelected = utfTo<Zstring>(fileSelector.GetPath());
-    //---------------------------------------------------------------------
-
     wxBusyCursor dummy;
 
     //https://en.wikipedia.org/wiki/Comma-separated_values
@@ -5502,10 +5488,10 @@ void MainDialog::onMenuExportFileList(wxCommandEvent& event)
             return std::move(tmp);
     };
 
+    //generate header
     std::string header; //perf: wxString doesn't model exponential growth and so is out, std::string doesn't give performance guarantee!
     header += BYTE_ORDER_MARK_UTF8;
 
-    //base folders
     header += fmtValue(_("Folder Pairs")) + LINE_BREAK;
     std::for_each(begin(folderCmp_), end(folderCmp_), [&](BaseFolderPair& baseFolder)
     {
@@ -5514,7 +5500,6 @@ void MainDialog::onMenuExportFileList(wxCommandEvent& event)
     });
     header += LINE_BREAK;
 
-    //write header
     auto provLeft   = m_gridMainL->getDataProvider();
     auto provCenter = m_gridMainC->getDataProvider();
     auto provRight  = m_gridMainR->getDataProvider();
@@ -5553,15 +5538,27 @@ void MainDialog::onMenuExportFileList(wxCommandEvent& event)
 
         try
         {
+            Zstring title = Zstr("FreeFileSync");
+            if (const std::vector<std::wstring>& jobNames = getJobNames();
+                !jobNames.empty())
+            {
+                title = utfTo<Zstring>(jobNames[0]);
+                std::for_each(jobNames.begin() + 1, jobNames.end(), [&](const std::wstring& jobName)
+                { title += Zstr(" + ") + utfTo<Zstring>(jobName); });
+            }
+
+            const Zstring shortGuid = printNumber<Zstring>(Zstr("%04x"), static_cast<unsigned int>(getCrc16(generateGUID())));
+            const Zstring csvFilePath = appendSeparator(tempFileBuf_.getAndCreateFolderPath()) + //throw FileError
+                                        title + Zstr("~") + shortGuid + Zstr(".csv");
+
+
             TempFileOutput fileOut(csvFilePath, nullptr /*notifyUnbufferedIO*/); //throw FileError
 
             fileOut.write(&header[0], header.size()); //throw FileError, (X)
-            //main grid: write rows one after the other instead of creating one big string: memory allocation might fail; think 1 million rows!
-            /*
-                performance test case "export 600.000 rows" to CSV:
-                aproach 1. assemble single temporary string, then write file:   4.6s
-                aproach 2. write to buffered file output directly for each row: 6.4s
-            */
+            /* main grid: write rows one after the other instead of creating one big string: memory allocation might fail; think 1 million rows!
+                    performance test case "export 600.000 rows" to CSV:
+                    aproach 1. assemble single temporary string, then write file:   4.6s
+                    aproach 2. write to buffered file output directly for each row: 6.4s                     */
             std::string buffer;
             const size_t rowCount = m_gridMainL->getRowCount();
             for (size_t row = 0; row < rowCount; ++row)
@@ -5589,6 +5586,8 @@ void MainDialog::onMenuExportFileList(wxCommandEvent& event)
                 buffer.clear();
             }
             fileOut.commit(); //throw FileError, (X)
+
+            openWithDefaultApp(csvFilePath); //throw FileError
 
             flashStatusInformation(_("File list exported"));
         }

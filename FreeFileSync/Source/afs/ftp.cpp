@@ -182,7 +182,7 @@ std::vector<std::string> splitFtpResponse(const std::string& buf)
 class FtpLineParser
 {
 public:
-    FtpLineParser(const std::string& line) : line_(line), it_(line_.begin()) {}
+    explicit FtpLineParser(const std::string& line) : line_(line), it_(line_.begin()) {}
 
     template <class Function>
     std::string readRange(size_t count, Function acceptChar) //throw SysError
@@ -269,14 +269,14 @@ std::wstring formatFtpStatus(int sc)
 //================================================================================================================
 //================================================================================================================
 
-constinit2 Global<UniSessionCounter> globalFtpSessionCount;
+constinit Global<UniSessionCounter> globalFtpSessionCount;
 GLOBAL_RUN_ONCE(globalFtpSessionCount.set(createUniSessionCounter()));
 
 
 class FtpSession
 {
 public:
-    FtpSession(const FtpSessionId& sessionId) : //throw SysError
+    explicit FtpSession(const FtpSessionId& sessionId) : //throw SysError
         sessionId_(sessionId),
         libsshCurlUnifiedInitCookie_(getLibsshCurlUnifiedInitCookie(globalFtpSessionCount)), //throw SysError
         lastSuccessfulUseTime_(std::chrono::steady_clock::now()) {}
@@ -738,7 +738,7 @@ private:
     {
         if (!featureCache_)
         {
-            static constinit2 FunStatGlobal<Protected<FeatureList>> globalServerFeatures;
+            static constinit FunStatGlobal<Protected<FeatureList>> globalServerFeatures;
             globalServerFeatures.initOnce([] { return std::make_unique<Protected<FeatureList>>(); });
 
             const auto sf = globalServerFeatures.get();
@@ -925,7 +925,7 @@ private:
 //--------------------------------------------------------------------------------------
 UniInitializer globalStartupInitFtp(*globalFtpSessionCount.get());
 
-constinit2 Global<FtpSessionManager> globalFtpSessionManager; //caveat: life time must be subset of static UniInitializer!
+constinit Global<FtpSessionManager> globalFtpSessionManager; //caveat: life time must be subset of static UniInitializer!
 //--------------------------------------------------------------------------------------
 
 void accessFtpSession(const FtpLogin& login, const std::function<void(FtpSession& session)>& useFtpSession /*throw X*/) //throw SysError, X
@@ -1932,7 +1932,7 @@ private:
 class FtpFileSystem : public AbstractFileSystem
 {
 public:
-    FtpFileSystem(const FtpLogin& login) : login_(login) {}
+    explicit FtpFileSystem(const FtpLogin& login) : login_(login) {}
 
     const FtpLogin& getLogin() const { return login_; }
 

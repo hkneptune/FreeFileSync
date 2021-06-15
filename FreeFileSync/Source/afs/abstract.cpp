@@ -172,7 +172,6 @@ AFS::FileCopyResult AFS::copyFileTransactional(const AbstractPath& apSource, con
                                                const std::function<void()>& onDeleteTargetFile,
                                                const IoCallback& notifyUnbufferedIO /*throw X*/)
 {
-
     auto copyFilePlain = [&](const AbstractPath& apTargetTmp)
     {
         //caveat: typeid returns static type for pointers, dynamic type for references!!!

@@ -10,7 +10,7 @@
 #include <algorithm>
 #include <atomic>
 #include "string_tools.h"
-#include "legacy_compiler.h" //constinit2
+#include "legacy_compiler.h" //constinit
 
 
 //Zbase - a policy based string class optimizing performance and flexibility
@@ -209,7 +209,7 @@ private:
     static_assert(offsetof(GlobalEmptyString, nullTerm) - offsetof(GlobalEmptyString, descr) == sizeof(Descriptor), "no gap!");
     static_assert(std::is_trivially_destructible_v<GlobalEmptyString>, "this memory needs to live forever");
 
-    inline static constinit2 GlobalEmptyString globalEmptyString; //constinit: dodge static initialization order fiasco!
+    inline static constinit GlobalEmptyString globalEmptyString; //constinit: dodge static initialization order fiasco!
 };
 
 

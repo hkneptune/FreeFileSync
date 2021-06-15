@@ -58,7 +58,7 @@ std::shared_ptr<const TranslationHandler> getTranslator();
 namespace impl
 {
 //getTranslator() may be called even after static objects of this translation unit are destroyed!
-inline constinit2 Global<const TranslationHandler> globalTranslationHandler;
+inline constinit Global<const TranslationHandler> globalTranslationHandler;
 }
 
 inline

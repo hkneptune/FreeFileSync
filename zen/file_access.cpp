@@ -668,7 +668,7 @@ FileCopyResult zen::copyNewFile(const Zstring& sourceFile, const Zstring& target
         /*  we cannot set the target file times (::futimes) while the file descriptor is still open after a write operation:
             this triggers bugs on Samba shares where the modification time is set to current time instead.
             Linux: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=340236
-                    http://comments.gmane.org/gmane.linux.file-systems.cifs/2854
+                   http://comments.gmane.org/gmane.linux.file-systems.cifs/2854
             macOS: https://freefilesync.org/forum/viewtopic.php?t=356             */
         setWriteTimeNative(targetFile, sourceInfo.st_mtim, ProcSymlink::follow); //throw FileError
     }

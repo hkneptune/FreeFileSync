@@ -10,7 +10,6 @@
 #include <zen/thread.h>
 #include <zen/globals.h>
 #include <zen/file_io.h>
-//#include <zen/basic_math.h>
 #include <zen/socket.h>
 #include <zen/open_ssl.h>
 #include <zen/resolve_path.h>
@@ -18,6 +17,7 @@
 #include "init_curl_libssh2.h"
 #include "ftp_common.h"
 #include "abstract_impl.h"
+    #include <poll.h>
 
 using namespace zen;
 using namespace fff;
@@ -178,7 +178,7 @@ std::wstring getSftpDisplayPath(const Zstring& serverName, const AfsPath& afsPat
 class FatalSshError //=> consider SshSession corrupted and stop use ASAP! same conceptual level like SysError
 {
 public:
-    FatalSshError(const std::wstring& details) : details_(details) {}
+    explicit FatalSshError(const std::wstring& details) : details_(details) {}
     const std::wstring& toString() const { return details_; }
 
 private:
@@ -186,7 +186,7 @@ private:
 };
 
 
-constinit2 Global<UniSessionCounter> globalSftpSessionCount;
+constinit Global<UniSessionCounter> globalSftpSessionCount;
 GLOBAL_RUN_ONCE(globalSftpSessionCount.set(createUniSessionCounter()));
 
 
@@ -514,13 +514,7 @@ public:
     static void waitForTraffic(const std::vector<SshSession*>& sshSessions, int timeoutSec) //throw FatalSshError
     {
         //reference: session.c: _libssh2_wait_socket()
-
-        SocketType nfds = 0;
-        fd_set readfds  = {}; //covers FD_ZERO
-        fd_set writefds = {}; //
-        int readCount  = 0; //sigh: using fd_set::fd_count is not portable
-        int writeCount = 0; //
-
+        std::vector<pollfd> fds;
         std::chrono::steady_clock::time_point startTimeMin = std::chrono::steady_clock::time_point::max();
 
         for (SshSession* session : sshSessions)
@@ -528,57 +522,44 @@ public:
             assert(::libssh2_session_last_errno(session->sshSession_) == LIBSSH2_ERROR_EAGAIN);
             assert(session->nbInfo_.commandPending || std::any_of(session->sftpChannels_.begin(), session->sftpChannels_.end(), [](SftpChannelInfo& ci) { return ci.nbInfo.commandPending; }));
 
+            pollfd pfd = {session->socket_->get()};
+
             const int dir = ::libssh2_session_block_directions(session->sshSession_);
             assert(dir != 0); //we assert a blocked direction after libssh2 returned LIBSSH2_ERROR_EAGAIN!
             if (dir & LIBSSH2_SESSION_BLOCK_INBOUND)
-            {
-                if (readCount++ >= FD_SETSIZE)
-                    throw FatalSshError(formatSystemError("FD_SET(readfds)", L"", _P("Cannot wait on more than 1 connection at a time.",
-                                                                                     "Cannot wait on more than %x connections at a time.", FD_SETSIZE)));
-                FD_SET(session->socket_->get(), &readfds);
-            }
+                pfd.events |= POLLIN;
             if (dir & LIBSSH2_SESSION_BLOCK_OUTBOUND)
-            {
-                if (writeCount++ >= FD_SETSIZE)
-                    throw FatalSshError(formatSystemError("FD_SET(writefds)", L"", _P("Cannot wait on more than 1 connection at a time.",
-                                                                                      "Cannot wait on more than %x connections at a time.", FD_SETSIZE)));
-                FD_SET(session->socket_->get(), &writefds);
-            }
+                pfd.events |= POLLOUT;
 
-            nfds = std::max(nfds, session->socket_->get());
+            if (pfd.events != 0)
+                fds.push_back(pfd);
 
-            for (SftpChannelInfo& ci : session->sftpChannels_)
+            for (const SftpChannelInfo& ci : session->sftpChannels_)
                 if (ci.nbInfo.commandPending)
                     startTimeMin = std::min(startTimeMin, ci.nbInfo.commandStartTime);
             if (session->nbInfo_.commandPending)
                 startTimeMin = std::min(startTimeMin, session->nbInfo_.commandStartTime);
         }
 
-        if (readCount > 0 || writeCount > 0)
+        if (!fds.empty())
         {
             assert(startTimeMin != std::chrono::steady_clock::time_point::max());
             const auto now = std::chrono::steady_clock::now();
             const auto endTime = startTimeMin + std::chrono::seconds(timeoutSec);
-            if (now > endTime)
+            if (now >= endTime)
                 return; //time-out! => let next tryNonBlocking() call fail with detailed error!
             const auto waitTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - now).count();
 
-            timeval tv = {};
-            tv.tv_sec  = static_cast<long>(waitTimeMs / 1000);
-            tv.tv_usec = static_cast<long>(waitTimeMs - tv.tv_sec * 1000) * 1000;
-
-            //WSAPoll is broken, ::poll() on macOS even worse: https://daniel.haxx.se/blog/2012/10/10/wsapoll-is-broken/
-            //perf: no significant difference compared to ::WSAPoll()
-            const int rc = ::select(nfds + 1, //int nfds
-                                    readCount  > 0 ? &readfds  : nullptr, //fd_set* readfds
-                                    writeCount > 0 ? &writefds : nullptr, //fd_set* writefds
-                                    nullptr,  //fd_set* exceptfds
-                                    &tv);     //struct timeval* timeout
-            if (rc == 0)
-                return; //time-out! => let next tryNonBlocking() call fail with detailed error!
-            if (rc < 0)
-                //consider SSH sessions corrupted! => isHealthy() will see pending commands
-                throw FatalSshError(formatSystemError("select", getLastError()));
+            //is poll() on macOS broken? https://daniel.haxx.se/blog/2016/10/11/poll-on-mac-10-12-is-broken/
+            //      it seems Daniel only takes issue with "empty" input handling!? => not an issue for us
+            const char* functionName = "poll";
+            const int rv = ::poll(&fds[0],     //struct pollfd* fds
+                                  fds.size(),  //nfds_t nfds
+                                  waitTimeMs); //int timeout [ms]
+            if (rv == 0) //time-out! => let next tryNonBlocking() call fail with detailed error!
+                return;
+            if (rv < 0) //consider SSH sessions corrupted! => isHealthy() will see pending commands
+                throw FatalSshError(formatSystemError(functionName, getLastError()));
         }
         else assert(false);
     }
@@ -968,7 +949,7 @@ private:
 //--------------------------------------------------------------------------------------
 UniInitializer globalStartupInitSftp(*globalSftpSessionCount.get());
 
-constinit2 Global<SftpSessionManager> globalSftpSessionManager; //caveat: life time must be subset of static UniInitializer!
+constinit Global<SftpSessionManager> globalSftpSessionManager; //caveat: life time must be subset of static UniInitializer!
 //--------------------------------------------------------------------------------------
 
 
@@ -1515,7 +1496,7 @@ private:
 class SftpFileSystem : public AbstractFileSystem
 {
 public:
-    SftpFileSystem(const SftpLogin& login) : login_(login) {}
+    explicit SftpFileSystem(const SftpLogin& login) : login_(login) {}
 
     const SftpLogin& getLogin() const { return login_; }
 
@@ -1774,7 +1755,7 @@ private:
                            [&](const SshSession::Details& sd) //noexcept!
             {
                 /* LIBSSH2_SFTP_RENAME_NATIVE:    "The server is free to do the rename operation in whatever way it chooses. Any other set flags are to be taken as hints to the server." No, thanks!
-                   LIBSSH2_SFTP_RENAME_OVERWRITE: "No overwriting rename in [SFTP] v3/v4" http://www.greenend.org.uk/rjk/sftp/sftpversions.html
+                   LIBSSH2_SFTP_RENAME_OVERWRITE: "No overwriting rename in [SFTP] v3/v4" https://www.greenend.org.uk/rjk/sftp/sftpversions.html
 
                    Test: LIBSSH2_SFTP_RENAME_OVERWRITE is not honored on freefilesync.org, no matter if LIBSSH2_SFTP_RENAME_NATIVE is set or not
                     => makes sense since SFTP v3 does not honor the additional flags that libssh2 sends!

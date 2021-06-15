@@ -1,3 +1,13 @@
+FreeFileSync 11.11 [2021-06-11]
+-------------------------------
+Fixed Shared Drive synchronization with Google Drive
+Directly open exported file list (.CSV) as temporary file
+Avoid EIO error for F_PREALLOCATE (macOS)
+Watch socket using "poll" instead of "select" (Linux, macOS)
+Fixed user-specific time/date format (Windows)
+Fixed system_profiler not found error (macOS)
+
+
 FreeFileSync 11.10 [2021-05-09]
 -------------------------------
 Fixed comparison results cleared after mouse-scrolling the first folder pair
@@ -6,7 +16,7 @@ Disable all file pairs when base folder status cannot be determined
 Fixed sync statistics if base folder existence test failed
 Work around glitch in grid scrollbar size calculation
 Fixed folder drag and drop failing after locale conflict (macOS)
-Fixed incorrect mime permissions after installation (Linux)
+Fixed incorrect MIME permissions after installation (Linux)
 Stricter server response validation during update check
 Fixed incomplete item path in log if source item is missing
 Fixed installation error when running ConEmu

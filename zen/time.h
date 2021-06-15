@@ -159,10 +159,22 @@ TimeComp getUtcTime2(time_t utc)
 {
     //1. convert: seconds since year 1:
     //...
+    //assert(time_t is signed)
 
     //TODO: what if < 0?
     long long remDays = utc / (24 * 3600);
     long long remSecs = utc % (24 * 3600);
+
+    //days per year
+    const int dpYearStd  = 365;
+    const int dpYearLeap = dpYearStd + 1;
+    const int dp4Years = 3 * dpYearStd + dpYearLeap;
+    const int dp100YearsStd = 25 * dp4Years - 1; //no leap days for centuries...
+    const int dp100YearsExc = 25 * dp4Years; //...except if divisible by 400
+    const int dp400Years = 3 * dp100YearsStd + dp100YearsExc;
+
+
+
 
     const int daysPer4Years = 4 * 365 /*usual days per year*/ + 1 /*including leap day*/;
     const int daysPerYear = 365; //non-leap
@@ -196,6 +208,8 @@ TimeComp getUtcTime2(time_t utc)
     const int year = 1 + cycles400.quot * 400 + cycles100 * 100; + cycles4 * 4 + cycles1;;
 
 
+
+    const char daysPerMonth[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 
 
 

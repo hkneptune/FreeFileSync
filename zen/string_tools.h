@@ -568,9 +568,8 @@ template <class S, class T, class Num> inline
 S printNumber(const T& format, const Num& number) //format a single number using ::sprintf
 {
 #ifdef __cpp_lib_format
-#error refactor
+#error refactor?
 #endif
-
     static_assert(std::is_same_v<GetCharTypeT<S>, GetCharTypeT<T>>);
 
     const int BUFFER_SIZE = 128;

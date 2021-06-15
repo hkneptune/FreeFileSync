@@ -2426,6 +2426,8 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
 
     out["FolderHistory" ].attribute("MaxSize", cfg.folderHistoryMax);
 
+     warn_static("csvFileLastSelected is obsolete: get rid?")
+
     out["CsvExport"  ].attribute("LastSelected", cfg.csvFileLastSelected);
     out["SftpKeyFile"].attribute("LastSelected", cfg.sftpKeyFileLastSelected);
 

@@ -6,7 +6,6 @@
 
 #include "cfg_grid.h"
 #include <zen/time.h>
-//#include <zen/basic_math.h>
 #include <zen/process_exec.h>
 #include <wx+/dc.h>
 #include <wx+/rtl.h>

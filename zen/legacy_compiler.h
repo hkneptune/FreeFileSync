@@ -24,14 +24,8 @@
 
 namespace std
 {
-
-
 }
 //---------------------------------------------------------------------------------
-
-//constinit
-    #define constinit2 constinit //GCC, clang have it
-
 
 namespace zen
 {

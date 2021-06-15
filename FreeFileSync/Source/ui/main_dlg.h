@@ -104,6 +104,8 @@ private:
     void updateStatistics();       // more fine-grained updaters
     void updateUnsavedCfgStatus(); //
 
+    std::vector<std::wstring> getJobNames() const;
+
     //context menu functions
     std::vector<FileSystemObject*> getGridSelection(bool fromLeft = true, bool fromRight = true) const;
     std::vector<FileSystemObject*> getTreeSelection() const;

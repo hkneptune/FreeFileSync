@@ -850,7 +850,7 @@ private:
                     {
                         wxRect areaPerc(rectTmp.x, rectTmp.y + fastFromDIP(2), percentageBarWidth_, rectTmp.height - fastFromDIP(4));
                         //clear background
-                        drawFilledRectangle(dc, areaPerc, fastFromDIP(1), getColorPercentBorder(), getColorPercentBackground());
+                        drawInsetRectangle(dc, areaPerc, fastFromDIP(1), getColorPercentBorder(), getColorPercentBackground());
                         areaPerc.Deflate(fastFromDIP(1));
 
                         //inner area
@@ -1128,7 +1128,7 @@ private:
             setShowPercentage(overviewPanelShowPercentageDefault);
             grid_.setColumnConfig(convertColAttributes(getOverviewDefaultColAttribs(), getOverviewDefaultColAttribs()));
         };
-        menu.addItem(_("&Default"), setDefaultColumns); //'&' -> reuse text from "default" buttons elsewhere
+        menu.addItem(_("&Default"), setDefaultColumns, loadImage("reset_sicon")); //'&' -> reuse text from "default" buttons elsewhere
         //--------------------------------------------------------------------------------------------------------
 
         menu.popup(grid_, {event.mousePos_.x, grid_.getColumnLabelHeight()});

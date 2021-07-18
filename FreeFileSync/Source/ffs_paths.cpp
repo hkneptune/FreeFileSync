@@ -31,7 +31,7 @@ Zstring getProcessParentFolderPath()
         }
         catch (const FileError& e)
         {
-            throw std::runtime_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] " + utfTo<std::string>(e.toString()));
+            throw std::runtime_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Failed to get process parent folder. " + utfTo<std::string>(e.toString()));
         }
     }();
     return exeFolderParentPath;
@@ -71,7 +71,7 @@ Zstring fff::getConfigDirPathPf()
             }
             catch (const FileError& e)
             {
-                throw std::runtime_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] " + utfTo<std::string>(e.toString()));
+                throw std::runtime_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Failed to get config path. " + utfTo<std::string>(e.toString()));
             }
         }();
 

@@ -54,23 +54,23 @@ std::wstring zen::formatFilesizeShort(int64_t size)
 
     auto formatUnit = [&](const std::wstring& unitTxt) { return replaceCpy(unitTxt, L"%x", formatThreeDigitPrecision(sizeInUnit)); };
 
-    sizeInUnit /= 1024;
+    sizeInUnit /= bytesPerKilo;
     if (std::abs(sizeInUnit) < 999.5)
         return formatUnit(_("%x KB"));
 
-    sizeInUnit /= 1024;
+    sizeInUnit /= bytesPerKilo;
     if (std::abs(sizeInUnit) < 999.5)
         return formatUnit(_("%x MB"));
 
-    sizeInUnit /= 1024;
+    sizeInUnit /= bytesPerKilo;
     if (std::abs(sizeInUnit) < 999.5)
         return formatUnit(_("%x GB"));
 
-    sizeInUnit /= 1024;
+    sizeInUnit /= bytesPerKilo;
     if (std::abs(sizeInUnit) < 999.5)
         return formatUnit(_("%x TB"));
 
-    sizeInUnit /= 1024;
+    sizeInUnit /= bytesPerKilo;
     return formatUnit(_("%x PB"));
 }
 

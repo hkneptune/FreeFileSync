@@ -146,7 +146,7 @@ private:
 
     void onGridContextRim(const std::vector<FileSystemObject*>& selection,
                           const std::vector<FileSystemObject*>& selectionLeft,
-                          const std::vector<FileSystemObject*>& selectionRight, bool leftSide);
+                          const std::vector<FileSystemObject*>& selectionRight, bool leftSide, wxPoint mousePos);
 
     void onTreeGridContext(zen::GridContextMenuEvent& event);
 

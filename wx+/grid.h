@@ -13,7 +13,6 @@
 #include <set>
 #include <vector>
 #include <zen/stl_tools.h>
-//#include <zen/basic_math.h>
 #include <wx/scrolwin.h>
 
 
@@ -56,7 +55,7 @@ struct GridClickEvent : public wxEvent
 
     const ptrdiff_t row_; //-1 for invalid position, >= rowCount if out of range
     const HoverArea hoverArea_; //may be HoverArea::none
-    const wxPoint mousePos_; //client coordinates
+    const wxPoint mousePos_; //Grid-relative coordinates
 };
 
 struct GridSelectEvent : public wxEvent
@@ -78,7 +77,7 @@ struct GridLabelClickEvent : public wxEvent
     GridLabelClickEvent* Clone() const override { return new GridLabelClickEvent(*this); }
 
     const ColumnType colType_; //may be ColumnType::none
-    const wxPoint mousePos_; //client coordinates
+    const wxPoint mousePos_; //Grid-relative coordinates
 };
 
 struct GridColumnResizeEvent : public wxEvent
@@ -92,10 +91,10 @@ struct GridColumnResizeEvent : public wxEvent
 
 struct GridContextMenuEvent : public wxEvent
 {
-    explicit GridContextMenuEvent(const wxPoint& mousePos) : wxEvent(0 /*winid*/, EVENT_GRID_CONTEXT_MENU), mousePos_(mousePos) {}
+    GridContextMenuEvent(const wxPoint& mousePos) : wxEvent(0 /*winid*/, EVENT_GRID_CONTEXT_MENU), mousePos_(mousePos) {}
     GridContextMenuEvent* Clone() const override { return new GridContextMenuEvent(*this); }
 
-    const wxPoint mousePos_; //client coordinates
+    const wxPoint mousePos_; //Grid-relative coordinates
 };
 //------------------------------------------------------------------------------------------------------------
 
@@ -203,15 +202,16 @@ public:
     wxWindow& getMainWin    ();
     const wxWindow& getMainWin() const;
 
-    ptrdiff_t getRowAtPos(int posY) const; //return -1 for invalid position, >= rowCount if out of range; absolute coordinates!
-
     struct ColumnPosInfo
     {
-        ColumnType colType   = ColumnType::none; //ColumnType::none no column at x position!
+        ColumnType colType   = ColumnType::none; //ColumnType::none => no column at posX!
         int cellRelativePosX = 0;
         int colWidth         = 0;
     };
-    ColumnPosInfo getColumnAtPos(int posX) const; //absolute position!
+    ColumnPosInfo getColumnAtWinPos(int posX) const;
+    ptrdiff_t getRowAtWinPos(int posY) const; //return -1 for invalid position, >= rowCount if out of range
+
+    std::pair<ptrdiff_t, ptrdiff_t> getVisibleRows(const wxRect& clientRect) const; //returns range [begin, end)
 
     void refreshCell(size_t row, ColumnType colType);
 
@@ -222,7 +222,6 @@ public:
     size_t getGridCursor() const; //returns row
 
     void scrollTo(size_t row);
-    size_t getTopRow() const;
 
     void makeRowVisible(size_t row);
 

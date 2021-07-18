@@ -24,6 +24,41 @@ using namespace fff;
 using AFS = AbstractFileSystem;
 
 
+namespace fff
+{
+std::weak_ordering operator<=>(const SshSessionId& lhs, const SshSessionId& rhs)
+{
+    //exactly the type of case insensitive comparison we need for server names!
+    if (const std::weak_ordering cmp = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
+        std::is_neq(cmp))
+        return cmp;
+
+    if (const std::strong_ordering cmp = std::tie(lhs.port, lhs.username, lhs.authType, lhs.allowZlib) <=> //username: case sensitive!
+                                         std::tie(rhs.port, rhs.username, rhs.authType, rhs.allowZlib);
+        std::is_neq(cmp))
+        return cmp;
+
+    switch (lhs.authType)
+    {
+        case SftpAuthType::password:
+            return lhs.password <=> rhs.password; //case sensitive!
+
+        case SftpAuthType::keyFile:
+            if (const std::strong_ordering cmp = lhs.password <=> rhs.password; //case sensitive!
+                std::is_neq(cmp))
+                return cmp;
+
+            return lhs.privateKeyFilePath <=> rhs.privateKeyFilePath; //case sensitive!
+
+        case SftpAuthType::agent:
+            return std::weak_ordering::equivalent;
+    }
+    assert(false);
+    return std::weak_ordering::equivalent;
+}
+}
+
+
 namespace
 {
 Zstring concatenateSftpFolderPathPhrase(const SftpLogin& login, const AfsPath& afsPath); //noexcept
@@ -103,75 +138,24 @@ SFTP_OPTIMAL_BLOCK_SIZE_READ:              SFTP_OPTIMAL_BLOCK_SIZE_WRITE:
 => libssh2_sftp_read/libssh2_sftp_write may take quite long for 16x and larger => use smallest multiple that fills bandwidth!            */
 
 
-//use all configuration data that *defines* an SSH session as key when buffering sessions! This is what user expects, e.g. when changing settings in SFTP login dialog
-struct SshSessionId
-{
-    /*explicit*/ SshSessionId(const SftpLogin& login) :
-        server(login.server),
-        port(login.port),
-        username(login.username),
-        authType(login.authType),
-        password(login.password),
-        privateKeyFilePath(login.privateKeyFilePath),
-        allowZlib(login.allowZlib) {}
-
-    Zstring server;
-    int     port = 0;
-    Zstring username;
-    SftpAuthType authType = SftpAuthType::password;
-    Zstring password;
-    Zstring privateKeyFilePath;
-    bool allowZlib = false;
-    //timeoutSec, traverserChannelsPerConnection => irrelevant for session equality
-};
-
-std::weak_ordering operator<=>(const SshSessionId& lhs, const SshSessionId& rhs)
-{
-    //exactly the type of case insensitive comparison we need for server names!
-    if (const std::weak_ordering cmp = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
-        std::is_neq(cmp))
-        return cmp;
-
-    if (const std::strong_ordering cmp = std::tie(lhs.port, lhs.username, lhs.authType, lhs.allowZlib) <=> //username: case sensitive!
-                                         std::tie(rhs.port, rhs.username, rhs.authType, rhs.allowZlib);
-        std::is_neq(cmp))
-        return cmp;
-
-    switch (lhs.authType)
-    {
-        case SftpAuthType::password:
-            return lhs.password <=> rhs.password; //case sensitive!
-
-        case SftpAuthType::keyFile:
-            if (const std::strong_ordering cmp = lhs.password <=> rhs.password; //case sensitive!
-                std::is_neq(cmp))
-                return cmp;
-
-            return lhs.privateKeyFilePath <=> rhs.privateKeyFilePath; //case sensitive!
-
-        case SftpAuthType::agent:
-            return std::weak_ordering::equivalent;
-    }
-    assert(false);
-    return std::weak_ordering::equivalent;
-}
-
-
 std::string getLibssh2Path(const AfsPath& afsPath)
 {
     return utfTo<std::string>(getServerRelPath(afsPath));
 }
 
 
-std::wstring getSftpDisplayPath(const Zstring& serverName, const AfsPath& afsPath)
+std::wstring getSftpDisplayPath(const SshSessionId& sessionId, const AfsPath& afsPath)
 {
-    Zstring displayPath = Zstring(sftpPrefix) + Zstr("//") + serverName;
+    Zstring displayPath = Zstring(sftpPrefix) + Zstr("//");
+    if (!sessionId.username.empty()) //show username! consider AFS::compareDeviceSameAfsType()
+        displayPath += sessionId.username + Zstr('@');
+    displayPath += sessionId.server;
+
     const Zstring relPath = getServerRelPath(afsPath);
     if (relPath != Zstr("/"))
         displayPath += relPath;
     return utfTo<std::wstring>(displayPath);
 }
-//don't show username and password!
 
 //===========================================================================================================================
 
@@ -799,7 +783,7 @@ public:
             SshSession::waitForTraffic(sshSessions, timeoutSec); //throw FatalSshError
         }
 
-        Zstring getServerName() const { return session_->getSessionId().server; }
+        const SshSessionId& getSessionId() const { return session_->getSessionId(); }
 
     private:
         std::unique_ptr<SshSession, ReUseOnDelete> session_; //bound!
@@ -1028,7 +1012,7 @@ std::vector<SftpItem> getDirContentFlat(const SftpLogin& login, const AfsPath& d
             return LIBSSH2_ERROR_NONE;
         });
     }
-    catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot open directory %x."), L"%x", fmtPath(getSftpDisplayPath(login.server, dirPath))), e.toString()); }
+    catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot open directory %x."), L"%x", fmtPath(getSftpDisplayPath(login, dirPath))), e.toString()); }
 
     ZEN_ON_SCOPE_EXIT(try
     {
@@ -1048,7 +1032,7 @@ std::vector<SftpItem> getDirContentFlat(const SftpLogin& login, const AfsPath& d
             runSftpCommand(login, "libssh2_sftp_readdir", //throw SysError
             [&](const SshSession::Details& sd) { return rc = ::libssh2_sftp_readdir(dirHandle, &buf[0], buf.size(), &attribs); }); //noexcept!
         }
-        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(getSftpDisplayPath(login.server, dirPath))), e.toString()); }
+        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(getSftpDisplayPath(login, dirPath))), e.toString()); }
 
         if (rc == 0) //no more items
             return output;
@@ -1062,12 +1046,12 @@ std::vector<SftpItem> getDirContentFlat(const SftpLogin& login, const AfsPath& d
         const AfsPath itemPath(nativeAppendPaths(dirPath.value, itemName));
 
         if ((attribs.flags & LIBSSH2_SFTP_ATTR_PERMISSIONS) == 0) //server probably does not support these attributes => fail at folder level
-            throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login.server, itemPath))), L"File attributes not available.");
+            throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login, itemPath))), L"File attributes not available.");
 
         if (LIBSSH2_SFTP_S_ISLNK(attribs.permissions))
         {
             if ((attribs.flags & LIBSSH2_SFTP_ATTR_ACMODTIME) == 0) //server probably does not support these attributes => fail at folder level
-                throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login.server, itemPath))), L"Modification time not supported.");
+                throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login, itemPath))), L"Modification time not supported.");
             output.push_back({itemName, {AFS::ItemType::symlink, 0, static_cast<time_t>(attribs.mtime)}});
         }
         else if (LIBSSH2_SFTP_S_ISDIR(attribs.permissions))
@@ -1075,9 +1059,9 @@ std::vector<SftpItem> getDirContentFlat(const SftpLogin& login, const AfsPath& d
         else //a file or named pipe, ect: LIBSSH2_SFTP_S_ISREG, LIBSSH2_SFTP_S_ISCHR, LIBSSH2_SFTP_S_ISBLK, LIBSSH2_SFTP_S_ISFIFO, LIBSSH2_SFTP_S_ISSOCK
         {
             if ((attribs.flags & LIBSSH2_SFTP_ATTR_ACMODTIME) == 0) //server probably does not support these attributes => fail at folder level
-                throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login.server, itemPath))), L"Modification time not supported.");
+                throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login, itemPath))), L"Modification time not supported.");
             if ((attribs.flags & LIBSSH2_SFTP_ATTR_SIZE) == 0)
-                throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login.server, itemPath))), L"File size not supported.");
+                throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login, itemPath))), L"File size not supported.");
             output.push_back({itemName, {AFS::ItemType::file, attribs.filesize, static_cast<time_t>(attribs.mtime)}});
         }
     }
@@ -1092,19 +1076,19 @@ SftpItemDetails getSymlinkTargetDetails(const SftpLogin& login, const AfsPath& l
         runSftpCommand(login, "libssh2_sftp_stat", //throw SysError
         [&](const SshSession::Details& sd) { return ::libssh2_sftp_stat(sd.sftpChannel, getLibssh2Path(linkPath), &attribsTrg); }); //noexcept!
     }
-    catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(getSftpDisplayPath(login.server, linkPath))), e.toString()); }
+    catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(getSftpDisplayPath(login, linkPath))), e.toString()); }
 
     if ((attribsTrg.flags & LIBSSH2_SFTP_ATTR_PERMISSIONS) == 0)
-        throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login.server, linkPath))), L"File attributes not available.");
+        throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login, linkPath))), L"File attributes not available.");
 
     if (LIBSSH2_SFTP_S_ISDIR(attribsTrg.permissions))
         return {AFS::ItemType::folder, 0, static_cast<time_t>(attribsTrg.mtime)};
     else
     {
         if ((attribsTrg.flags & LIBSSH2_SFTP_ATTR_ACMODTIME) == 0) //server probably does not support these attributes => should fail at folder level!
-            throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login.server, linkPath))), L"Modification time not supported.");
+            throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login, linkPath))), L"Modification time not supported.");
         if ((attribsTrg.flags & LIBSSH2_SFTP_ATTR_SIZE) == 0)
-            throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login.server, linkPath))), L"File size not supported.");
+            throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login, linkPath))), L"File size not supported.");
 
         return {AFS::ItemType::file, attribsTrg.filesize, static_cast<time_t>(attribsTrg.mtime)};
     }
@@ -1201,7 +1185,7 @@ void traverseFolderRecursiveSftp(const SftpLogin& login, const std::vector<std::
 struct InputStreamSftp : public AFS::InputStream
 {
     InputStreamSftp(const SftpLogin& login, const AfsPath& filePath, const IoCallback& notifyUnbufferedIO /*throw X*/) : //throw FileError
-        displayPath_(getSftpDisplayPath(login.server, filePath)),
+        displayPath_(getSftpDisplayPath(login, filePath)),
         notifyUnbufferedIO_(notifyUnbufferedIO)
     {
         try
@@ -1317,7 +1301,7 @@ struct OutputStreamSftp : public AFS::OutputStreamImpl
                      std::optional<time_t> modTime,
                      const IoCallback& notifyUnbufferedIO /*throw X*/) :
         filePath_(filePath),
-        displayPath_(getSftpDisplayPath(login.server, filePath)),
+        displayPath_(getSftpDisplayPath(login, filePath)),
         modTime_(modTime),
         notifyUnbufferedIO_(notifyUnbufferedIO)
     {
@@ -1514,7 +1498,7 @@ public:
 private:
     Zstring getInitPathPhrase(const AfsPath& afsPath) const override { return concatenateSftpFolderPathPhrase(login_, afsPath); }
 
-    std::wstring getDisplayPath(const AfsPath& afsPath) const override { return getSftpDisplayPath(login_.server, afsPath); }
+    std::wstring getDisplayPath(const AfsPath& afsPath) const override { return getSftpDisplayPath(login_, afsPath); }
 
     bool isNullFileSystem() const override { return login_.server.empty(); }
 

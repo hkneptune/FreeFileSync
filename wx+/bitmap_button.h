@@ -101,7 +101,7 @@ wxBitmap renderSelectedButton(const wxSize& sz)
 
         const wxColor borderCol(0x79, 0xbc, 0xed); //medium blue
         const wxColor innerCol (0xcc, 0xe4, 0xf8); //light blue
-        drawFilledRectangle(dc, wxRect(bmp.GetSize()), fastFromDIP(1), borderCol, innerCol);
+        drawInsetRectangle(dc, wxRect(bmp.GetSize()), fastFromDIP(1), borderCol, innerCol);
     }
     return bmp;
 }

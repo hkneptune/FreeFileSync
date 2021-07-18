@@ -409,7 +409,7 @@ private:
 class Grid::CornerWin : public SubWindow
 {
 public:
-    CornerWin(Grid& parent) : SubWindow(parent) {}
+    explicit CornerWin(Grid& parent) : SubWindow(parent) {}
 
 private:
     bool AcceptsFocus() const override { return false; }
@@ -447,7 +447,7 @@ private:
 class Grid::RowLabelWin : public SubWindow
 {
 public:
-    RowLabelWin(Grid& parent) :
+    explicit RowLabelWin(Grid& parent) :
         SubWindow(parent),
         rowHeight_(parent.GetCharHeight() + 2 + 1) {} //default height; don't call any functions on "parent" other than those from wxWindow during construction!
     //2 for some more space, 1 for bottom border (gives 15 + 2 + 1 on Windows, 17 + 2 + 1 on Ubuntu)
@@ -468,12 +468,11 @@ public:
 
     ptrdiff_t getRowAtPos(ptrdiff_t posY) const //returns < 0 on invalid input, else row number within: [0, rowCount]; rowCount if out of range
     {
-        if (posY >= 0 && rowHeight_ > 0)
-        {
-            const size_t row = posY / rowHeight_;
-            return std::min(row, refParent().getRowCount());
-        }
-        return -1;
+        if (posY < 0)
+            return -1;
+
+        const size_t row = posY / rowHeight_;
+        return std::min(row, refParent().getRowCount());
     }
 
     int getRowHeight() const { return rowHeight_; } //guarantees to return size >= 1 !
@@ -486,15 +485,6 @@ public:
             return wxRect(wxPoint(0, rowHeight_ * row),
                           wxSize(GetClientSize().GetWidth(), rowHeight_));
         return wxRect();
-    }
-
-    std::pair<ptrdiff_t, ptrdiff_t> getRowsOnClient(const wxRect& clientRect) const //returns range [begin, end)
-    {
-        const int yFrom = refParent().CalcUnscrolledPosition(clientRect.GetTopLeft    ()).y;
-        const int yTo   = refParent().CalcUnscrolledPosition(clientRect.GetBottomRight()).y;
-
-        return {std::max(yFrom / rowHeight_, 0),
-                std::min<ptrdiff_t>((yTo  / rowHeight_) + 1, refParent().getRowCount())};
     }
 
 private:
@@ -510,8 +500,8 @@ private:
 
         dc.SetFont(GetFont()); //harmonize with RowLabelWin::getBestWidth()!
 
-        auto rowRange = getRowsOnClient(rect); //returns range [begin, end)
-        for (auto row = rowRange.first; row < rowRange.second; ++row)
+        const auto& [rowFirst, rowLast] = refParent().getVisibleRows(rect);
+        for (auto row = rowFirst; row < rowLast; ++row)
         {
             wxRect rectRowLabel = getRowLabelArea(row); //returns empty rect if row not found
             if (rectRowLabel.height > 0)
@@ -631,7 +621,7 @@ private:
 class Grid::ColLabelWin : public SubWindow
 {
 public:
-    ColLabelWin(Grid& parent) : SubWindow(parent)
+    explicit ColLabelWin(Grid& parent) : SubWindow(parent)
     {
         //coordinate with ColLabelWin::render():
         wxFont labelFont = GetFont();
@@ -915,9 +905,8 @@ private:
 
         const std::wstring toolTip = [&]
         {
-            const wxPoint absPos = refParent().CalcUnscrolledPosition(clientPos);
-            const ColumnType colType = refParent().getColumnAtPos(absPos.x).colType; //returns ColumnType::none if no column at x position!
-            if (colType != ColumnType::none)
+            if (const ColumnType colType = refParent().getColumnAtWinPos(clientPos.x).colType; //returns ColumnType::none if no column at x position!
+                colType != ColumnType::none)
                 if (auto prov = refParent().getDataProvider())
                     return prov->getToolTip(colType);
             return std::wstring();
@@ -1021,9 +1010,9 @@ private:
 
             const wxPoint gridAreaTL(refParent().CalcScrolledPosition(wxPoint(0, 0))); //client coordinates
             const int rowHeight = rowLabelWin_.getRowHeight();
-            const auto rowRange = rowLabelWin_.getRowsOnClient(rect); //returns range [begin, end)
+            const auto& [rowFirst, rowLast] = refParent().getVisibleRows(rect);
 
-            for (auto row = rowRange.first; row < rowRange.second; ++row)
+            for (auto row = rowFirst; row < rowLast; ++row)
             {
                 //draw background lines
                 const wxRect rowRect(gridAreaTL + wxPoint(0, row * rowHeight), wxSize(totalRowWidth, rowHeight));
@@ -1089,9 +1078,8 @@ private:
         {
             const wxPoint   mousePos = GetPosition() + event.GetPosition();
             const ptrdiff_t rowCount = refParent().getRowCount();
-            const wxPoint     absPos = refParent().CalcUnscrolledPosition(event.GetPosition());
-            const ptrdiff_t      row = rowLabelWin_.getRowAtPos(absPos.y); //return -1 for invalid position; >= rowCount if out of range
-            const ColumnPosInfo  cpi = refParent().getColumnAtPos(absPos.x); //returns ColumnType::none if no column at x position!
+            const ptrdiff_t      row = refParent().getRowAtWinPos   (event.GetPosition().y); //return -1 for invalid position; >= rowCount if out of range
+            const ColumnPosInfo  cpi = refParent().getColumnAtWinPos(event.GetPosition().x); //returns ColumnType::none if no column at x position!
             const HoverArea rowHover = [&]
             {
                 if (0 <= row && row < rowCount && cpi.colType != ColumnType::none)
@@ -1124,9 +1112,8 @@ private:
 
             const wxPoint   mousePos = GetPosition() + event.GetPosition();
             const ptrdiff_t rowCount = refParent().getRowCount();
-            const wxPoint     absPos = refParent().CalcUnscrolledPosition(event.GetPosition());
-            const ptrdiff_t      row = rowLabelWin_.getRowAtPos(absPos.y); //return -1 for invalid position; >= rowCount if out of range
-            const ColumnPosInfo  cpi = refParent().getColumnAtPos(absPos.x); //returns ColumnType::none if no column at x position!
+            const ptrdiff_t      row = refParent().getRowAtWinPos   (event.GetPosition().y); //return -1 for invalid position; >= rowCount if out of range
+            const ColumnPosInfo  cpi = refParent().getColumnAtWinPos(event.GetPosition().x); //returns ColumnType::none if no column at x position!
             const HoverArea rowHover = [&]
             {
                 if (0 <= row && row < rowCount && cpi.colType != ColumnType::none)
@@ -1196,7 +1183,7 @@ private:
                     selectionAnchor_ = cursorRow_;
             }
             //slight deviation from Explorer: change cursor while dragging mouse! -> unify behavior with shift + direction keys
-
+            const wxPoint mousePos = GetPosition() + event.GetPosition();
             const size_t            rowFrom = activeSelection_->getStartRow();
             const size_t              rowTo = activeSelection_->getCurrentRow();
             const bool             positive = activeSelection_->isPositiveSelect();
@@ -1210,7 +1197,7 @@ private:
             refParent().selectRange2(rowFirst, rowLast, positive, &mouseClick, GridEventPolicy::allow);
 
             if (mouseClick.GetEventType() == EVENT_GRID_MOUSE_RIGHT_DOWN)
-                sendEventToParent(GridContextMenuEvent(mouseClick.mousePos_));
+                sendEventToParent(GridContextMenuEvent(mousePos)); //... *not* mouseClick.mousePos_
         }
 #if 0
         if (!event.RightUp())
@@ -1219,9 +1206,8 @@ private:
                 //this one may point to row which is not in visible area!
                 const wxPoint   mousePos = GetPosition() + event.GetPosition();
                 const ptrdiff_t rowCount = refParent().getRowCount();
-                const wxPoint     absPos = refParent().CalcUnscrolledPosition(event.GetPosition());
-                const ptrdiff_t      row = rowLabelWin_.getRowAtPos(absPos.y); //return -1 for invalid position; >= rowCount if out of range
-                const ColumnPosInfo  cpi = refParent().getColumnAtPos(absPos.x); //returns ColumnType::none if no column at x position!
+                const ptrdiff_t      row = refParent().getRowAtWinPos   (event.GetPosition().y); //return -1 for invalid position; >= rowCount if out of range
+                const ColumnPosInfo  cpi = refParent().getColumnAtWinPos(event.GetPosition().x); //returns ColumnType::none if no column at x position!
                 const HoverArea rowHover = [&]
                 {
                     if (0 <= row && row < rowCount && cpi.colType != ColumnType::none)
@@ -1254,9 +1240,8 @@ private:
         if (auto prov = refParent().getDataProvider())
         {
             const ptrdiff_t rowCount = refParent().getRowCount();
-            const wxPoint     absPos = refParent().CalcUnscrolledPosition(clientPos);
-            const ptrdiff_t      row = rowLabelWin_.getRowAtPos(absPos.y); //return -1 for invalid position; >= rowCount if out of range
-            const ColumnPosInfo  cpi = refParent().getColumnAtPos(absPos.x); //returns ColumnType::none if no column at x position!
+            const ptrdiff_t      row = refParent().getRowAtWinPos   (clientPos.y); //return -1 for invalid position; >= rowCount if out of range
+            const ColumnPosInfo  cpi = refParent().getColumnAtWinPos(clientPos.x); //returns ColumnType::none if no column at x position!
             const HoverArea rowHover = [&]
             {
                 if (0 <= row && row < rowCount && cpi.colType != ColumnType::none)
@@ -1378,8 +1363,7 @@ private:
             wxPoint clientPosTrimmed = clientPos;
             clientPosTrimmed.y = std::clamp(clientPosTrimmed.y, 0, clientSize.GetHeight() - 1); //do not select row outside client window!
 
-            const wxPoint absPos = wnd_.refParent().CalcUnscrolledPosition(clientPosTrimmed);
-            const ptrdiff_t newRow = wnd_.rowLabelWin_.getRowAtPos(absPos.y); //return -1 for invalid position; >= rowCount if out of range
+            const ptrdiff_t newRow = wnd_.refParent().getRowAtWinPos(clientPosTrimmed.y); //return -1 for invalid position; >= rowCount if out of range
             assert(newRow >= 0);
             if (newRow >= 0)
                 if (rowCurrent_ != newRow)
@@ -1435,7 +1419,7 @@ private:
     void refreshRow(size_t row)
     {
         const wxRect& rowArea = rowLabelWin_.getRowLabelArea(row); //returns empty rect if row not found
-        const wxPoint topLeft = refParent().CalcScrolledPosition(wxPoint(0, rowArea.y)); //absolute -> client coordinates
+        const wxPoint topLeft = refParent().CalcScrolledPosition(wxPoint(0, rowArea.y)); //logical -> window coordinates
         wxRect cellArea(topLeft, wxSize(refParent().getColWidthsSum(GetClientSize().GetWidth()), rowArea.height));
         RefreshRect(cellArea);
     }
@@ -1470,7 +1454,7 @@ private:
     MouseHighlight highlight_; //current mouse highlight
     bool freezeMouseHighlight_ = false;
 
-    ptrdiff_t cursorRow_ = 0;
+    size_t cursorRow_ = 0;
     size_t selectionAnchor_ = 0;
     bool gridUpdatePending_ = false;
 };
@@ -1535,7 +1519,7 @@ void Grid::updateWindowSizes(bool updateScrollbar)
 
     //1. calculate row label width independent from scrollbars
     const int mainWinHeightGross = std::max(0, GetSize().GetHeight() - getColumnLabelHeight()); //independent from client sizes and scrollbars!
-    const ptrdiff_t logicalHeight = rowLabelWin_->getLogicalHeight();                    //
+    const ptrdiff_t logicalHeight = rowLabelWin_->getLogicalHeight();                           //
 
     const int rowLabelWidth = [&]
     {
@@ -1641,10 +1625,10 @@ void Grid::updateWindowSizes(bool updateScrollbar)
 
 wxSize Grid::GetSizeAvailableForScrollTarget(const wxSize& size)
 {
-        //1. "size == GetSize() == (0, 0)" happens temporarily during initialization
-        //2. often it's even (0, 20)
-        //3. fuck knows why, but we *temporarily* get "size == GetSize() == (1, 1)" when wxAUI panel containing Grid is dropped
-    if (size.x <= 1 || size.y <= 1) 
+    //1. "size == GetSize() == (0, 0)" happens temporarily during initialization
+    //2. often it's even (0, 20)
+    //3. fuck knows why, but we *temporarily* get "size == GetSize() == (1, 1)" when wxAUI panel containing Grid is dropped
+    if (size.x <= 1 || size.y <= 1)
         return {}; //probably best considering calling code in generic/scrlwing.cpp: wxScrollHelper::AdjustScrollbars()
 
     //1. calculate row label width independent from scrollbars
@@ -1771,12 +1755,14 @@ void Grid::onKeyDown(wxKeyEvent& event)
 
     switch (keyCode)
     {
-        case WXK_MENU:         //
-        case WXK_WINDOWS_MENU: //simulate right mouse click at cursor row (+1) position
+        case WXK_MENU:         //simulate right mouse click at cursor row position (on lower edge)
+        case WXK_WINDOWS_MENU: //(but truncate to window if cursor is out of view)
         {
-            const int cursorNextPosY = rowLabelWin_->getRowHeight() * std::min(getRowCount(), mainWin_->getCursor() + 1);
-            const int clientPosMainWinY = std::clamp(CalcScrolledPosition(wxPoint(0, cursorNextPosY)).y, //absolute -> client coordinates
-                                                     0, mainWin_->GetClientSize().GetHeight() - 1);
+            const size_t row = std::min(mainWin_->getCursor(), getRowCount());
+
+            const int clientPosMainWinY = std::clamp(CalcScrolledPosition(wxPoint(0, rowLabelWin_->getRowHeight() * (row + 1))).y - 1, //logical -> window coordinates
+                                                    0, mainWin_->GetClientSize().GetHeight() - 1);
+
             const wxPoint mousePos = mainWin_->GetPosition() + wxPoint(0, clientPosMainWinY); //mainWin_-relative to Grid-relative
 
             GridContextMenuEvent contextEvent(mousePos);
@@ -2096,22 +2082,41 @@ ColumnType Grid::colToType(size_t col) const
 }
 
 
-ptrdiff_t Grid::getRowAtPos(int posY) const { return rowLabelWin_->getRowAtPos(posY); }
-
-
-Grid::ColumnPosInfo Grid::getColumnAtPos(int posX) const
+Grid::ColumnPosInfo Grid::getColumnAtWinPos(int posX) const
 {
-    if (posX >= 0)
+    if (const int absX = CalcUnscrolledPosition(wxPoint(posX, 0)).x;
+        absX >= 0)
     {
         int accWidth = 0;
         for (const ColumnWidth& cw : getColWidths())
         {
             accWidth += cw.width;
-            if (posX < accWidth)
-                return {cw.type, posX + cw.width - accWidth, cw.width};
+            if (absX < accWidth)
+                return {cw.type, absX + cw.width - accWidth, cw.width};
         }
     }
     return {ColumnType::none, 0, 0};
+}
+
+
+ptrdiff_t Grid::getRowAtWinPos(int posY) const
+{
+    const int absY = CalcUnscrolledPosition(wxPoint(0, posY)).y;
+    return rowLabelWin_->getRowAtPos(absY); //return -1 for invalid position, rowCount if past the end
+}
+
+
+std::pair<ptrdiff_t, ptrdiff_t> Grid::getVisibleRows(const wxRect& clientRect) const //returns range [begin, end)
+{
+    if (clientRect.height > 0)
+    {
+        const int rowFrom = getRowAtWinPos(clientRect.y);
+        const int rowTo   = getRowAtWinPos(clientRect.GetBottom());
+
+        return {std::max(rowFrom, 0),
+                std::min<ptrdiff_t>((rowTo) + 1, getRowCount())};
+    }
+    return {};
 }
 
 
@@ -2139,9 +2144,9 @@ void Grid::refreshCell(size_t row, ColumnType colType)
 {
     const wxRect& colArea = getColumnLabelArea(colType); //returns empty rect if column not found
     const wxRect& rowArea = rowLabelWin_->getRowLabelArea(row); //returns empty rect if row not found
-    if (colArea.height > 0 && rowArea.height > 0)
+    if (colArea.width > 0 && rowArea.height > 0)
     {
-        const wxPoint topLeft = CalcScrolledPosition(wxPoint(colArea.x, rowArea.y)); //absolute -> client coordinates
+        const wxPoint topLeft = CalcScrolledPosition(wxPoint(colArea.x, rowArea.y)); //logical -> window coordinates
         const wxRect cellArea(topLeft, wxSize(colArea.width, rowArea.height));
 
         getMainWin().RefreshRect(cellArea);
@@ -2224,15 +2229,6 @@ void Grid::scrollTo(size_t row)
 }
 
 
-size_t Grid::getTopRow() const
-{
-    const wxPoint absPos = CalcUnscrolledPosition(wxPoint(0, 0));
-    const ptrdiff_t row = rowLabelWin_->getRowAtPos(absPos.y); //return -1 for invalid position; >= rowCount if out of range
-    assert((getRowCount() == 0 && row == 0) || (0 <= row && row < static_cast<ptrdiff_t>(getRowCount())));
-    return row;
-}
-
-
 bool Grid::Enable(bool enable)
 {
     Refresh();
@@ -2255,10 +2251,10 @@ int Grid::getBestColumnSize(size_t col) const
         wxClientDC dc(mainWin_);
         dc.SetFont(mainWin_->GetFont()); //harmonize with MainWin::render()
 
-        int maxSize = 0;
+        const auto& [rowFirst, rowLast] = getVisibleRows(mainWin_->GetClientRect());
 
-        auto rowRange = rowLabelWin_->getRowsOnClient(mainWin_->GetClientRect()); //returns range [begin, end)
-        for (auto row = rowRange.first; row < rowRange.second; ++row)
+        int maxSize = 0;
+        for (auto row = rowFirst; row < rowLast; ++row)
             maxSize = std::max(maxSize, dataView_->getBestSize(dc, row, type));
 
         return maxSize;

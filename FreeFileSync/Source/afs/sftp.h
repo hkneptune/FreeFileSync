@@ -27,18 +27,20 @@ enum class SftpAuthType
     agent,
 };
 
-struct SftpLogin
+//use all configuration data that *defines* an SSH session as key when buffering sessions! This is what user expects, e.g. when changing settings in SFTP login dialog
+struct SshSessionId
 {
     Zstring server;
-    int     port = 0; // > 0 if set
+    int port = 0; // > 0 if set
     Zstring username;
-
     SftpAuthType authType = SftpAuthType::password;
     Zstring password;           //authType == password or keyFile
     Zstring privateKeyFilePath; //authType == keyFile: use PEM-encoded private key (protected by password) for authentication
-
     bool allowZlib = false;
+};
 
+struct SftpLogin : SshSessionId
+{
     //other settings not specific to SFTP session:
     int timeoutSec = 15;                    //valid range: [1, inf)
     int traverserChannelsPerConnection = 1; //valid range: [1, inf)

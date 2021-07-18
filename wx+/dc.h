@@ -37,6 +37,7 @@ void clearArea(wxDC& dc, const wxRect& rect, const wxColor& col)
     if (rect.width  > 0 && //clearArea() is surprisingly expensive
         rect.height > 0)
     {
+        assert(col.IsSolid());
         //wxDC::DrawRectangle() just widens inner area if wxTRANSPARENT_PEN is used!
         //bonus: wxTRANSPARENT_PEN is about 2x faster than redundantly drawing with col!
         wxDCPenChanger   areaPen  (dc, *wxTRANSPARENT_PEN);
@@ -48,16 +49,37 @@ void clearArea(wxDC& dc, const wxRect& rect, const wxColor& col)
 
 //properly draw rectangle respecting high DPI (and avoiding wxPen position fuzzyness)
 inline
-void drawFilledRectangle(wxDC& dc, wxRect rect, int borderWidth, const wxColor& borderCol, const wxColor& innerCol)
+void drawInsetRectangle(wxDC& dc, wxRect rect, int borderWidth, const wxColor& borderCol, const wxColor& innerCol)
 {
-    assert(borderCol.IsSolid() && innerCol.IsSolid());
-    wxDCPenChanger   rectPen  (dc, *wxTRANSPARENT_PEN);
-    wxDCBrushChanger rectBrush(dc, borderCol);
-    dc.DrawRectangle(rect);
-    rect.Deflate(borderWidth); //attention, more wxWidgets design mistakes: behavior of wxRect::Deflate depends on object being const/non-const!!!
+    if (rect.width  > 0 &&
+        rect.height > 0)
+    {
+        assert(borderCol.IsSolid() && innerCol.IsSolid());
+        wxDCPenChanger   rectPen  (dc, *wxTRANSPARENT_PEN);
+        wxDCBrushChanger rectBrush(dc, borderCol);
+        dc.DrawRectangle(rect);
+        rect.Deflate(borderWidth); //attention, more wxWidgets design mistakes: behavior of wxRect::Deflate depends on object being const/non-const!!!
 
-    dc.SetBrush(innerCol);
-    dc.DrawRectangle(rect);
+        dc.SetBrush(innerCol);
+        dc.DrawRectangle(rect);
+    }
+}
+
+
+inline
+void drawInsetRectangle(wxDC& dc, const wxRect& rect, int borderWidth, const wxColor& col)
+{
+    if (rect.width  > 0 &&
+        rect.height > 0)
+    {
+        assert(col.IsSolid());
+        wxDCPenChanger   areaPen  (dc, *wxTRANSPARENT_PEN);
+        wxDCBrushChanger areaBrush(dc, col);
+        dc.DrawRectangle(rect.GetTopLeft(),                                         {borderWidth, rect.height});
+        dc.DrawRectangle(rect.GetTopLeft() + wxPoint{rect.width - borderWidth, 0},  {borderWidth, rect.height});
+        dc.DrawRectangle(rect.GetTopLeft(),                                         {rect.width, borderWidth});
+        dc.DrawRectangle(rect.GetTopLeft() + wxPoint{0, rect.height - borderWidth}, {rect.width, borderWidth});
+    }
 }
 
 

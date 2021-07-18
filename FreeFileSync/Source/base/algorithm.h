@@ -102,7 +102,7 @@ private:
     TempFileBuffer           (const TempFileBuffer&) = delete;
     TempFileBuffer& operator=(const TempFileBuffer&) = delete;
 
-void createTempFolderPath(); //throw FileError
+    void createTempFolderPath(); //throw FileError
 
     std::map<FileDescriptor, Zstring> tempFilePaths_;
     Zstring tempFolderPath_;

@@ -1,3 +1,15 @@
+FreeFileSync 11.12
+------------------
+Native ARM64 build to support Apple silicon M1 (macOS)
+Non-intrusive mouse highlight on file grid
+Fixed /lib/i386-linux-gnu/libgcc_s.so.1: version `GCC_7.0.0' not found
+Parse file times with no limits on time span (e.g. year 0, year 3000)
+Show folder icon during drag and drop (Windows)
+Show user name for (S)FTP display paths
+Fixed FTP connection lost error with TLS 1.3
+Present file sizes in powers of 1000 bytes (Linux, macOS)
+
+
 FreeFileSync 11.11 [2021-06-11]
 -------------------------------
 Fixed Shared Drive synchronization with Google Drive

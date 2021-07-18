@@ -1688,26 +1688,26 @@ TempFileBuffer::~TempFileBuffer()
 
 void TempFileBuffer::createTempFolderPath() //throw FileError
 {
-        if (tempFolderPath_.empty())
+    if (tempFolderPath_.empty())
     {
-            //generate random temp folder path e.g. C:\Users\Zenju\AppData\Local\Temp\FFS-068b2e88
-            const uint32_t shortGuid = getCrc32(generateGUID()); //no need for full-blown (pseudo-)random numbers for this one-time invocation
+        //generate random temp folder path e.g. C:\Users\Zenju\AppData\Local\Temp\FFS-068b2e88
+        const uint32_t shortGuid = getCrc32(generateGUID()); //no need for full-blown (pseudo-)random numbers for this one-time invocation
 
-            const Zstring& tempPathTmp = appendSeparator(getTempFolderPath()) + //throw FileError
-            Zstr("FFS-") + printNumber<Zstring>(Zstr("%08x"), static_cast<unsigned int>(shortGuid));
+        const Zstring& tempPathTmp = appendSeparator(getTempFolderPath()) + //throw FileError
+                                     Zstr("FFS-") + printNumber<Zstring>(Zstr("%08x"), static_cast<unsigned int>(shortGuid));
 
-            createDirectoryIfMissingRecursion(tempPathTmp); //throw FileError
+        createDirectoryIfMissingRecursion(tempPathTmp); //throw FileError
 
-            tempFolderPath_ = tempPathTmp;
-        }
+        tempFolderPath_ = tempPathTmp;
+    }
 }
 
 
-    Zstring TempFileBuffer::getAndCreateFolderPath() //throw FileError
-    {
-        createTempFolderPath(); //throw FileError
-            return tempFolderPath_; 
-    }
+Zstring TempFileBuffer::getAndCreateFolderPath() //throw FileError
+{
+    createTempFolderPath(); //throw FileError
+    return tempFolderPath_;
+}
 
 
 //returns empty if not available (item not existing, error during copy)
@@ -1731,11 +1731,11 @@ void TempFileBuffer::createTempFiles(const std::set<FileDescriptor>& workLoad, P
     callback.initNewPhase(itemTotal, bytesTotal, ProcessPhase::none); //throw X
     //------------------------------------------------------------------------------
 
-        const std::wstring errMsg = tryReportingError([&]
-        {
-                createTempFolderPath(); //throw FileError
-        }, callback); //throw X
-        if (!errMsg.empty()) return;
+    const std::wstring errMsg = tryReportingError([&]
+    {
+        createTempFolderPath(); //throw FileError
+    }, callback); //throw X
+    if (!errMsg.empty()) return;
 
     for (const FileDescriptor& descr : workLoad)
     {

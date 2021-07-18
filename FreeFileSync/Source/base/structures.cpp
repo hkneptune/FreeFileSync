@@ -269,11 +269,11 @@ uint64_t resolve(size_t value, UnitSize unit, uint64_t defaultVal)
         case UnitSize::byte:
             return value;
         case UnitSize::kb:
-            return value > maxVal / 1024U ? maxVal : //prevent overflow!!!
-                   1024U * value;
+            return value > maxVal / bytesPerKilo ? maxVal : //prevent overflow!!!
+                   value * bytesPerKilo;
         case UnitSize::mb:
-            return value > maxVal / (1024 * 1024U) ? maxVal : //prevent overflow!!!
-                   1024 * 1024U * value;
+            return value > maxVal / (bytesPerKilo * bytesPerKilo) ? maxVal : //prevent overflow!!!
+                   value * bytesPerKilo * bytesPerKilo;
     }
     assert(false);
     return defaultVal;

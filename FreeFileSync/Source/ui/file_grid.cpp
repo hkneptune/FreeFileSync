@@ -61,23 +61,6 @@ const int FILE_GRID_GAP_SIZE_WIDE_DIP = 6;
          |                    |                      |
    GridDataLeft         GridDataRight          GridDataCenter               */
 
-std::pair<ptrdiff_t, ptrdiff_t> getVisibleRows(const Grid& grid) //returns range [from, to)
-{
-    const wxSize clientSize = grid.getMainWin().GetClientSize();
-    if (clientSize.GetHeight() > 0)
-    {
-        const wxPoint topLeft = grid.CalcUnscrolledPosition(wxPoint(0, 0));
-        const wxPoint bottom  = grid.CalcUnscrolledPosition(wxPoint(0, clientSize.GetHeight() - 1));
-
-        const ptrdiff_t rowCount = grid.getRowCount();
-        const ptrdiff_t rowFrom  = grid.getRowAtPos(topLeft.y); //return -1 for invalid position, rowCount if out of range
-        const ptrdiff_t rowTo    = grid.getRowAtPos(bottom.y);
-        if (rowFrom >= 0 && rowTo >= 0)
-            return {rowFrom, std::min(rowTo + 1, rowCount)};
-    }
-    return {};
-}
-
 
 //accessibility, support high-contrast schemes => work with user-defined background color!
 wxColor getAlternateBackgroundColor()
@@ -387,8 +370,8 @@ public:
     {
         if (IconBuffer* iconBuf = getIconManager().getIconBuffer())
         {
-            const auto& rowsOnScreen = getVisibleRows(refGrid());
-            const ptrdiff_t visibleRowCount = rowsOnScreen.second - rowsOnScreen.first;
+            const auto& [rowFirst, rowLast] = refGrid().getVisibleRows(refGrid().getMainWin().GetClientSize());
+            const ptrdiff_t visibleRowCount = rowLast - rowFirst;
 
             //preload icons not yet on screen:
             const int preloadSize = 2 * std::max<ptrdiff_t>(20, visibleRowCount); //:= sum of lines above and below of visible range to preload
@@ -396,7 +379,7 @@ public:
 
             for (ptrdiff_t i = 0; i < preloadSize; ++i)
             {
-                const ptrdiff_t currentRow = rowsOnScreen.first - (preloadSize + 1) / 2 + getAlternatingPos(i, visibleRowCount + preloadSize); //for odd preloadSize start one row earlier
+                const ptrdiff_t currentRow = rowFirst - (preloadSize + 1) / 2 + getAlternatingPos(i, visibleRowCount + preloadSize); //for odd preloadSize start one row earlier
 
                 if (const FileSystemObject* fsObj = getFsObject(currentRow))
                     if (getIconInfo(*fsObj).type == IconType::standard)
@@ -411,14 +394,13 @@ public:
     {
         if (IconBuffer* iconBuf = getIconManager().getIconBuffer())
         {
-            const auto& rowsOnScreen = getVisibleRows(refGrid());
-            const ptrdiff_t visibleRowCount = rowsOnScreen.second - rowsOnScreen.first;
+            const auto& [rowFirst, rowLast] = refGrid().getVisibleRows(refGrid().getMainWin().GetClientSize());
+            const ptrdiff_t visibleRowCount = rowLast - rowFirst;
 
-            //loop over all visible rows
             for (ptrdiff_t i = 0; i < visibleRowCount; ++i)
             {
                 //alternate when adding rows: first, last, first + 1, last - 1 ...
-                const ptrdiff_t currentRow = rowsOnScreen.first + getAlternatingPos(i, visibleRowCount);
+                const ptrdiff_t currentRow = rowFirst + getAlternatingPos(i, visibleRowCount);
 
                 if (isFailedLoad(currentRow)) //find failed attempts to load icon
                     if (const FileSystemObject* fsObj = getFsObject(currentRow))
@@ -620,7 +602,7 @@ private:
         //--------------------------------------------------------------------
 
         //exception for readability: top row is always group start!
-        const size_t groupFirstRow = std::max(pdi.groupFirstRow, refGrid().getTopRow());
+        const size_t groupFirstRow = std::max<size_t>(pdi.groupFirstRow, refGrid().getRowAtWinPos(0));
 
         const bool multiItemGroup = pdi.groupLastRow - groupFirstRow > 1;
 
@@ -935,19 +917,13 @@ private:
                         if (!groupName.empty() && row == groupFirstRow)
                         {
                             wxRect rectGroupNameBack = rectGroupName;
-                            rectGroupNameBack.width += 2 * gapSize_; //include gap left of vline
+
+                            if (!itemName.empty()) 
+                                rectGroupNameBack.width += 2 * gapSize_; //include gap left of item vline
                             rectGroupNameBack.height -= fastFromDIP(1); //harmonize with item separation lines
 
-                            //mouse highlight: group name
                             wxDCTextColourChanger textColorGroupName(dc);
-                            if (static_cast<HoverAreaGroup>(rowHover) == HoverAreaGroup::groupName ||
-                                (static_cast<HoverAreaGroup>(rowHover) == HoverAreaGroup::item && pdi.fsObj == pdi.folderGroupObj /*exception: extend highlight*/))
-                            {
-                                clearArea(dc, rectGroupNameBack, getColorSelectionGradientTo());
-                                textColorGroupName.Set(*wxBLACK);
-                            }
-                            else //folder background: coordinate with renderRowBackgound()
-                            {
+                            //folder background: coordinate with renderRowBackgound()
                                 if (!enabled || !selected)
                                     if (!pdi.folderGroupObj->isEmpty<side>() &&
                                         !pdi.folderGroupObj->isActive())
@@ -955,9 +931,7 @@ private:
                                         clearArea(dc, rectGroupNameBack, getColorInactiveBack(false /*faint*/));
                                         textColorGroupName.Set(getColorInactiveText());
                                     }
-
                                 drawCudHighlight(rectGroupNameBack, pdi.folderGroupObj->getSyncOperation());
-                            }
 
                             wxImage folderIcon;
                             bool drawAsLink = false;
@@ -970,6 +944,11 @@ private:
                             rectGroupName.x     += gapSize_ + getIconManager().getIconSize() + gapSize_;
                             rectGroupName.width -= gapSize_ + getIconManager().getIconSize() + gapSize_;
 
+                            //mouse highlight: group name
+                            if (static_cast<HoverAreaGroup>(rowHover) == HoverAreaGroup::groupName ||
+                                (static_cast<HoverAreaGroup>(rowHover) == HoverAreaGroup::item && pdi.fsObj == pdi.folderGroupObj /*exception: extend highlight*/))
+                                drawInsetRectangle(dc, rectGroupNameBack, fastFromDIP(1), *wxBLUE);
+                            
                             if (!pdi.folderGroupObj->isEmpty<side>())
                                 drawCellText(dc, rectGroupName, groupName, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, &getTextExtentBuffered(dc, groupName));
                         }
@@ -1007,14 +986,6 @@ private:
                         wxRect rectItemsBack = rectGroupItems;
                         rectItemsBack.height -= fastFromDIP(1); //preserve item separation lines!
 
-                        //mouse highlight: item name
-                        wxDCTextColourChanger textColorGroupItems(dc);
-                        if (static_cast<HoverAreaGroup>(rowHover) == HoverAreaGroup::item)
-                        {
-                            clearArea(dc, rectItemsBack, getColorSelectionGradientTo());
-                            textColorGroupItems.Set(*wxBLACK);
-                        }
-                        else
                             drawCudHighlight(rectItemsBack, pdi.fsObj->getSyncOperation());
 
                         if (IconBuffer* iconBuf = getIconManager().getIconBuffer()) //=> draw file icons
@@ -1055,6 +1026,10 @@ private:
 
                         rectGroupItems.x     += gapSize_;
                         rectGroupItems.width -= gapSize_;
+
+                                //mouse highlight: item name
+                        if (static_cast<HoverAreaGroup>(rowHover) == HoverAreaGroup::item)
+                                drawInsetRectangle(dc, rectItemsBack, fastFromDIP(1), *wxBLUE);
 
                         if (!pdi.fsObj->isEmpty<side>())
                             drawCellText(dc, rectGroupItems, itemName, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, &getTextExtentBuffered(dc, itemName));
@@ -1369,9 +1344,8 @@ public:
         //manage block highlighting and custom tooltip
         if (!selectionInProgress_)
         {
-            const wxPoint& topLeftAbs = refGrid().CalcUnscrolledPosition(clientPos);
-            const size_t row = refGrid().getRowAtPos(topLeftAbs.y); //return -1 for invalid position, rowCount if one past the end
-            const Grid::ColumnPosInfo cpi = refGrid().getColumnAtPos(topLeftAbs.x); //returns ColumnType::none if no column at x position!
+            const size_t              row = refGrid().getRowAtWinPos   (clientPos.y); //return -1 for invalid position, rowCount if past the end
+            const Grid::ColumnPosInfo cpi = refGrid().getColumnAtWinPos(clientPos.x); //returns ColumnType::none if no column at x position!
 
             if (row < refGrid().getRowCount() && cpi.colType != ColumnType::none &&
                 refGrid().getMainWin().GetClientRect().Contains(clientPos)) //cursor might have moved outside visible client area

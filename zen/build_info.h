@@ -7,6 +7,7 @@
 #ifndef BUILD_INFO_H_5928539285603428657
 #define BUILD_INFO_H_5928539285603428657
 
+
 #define ZEN_ARCH_32BIT 32
 #define ZEN_ARCH_64BIT 64
 
@@ -17,5 +18,16 @@
     #endif
 
 static_assert(ZEN_BUILD_ARCH == sizeof(void*) * 8);
+
+
+namespace zen
+{
+    #if ZEN_BUILD_ARCH == ZEN_ARCH_32BIT
+        const char cpuArchName[] = "i686";
+    #else
+        const char cpuArchName[] = "x86-64";
+    #endif
+
+}
 
 #endif //BUILD_INFO_H_5928539285603428657

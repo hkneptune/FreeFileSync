@@ -8,6 +8,7 @@
 #define TIME_H_8457092814324342453627
 
 #include <ctime>
+#include "basic_math.h"
 #include "zstring.h"
 
 
@@ -147,160 +148,8 @@ TimeComp getLocalTime(time_t utc)
 }
 
 
-//FILETIME: number of 100-nanosecond intervals since January 1, 1601 UTC
-//time_t:   number of seconds since Jan. 1st 1970 UTC
-constexpr auto fileTimeTimetOffset = 11'644'473'600;
-
-
-#if 0
-warn_static("remove after test")
-inline
-TimeComp getUtcTime2(time_t utc)
-{
-    //1. convert: seconds since year 1:
-    //...
-    //assert(time_t is signed)
-
-    //TODO: what if < 0?
-    long long remDays = utc / (24 * 3600);
-    long long remSecs = utc % (24 * 3600);
-
-    //days per year
-    const int dpYearStd  = 365;
-    const int dpYearLeap = dpYearStd + 1;
-    const int dp4Years = 3 * dpYearStd + dpYearLeap;
-    const int dp100YearsStd = 25 * dp4Years - 1; //no leap days for centuries...
-    const int dp100YearsExc = 25 * dp4Years; //...except if divisible by 400
-    const int dp400Years = 3 * dp100YearsStd + dp100YearsExc;
-
-
-
-
-    const int daysPer4Years = 4 * 365 /*usual days per year*/ + 1 /*including leap day*/;
-    const int daysPerYear = 365; //non-leap
-    const int daysPer100Years = 25 * daysPer4Years - 1;
-    const int daysPer400Years = 100 * daysPer4Years - 3 /*no leap days for centuries, except if divisible by 400 */;
-
-    const lldiv_t cycles400 = std::lldiv(remDays, daysPer400Years);
-    remDays = cycles400.rem;
-
-
-    int cycles100 = (remDays / daysPer100Years);
-    if (cycles100 == 4)
-        --cycles100;
-
-    remDays -= cycles100 * daysPer100Years;
-
-
-    int cycles4 = (remDays / daysPer4Years);
-    if (cycles4 == 25)
-        --cycles4;
-
-    remDays -= cycles4 * daysPer4Years;
-
-
-    int cycles1 = remDays / daysPerYear;
-    if (cycles1 == 4)
-        --cycles1;
-
-    remDays -= cycles1 * daysPerYears;
-
-    const int year = 1 + cycles400.quot * 400 + cycles100 * 100; + cycles4 * 4 + cycles1;;
-
-
-
-    const char daysPerMonth[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-
-
-
-    //first four years of century:
-    if (skipCenturyLeapDay)
-    {
-        if (remDays < 4 * daysPerYear)
-        {
-            year += remDays / daysPerYear;
-            remDays %= daysPerYear;
-        }
-        else
-        {
-            remDays -= 4 * daysPerYear;
-            year += 4;
-            => go to if block;
-        }
-    }
-    else
-    {
-        year += (remDays / daysPer4Years) * 4;
-        remDays %= daysPer4Years;
-
-        if (remDays < daysPerYear + 1 /*including leap day*/)
-            isLeapYear = true;
-        else
-        {
-            remDays -= daysPerYear + 1;
-            ++year;
-
-            year += remDays / daysPerYear;
-            remDays %= daysPerYear;
-        }
-    }
-
-
-
-
-
-
-
-
-    const int daysPer100Years = 25 * (4 * 365 /*usual days per year*/ +  1)/*leap days */;
-
-
-    const int daysPer100Years = 100 * 365 /*usual days per year*/ +  25 /*leap days */;
-    const int daysPer200Years = 200 * 365 /*usual days per year*/ +  50 /*leap days */ - 1 /*no leap days for centuries, except if divisible by 400 */;
-    const int daysPer300Years = 300 * 365 /*usual days per year*/ +  75 /*leap days */ - 2 /*no leap days for centuries, except if divisible by 400 */;
-
-    if (remDays >= daysPer300Years)
-    {
-        year += 300;
-        remDays -= daysPer300Years;
-    }
-    else if (remDays >= daysPer200Years)
-    {
-        year += 200;
-        remDays -= daysPer200Years;
-    }
-    else if (remDays >= daysPer100Years)
-    {
-        year += 100;
-        remDays -= daysPer100Years;
-    }
-
-
-
-    constexpr int daysPer100Years = 100 * 365 /*usual days per year*/ + 25 /*leap days */ - 1 /*no leap days for centuries not divisible by 400 */;
-
-    int addCenturies = remDays / daysPer100Years;
-    if (addCenturies == 4)
-        --addCenturies;
-
-    year += addCenturies * 100;
-    remDays -= addCenturies * daysPer100Years;
-
-    constexpr int daysPer4Years = 4 * 365 /*usual days per year*/ + 1 /*leap day */;
-
-
-
-    constexpr int daysPer100Years = 100 * 365 /*usual days per year*/ + 25 /*leap days */ - 1 /*no leap days for centuries not divisible by 400 */;
-    constexpr int daysPer100Years = 100 * 365 /*usual days per year*/ + 25 /*leap days */ - 1 /*no leap days for centuries not divisible by 400 */;
-    constexpr int daysPer100Years = 100 * 365 /*usual days per year*/ + 25 /*leap days */ - 1 /*no leap days for centuries not divisible by 400 */;
-    constexpr int daysPer100Years = 100 * 365 /*usual days per year*/ + 25 /*leap days */;
-
-
-
-}
-
-warn_static("get rid of fileTimeTimetOffset!")
-#endif
+constexpr auto daysPer400Years = 100 * (4 * 365 /*usual days per year*/ + 1 /*including leap day*/) - 3 /*no leap days for centuries, except if divisible by 400 */;
+constexpr auto secsPer400Years = 3600LL * 24 * daysPer400Years;
 
 
 inline
@@ -309,9 +158,8 @@ TimeComp getUtcTime(time_t utc)
     if (utc == -1) //failure code from std::time(nullptr)
         return TimeComp();
 
-
     std::tm ctc = {};
-    if (::gmtime_r(&utc, &ctc) == nullptr)
+    if (::gmtime_r(&utc, &ctc) == nullptr) //Linux, macOS: apparently NO limits (tested years 0 to 10.000!)
         return TimeComp();
 
     return impl::toZenTimeComponents(ctc);
@@ -335,10 +183,13 @@ time_t utcToTimeT(const TimeComp& tc) //returns -1 on error
     if (tc == TimeComp())
         return -1;
 
-
     std::tm ctc = impl::toClibTimeComponents(tc);
     ctc.tm_isdst = 0; //"Zero (0) to indicate that standard time is in effect" => unused by _mkgmtime, but take no chances
-    return ::timegm(&ctc);
+
+
+    time_t utc = ::timegm(&ctc);
+
+    return utc;
 }
 
 

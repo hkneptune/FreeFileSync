@@ -223,7 +223,6 @@ struct XmlGlobalSettings
                                      "*/.recycle/";
     size_t folderHistoryMax = 20;
 
-    Zstring csvFileLastSelected;
     Zstring sftpKeyFileLastSelected;
 
     std::vector<Zstring> versioningFolderHistory;

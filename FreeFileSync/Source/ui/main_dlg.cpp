@@ -701,8 +701,9 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     m_menuItemSyncSettings->SetBitmap(loadImage("options_sync_sicon"));
     m_menuItemSynchronize ->SetBitmap(loadImage("start_sync_sicon"));
 
-    m_menuItemOptions     ->SetBitmap(loadImage("settings_sicon"));
-    m_menuItemFind        ->SetBitmap(loadImage("find_sicon"));
+    m_menuItemOptions    ->SetBitmap(loadImage("settings_sicon"));
+    m_menuItemFind       ->SetBitmap(loadImage("find_sicon"));
+    m_menuItemResetLayout->SetBitmap(loadImage("reset_sicon"));
 
     m_menuItemHelp ->SetBitmap(loadImage("help_sicon"));
     m_menuItemAbout->SetBitmap(loadImage("about_sicon"));
@@ -1125,7 +1126,7 @@ XmlGlobalSettings MainDialog::getGlobalCfgBeforeExit()
         cfgHistory.resize(globalSettings.mainDlg.config.histItemsMax);
 
     globalSettings.mainDlg.config.fileHistory         = std::move(cfgHistory);
-    globalSettings.mainDlg.config.topRowPos       = m_gridCfgHistory->getTopRow();
+    globalSettings.mainDlg.config.topRowPos       = m_gridCfgHistory->getRowAtWinPos(0);
     globalSettings.dpiLayouts[getDpiScalePercent()].configColumnAttribs = convertColAttributes<ColAttributesCfg>(m_gridCfgHistory->getColumnConfig());
     globalSettings.mainDlg.config.syncOverdueDays = cfggrid::getSyncOverdueDays(*m_gridCfgHistory);
 
@@ -2314,7 +2315,7 @@ void MainDialog::onTreeGridContext(GridContextMenuEvent& event)
     menu.addSeparator();
     menu.addItem(_("&Delete") + L"\t(Shift+)Del", [&] { deleteSelectedFiles(selection, selection, true /*moveToRecycler*/); }, imgTrashSmall_, haveNonEmptyItems);
 
-    menu.popup(*m_gridOverview);
+    menu.popup(*m_gridOverview, event.mousePos_);
 }
 
 
@@ -2326,7 +2327,7 @@ void MainDialog::onGridContextRim(GridContextMenuEvent& event, bool leftSide)
 
     onGridContextRim(getGridSelection(),
                      getGridSelection(true, false),
-                     getGridSelection(false, true), leftSide);
+                     getGridSelection(false, true), leftSide, event.mousePos_);
 }
 
 
@@ -2346,7 +2347,7 @@ void MainDialog::onGridGroupContextRim(GridClickEvent& event, bool leftSide)
 
             onGridContextRim({pdi.folderGroupObj},
                              selectionLeft,
-                             selectionRight, leftSide);
+                             selectionRight, leftSide, event.mousePos_);
             return; //"swallow" event => suppress default context menu handling
         }
 
@@ -2357,7 +2358,7 @@ void MainDialog::onGridGroupContextRim(GridClickEvent& event, bool leftSide)
 
 void MainDialog::onGridContextRim(const std::vector<FileSystemObject*>& selection,
                                   const std::vector<FileSystemObject*>& selectionLeft,
-                                  const std::vector<FileSystemObject*>& selectionRight, bool leftSide)
+                                  const std::vector<FileSystemObject*>& selectionRight, bool leftSide, wxPoint mousePos)
 {
     ContextMenu menu;
 
@@ -2493,7 +2494,7 @@ void MainDialog::onGridContextRim(const std::vector<FileSystemObject*>& selectio
     menu.addSeparator();
     menu.addItem(_("&Delete") + L"\t(Shift+)Del", [&] { deleteSelectedFiles(selectionLeft, selectionRight, true /*moveToRecycler*/); }, imgTrashSmall_, haveNonEmptyItemsL || haveNonEmptyItemsR);
 
-    menu.popup(leftSide ? *m_gridMainL : *m_gridMainR);
+    menu.popup(leftSide ? *m_gridMainL : *m_gridMainR, mousePos);
 }
 
 
@@ -2593,7 +2594,7 @@ void MainDialog::onGridLabelContextC(GridLabelClickEvent& event)
     const GridViewType viewType = m_bpButtonViewType->isActive() ? GridViewType::action : GridViewType::difference;
     menu.addItem(_("Difference") + (viewType != GridViewType::difference ? L"\tF11" : L""), [&] { setGridViewType(GridViewType::difference); }, greyScaleIfDisabled(loadImage("compare_sicon"   ), viewType == GridViewType::difference));
     menu.addItem(_("Action")     + (viewType != GridViewType::action     ? L"\tF11" : L""), [&] { setGridViewType(GridViewType::action    ); }, greyScaleIfDisabled(loadImage("start_sync_sicon"), viewType == GridViewType::action));
-    menu.popup(*m_gridMainC, {m_gridMainC->GetSize().x, 0});
+    menu.popup(*m_gridMainC, {event.mousePos_.x, m_gridMainC->getColumnLabelHeight()});
 }
 
 
@@ -2654,8 +2655,6 @@ void MainDialog::onGridLabelContextRim(GridLabelClickEvent& event, bool leftSide
     addFormatEntry(_("Full path"    ), ItemPathFormat::full);
 
     //----------------------------------------------------------------------------------------------
-    menu.addSeparator();
-
     auto setIconSize = [&](FileIconSize sz, bool showIcons)
     {
         globalCfg_.mainDlg.iconSize  = sz;
@@ -2663,17 +2662,6 @@ void MainDialog::onGridLabelContextRim(GridLabelClickEvent& event, bool leftSide
         filegrid::setupIcons(*m_gridMainL, *m_gridMainC, *m_gridMainR, globalCfg_.mainDlg.showIcons, convert(globalCfg_.mainDlg.iconSize));
     };
 
-    auto setDefault = [&]
-    {
-        grid.setColumnConfig(convertColAttributes(leftSide ? getFileGridDefaultColAttribsLeft() : getFileGridDefaultColAttribsRight(), getFileGridDefaultColAttribsLeft()));
-
-        const XmlGlobalSettings defaultCfg;
-        setItemPathFormat(leftSide ? defaultCfg.mainDlg.itemPathFormatLeftGrid : defaultCfg.mainDlg.itemPathFormatRightGrid);
-
-        setIconSize(defaultCfg.mainDlg.iconSize, defaultCfg.mainDlg.showIcons);
-    };
-    menu.addItem(_("&Default"), setDefault); //'&' -> reuse text from "default" buttons elsewhere
-    //----------------------------------------------------------------------------------------------
     menu.addSeparator();
     menu.addCheckBox(_("Show icons:"), [&] { setIconSize(globalCfg_.mainDlg.iconSize, !globalCfg_.mainDlg.showIcons); }, globalCfg_.mainDlg.showIcons);
 
@@ -2684,11 +2672,23 @@ void MainDialog::onGridLabelContextRim(GridLabelClickEvent& event, bool leftSide
     addSizeEntry(L"    " + _("Small" ), FileIconSize::small );
     addSizeEntry(L"    " + _("Medium"), FileIconSize::medium);
     addSizeEntry(L"    " + _("Large" ), FileIconSize::large );
+
     //----------------------------------------------------------------------------------------------
+    auto setDefault = [&]
+    {
+        grid.setColumnConfig(convertColAttributes(leftSide ? getFileGridDefaultColAttribsLeft() : getFileGridDefaultColAttribsRight(), getFileGridDefaultColAttribsLeft()));
+
+        const XmlGlobalSettings defaultCfg;
+        setItemPathFormat(leftSide ? defaultCfg.mainDlg.itemPathFormatLeftGrid : defaultCfg.mainDlg.itemPathFormatRightGrid);
+
+        setIconSize(defaultCfg.mainDlg.iconSize, defaultCfg.mainDlg.showIcons);
+    };
+
+    menu.addSeparator();
+    menu.addItem(_("&Default"), setDefault, loadImage("reset_sicon"));
+
     //    if (type == ColumnTypeRim::date)
     {
-        menu.addSeparator();
-
         auto selectTimeSpan = [&]
         {
             if (showSelectTimespanDlg(this, manualTimeSpanFrom_, manualTimeSpanTo_) == ConfirmationButton::accept)
@@ -2698,6 +2698,8 @@ void MainDialog::onGridLabelContextRim(GridLabelClickEvent& event, bool leftSide
                 updateGui();
             }
         };
+
+        menu.addSeparator();
         menu.addItem(_("Select time span..."), selectTimeSpan);
     }
     //--------------------------------------------------------------------------------------------------------
@@ -2744,7 +2746,7 @@ void MainDialog::onSetLayoutContext(wxMouseEvent& event)
 {
     ContextMenu menu;
 
-    menu.addItem(replaceCpy(_("&Reset layout"), L"&", L""), [&] { resetLayout(); }); //reuse translation from GUI builder
+    menu.addItem(replaceCpy(_("&Reset layout"), L"&", L""), [&] { resetLayout(); }, loadImage("reset_sicon"));
     //----------------------------------------------------------------------------------------
 
     bool addedSeparator = false;
@@ -3477,7 +3479,7 @@ void MainDialog::onCfgGridContext(GridContextMenuEvent& event)
             wxMemoryDC dc(bmpSquare);
             const wxColor borderCol(0xdd, 0xdd, 0xdd); //light grey
             const wxColor fillCol = col.Ok() ? col : wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW);
-            drawFilledRectangle(dc, wxRect(bmpSquare.GetSize()), fastFromDIP(1), borderCol, fillCol);
+            drawInsetRectangle(dc, wxRect(bmpSquare.GetSize()), fastFromDIP(1), borderCol, fillCol);
         }
         submenu.addItem(name, applyBackColor, bmpSquare.ConvertToImage(), !selectedRows.empty());
     };
@@ -3527,7 +3529,7 @@ void MainDialog::onCfgGridContext(GridContextMenuEvent& event)
     menu.addItem(_("Hide configuration") + L"\tDel", [this] { removeSelectedCfgHistoryItems(false /*deleteFromDisk*/); }, wxNullImage,    !selectedRows.empty());
     menu.addItem(_("&Delete") +      L"\tShift+Del", [this] { removeSelectedCfgHistoryItems(true  /*deleteFromDisk*/); }, imgTrashSmall_, !selectedRows.empty());
     //--------------------------------------------------------------------------------------------------------
-    menu.popup(*m_gridCfgHistory);
+    menu.popup(*m_gridCfgHistory, event.mousePos_);
     //event.Skip();
 }
 
@@ -3576,7 +3578,7 @@ void MainDialog::onCfgGridLabelContext(GridLabelClickEvent& event)
         const DpiLayout defaultLayout;
         m_gridCfgHistory->setColumnConfig(convertColAttributes(defaultLayout.configColumnAttribs, getCfgGridDefaultColAttribs()));
     };
-    menu.addItem(_("&Default"), setDefault); //'&' -> reuse text from "default" buttons elsewhere
+    menu.addItem(_("&Default"), setDefault, loadImage("reset_sicon")); //'&' -> reuse text from "default" buttons elsewhere
     //--------------------------------------------------------------------------------------------------------
     menu.addSeparator();
 

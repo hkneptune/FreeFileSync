@@ -22,6 +22,21 @@ using namespace fff;
 using AFS = AbstractFileSystem;
 
 
+namespace fff
+{
+std::weak_ordering operator<=>(const FtpSessionId& lhs, const FtpSessionId& rhs)
+{
+    //exactly the type of case insensitive comparison we need for server names!
+    if (const std::weak_ordering cmp = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
+        std::is_neq(cmp))
+        return cmp;
+
+    return std::tie(lhs.port, lhs.username, lhs.password, lhs.useTls) <=> //username, password: case sensitive!
+           std::tie(rhs.port, rhs.username, rhs.password, rhs.useTls);
+}
+}
+
+
 namespace
 {
 //Extensions to FTP: https://tools.ietf.org/html/rfc3659
@@ -40,36 +55,6 @@ enum class ServerEncoding
     utf8,
     ansi
 };
-
-
-//use all configuration data that *defines* an SFTP session as key when buffering sessions! This is what user expects, e.g. when changing settings in FTP login dialog
-struct FtpSessionId
-{
-    /*explicit*/ FtpSessionId(const FtpLogin& login) :
-        server(login.server),
-        port(login.port),
-        username(login.username),
-        password(login.password),
-        useTls(login.useTls) {}
-
-    Zstring server;
-    int     port = 0;
-    Zstring username;
-    Zstring password;
-    bool useTls = false;
-    //timeoutSec => irrelevant for session equality
-};
-
-std::weak_ordering operator<=>(const FtpSessionId& lhs, const FtpSessionId& rhs)
-{
-    //exactly the type of case insensitive comparison we need for server names!
-    if (const std::weak_ordering cmp = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
-        std::is_neq(cmp))
-        return cmp;
-
-    return std::tie(lhs.port, lhs.username, lhs.password, lhs.useTls) <=> //username, password: case sensitive!
-           std::tie(rhs.port, rhs.username, rhs.password, rhs.useTls);
-}
 
 
 Zstring concatenateFtpFolderPathPhrase(const FtpLogin& login, const AfsPath& afsPath); //noexcept
@@ -151,9 +136,13 @@ std::string utfToServerEncoding(const Zstring& str, ServerEncoding enc) //throw 
 }
 
 
-std::wstring getCurlDisplayPath(const Zstring& serverName, const AfsPath& afsPath)
+std::wstring getCurlDisplayPath(const FtpSessionId& sessionId, const AfsPath& afsPath)
 {
-    Zstring displayPath = Zstring(ftpPrefix) + Zstr("//") + serverName;
+    Zstring displayPath = Zstring(ftpPrefix) + Zstr("//");
+    if (!sessionId.username.empty()) //show username! consider AFS::compareDeviceSameAfsType()
+        displayPath += sessionId.username + Zstr('@');
+    displayPath += sessionId.server;
+
     const Zstring relPath = getServerRelPath(afsPath);
     if (relPath != Zstr("/"))
         displayPath += relPath;
@@ -455,10 +444,10 @@ public:
         options.emplace_back(CURLOPT_CAINFO, 0L); //be explicit: "even when [CURLOPT_SSL_VERIFYPEER] is disabled [...] curl may still load the certificate file specified in CURLOPT_CAINFO."
 
         //check if server certificate can be trusted? (Default: 1L)
-        //  => may fail with: CURLE_PEER_FAILED_VERIFICATION: SSL certificate problem: certificate has expired
+        //  => may fail with: "CURLE_PEER_FAILED_VERIFICATION: SSL certificate problem: certificate has expired"
         options.emplace_back(CURLOPT_SSL_VERIFYPEER, 0L);
         //check that server name matches the name in the certificate? (Default: 2L)
-        //  => may fail with: CURLE_PEER_FAILED_VERIFICATION: SSL: no alternative certificate subject name matches target host name 'freefilesync.org'
+        //  => may fail with: "CURLE_PEER_FAILED_VERIFICATION: SSL: no alternative certificate subject name matches target host name 'freefilesync.org'"
         options.emplace_back(CURLOPT_SSL_VERIFYHOST, 0L);
 #endif
         if (sessionId_.useTls) //https://tools.ietf.org/html/rfc4217
@@ -1017,7 +1006,7 @@ FtpItem getFtpSymlinkInfo(const FtpLogin& login, const AfsPath& linkPath) //thro
     }
     catch (const SysError& e)
     {
-        throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(getCurlDisplayPath(login.server, linkPath))), e.toString());
+        throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(getCurlDisplayPath(login, linkPath))), e.toString());
     }
 }
 
@@ -1089,7 +1078,7 @@ public:
         }
         catch (const SysError& e)
         {
-            throw FileError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(getCurlDisplayPath(login.server, afsDirPath))), e.toString());
+            throw FileError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(getCurlDisplayPath(login, afsDirPath))), e.toString());
         }
         return output;
     }
@@ -1663,7 +1652,7 @@ void ftpFileDownload(const FtpLogin& login, const AfsPath& afsFilePath, //throw 
         if (exception)
             std::rethrow_exception(exception);
 
-        throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(getCurlDisplayPath(login.server, afsFilePath))), e.toString());
+        throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(getCurlDisplayPath(login, afsFilePath))), e.toString());
     }
 }
 
@@ -1732,7 +1721,7 @@ void ftpFileUpload(const FtpLogin& login, const AfsPath& afsFilePath, //throw Fi
         if (exception)
             std::rethrow_exception(exception);
 
-        throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getCurlDisplayPath(login.server, afsFilePath))), e.toString());
+        throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getCurlDisplayPath(login, afsFilePath))), e.toString());
     }
 }
 
@@ -1747,7 +1736,7 @@ struct InputStreamFtp : public AFS::InputStream
     {
         worker_ = InterruptibleThread([asyncStreamOut = this->asyncStreamIn_, login, afsPath]
         {
-            setCurrentThreadName(Zstr("Istream[FTP] ") + utfTo<Zstring>(getCurlDisplayPath(login.server, afsPath)));
+            setCurrentThreadName(Zstr("Istream[FTP] ") + utfTo<Zstring>(getCurlDisplayPath(login, afsPath)));
             try
             {
                 auto writeBlock = [&](const void* buffer, size_t bytesToWrite)
@@ -1821,7 +1810,7 @@ struct OutputStreamFtp : public AFS::OutputStreamImpl
                                               asyncStreamIn = this->asyncStreamOut_,
                                               pUploadDone   = std::move(pUploadDone)]() mutable
         {
-            setCurrentThreadName(Zstr("Ostream[FTP] ") + utfTo<Zstring>(getCurlDisplayPath(login.server, afsPath)));
+            setCurrentThreadName(Zstr("Ostream[FTP] ") + utfTo<Zstring>(getCurlDisplayPath(login, afsPath)));
             try
             {
                 auto readBlock = [&](void* buffer, size_t bytesToRead)
@@ -1912,7 +1901,7 @@ private:
             }
             catch (const SysError& e)
             {
-                throw FileError(replaceCpy(_("Cannot write modification time of %x."), L"%x", fmtPath(getCurlDisplayPath(login_.server, afsPath_))), e.toString());
+                throw FileError(replaceCpy(_("Cannot write modification time of %x."), L"%x", fmtPath(getCurlDisplayPath(login_, afsPath_))), e.toString());
             }
     }
 
@@ -1939,7 +1928,7 @@ public:
 private:
     Zstring getInitPathPhrase(const AfsPath& afsPath) const override { return concatenateFtpFolderPathPhrase(login_, afsPath); }
 
-    std::wstring getDisplayPath(const AfsPath& afsPath) const override { return getCurlDisplayPath(login_.server, afsPath); }
+    std::wstring getDisplayPath(const AfsPath& afsPath) const override { return getCurlDisplayPath(login_, afsPath); }
 
     bool isNullFileSystem() const override { return login_.server.empty(); }
 
@@ -1975,7 +1964,7 @@ private:
                 });
                 return ItemType::folder;
             }
-            catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(getCurlDisplayPath(login_.server, afsPath))), e.toString()); }
+            catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(getCurlDisplayPath(login_, afsPath))), e.toString()); }
 
         const Zstring itemName = getItemName(afsPath);
         assert(!itemName.empty());
@@ -2302,7 +2291,7 @@ AfsPath fff::getFtpHomePath(const FtpLogin& login) //throw FileError
         });
         return homePath;
     }
-    catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtPath(getCurlDisplayPath(login.server, AfsPath(Zstr("~"))))), e.toString()); }
+    catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtPath(getCurlDisplayPath(login, AfsPath(Zstr("~"))))), e.toString()); }
 }
 
 

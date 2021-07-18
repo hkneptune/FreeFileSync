@@ -187,14 +187,7 @@ void MainDialog::onMenuAbout(wxCommandEvent& event)
     build += SPACED_BULLET;
 
     build += LTR_MARK; //fix Arabic
-#ifndef ZEN_BUILD_ARCH
-#error include <zen/build_info.h>
-#endif
-#if ZEN_BUILD_ARCH == ZEN_ARCH_32BIT
-    build += L"32 Bit";
-#else
-    build += L"64 Bit";
-#endif
+    build += utfTo<wxString>(cpuArchName);
 
     build += SPACED_BULLET;
     build += utfTo<wxString>(formatTime(formatDateTag, getCompileTime()));

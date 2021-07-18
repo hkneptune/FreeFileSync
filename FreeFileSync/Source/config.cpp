@@ -1860,12 +1860,10 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
 
     if (formatVer < 20) //TODO: remove old parameter after migration! 2020-12-03
     {
-        in["Gui"]["CsvExport"  ].attribute("LastSelected", cfg.csvFileLastSelected);
         in["Gui"]["SftpKeyFile"].attribute("LastSelected", cfg.sftpKeyFileLastSelected);
     }
     else
     {
-        in["CsvExport"  ].attribute("LastSelected", cfg.csvFileLastSelected);
         in["SftpKeyFile"].attribute("LastSelected", cfg.sftpKeyFileLastSelected);
     }
 
@@ -2075,7 +2073,7 @@ ConfigType parseConfig(const XmlDoc& doc, const Zstring& filePath, int currentXm
         //(try to) migrate old configuration if needed
         if (formatVer < currentXmlFormatVer)
             try { fff::writeConfig(cfg, filePath); /*throw FileError*/ }
-            catch (FileError&) { assert(false); }     //don't bother user!
+            catch (FileError&) { assert(false); } //don't bother user!
     }
     catch (const FileError& e)
     {
@@ -2426,9 +2424,6 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
 
     out["FolderHistory" ].attribute("MaxSize", cfg.folderHistoryMax);
 
-     warn_static("csvFileLastSelected is obsolete: get rid?")
-
-    out["CsvExport"  ].attribute("LastSelected", cfg.csvFileLastSelected);
     out["SftpKeyFile"].attribute("LastSelected", cfg.sftpKeyFileLastSelected);
 
     out["DefaultExclusionFilter"](splitFilterByLines(cfg.defaultExclusionFilter));

@@ -14,6 +14,7 @@
 
 namespace zen
 {
+    const int bytesPerKilo = 1000;
 std::wstring formatFilesizeShort(int64_t filesize);
 std::wstring formatRemainingTime(double timeInSec);
 std::wstring formatFraction(double fraction); //within [0, 1]

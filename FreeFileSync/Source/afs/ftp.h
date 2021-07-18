@@ -20,14 +20,18 @@ void ftpTeardown();
 
 //-------------------------------------------------------
 
-struct FtpLogin
+//use all configuration data that *defines* an SFTP session as key when buffering sessions! This is what user expects, e.g. when changing settings in FTP login dialog
+struct FtpSessionId
 {
     Zstring server;
     int port = 0; // > 0 if set
     Zstring username;
     Zstring password;
     bool useTls = false;
+};
 
+struct FtpLogin : FtpSessionId
+{
     //other settings not specific to FTP session:
     int timeoutSec = 15;
 };

@@ -872,7 +872,7 @@ dlgSizeBuf_(dlgSize)
         wxBitmap bmpSquare(this->GetCharHeight(), this->GetCharHeight()); //seems we don't need to pass 24-bit depth here even for high-contrast color schemes
         {
             wxMemoryDC dc(bmpSquare);
-            drawFilledRectangle(dc, wxRect(bmpSquare.GetSize()), fastFromDIP(1), borderCol, fillCol);
+            drawInsetRectangle(dc, wxRect(bmpSquare.GetSize()), fastFromDIP(1), borderCol, fillCol);
         }
         return bmpSquare;
     };

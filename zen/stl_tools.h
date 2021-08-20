@@ -39,7 +39,7 @@ void removeDuplicates(std::vector<T, Alloc>& v, CompLess less);
 template <class T, class Alloc, class CompLess>
 void removeDuplicatesStable(std::vector<T, Alloc>& v, CompLess less);
 
-template <class T, class Alloc> 
+template <class T, class Alloc>
 void removeDuplicatesStable(std::vector<T, Alloc>& v);
 
 //searching STL containers
@@ -142,8 +142,8 @@ template <class T, class Alloc, class CompLess> inline
 void removeDuplicatesStable(std::vector<T, Alloc>& v, CompLess less)
 {
     std::set<T, CompLess> usedItems(less);
-    v.erase(std::remove_if(v.begin(), v.end(), 
-        [&usedItems](const T& e) { return !usedItems.insert(e).second; }), v.end());
+    v.erase(std::remove_if(v.begin(), v.end(),
+    [&usedItems](const T& e) { return !usedItems.insert(e).second; }), v.end());
 }
 
 

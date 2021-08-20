@@ -9,7 +9,6 @@
 #include <wx/imaglist.h>
 #include <wx/wupdlock.h>
 #include <wx/app.h>
-//#include <zen/basic_math.h>
 #include <zen/format_unit.h>
 #include <zen/scope_guard.h>
 #include <wx+/toggle_button.h>

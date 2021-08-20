@@ -588,16 +588,16 @@ void Graph2D::render(wxDC& dc) const
     double minX = attr_.minX ? *attr_.minX :  std::numeric_limits<double>::infinity(); //automatic: ensure values are initialized by first curve
     double maxX = attr_.maxX ? *attr_.maxX : -std::numeric_limits<double>::infinity(); //
     for (const auto& [curve, attrib] : curves_)
-        {
-            const std::pair<double, double> rangeX = curve.ref().getRangeX();
-            assert(rangeX.first <= rangeX.second + 1.0e-9);
-            //GCC fucks up badly when comparing two *binary identical* doubles and finds "begin > end" with diff of 1e-18
+    {
+        const std::pair<double, double> rangeX = curve.ref().getRangeX();
+        assert(rangeX.first <= rangeX.second + 1.0e-9);
+        //GCC fucks up badly when comparing two *binary identical* doubles and finds "begin > end" with diff of 1e-18
 
-            if (!attr_.minX)
-                minX = std::min(minX, rangeX.first);
-            if (!attr_.maxX)
-                maxX = std::max(maxX, rangeX.second);
-        }
+        if (!attr_.minX)
+            minX = std::min(minX, rangeX.first);
+        if (!attr_.maxX)
+            maxX = std::max(maxX, rangeX.second);
+    }
 
     if (minX <= maxX && maxX - minX < std::numeric_limits<double>::infinity()) //valid x-range
     {
@@ -619,29 +619,29 @@ void Graph2D::render(wxDC& dc) const
         std::vector<std::vector<char>>       oobMarker  (curves_.size()); //effectively a std::vector<bool> marking points that start an out-of-bounds line
 
         for (size_t index = 0; index < curves_.size(); ++index)
+        {
+            const CurveData&         curve  = curves_    [index].first.ref();
+            std::vector<CurvePoint>& points = curvePoints[index];
+            auto&                    marker = oobMarker  [index];
+
+            points = curve.getPoints(minX, maxX, graphArea.GetSize());
+            marker.resize(points.size()); //default value: false
+            if (!points.empty())
             {
-                const CurveData&         curve  = curves_    [index].first.ref();
-                std::vector<CurvePoint>& points = curvePoints[index];
-                auto&                    marker = oobMarker  [index];
+                //cut points outside visible x-range now in order to calculate height of visible line fragments only!
+                const bool doPolygonCut = curves_[index].second.fillMode == CurveFillMode::polygon; //impacts auto minY/maxY!!
+                cutPointsOutsideX(points, marker, minX, maxX, doPolygonCut);
 
-                points = curve.getPoints(minX, maxX, graphArea.GetSize());
-                marker.resize(points.size()); //default value: false
-                if (!points.empty())
+                if (!attr_.minY || !attr_.maxY)
                 {
-                    //cut points outside visible x-range now in order to calculate height of visible line fragments only!
-                    const bool doPolygonCut = curves_[index].second.fillMode == CurveFillMode::polygon; //impacts auto minY/maxY!!
-                    cutPointsOutsideX(points, marker, minX, maxX, doPolygonCut);
-
-                    if (!attr_.minY || !attr_.maxY)
-                    {
-                        auto itPair = std::minmax_element(points.begin(), points.end(), [](const CurvePoint& lhs, const CurvePoint& rhs) { return lhs.y < rhs.y; });
-                        if (!attr_.minY)
-                            minY = std::min(minY, itPair.first->y);
-                        if (!attr_.maxY)
-                            maxY = std::max(maxY, itPair.second->y);
-                    }
+                    auto itPair = std::minmax_element(points.begin(), points.end(), [](const CurvePoint& lhs, const CurvePoint& rhs) { return lhs.y < rhs.y; });
+                    if (!attr_.minY)
+                        minY = std::min(minY, itPair.first->y);
+                    if (!attr_.maxY)
+                        maxY = std::max(maxY, itPair.second->y);
                 }
             }
+        }
 
         if (minY <= maxY) //valid y-range
         {

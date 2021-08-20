@@ -23,10 +23,22 @@ using namespace fff; //functionally needed for correct overload resolution!!!
 namespace
 {
 //-------------------------------------------------------------------------------------------------------------------------------
-const int XML_FORMAT_GLOBAL_CFG = 21; //2021-03-06
+const int XML_FORMAT_GLOBAL_CFG = 22; //2021-07-31
 const int XML_FORMAT_SYNC_CFG   = 17; //2020-10-14
 //-------------------------------------------------------------------------------------------------------------------------------
 }
+
+
+const ExternalApp fff::extCommandFileBrowse
+        //"xdg-open \"%parent_path%\"" -> not good enough: we need %local_path% for proper MTP/Google Drive handling
+        {L"Browse directory", "xdg-open \"$(dirname \"%local_path%\")\""};
+        //mark for extraction: _("Browse directory") Linux doesn't use the term "folder"
+
+
+const ExternalApp fff::extCommandOpenDefault
+        //"xdg-open \"%parent_path%\"" -> not good enough: we need %local_path% for proper MTP/Google Drive handling
+        {L"Open with default application", "xdg-open \"%local_path%\""};
+
 
 XmlType getXmlTypeNoThrow(const XmlDoc& doc) //throw()
 {
@@ -1121,19 +1133,15 @@ void readConfig(const XmlIn& in, SyncConfig& syncCfg, std::map<AfsDevice, size_t
 }
 
 
-void readConfig(const XmlIn& in, FilterConfig& filter, int formatVer)
+void readConfig(const XmlIn& in, FilterConfig& filter /*int formatVer? but which one; Filter is used by XmlGlobalSettings and XmlGuiConfig! :( */)
 {
-    std::vector<Zstring> tmpIn = splitFilterByLines(filter.includeFilter); //consider default value
-    in["Include"](tmpIn);
-    filter.includeFilter = mergeFilterLines(tmpIn);
+    std::vector<Zstring> tmpIn;
+    if (in["Include"](tmpIn)) //else: keep default value
+        filter.includeFilter = mergeFilterLines(tmpIn);
 
-    std::vector<Zstring> tmpEx = splitFilterByLines(filter.excludeFilter); //consider default value
-    in["Exclude"](tmpEx);
-    filter.excludeFilter = mergeFilterLines(tmpEx);
-
-    //TODO: remove macro migration after some time! 2017-02-16
-    if (formatVer <= 6) replace(filter.includeFilter, Zstr(';'), Zstr('|'));
-    if (formatVer <= 6) replace(filter.excludeFilter, Zstr(';'), Zstr('|'));
+    std::vector<Zstring> tmpEx;
+    if (in["Exclude"](tmpEx)) //else: keep default value
+        filter.excludeFilter = mergeFilterLines(tmpEx);
 
     in["TimeSpan"](filter.timeSpan);
     in["TimeSpan"].attribute("Type", filter.unitTimeSpan);
@@ -1245,7 +1253,7 @@ void readConfig(const XmlIn& in, LocalPairConfig& lpc, std::map<AfsDevice, size_
     //###########################################################
     //alternate filter configuration
     if (XmlIn inLocFilter = in[formatVer < 10 ? "LocalFilter" : "Filter"]) //TODO: remove if parameter migration after some time! 2018-02-25
-        readConfig(inLocFilter, lpc.localFilter, formatVer);
+        readConfig(inLocFilter, lpc.localFilter);
 }
 
 
@@ -1269,9 +1277,9 @@ void readConfig(const XmlIn& in, MainConfiguration& mainCfg, int formatVer)
 
     //read filter settings
     if (formatVer < 10) //TODO: remove if parameter migration after some time! 2018-02-25
-        readConfig(inMain["GlobalFilter"], mainCfg.globalFilter, formatVer);
+        readConfig(inMain["GlobalFilter"], mainCfg.globalFilter);
     else
-        readConfig(inMain["Filter"], mainCfg.globalFilter, formatVer);
+        readConfig(inMain["Filter"], mainCfg.globalFilter);
 
     //###########################################################
     //read folder pairs
@@ -1867,12 +1875,11 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
         in["SftpKeyFile"].attribute("LastSelected", cfg.sftpKeyFileLastSelected);
     }
 
-    std::vector<Zstring> tmp = splitFilterByLines(cfg.defaultExclusionFilter); //default value
-    if (formatVer < 20) //TODO: remove old parameter after migration! 2020-12-03
-        in["Gui"]["DefaultExclusionFilter"](tmp);
+    if (formatVer < 22) //TODO: remove old parameter after migration! 2021-07-31
+    {
+    }
     else
-        in["DefaultExclusionFilter"](tmp);
-    cfg.defaultExclusionFilter = mergeFilterLines(tmp);
+        readConfig(in["DefaultFilter"], cfg.defaultFilter);
 
     if (formatVer < 20) //TODO: remove old parameter after migration! 2020-12-03
     {
@@ -2426,7 +2433,8 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
 
     out["SftpKeyFile"].attribute("LastSelected", cfg.sftpKeyFileLastSelected);
 
-    out["DefaultExclusionFilter"](splitFilterByLines(cfg.defaultExclusionFilter));
+    XmlOut outFileFilter = out["DefaultFilter"];
+    writeConfig(cfg.defaultFilter, outFileFilter);
 
     out["VersioningFolderHistory"](cfg.versioningFolderHistory);
     out["VersioningFolderHistory"].attribute("LastSelected", cfg.versioningFolderLastSelected);

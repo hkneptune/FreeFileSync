@@ -1,5 +1,16 @@
-FreeFileSync 11.12
-------------------
+FreeFileSync 11.13 [2021-08-07]
+-------------------------------
+Manage default filter settings via GUI
+Support arbitrary location for local app installation (macOS)
+Fixed ERROR_FILE_NOT_FOUND masking real file access error (Windows)
+Copy full file paths to clipboard (CTRL + C)
+Preserve clipboard contents until after program exit
+Always enable external command if independent of file items
+Support installation without Rosetta2 on ARM64 (macOS)
+
+
+FreeFileSync 11.12 [2021-07-15]
+-------------------------------
 Native ARM64 build to support Apple silicon M1 (macOS)
 Non-intrusive mouse highlight on file grid
 Fixed /lib/i386-linux-gnu/libgcc_s.so.1: version `GCC_7.0.0' not found

@@ -170,8 +170,8 @@ FileBase::FileHandle openHandleForWrite(const Zstring& filePath) //throw FileErr
 
     //O_EXCL contains a race condition on NFS file systems: https://linux.die.net/man/2/open
     const int fdFile = ::open(filePath.c_str(), //const char* pathname
-                              O_CREAT |         //int flags     
-                              /*access == FileOutput::ACC_OVERWRITE ? O_TRUNC : */ O_EXCL | O_WRONLY  | O_CLOEXEC, 
+                              O_CREAT |         //int flags
+                              /*access == FileOutput::ACC_OVERWRITE ? O_TRUNC : */ O_EXCL | O_WRONLY  | O_CLOEXEC,
                               lockFileMode);    //mode_t mode
     if (fdFile == -1)
     {

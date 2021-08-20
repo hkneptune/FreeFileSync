@@ -45,9 +45,12 @@ enum class PostSyncAction
 
 struct ExternalApp
 {
-    std::wstring description;
+    std::wstring description; //must be translated *after* loading from config file
     Zstring cmdLine;
 };
+
+extern const ExternalApp extCommandFileBrowse;
+extern const ExternalApp extCommandOpenDefault;
 
 //---------------------------------------------------------------------
 struct XmlGuiConfig
@@ -219,8 +222,16 @@ struct XmlGlobalSettings
 
     bool progressDlgAutoClose = false;
 
-    Zstring defaultExclusionFilter = "*/.Trash-*/" "\n"
-                                     "*/.recycle/";
+    FilterConfig defaultFilter = []
+    {
+        FilterConfig def;
+        assert(def.excludeFilter.empty());
+        def.excludeFilter =
+        "*/.Trash-*/" "\n"
+        "*/.recycle/";
+        return def;
+    }();
+
     size_t folderHistoryMax = 20;
 
     Zstring sftpKeyFileLastSelected;
@@ -237,15 +248,7 @@ struct XmlGlobalSettings
     std::vector<Zstring> commandHistory;
     size_t commandHistoryMax = 10;
 
-    std::vector<ExternalApp> externalApps
-    {
-        /* CONTRACT: first entry: show item in file browser
-                     default external app descriptions will be translated "on the fly"!!!           */
-        //"xdg-open \"%parent_path%\"" -> not good enough: we need %local_path% for proper MTP/Google Drive handling
-        {L"Browse directory", "xdg-open \"$(dirname \"%local_path%\")\""},
-        {L"Open with default application", "xdg-open \"%local_path%\""  },
-        //mark for extraction: _("Browse directory") Linux doesn't use the term "folder"
-    };
+    std::vector<ExternalApp> externalApps{extCommandFileBrowse, extCommandOpenDefault};
 
     time_t lastUpdateCheck = 0; //number of seconds since 00:00 hours, Jan 1, 1970 UTC
     std::string lastOnlineVersion;

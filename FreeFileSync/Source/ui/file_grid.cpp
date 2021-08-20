@@ -918,20 +918,20 @@ private:
                         {
                             wxRect rectGroupNameBack = rectGroupName;
 
-                            if (!itemName.empty()) 
+                            if (!itemName.empty())
                                 rectGroupNameBack.width += 2 * gapSize_; //include gap left of item vline
                             rectGroupNameBack.height -= fastFromDIP(1); //harmonize with item separation lines
 
                             wxDCTextColourChanger textColorGroupName(dc);
                             //folder background: coordinate with renderRowBackgound()
-                                if (!enabled || !selected)
-                                    if (!pdi.folderGroupObj->isEmpty<side>() &&
-                                        !pdi.folderGroupObj->isActive())
-                                    {
-                                        clearArea(dc, rectGroupNameBack, getColorInactiveBack(false /*faint*/));
-                                        textColorGroupName.Set(getColorInactiveText());
-                                    }
-                                drawCudHighlight(rectGroupNameBack, pdi.folderGroupObj->getSyncOperation());
+                            if (!enabled || !selected)
+                                if (!pdi.folderGroupObj->isEmpty<side>() &&
+                                    !pdi.folderGroupObj->isActive())
+                                {
+                                    clearArea(dc, rectGroupNameBack, getColorInactiveBack(false /*faint*/));
+                                    textColorGroupName.Set(getColorInactiveText());
+                                }
+                            drawCudHighlight(rectGroupNameBack, pdi.folderGroupObj->getSyncOperation());
 
                             wxImage folderIcon;
                             bool drawAsLink = false;
@@ -948,7 +948,7 @@ private:
                             if (static_cast<HoverAreaGroup>(rowHover) == HoverAreaGroup::groupName ||
                                 (static_cast<HoverAreaGroup>(rowHover) == HoverAreaGroup::item && pdi.fsObj == pdi.folderGroupObj /*exception: extend highlight*/))
                                 drawInsetRectangle(dc, rectGroupNameBack, fastFromDIP(1), *wxBLUE);
-                            
+
                             if (!pdi.folderGroupObj->isEmpty<side>())
                                 drawCellText(dc, rectGroupName, groupName, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, &getTextExtentBuffered(dc, groupName));
                         }
@@ -986,7 +986,7 @@ private:
                         wxRect rectItemsBack = rectGroupItems;
                         rectItemsBack.height -= fastFromDIP(1); //preserve item separation lines!
 
-                            drawCudHighlight(rectItemsBack, pdi.fsObj->getSyncOperation());
+                        drawCudHighlight(rectItemsBack, pdi.fsObj->getSyncOperation());
 
                         if (IconBuffer* iconBuf = getIconManager().getIconBuffer()) //=> draw file icons
                         {
@@ -1027,9 +1027,9 @@ private:
                         rectGroupItems.x     += gapSize_;
                         rectGroupItems.width -= gapSize_;
 
-                                //mouse highlight: item name
+                        //mouse highlight: item name
                         if (static_cast<HoverAreaGroup>(rowHover) == HoverAreaGroup::item)
-                                drawInsetRectangle(dc, rectItemsBack, fastFromDIP(1), *wxBLUE);
+                            drawInsetRectangle(dc, rectItemsBack, fastFromDIP(1), *wxBLUE);
 
                         if (!pdi.fsObj->isEmpty<side>())
                             drawCellText(dc, rectGroupItems, itemName, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, &getTextExtentBuffered(dc, itemName));

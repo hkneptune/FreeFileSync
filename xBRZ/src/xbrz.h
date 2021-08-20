@@ -73,7 +73,7 @@ void nearestNeighborScale(const uint32_t* src, int srcWidth, int srcHeight,
 
 
 //parameter tuning
-bool equalColorTest(uint32_t col1, uint32_t col2, ColorFormat colFmt, double luminanceWeight, double equalColorTolerance);
+bool equalColorTest2(uint32_t col1, uint32_t col2, ColorFormat colFmt, double equalColorTolerance, double testAttribute);
 }
 
 #endif

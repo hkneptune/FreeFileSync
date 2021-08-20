@@ -27,8 +27,10 @@ using namespace xbrz;
 
 namespace
 {
+//blend front color with opacity M / N over opaque background: https://en.wikipedia.org/wiki/Alpha_compositing
+    //TODO!? gamma correction:                                 https://en.wikipedia.org/wiki/Alpha_compositing#Gamma_correction
 template <unsigned int M, unsigned int N> inline
-uint32_t gradientRGB(uint32_t pixFront, uint32_t pixBack) //blend front color with opacity M / N over opaque background: https://en.wikipedia.org/wiki/Alpha_compositing#Alpha_blending
+uint32_t gradientRGB(uint32_t pixFront, uint32_t pixBack)
 {
     static_assert(0 < M && M < N && N <= 1000);
 
@@ -43,8 +45,10 @@ uint32_t gradientRGB(uint32_t pixFront, uint32_t pixBack) //blend front color wi
 }
 
 
+//find intermediate color between two colors with alpha channels (=> NO alpha blending!!!)
+//TODO!? gamma correction: https://en.wikipedia.org/wiki/Alpha_compositing#Gamma_correction
 template <unsigned int M, unsigned int N> inline
-uint32_t gradientARGB(uint32_t pixFront, uint32_t pixBack) //find intermediate color between two colors with alpha channels (=> NO alpha blending!!!)
+uint32_t gradientARGB(uint32_t pixFront, uint32_t pixBack)
 {
     static_assert(0 < M && M < N && N <= 1000);
 
@@ -153,10 +157,11 @@ double distRGB(uint32_t pix1, uint32_t pix2)
 
 
 inline
-double distYCbCr(uint32_t pix1, uint32_t pix2, double lumaWeight)
+double distYCbCr(uint32_t pix1, uint32_t pix2, double /*testAttribute*/)
 {
     //https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion
-    //YCbCr conversion is a matrix multiplication => take advantage of linearity by subtracting first!
+    //Y'CbCr conversion is a matrix multiplication => take advantage of linearity by subtracting first!
+    //NOTE: input is gamma-encoded RGB! => what does this mean for the output distance!??
     const int r_diff = static_cast<int>(getRed  (pix1)) - getRed  (pix2); //defer division by 255 to after matrix multiplication
     const int g_diff = static_cast<int>(getGreen(pix1)) - getGreen(pix2); //
     const int b_diff = static_cast<int>(getBlue (pix1)) - getBlue (pix2); //substraction for int is noticeable faster than for double!
@@ -175,12 +180,12 @@ double distYCbCr(uint32_t pix1, uint32_t pix2, double lumaWeight)
     const double c_r = scale_r * (r_diff - y);
 
     //we skip division by 255 to have similar range like other distance functions
-    return std::sqrt(square(lumaWeight * y) + square(c_b) + square(c_r));
+    return std::sqrt(square(y) + square(c_b) + square(c_r));
 }
 
 
 inline
-double distYCbCrBuffered(uint32_t pix1, uint32_t pix2)
+double distYCbCrBuffered(uint32_t pix1, uint32_t pix2, double /*testAttribute*/)
 {
     //30% perf boost compared to plain distYCbCr()!
     //consumes 64 MB memory; using double is only 2% faster, but takes 128 MB
@@ -287,7 +292,7 @@ BlendResult preProcessCorners(const Kernel_4x4& ker, const xbrz::ScalerCfg& cfg)
          ker.f == ker.i))
         return result;
 
-    auto dist = [&](uint32_t pix1, uint32_t pix2) { return ColorDistance::dist(pix1, pix2, cfg.luminanceWeight); };
+    auto dist = [&](uint32_t pix1, uint32_t pix2) { return ColorDistance::dist(pix1, pix2, cfg.testAttribute); };
 
     const double hf = dist(ker.g, ker.e) + dist(ker.e, ker.c) + dist(ker.k, ker.i) + dist(ker.i, ker.o) + cfg.centerDirectionBias * dist(ker.h, ker.f);
     const double ei = dist(ker.d, ker.h) + dist(ker.h, ker.l) + dist(ker.b, ker.f) + dist(ker.f, ker.n) + cfg.centerDirectionBias * dist(ker.e, ker.i);
@@ -394,8 +399,8 @@ void blendPixel(const Kernel_3x3& ker,
 
     if (getBottomR(blend) >= BLEND_NORMAL)
     {
-        auto eq   = [&](uint32_t pix1, uint32_t pix2) { return ColorDistance::dist(pix1, pix2, cfg.luminanceWeight) < cfg.equalColorTolerance; };
-        auto dist = [&](uint32_t pix1, uint32_t pix2) { return ColorDistance::dist(pix1, pix2, cfg.luminanceWeight); };
+        auto eq   = [&](uint32_t pix1, uint32_t pix2) { return ColorDistance::dist(pix1, pix2, cfg.testAttribute) < cfg.equalColorTolerance; };
+        auto dist = [&](uint32_t pix1, uint32_t pix2) { return ColorDistance::dist(pix1, pix2, cfg.testAttribute); };
 
         const bool doLineBlend = [&]() -> bool
         {
@@ -1081,9 +1086,9 @@ struct Scaler6x : public ColorGradient
 
 struct ColorDistanceRGB
 {
-    static double dist(uint32_t pix1, uint32_t pix2, double luminanceWeight)
+    static double dist(uint32_t pix1, uint32_t pix2, double testAttribute)
     {
-        return distYCbCrBuffered(pix1, pix2);
+        return distYCbCrBuffered(pix1, pix2, testAttribute);
 
         //if (pix1 == pix2) //about 4% perf boost
         //    return 0;
@@ -1093,7 +1098,7 @@ struct ColorDistanceRGB
 
 struct ColorDistanceARGB
 {
-    static double dist(uint32_t pix1, uint32_t pix2, double luminanceWeight)
+    static double dist(uint32_t pix1, uint32_t pix2, double testAttribute)
     {
         const double a1 = getAlpha(pix1) / 255.0 ;
         const double a2 = getAlpha(pix2) / 255.0 ;
@@ -1109,7 +1114,7 @@ struct ColorDistanceARGB
             alternative? std::sqrt(a1 * a2 * square(distYCbCrBuffered(pix1, pix2)) + square(255 * (a1 - a2)));   */
 
         //=> following code is 15% faster:
-        const double d = distYCbCrBuffered(pix1, pix2);
+        const double d = distYCbCrBuffered(pix1, pix2, testAttribute);
         if (a1 < a2)
             return a1 * d + 255 * (a2 - a1);
         else
@@ -1120,12 +1125,12 @@ struct ColorDistanceARGB
 
 struct ColorDistanceUnbufferedARGB
 {
-    static double dist(uint32_t pix1, uint32_t pix2, double luminanceWeight)
+    static double dist(uint32_t pix1, uint32_t pix2, double testAttribute)
     {
         const double a1 = getAlpha(pix1) / 255.0 ;
         const double a2 = getAlpha(pix2) / 255.0 ;
 
-        const double d = distYCbCr(pix1, pix2, luminanceWeight);
+        const double d = distYCbCr(pix1, pix2, testAttribute);
         if (a1 < a2)
             return a1 * d + 255 * (a2 - a1);
         else
@@ -1204,16 +1209,16 @@ void xbrz::scale(size_t factor, const uint32_t* src, uint32_t* trg, int srcWidth
 }
 
 
-bool xbrz::equalColorTest(uint32_t col1, uint32_t col2, ColorFormat colFmt, double luminanceWeight, double equalColorTolerance)
+bool xbrz::equalColorTest2(uint32_t col1, uint32_t col2, ColorFormat colFmt, double equalColorTolerance, double testAttribute)
 {
     switch (colFmt)
     {
         case ColorFormat::rgb:
-            return ColorDistanceRGB::dist(col1, col2, luminanceWeight) < equalColorTolerance;
+            return ColorDistanceRGB::dist(col1, col2, testAttribute) < equalColorTolerance;
         case ColorFormat::argb:
-            return ColorDistanceARGB::dist(col1, col2, luminanceWeight) < equalColorTolerance;
+            return ColorDistanceARGB::dist(col1, col2, testAttribute) < equalColorTolerance;
         case ColorFormat::argbUnbuffered:
-            return ColorDistanceUnbufferedARGB::dist(col1, col2, luminanceWeight) < equalColorTolerance;
+            return ColorDistanceUnbufferedARGB::dist(col1, col2, testAttribute) < equalColorTolerance;
     }
     assert(false);
     return false;

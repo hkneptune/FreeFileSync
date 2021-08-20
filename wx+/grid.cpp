@@ -1761,7 +1761,7 @@ void Grid::onKeyDown(wxKeyEvent& event)
             const size_t row = std::min(mainWin_->getCursor(), getRowCount());
 
             const int clientPosMainWinY = std::clamp(CalcScrolledPosition(wxPoint(0, rowLabelWin_->getRowHeight() * (row + 1))).y - 1, //logical -> window coordinates
-                                                    0, mainWin_->GetClientSize().GetHeight() - 1);
+                                                     0, mainWin_->GetClientSize().GetHeight() - 1);
 
             const wxPoint mousePos = mainWin_->GetPosition() + wxPoint(0, clientPosMainWinY); //mainWin_-relative to Grid-relative
 

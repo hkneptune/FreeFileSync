@@ -81,6 +81,7 @@ void copyImageLayover(const wxImage& src,
     assert(0 <= trgPos.y && trgPos.y + srcHeight <= trg.GetHeight()); //subset of target image!
 
     //https://en.wikipedia.org/wiki/Alpha_compositing
+    //TODO!? gamma correction: https://en.wikipedia.org/wiki/Alpha_compositing#Gamma_correction
     const unsigned char* srcRgb   = src.GetData();
     const unsigned char* srcAlpha = src.GetAlpha();
 
@@ -239,8 +240,8 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
     for (int i = 0; i < pixelCount; ++i)
     {
         //black(0,0,0) becomes wxIMAGE_ALPHA_OPAQUE(255), while white(255,255,255) becomes wxIMAGE_ALPHA_TRANSPARENT(0)
+        //gamma correction? does not seem to apply here!
         *alpha++ = static_cast<unsigned char>(numeric::intDivRound(3 * 255 - rgb[0] - rgb[1] - rgb[2], 3)); //mixed-mode arithmetics!
-
         *rgb++ = col.Red  (); //
         *rgb++ = col.Green(); //apply actual text color
         *rgb++ = col.Blue (); //
@@ -321,6 +322,7 @@ wxImage zen::bilinearScale(const wxImage& img, int width, int height)
         const int idx = y * srcWidth + x;
         const unsigned char* const ptr = rgb + idx * 3;
 
+        //TODO!? gamma correction: https://en.wikipedia.org/wiki/Alpha_compositing#Gamma_correction
         const unsigned char a = alpha[idx];
         pix[0] = a;
         pix[1] = xbrz::premultiply(ptr[0], a); //r
@@ -334,8 +336,8 @@ wxImage zen::bilinearScale(const wxImage& img, int width, int height)
     const auto imgWriter = [rgb = imgOut.GetData(), alpha = imgOut.GetAlpha()](const xbrz::BytePixel& pix) mutable
     {
         const unsigned char a = pix[0];
-        *alpha++ = a;
-        *rgb++ = xbrz::demultiply(pix[1], a); //r
+        * alpha++ = a;
+        * rgb++ = xbrz::demultiply(pix[1], a); //r
         *rgb++ = xbrz::demultiply(pix[2], a); //g
         *rgb++ = xbrz::demultiply(pix[3], a); //b
     };

@@ -112,17 +112,19 @@ private:
 
     void setSyncDirManually (const std::vector<FileSystemObject*>& selection, SyncDirection direction);
     void setIncludedManually(const std::vector<FileSystemObject*>& selection, bool setIncluded);
-    void copySelectionToClipboard(const std::vector<const zen::Grid*>& gridRefs);
+    void copyGridSelectionToClipboard(const zen::Grid& grid);
+    void copyPathsToClipboard(const std::vector<FileSystemObject*>& selectionL,
+                              const std::vector<FileSystemObject*>& selectionR);
 
-    void copyToAlternateFolder(const std::vector<FileSystemObject*>& selectionLeft,
-                               const std::vector<FileSystemObject*>& selectionRight);
+    void copyToAlternateFolder(const std::vector<FileSystemObject*>& selectionL,
+                               const std::vector<FileSystemObject*>& selectionR);
 
-    void deleteSelectedFiles(const std::vector<FileSystemObject*>& selectionLeft,
-                             const std::vector<FileSystemObject*>& selectionRight, bool moveToRecycler);
+    void deleteSelectedFiles(const std::vector<FileSystemObject*>& selectionL,
+                             const std::vector<FileSystemObject*>& selectionR, bool moveToRecycler);
 
     void openExternalApplication(const Zstring& commandLinePhrase, bool leftSide,
-                                 const std::vector<FileSystemObject*>& selectionLeft,
-                                 const std::vector<FileSystemObject*>& selectionRight); //selection may be empty
+                                 const std::vector<FileSystemObject*>& selectionL,
+                                 const std::vector<FileSystemObject*>& selectionR); //selection may be empty
 
     //status bar supports one of the following two states at a time:
     void setStatusBarFileStats(FileView::FileStats statsLeft, FileView::FileStats statsRight);
@@ -145,8 +147,8 @@ private:
     void onGridGroupContextRim(zen::GridClickEvent& event, bool leftSide);
 
     void onGridContextRim(const std::vector<FileSystemObject*>& selection,
-                          const std::vector<FileSystemObject*>& selectionLeft,
-                          const std::vector<FileSystemObject*>& selectionRight, bool leftSide, wxPoint mousePos);
+                          const std::vector<FileSystemObject*>& selectionL,
+                          const std::vector<FileSystemObject*>& selectionR, bool leftSide, wxPoint mousePos);
 
     void onTreeGridContext(zen::GridContextMenuEvent& event);
 

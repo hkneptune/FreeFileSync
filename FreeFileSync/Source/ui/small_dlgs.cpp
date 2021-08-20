@@ -1694,6 +1694,7 @@ void ActivationDlg::onCopyUrl(wxCommandEvent& event)
     {
         ZEN_ON_SCOPE_EXIT(wxClipboard::Get()->Close());
         wxClipboard::Get()->SetData(new wxTextDataObject(m_richTextManualActivationUrl->GetValue())); //ownership passed
+        wxClipboard::Get()->Flush();
 
         m_richTextManualActivationUrl->SetFocus(); //[!] otherwise selection is lost
         m_richTextManualActivationUrl->SelectAll(); //some visual feedback

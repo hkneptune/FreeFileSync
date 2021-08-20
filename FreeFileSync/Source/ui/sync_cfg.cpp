@@ -11,6 +11,7 @@
 #include <wx/valtext.h>
 #include <wx+/rtl.h>
 #include <wx+/no_flicker.h>
+#include <wx+/context_menu.h>
 #include <wx+/choice_enum.h>
 #include <wx+/image_tools.h>
 #include <wx+/font_size.h>
@@ -96,12 +97,15 @@ public:
                  SyncConfigPanel panelToShow,
                  int localPairIndexToShow, bool showMultipleCfgs,
                  GlobalPairConfig& globalPairCfg,
-                 std::vector<LocalPairConfig>& localPairConfig,
+                 std::vector<LocalPairConfig>& localPairCfg,
+                 FilterConfig& defaultFilter,
                  std::vector<Zstring>& versioningFolderHistory, Zstring& versioningFolderLastSelected,
                  std::vector<Zstring>& logFolderHistory, Zstring& logFolderLastSelected,
                  size_t folderHistoryMax, Zstring& sftpKeyFileLastSelected,
                  std::vector<Zstring>& emailHistory,   size_t emailHistoryMax,
                  std::vector<Zstring>& commandHistory, size_t commandHistoryMax);
+
+    ~ConfigDialog();
 
 private:
     void onOkay  (wxCommandEvent& event) override;
@@ -147,7 +151,12 @@ private:
 
     //------------- filter panel --------------------------
     void onChangeFilterOption(wxCommandEvent& event) override { updateFilterGui(); }
-    void onFilterReset       (wxCommandEvent& event) override { setFilterConfig(FilterConfig()); }
+    void onFilterClear       (wxCommandEvent& event) override { setFilterConfig(FilterConfig()); }
+    void onFilterDefault     (wxCommandEvent& event) override { setFilterConfig(defaultFilterOut_); }
+
+    void onFilterDefaultContext     (wxCommandEvent& event) override { onFilterDefaultContext(static_cast<wxEvent&>(event)); }
+    void onFilterDefaultContextMouse(wxMouseEvent&   event) override { onFilterDefaultContext(static_cast<wxEvent&>(event)); }
+    void onFilterDefaultContext(wxEvent& event);
 
     void onFilterKeyEvent(wxKeyEvent& event);
 
@@ -230,9 +239,11 @@ private:
     void selectFolderPairConfig(int newPairIndexToShow);
     bool unselectFolderPairConfig(bool validateParams); //returns false on error: shows message box!
 
-    //output-only parameters
+    //output parameters (sync config)
     GlobalPairConfig& globalPairCfgOut_;
     std::vector<LocalPairConfig>& localPairCfgOut_;
+    //output parameters (global) -> ignores OK/Cancel
+    FilterConfig& defaultFilterOut_;
     std::vector<Zstring>& versioningFolderHistoryOut_;
     std::vector<Zstring>& logFolderHistoryOut_;
     std::vector<Zstring>& emailHistoryOut_;
@@ -247,6 +258,8 @@ private:
 
     const bool enableExtraFeatures_;
     const bool showMultipleCfgs_;
+
+    const XmlGlobalSettings defaultCfg_;
 };
 
 //#################################################################################################################
@@ -290,7 +303,8 @@ ConfigDialog::ConfigDialog(wxWindow* parent,
                            SyncConfigPanel panelToShow,
                            int localPairIndexToShow, bool showMultipleCfgs,
                            GlobalPairConfig& globalPairCfg,
-                           std::vector<LocalPairConfig>& localPairConfig,
+                           std::vector<LocalPairConfig>& localPairCfg,
+                           FilterConfig& defaultFilter,
                            std::vector<Zstring>& versioningFolderHistory, Zstring& versioningFolderLastSelected,
                            std::vector<Zstring>& logFolderHistory, Zstring& logFolderLastSelected,
                            size_t folderHistoryMax, Zstring& sftpKeyFileLastSelected,
@@ -326,13 +340,14 @@ logfileDir_(this, *m_panelLogfile, *m_buttonSelectLogFolder, *m_bpButtonSelectAl
             nullptr /*staticText*/, nullptr /*dropWindow2*/, nullptr /*droppedPathsFilter*/, getDeviceParallelOps_, setDeviceParallelOps_),
 
 globalPairCfgOut_(globalPairCfg),
-localPairCfgOut_(localPairConfig),
+localPairCfgOut_(localPairCfg),
+defaultFilterOut_(defaultFilter),
 versioningFolderHistoryOut_(versioningFolderHistory),
 logFolderHistoryOut_(logFolderHistory),
 emailHistoryOut_(emailHistory),
 commandHistoryOut_(commandHistory),
 globalPairCfg_(globalPairCfg),
-localPairCfg_(localPairConfig),
+localPairCfg_(localPairCfg),
     enableExtraFeatures_(false),
 showMultipleCfgs_(showMultipleCfgs)
 {
@@ -360,8 +375,8 @@ showMultipleCfgs_(showMultipleCfgs)
     m_notebook->AssignImageList(imgList.release()); //pass ownership
 
     m_notebook->SetPageText(static_cast<size_t>(SyncConfigPanel::compare), _("Comparison")      + L" (F6)");
-    m_notebook->SetPageText(static_cast<size_t>(SyncConfigPanel::filter    ), _("Filter")          + L" (F7)");
-    m_notebook->SetPageText(static_cast<size_t>(SyncConfigPanel::sync      ), _("Synchronization") + L" (F8)");
+    m_notebook->SetPageText(static_cast<size_t>(SyncConfigPanel::filter ), _("Filter")          + L" (F7)");
+    m_notebook->SetPageText(static_cast<size_t>(SyncConfigPanel::sync   ), _("Synchronization") + L" (F8)");
 
     m_notebook->ChangeSelection(static_cast<size_t>(panelToShow));
 
@@ -406,6 +421,8 @@ showMultipleCfgs_(showMultipleCfgs)
     m_textCtrlExclude->Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onFilterKeyEvent(event); });
 
     m_staticTextFilterDescr->Wrap(fastFromDIP(450));
+
+    m_bpButtonDefaultContext->SetBitmapLabel(mirrorIfRtl(loadImage("button_arrow_right")));
 
     enumTimeDescr_.
     add(UnitTime::none, L'(' + _("None") + L')'). //meta options should be enclosed in parentheses
@@ -499,7 +516,7 @@ showMultipleCfgs_(showMultipleCfgs)
     assert(!m_listBoxFolderPair->IsSorted());
 
     m_listBoxFolderPair->Append(_("All folder pairs"));
-    for (const LocalPairConfig& lpc : localPairConfig)
+    for (const LocalPairConfig& lpc : localPairCfg)
     {
         std::wstring fpName = getShortDisplayNameForFolderPair(createAbstractPath(lpc.folderPathPhraseLeft ),
                                                                createAbstractPath(lpc.folderPathPhraseRight));
@@ -745,6 +762,18 @@ void ConfigDialog::updateCompGui()
 }
 
 
+void ConfigDialog::onFilterDefaultContext(wxEvent& event)
+{
+    const FilterConfig activeCfg = getFilterConfig();
+
+    ContextMenu menu;
+    menu.addItem(_("&Save"),                 [&] { defaultFilterOut_ = activeCfg; updateFilterGui(); }, loadImage("cfg_save_sicon"), defaultFilterOut_ != activeCfg);
+    menu.addItem(_("&Load factory default"), [&] { setFilterConfig(defaultCfg_.defaultFilter); }, wxNullImage, activeCfg != defaultCfg_.defaultFilter);
+
+    menu.popup(*m_bpButtonDefaultContext, {m_bpButtonDefaultContext->GetSize().x, 0});
+}
+
+
 void ConfigDialog::onFilterKeyEvent(wxKeyEvent& event)
 {
     const int keyCode = event.GetKeyCode();
@@ -810,7 +839,8 @@ void ConfigDialog::updateFilterGui()
     m_spinCtrlMinSize ->Enable(activeCfg.unitSizeMin != UnitSize::none);
     m_spinCtrlMaxSize ->Enable(activeCfg.unitSizeMax != UnitSize::none);
 
-    m_buttonClear->Enable(activeCfg != FilterConfig());
+    m_buttonDefault->Enable(activeCfg != defaultFilterOut_);
+    m_buttonClear  ->Enable(activeCfg != FilterConfig());
 }
 
 
@@ -1537,13 +1567,18 @@ void ConfigDialog::onOkay(wxCommandEvent& event)
     globalPairCfgOut_ = globalPairCfg_;
     localPairCfgOut_  = localPairCfg_;
 
+    EndModal(static_cast<int>(ConfirmationButton::accept));
+}
+
+
+//save global settings: should NOT be impacted by OK/Cancel
+ConfigDialog::~ConfigDialog()
+{
     versioningFolderHistoryOut_ = m_versioningFolderPath->getHistory()->getList();
     logFolderHistoryOut_        = m_logFolderPath       ->getHistory()->getList();
 
     commandHistoryOut_ = m_comboBoxPostSyncCommand->getHistory();
     emailHistoryOut_   = m_comboBoxEmail          ->getHistory();
-
-    EndModal(static_cast<int>(ConfirmationButton::accept));
 }
 }
 
@@ -1554,8 +1589,9 @@ ConfirmationButton fff::showSyncConfigDlg(wxWindow* parent,
                                           int localPairIndexToShow, bool showMultipleCfgs,
 
                                           GlobalPairConfig&             globalPairCfg,
-                                          std::vector<LocalPairConfig>& localPairConfig,
+                                          std::vector<LocalPairConfig>& localPairCfg,
 
+                                          FilterConfig& defaultFilter,
                                           std::vector<Zstring>& versioningFolderHistory, Zstring& versioningFolderLastSelected,
                                           std::vector<Zstring>& logFolderHistory, Zstring& logFolderLastSelected,
                                           size_t folderHistoryMax, Zstring& sftpKeyFileLastSelected,
@@ -1567,7 +1603,8 @@ ConfirmationButton fff::showSyncConfigDlg(wxWindow* parent,
                          panelToShow,
                          localPairIndexToShow, showMultipleCfgs,
                          globalPairCfg,
-                         localPairConfig,
+                         localPairCfg,
+                         defaultFilter,
                          versioningFolderHistory, versioningFolderLastSelected,
                          logFolderHistory, logFolderLastSelected,
                          folderHistoryMax, sftpKeyFileLastSelected,

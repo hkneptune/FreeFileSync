@@ -419,33 +419,6 @@ void LogPanel::onInfo(wxCommandEvent& event)
 }
 
 
-void LogPanel::onGridButtonEvent(wxKeyEvent& event)
-{
-    int keyCode = event.GetKeyCode();
-
-    if (event.ControlDown())
-        switch (keyCode)
-        {
-            //case 'A': -> "select all" is already implemented by Grid!
-
-            case 'C':
-            case WXK_INSERT: //CTRL + C || CTRL + INS
-                copySelectionToClipboard();
-                return; // -> swallow event! don't allow default grid commands!
-        }
-
-    //else
-    //switch (keyCode)
-    //{
-    //  case WXK_RETURN:
-    //  case WXK_NUMPAD_ENTER:
-    //      return;
-    //}
-
-    event.Skip(); //unknown keypress: propagate
-}
-
-
 void LogPanel::onMsgGridContext(GridContextMenuEvent& event)
 {
     const std::vector<size_t> selection = m_gridMessages->getSelectedRows();
@@ -464,6 +437,31 @@ void LogPanel::onMsgGridContext(GridContextMenuEvent& event)
     menu.addItem(_("Select all") + L"\tCtrl+A", [this] { m_gridMessages->selectAllRows(GridEventPolicy::allow); }, wxNullImage, rowCount > 0);
 
     menu.popup(*m_gridMessages, event.mousePos_);
+}
+
+
+void LogPanel::onGridButtonEvent(wxKeyEvent& event)
+{
+    int keyCode = event.GetKeyCode();
+
+    if (event.ControlDown())
+        switch (keyCode)
+        {
+            case 'C':
+            case WXK_INSERT: //CTRL + C || CTRL + INS
+                copySelectionToClipboard();
+                return; // -> swallow event! don't allow default grid commands!
+        }
+
+    //else
+    //switch (keyCode)
+    //{
+    //  case WXK_RETURN:
+    //  case WXK_NUMPAD_ENTER:
+    //      return;
+    //}
+
+    event.Skip(); //unknown keypress: propagate
 }
 
 
@@ -533,7 +531,7 @@ void LogPanel::copySelectionToClipboard()
 {
     try
     {
-        std::wstring clipBuf; //guaranteed exponential growth, unlike wxString
+        std::wstring clipBuf; //perf: wxString doesn't model exponential growth => unsuitable for large data sets
 
         if (auto prov = m_gridMessages->getDataProvider())
         {
@@ -553,12 +551,12 @@ void LogPanel::copySelectionToClipboard()
                 }
         }
 
-        //finally write to clipboard
         if (!clipBuf.empty())
             if (wxClipboard::Get()->Open())
             {
                 ZEN_ON_SCOPE_EXIT(wxClipboard::Get()->Close());
                 wxClipboard::Get()->SetData(new wxTextDataObject(std::move(clipBuf))); //ownership passed
+                wxClipboard::Get()->Flush();
             }
     }
     catch (const std::bad_alloc& e)

@@ -256,15 +256,13 @@ void SyncStatistics::processFolder(const FolderPair& folder)
 }
 
 
-/*
-  DeletionPolicy::permanent:  deletion frees space
-  DeletionPolicy::recycler:   won't free space until recycler is full, but then frees space
-  DeletionPolicy::versioning: depends on whether versioning folder is on a different volume
--> if deleted item is a followed symlink, no space is freed
--> created/updated/deleted item may be on a different volume than base directory: consider symlinks, junctions!
+/*    DeletionPolicy::permanent:  deletion frees space
+      DeletionPolicy::recycler:   won't free space until recycler is full, but then frees space
+      DeletionPolicy::versioning: depends on whether versioning folder is on a different volume
+    -> if deleted item is a followed symlink, no space is freed
+    -> created/updated/deleted item may be on a different volume than base directory: consider symlinks, junctions!
 
-=> generally assume deletion frees space; may avoid false-positive disk space warnings for recycler and versioning
-*/
+    => generally assume deletion frees space; may avoid false-positive disk space warnings for recycler and versioning   */
 class MinimumDiskSpaceNeeded
 {
 public:

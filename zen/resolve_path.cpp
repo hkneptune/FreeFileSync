@@ -41,10 +41,14 @@ std::optional<Zstring> getEnvironmentVar(const Zstring& name)
 
 Zstring resolveRelativePath(const Zstring& relativePath)
 {
-    assert(runningOnMainThread()); //GetFullPathName() is documented to NOT be thread-safe!
+    assert(runningOnMainThread());
     /* MSDN: "Multithreaded applications and shared library code should not use the GetFullPathName function
-        and should avoid using relative path names.
-        The current directory state written by the SetCurrentDirectory function is stored as a global variable in each process,      */
+              and should avoid using relative path names. The current directory state written by the
+              SetCurrentDirectory function is stored as a global variable in each process, 
+              therefore multithreaded applications cannot reliably use this value without possible data corruption from other threads, [...]"
+
+      => Just plain wrong, there is no data corruption. What MSDN really means: GetFullPathName() is *perfectly* thread-safe, but depends
+         on the current directory, which is a process-scope global: https://devblogs.microsoft.com/oldnewthing/20210816-00/?p=105562            */
 
     if (relativePath.empty())
         return relativePath;
@@ -268,7 +272,6 @@ Zstring zen::getResolvedFilePath(const Zstring& pathPhrase) //noexcept
           - \\?\-prefix requires absolute names
           - Volume Shadow Copy: volume name needs to be part of each file path
           - file icon buffer (at least for extensions that are actually read from disk, like "exe")
-          - Use of relative path names is not thread safe! (e.g. SHFileOperation)
          WINDOWS/LINUX:
           - detection of dependent directories, e.g. "\" and "C:\test"                       */
     path = resolveRelativePath(path);

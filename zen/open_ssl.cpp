@@ -179,9 +179,9 @@ std::shared_ptr<EVP_PKEY> streamToKey(const std::string& keyStream, RsaStreamTyp
 
 //================================================================================
 
-using EvpToBioFunc = int (*)(BIO* bio, EVP_PKEY* evp);
+using EvpToBioFunc = int (*)(BIO* bio, const EVP_PKEY* evp);
 
-std::string evpKeyToStream(EVP_PKEY* evp, EvpToBioFunc evpToBio, const char* functionName) //throw SysError
+std::string evpKeyToStream(const EVP_PKEY* evp, EvpToBioFunc evpToBio, const char* functionName) //throw SysError
 {
     BIO* bio = ::BIO_new(BIO_s_mem());
     if (!bio)
@@ -205,16 +205,16 @@ std::string evpKeyToStream(EVP_PKEY* evp, EvpToBioFunc evpToBio, const char* fun
 }
 
 
-using RsaToBioFunc = int (*)(BIO* bp, RSA* x);
+using RsaToBioFunc = int (*)(BIO* bp, const RSA* x);
 
-std::string evpKeyToStream(EVP_PKEY* evp, RsaToBioFunc rsaToBio, const char* functionName) //throw SysError
+std::string evpKeyToStream(const EVP_PKEY* evp, RsaToBioFunc rsaToBio, const char* functionName) //throw SysError
 {
     BIO* bio = ::BIO_new(BIO_s_mem());
     if (!bio)
         throw SysError(formatLastOpenSSLError("BIO_new"));
     ZEN_ON_SCOPE_EXIT(::BIO_free_all(bio));
 
-    RSA* rsa = ::EVP_PKEY_get0_RSA(evp); //unowned reference!
+    const RSA* rsa = ::EVP_PKEY_get0_RSA(evp); //unowned reference!
     if (!rsa)
         throw SysError(formatLastOpenSSLError("EVP_PKEY_get0_RSA"));
 
@@ -236,33 +236,33 @@ std::string evpKeyToStream(EVP_PKEY* evp, RsaToBioFunc rsaToBio, const char* fun
 
 
 //fix OpenSSL API inconsistencies:
-int PEM_write_bio_PrivateKey2(BIO* bio, EVP_PKEY* key)
+int PEM_write_bio_PrivateKey2(BIO* bio, const EVP_PKEY* key)
 {
     return ::PEM_write_bio_PrivateKey(bio,      //BIO* bp
-                                      key,      //EVP_PKEY* x
+                                      key,      //const EVP_PKEY* x
                                       nullptr,  //const EVP_CIPHER* enc
-                                      nullptr,  //unsigned char* kstr
+                                      nullptr,  //const unsigned char* kstr
                                       0,        //int klen
                                       nullptr,  //pem_password_cb* cb
                                       nullptr); //void* u
 }
 
-int PEM_write_bio_RSAPrivateKey2(BIO* bio, RSA* rsa)
+int PEM_write_bio_RSAPrivateKey2(BIO* bio, const RSA* rsa)
 {
     return ::PEM_write_bio_RSAPrivateKey(bio,      //BIO* bp
-                                         rsa,      //RSA* x
+                                         rsa,      //const RSA* x
                                          nullptr,  //const EVP_CIPHER* enc
-                                         nullptr,  //unsigned char* kstr
+                                         nullptr,  //const unsigned char* kstr
                                          0,        //int klen
                                          nullptr,  //pem_password_cb* cb
                                          nullptr); //void* u
 }
 
-int PEM_write_bio_RSAPublicKey2(BIO* bio, RSA* rsa) { return ::PEM_write_bio_RSAPublicKey(bio, rsa); }
+int PEM_write_bio_RSAPublicKey2(BIO* bio, const RSA* rsa) { return ::PEM_write_bio_RSAPublicKey(bio, rsa); }
 
 //--------------------------------------------------------------------------------
 
-std::string keyToStream(EVP_PKEY* evp, RsaStreamType streamType, bool publicKey) //throw SysError
+std::string keyToStream(const EVP_PKEY* evp, RsaStreamType streamType, bool publicKey) //throw SysError
 {
     switch (streamType)
     {
@@ -571,15 +571,15 @@ public:
             if (sslError == SSL_ERROR_ZERO_RETURN)
                 return 0; //EOF + close_notify alert
 
-#if OPENSSL_VERSION_NUMBER == 0x1010105fL //OpenSSL 1.1.1e
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L /*OpenSSL 3.0.0*/ || \
+    OPENSSL_VERSION_NUMBER == 0x1010105fL /*OpenSSL 1.1.1e*/
             const auto ec = ::ERR_peek_last_error();
             if (sslError == SSL_ERROR_SSL && ERR_GET_REASON(ec) == SSL_R_UNEXPECTED_EOF_WHILE_READING) //EOF: only expected for HTTP/1.0
-                return 0;
-#else //obsolete handling, at least in OpenSSL 1.1.1e (but valid again with OpenSSL 1.1.1f!)
-            //https://github.com/openssl/openssl/issues/10880#issuecomment-575746226
+#else //obsolete handling: https://github.com/openssl/openssl/issues/10880#issuecomment-575746226
             if ((sslError == SSL_ERROR_SYSCALL && ::ERR_peek_last_error() == 0)) //EOF: only expected for HTTP/1.0
-                return 0;
 #endif
+                return 0;
+
             throw SysError(formatLastOpenSSLError("SSL_read_ex") + L' ' + getSslErrorLiteral(sslError));
         }
         assert(bytesReceived > 0); //SSL_read_ex() considers EOF an error!

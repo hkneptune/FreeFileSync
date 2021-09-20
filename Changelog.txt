@@ -1,4 +1,13 @@
-FreeFileSync 11.13 [2021-08-07]
+FreeFileSync 11.14 [2021-09-20]
+-------------------------------
+Authenticate (S)FTP connections using OpenSSL 3.0
+Fixed E_NOINTERFACE error after synchronization
+Preempt crashes due to Nahimic Sonic Studio 3
+Hide main window when minimizing progress window (macOS)
+Avoid second dock icon when minimizing progress window (macOS)
+ 
+
+FreeFileSync 11.13 [2021-08-17]
 -------------------------------
 Manage default filter settings via GUI
 Support arbitrary location for local app installation (macOS)

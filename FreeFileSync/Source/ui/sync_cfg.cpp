@@ -46,7 +46,9 @@ void initBitmapRadioButtons(const std::vector<std::pair<ToggleButton*, std::stri
 
     auto generateSelectImage = [physicalLeft](wxButton& btn, const std::string& imgName, bool selected)
     {
-        wxImage imgTxt = createImageFromText(btn.GetLabel(), btn.GetFont(), btn.GetForegroundColour());
+        wxImage imgTxt = createImageFromText(btn.GetLabel(), btn.GetFont(),
+                                             selected ? *wxBLACK : //accessibility: always set both foreground AND background colors! see renderSelectedButton()
+                                             btn.GetForegroundColour());
 
         wxImage imgIco = mirrorIfRtl(loadImage(imgName, -1 /*maxWidth*/, getDefaultMenuIconSize()));
 

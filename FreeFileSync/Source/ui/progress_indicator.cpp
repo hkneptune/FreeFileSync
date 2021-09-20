@@ -1558,8 +1558,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::onPause(wxCommandEvent& event)
 template <class TopLevelDialog>
 void SyncProgressDialogImpl<TopLevelDialog>::onIconize(wxIconizeEvent& event)
 {
-    /*
-        propagate progress dialog minimize/maximize to parent
+    /*  propagate progress dialog minimize/maximize to parent
         -----------------------------------------------------
         Fedora/Debian/Ubuntu:
             - wxDialog cannot be minimized
@@ -1573,15 +1572,13 @@ void SyncProgressDialogImpl<TopLevelDialog>::onIconize(wxIconizeEvent& event)
             - probably the same issues with stray iconize events like Fedora/Debian/Ubuntu
             - minimize button is always shown, even if wxMINIMIZE_BOX is omitted!
                 => nothing to do
-        Mac OS X:
-            - wxDialog can be minimized and automatically minimizes parent
-            - no iconize events seen by wxWidgets!
-                => nothing to do
+        macOS:
+            - wxDialog can be minimized but does not also minimize parent
+                => propagate event to parent
         Windows:
             - wxDialog can be minimized but does not also minimize parent
             - iconize events only seen for manual minimize
-                => propagate event to parent
-    */
+                => propagate event to parent                                          */
     event.Skip();
 }
 
@@ -1651,10 +1648,14 @@ SyncProgressDialog* SyncProgressDialog::create(wxSize dlgSize, bool dlgMaximize,
 {
     if (parentWindow) //sync from GUI
     {
-        //due to usual "wxBugs", wxDialog on OS X does not float on its parent; wxFrame OTOH does => hack!
-        //https://groups.google.com/forum/#!topic/wx-users/J5SjjLaBOQE
+#if 0 //macOS; update 08-2021: Bug seems to be fixed!?
+        //due to usual "wxBugs", wxDialog on OS X does not float on its parent; wxFrame OTOH does => hack! https://groups.google.com/forum/#!topic/wx-users/J5SjjLaBOQE
+        return new SyncProgressDialogImpl<wxFrame>(wxDEFAULT_FRAME_STYLE | wxFRAME_FLOAT_ON_PARENT,
+                                                   dlgSize, dlgMaximize, userRequestAbort, syncStat, parentWindow, showProgress, autoCloseDialog, jobNames, syncStartTime, ignoreErrors, autoRetryCount, postSyncAction);
+#else //GNOME bug: wxDialog seems to ignore wxMAXIMIZE_BOX | wxMINIMIZE_BOX! :( wxFrame OTOH has them, but adds an extra taskbar entry
         return new SyncProgressDialogImpl<wxDialog>(wxDEFAULT_DIALOG_STYLE | wxMAXIMIZE_BOX | wxMINIMIZE_BOX | wxRESIZE_BORDER,
                                                     dlgSize, dlgMaximize, userRequestAbort, syncStat, parentWindow, showProgress, autoCloseDialog, jobNames, syncStartTime, ignoreErrors, autoRetryCount, postSyncAction);
+#endif
     }
     else //FFS batch job
     {

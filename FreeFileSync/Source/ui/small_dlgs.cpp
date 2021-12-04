@@ -7,6 +7,7 @@
 #include "small_dlgs.h"
 #include <variant>
 #include <zen/time.h>
+#include <zen/file_path.h>
 #include <zen/format_unit.h>
 #include <zen/build_info.h>
 #include <zen/stl_tools.h>
@@ -1137,14 +1138,16 @@ private:
     void onShowLogFolder    (wxHyperlinkEvent& event) override;
     void onToggleLogfilesLimit(wxCommandEvent& event) override { updateGui(); }
 
-    void onSelectSoundCompareDone(wxCommandEvent& event) override { selectSound(*m_textCtrlSoundPathCompareDone); }
-    void onSelectSoundSyncDone   (wxCommandEvent& event) override { selectSound(*m_textCtrlSoundPathSyncDone); }
+    void onSelectSoundCompareDone (wxCommandEvent& event) override { selectSound(*m_textCtrlSoundPathCompareDone); }
+    void onSelectSoundSyncDone    (wxCommandEvent& event) override { selectSound(*m_textCtrlSoundPathSyncDone); }
+    void onSelectSoundAlertPending(wxCommandEvent& event) override { selectSound(*m_textCtrlSoundPathAlertPending); }
     void selectSound(wxTextCtrl& txtCtrl);
 
     void onChangeSoundFilePath(wxCommandEvent& event) override { updateGui(); }
 
-    void onPlayCompareDone(wxCommandEvent& event) override { playSoundWithDiagnostics(trimCpy(m_textCtrlSoundPathCompareDone->GetValue())); }
-    void onPlaySyncDone   (wxCommandEvent& event) override { playSoundWithDiagnostics(trimCpy(m_textCtrlSoundPathSyncDone   ->GetValue())); }
+    void onPlayCompareDone (wxCommandEvent& event) override { playSoundWithDiagnostics(trimCpy(m_textCtrlSoundPathCompareDone ->GetValue())); }
+    void onPlaySyncDone    (wxCommandEvent& event) override { playSoundWithDiagnostics(trimCpy(m_textCtrlSoundPathSyncDone    ->GetValue())); }
+    void onPlayAlertPending(wxCommandEvent& event) override { playSoundWithDiagnostics(trimCpy(m_textCtrlSoundPathAlertPending->GetValue())); }
     void playSoundWithDiagnostics(const wxString& filePath);
 
     void onResize(wxSizeEvent& event);
@@ -1193,8 +1196,10 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
     m_bitmapConsole           ->SetBitmap     (loadImage("command_line", fastFromDIP(20)));
     m_bitmapCompareDone       ->SetBitmap     (loadImage("compare_sicon"));
     m_bitmapSyncDone          ->SetBitmap     (loadImage("start_sync_sicon"));
+    m_bitmapAlertPending      ->SetBitmap     (loadImage("msg_error", loadImage("compare_sicon").GetSize().x));
     m_bpButtonPlayCompareDone ->SetBitmapLabel(loadImage("play_sound"));
     m_bpButtonPlaySyncDone    ->SetBitmapLabel(loadImage("play_sound"));
+    m_bpButtonPlayAlertPending->SetBitmapLabel(loadImage("play_sound"));
     m_bpButtonAddRow          ->SetBitmapLabel(loadImage("item_add"));
     m_bpButtonRemoveRow       ->SetBitmapLabel(loadImage("item_remove"));
 
@@ -1222,8 +1227,9 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
             break;
     }
 
-    m_textCtrlSoundPathCompareDone->ChangeValue(utfTo<wxString>(globalSettings.soundFileCompareFinished));
-    m_textCtrlSoundPathSyncDone   ->ChangeValue(utfTo<wxString>(globalSettings.soundFileSyncFinished));
+    m_textCtrlSoundPathCompareDone ->ChangeValue(utfTo<wxString>(globalSettings.soundFileCompareFinished));
+    m_textCtrlSoundPathSyncDone    ->ChangeValue(utfTo<wxString>(globalSettings.soundFileSyncFinished));
+    m_textCtrlSoundPathAlertPending->ChangeValue(utfTo<wxString>(globalSettings.soundFileAlertPending));
     //--------------------------------------------------------------------------------
 
     bSizerLockedFiles->Show(false);
@@ -1284,8 +1290,9 @@ void OptionsDlg::updateGui()
 
     m_spinCtrlLogFilesMaxAge->Enable(m_checkBoxLogFilesMaxAge->GetValue());
 
-    m_bpButtonPlayCompareDone->Enable(!trimCpy(m_textCtrlSoundPathCompareDone->GetValue()).empty());
-    m_bpButtonPlaySyncDone   ->Enable(!trimCpy(m_textCtrlSoundPathSyncDone   ->GetValue()).empty());
+    m_bpButtonPlayCompareDone ->Enable(!trimCpy(m_textCtrlSoundPathCompareDone ->GetValue()).empty());
+    m_bpButtonPlaySyncDone    ->Enable(!trimCpy(m_textCtrlSoundPathSyncDone    ->GetValue()).empty());
+    m_bpButtonPlayAlertPending->Enable(!trimCpy(m_textCtrlSoundPathAlertPending->GetValue()).empty());
 }
 
 
@@ -1349,8 +1356,9 @@ void OptionsDlg::onDefault(wxCommandEvent& event)
             break;
     }
 
-    m_textCtrlSoundPathCompareDone->ChangeValue(utfTo<wxString>(defaultCfg_.soundFileCompareFinished));
-    m_textCtrlSoundPathSyncDone   ->ChangeValue(utfTo<wxString>(defaultCfg_.soundFileSyncFinished));
+    m_textCtrlSoundPathCompareDone ->ChangeValue(utfTo<wxString>(defaultCfg_.soundFileCompareFinished));
+    m_textCtrlSoundPathSyncDone    ->ChangeValue(utfTo<wxString>(defaultCfg_.soundFileSyncFinished));
+    m_textCtrlSoundPathAlertPending->ChangeValue(utfTo<wxString>(defaultCfg_.soundFileAlertPending));
 
     setExtApp(defaultCfg_.externalApps);
 
@@ -1368,8 +1376,9 @@ void OptionsDlg::onOkay(wxCommandEvent& event)
     globalCfgOut_.logfilesMaxAgeDays = m_checkBoxLogFilesMaxAge->GetValue() ? m_spinCtrlLogFilesMaxAge->GetValue() : -1;
     globalCfgOut_.logFormat = m_radioBtnLogHtml->GetValue() ? LogFileFormat::html : LogFileFormat::text;
 
-    globalCfgOut_.soundFileCompareFinished = utfTo<Zstring>(trimCpy(m_textCtrlSoundPathCompareDone->GetValue()));
-    globalCfgOut_.soundFileSyncFinished    = utfTo<Zstring>(trimCpy(m_textCtrlSoundPathSyncDone   ->GetValue()));
+    globalCfgOut_.soundFileCompareFinished = utfTo<Zstring>(trimCpy(m_textCtrlSoundPathCompareDone ->GetValue()));
+    globalCfgOut_.soundFileSyncFinished    = utfTo<Zstring>(trimCpy(m_textCtrlSoundPathSyncDone    ->GetValue()));
+    globalCfgOut_.soundFileAlertPending    = utfTo<Zstring>(trimCpy(m_textCtrlSoundPathAlertPending->GetValue()));
 
     globalCfgOut_.externalApps = getExtApp();
 

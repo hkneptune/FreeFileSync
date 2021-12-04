@@ -25,6 +25,7 @@ BatchStatusHandler::BatchStatusHandler(bool showProgress,
                                        size_t autoRetryCount,
                                        std::chrono::seconds autoRetryDelay,
                                        const Zstring& soundFileSyncComplete,
+                                       const Zstring& soundFileAlertPending,
                                        wxSize progressDlgSize, bool dlgMaximize,
                                        bool autoCloseDialog,
                                        PostSyncAction postSyncAction,
@@ -34,6 +35,7 @@ BatchStatusHandler::BatchStatusHandler(bool showProgress,
     autoRetryCount_(autoRetryCount),
     autoRetryDelay_(autoRetryDelay),
     soundFileSyncComplete_(soundFileSyncComplete),
+    soundFileAlertPending_(soundFileAlertPending),
     progressDlg_(SyncProgressDialog::create(progressDlgSize, dlgMaximize, [this] { userRequestAbort(); }, *this, nullptr /*parentWindow*/, showProgress, autoCloseDialog,
 {jobName}, startTime, ignoreErrors, autoRetryCount, [&]
 {
@@ -195,7 +197,7 @@ BatchStatusHandler::Result BatchStatusHandler::reportResults(const Zstring& post
         if (!autoClose) //only play when showing results dialog
             if (!soundFileSyncComplete_.empty())
             {
-                //wxWidgets shows modal error dialog by default => NO!
+                //wxWidgets shows modal error dialog by default => "no, wxWidgets, NO!"
                 wxLog* oldLogTarget = wxLog::SetActiveTarget(new wxLogStderr); //transfer and receive ownership!
                 ZEN_ON_SCOPE_EXIT(delete wxLog::SetActiveTarget(oldLogTarget));
 
@@ -285,6 +287,7 @@ void BatchStatusHandler::reportWarning(const std::wstring& msg, bool& warningAct
                 bool dontWarnAgain = false;
                 switch (showQuestionDialog(progressDlg_->getWindowIfVisible(), DialogInfoType::warning,
                                            PopupDialogCfg().setDetailInstructions(msg + L"\n\n" + _("You can switch to FreeFileSync's main window to resolve this issue.")).
+                                           remindWhenPending(soundFileAlertPending_).
                                            setCheckBox(dontWarnAgain, _("&Don't show this warning again"), static_cast<ConfirmationButton3>(QuestionButton2::no)),
                                            _("&Ignore"), _("&Switch")))
                 {
@@ -339,7 +342,8 @@ ProcessCallback::Response BatchStatusHandler::reportError(const ErrorInfo& error
                 forceUiUpdateNoThrow(); //noexcept! => don't throw here when error occurs during clean up!
 
                 switch (showConfirmationDialog(progressDlg_->getWindowIfVisible(), DialogInfoType::error,
-                                               PopupDialogCfg().setDetailInstructions(errorInfo.msg),
+                                               PopupDialogCfg().setDetailInstructions(errorInfo.msg).
+                                               remindWhenPending(soundFileAlertPending_),
                                                _("&Ignore"), _("Ignore &all"), _("&Retry")))
                 {
                     case ConfirmationButton3::accept: //ignore
@@ -388,8 +392,8 @@ void BatchStatusHandler::reportFatalError(const std::wstring& msg)
                 forceUiUpdateNoThrow(); //noexcept! => don't throw here when error occurs during clean up!
 
                 switch (showConfirmationDialog(progressDlg_->getWindowIfVisible(), DialogInfoType::error,
-                                               PopupDialogCfg().setTitle(_("Error")).
-                                               setDetailInstructions(msg),
+                                               PopupDialogCfg().setDetailInstructions(msg).
+                                               remindWhenPending(soundFileAlertPending_),
                                                _("&Ignore"), _("Ignore &all")))
                 {
                     case ConfirmationButton2::accept: //ignore

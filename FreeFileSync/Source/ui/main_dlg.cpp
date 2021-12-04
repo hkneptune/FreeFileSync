@@ -7,6 +7,7 @@
 #include "main_dlg.h"
 #include <zen/format_unit.h>
 #include <zen/file_access.h>
+#include <zen/file_path.h>
 #include <zen/file_io.h>
 #include <zen/thread.h>
 #include <zen/process_exec.h>
@@ -1422,7 +1423,8 @@ void MainDialog::copyToAlternateFolder(const std::vector<FileSystemObject*>& sel
     StatusHandlerTemporaryPanel statusHandler(*this, std::chrono::system_clock::now() /*startTime*/,
                                               false /*ignoreErrors*/,
                                               guiCfg.mainCfg.autoRetryCount,
-                                              guiCfg.mainCfg.autoRetryDelay); //handle status display and error messages
+                                              guiCfg.mainCfg.autoRetryDelay,
+                                              globalCfg_.soundFileAlertPending);
     try
     {
         fff::copyToAlternateFolder(selectionL, selectionR,
@@ -1468,7 +1470,8 @@ void MainDialog::deleteSelectedFiles(const std::vector<FileSystemObject*>& selec
     StatusHandlerTemporaryPanel statusHandler(*this, std::chrono::system_clock::now() /*startTime*/,
                                               false /*ignoreErrors*/,
                                               guiCfg.mainCfg.autoRetryCount,
-                                              guiCfg.mainCfg.autoRetryDelay); //handle status display and error messages
+                                              guiCfg.mainCfg.autoRetryDelay,
+                                              globalCfg_.soundFileAlertPending);
     try
     {
         deleteFromGridAndHD(selectionL, selectionR,
@@ -1710,7 +1713,8 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
                 StatusHandlerTemporaryPanel statusHandler(*this, std::chrono::system_clock::now() /*startTime*/,
                                                           false /*ignoreErrors*/,
                                                           guiCfg.mainCfg.autoRetryCount,
-                                                          guiCfg.mainCfg.autoRetryDelay); //handle status display and error messages
+                                                          guiCfg.mainCfg.autoRetryDelay,
+                                                          globalCfg_.soundFileAlertPending);
                 try
                 {
                     tempFileBuf_.createTempFiles(nonNativeFiles, statusHandler); //throw AbortProcess
@@ -2996,6 +3000,10 @@ void MainDialog::updateUnsavedCfgStatus()
     }
 
     SetTitle(title);
+
+    //macOS-only:
+    OSXSetModified(haveUnsavedCfg);
+    SetRepresentedFilename(utfTo<wxString>(activeCfgFilePath));
 }
 
 
@@ -4065,7 +4073,8 @@ void MainDialog::onCompare(wxCommandEvent& event)
     StatusHandlerTemporaryPanel statusHandler(*this, startTime,
                                               guiCfg.mainCfg.ignoreErrors,
                                               guiCfg.mainCfg.autoRetryCount,
-                                              guiCfg.mainCfg.autoRetryDelay);
+                                              guiCfg.mainCfg.autoRetryDelay,
+                                              globalCfg_.soundFileAlertPending);
     try
     {
         //GUI mode: place directory locks on directories isolated(!) during both comparison and synchronization
@@ -4105,7 +4114,7 @@ void MainDialog::onCompare(wxCommandEvent& event)
     //play (optional) sound notification
     if (!globalCfg_.soundFileCompareFinished.empty())
     {
-        //wxWidgets shows modal error dialog by default => NO!
+        //wxWidgets shows modal error dialog by default => "no, wxWidgets, NO!"
         wxLog* oldLogTarget = wxLog::SetActiveTarget(new wxLogStderr); //transfer and receive ownership!
         ZEN_ON_SCOPE_EXIT(delete wxLog::SetActiveTarget(oldLogTarget));
 
@@ -4113,7 +4122,7 @@ void MainDialog::onCompare(wxCommandEvent& event)
     }
 
     if (!IsActive())
-        RequestUserAttention();
+        RequestUserAttention(); //this == toplevel win, so we also get the taskbar flash!
 
     //remember folder history (except when cancelled by user)
     for (const FolderPairCfg& fpCfg : fpCfgList)
@@ -4306,6 +4315,7 @@ void MainDialog::onStartSync(wxCommandEvent& event)
                                                   guiCfg.mainCfg.autoRetryCount,
                                                   guiCfg.mainCfg.autoRetryDelay,
                                                   globalCfg_.soundFileSyncFinished,
+                                                  globalCfg_.soundFileAlertPending,
                                                   globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.dlgSize,
                                                   globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.isMaximized,
                                                   globalCfg_.progressDlgAutoClose);
@@ -4518,7 +4528,8 @@ void MainDialog::startSyncForSelecction(const std::vector<FileSystemObject*>& se
         StatusHandlerTemporaryPanel statusHandler(*this, syncStartTime,
                                                   guiCfg.mainCfg.ignoreErrors,
                                                   guiCfg.mainCfg.autoRetryCount,
-                                                  guiCfg.mainCfg.autoRetryDelay); //handle status display and error messages
+                                                  guiCfg.mainCfg.autoRetryDelay,
+                                                  globalCfg_.soundFileAlertPending);
         try
         {
             //let's report here rather than before comparison (user might have changed global settings in the meantime!)
@@ -4732,6 +4743,7 @@ void MainDialog::onGridLabelLeftClickC(GridLabelClickEvent& event)
     }
 }
 
+
 void MainDialog::onSwapSides(wxCommandEvent& event)
 {
     if (globalCfg_.confirmDlgs.confirmSwapSides)
@@ -4800,7 +4812,8 @@ void MainDialog::onSwapSides(wxCommandEvent& event)
         StatusHandlerTemporaryPanel statusHandler(*this, std::chrono::system_clock::now() /*startTime*/,
                                                   false /*ignoreErrors*/,
                                                   guiCfg.mainCfg.autoRetryCount,
-                                                  guiCfg.mainCfg.autoRetryDelay); //handle status display and error messages
+                                                  guiCfg.mainCfg.autoRetryDelay,
+                                                  Zstr("") /*soundFileAlertPending*/);
         try
         {
             statusHandler.initNewPhase(-1, -1, ProcessPhase::none);
@@ -5048,7 +5061,8 @@ void MainDialog::applySyncDirections()
         StatusHandlerTemporaryPanel statusHandler(*this, std::chrono::system_clock::now() /*startTime*/,
                                                   false /*ignoreErrors*/,
                                                   guiCfg.mainCfg.autoRetryCount,
-                                                  guiCfg.mainCfg.autoRetryDelay); //handle status display and error messages
+                                                  guiCfg.mainCfg.autoRetryDelay,
+                                                  Zstr("") /*soundFileAlertPending*/);
         try
         {
             statusHandler.initNewPhase(-1, -1, ProcessPhase::none);

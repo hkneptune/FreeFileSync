@@ -7,6 +7,7 @@
 #include "application.h"
 #include <memory>
 #include <zen/file_access.h>
+#include <zen/file_path.h>
 #include <zen/perf.h>
 #include <zen/shutdown.h>
 #include <zen/process_exec.h>
@@ -39,8 +40,6 @@ IMPLEMENT_APP(Application)
 
 namespace
 {
-
-
 std::vector<Zstring> getCommandlineArgs(const wxApp& app)
 {
     std::vector<Zstring> args;
@@ -593,6 +592,7 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
                                      batchCfg.mainCfg.autoRetryCount,
                                      batchCfg.mainCfg.autoRetryDelay,
                                      globalCfg.soundFileSyncFinished,
+                                     globalCfg.soundFileAlertPending,
                                      globalCfg.dpiLayouts[getDpiScalePercent()].progressDlg.dlgSize,
                                      globalCfg.dpiLayouts[getDpiScalePercent()].progressDlg.isMaximized,
                                      batchCfg.batchExCfg.autoCloseSummary,

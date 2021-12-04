@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Oct 26 2018)
+// C++ code generated with wxFormBuilder (version 3.10.1-0-g8feb16b3)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO *NOT* EDIT THIS FILE!
@@ -10,6 +10,8 @@
 #include <wx/artprov.h>
 #include <wx/xrc/xmlres.h>
 #include <wx/intl.h>
+namespace zen { class BitmapTextButton; }
+
 #include "wx+/bitmap_button.h"
 #include "folder_history_box.h"
 #include "wx+/grid.h"
@@ -210,7 +212,7 @@ protected:
     wxStaticBitmap* m_bitmapDeleteRight;
     wxStaticText* m_staticTextDeleteRight;
 
-    // Virtual event handlers, overide them in your derived class
+    // Virtual event handlers, override them in your derived class
     virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
     virtual void onConfigNew( wxCommandEvent& event ) { event.Skip(); }
     virtual void onConfigLoad( wxCommandEvent& event ) { event.Skip(); }
@@ -312,6 +314,7 @@ public:
     wxBitmapButton* m_bpButtonSelectAltFolderRight;
 
     FolderPairPanelGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( 698, 67 ), long style = 0, const wxString& name = wxEmptyString );
+
     ~FolderPairPanelGenerated();
 
 };
@@ -488,7 +491,7 @@ protected:
     wxButton* m_buttonOkay;
     wxButton* m_buttonCancel;
 
-    // Virtual event handlers, overide them in your derived class
+    // Virtual event handlers, override them in your derived class
     virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
     virtual void onListBoxKeyEvent( wxKeyEvent& event ) { event.Skip(); }
     virtual void onSelectFolderPair( wxCommandEvent& event ) { event.Skip(); }
@@ -546,6 +549,7 @@ public:
     wxChoice* m_choicePostSyncCondition;
 
     ConfigDlgGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Synchronization Settings"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1, -1 ), long style = wxDEFAULT_DIALOG_STYLE|wxMAXIMIZE_BOX|wxRESIZE_BORDER );
+
     ~ConfigDlgGenerated();
 
 };
@@ -638,7 +642,7 @@ protected:
     wxButton* m_buttonOkay;
     wxButton* m_buttonCancel;
 
-    // Virtual event handlers, overide them in your derived class
+    // Virtual event handlers, override them in your derived class
     virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
     virtual void onConnectionGdrive( wxCommandEvent& event ) { event.Skip(); }
     virtual void onConnectionSftp( wxCommandEvent& event ) { event.Skip(); }
@@ -660,6 +664,7 @@ protected:
 public:
 
     CloudSetupDlgGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Access Online Storage"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1, -1 ), long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER );
+
     ~CloudSetupDlgGenerated();
 
 };
@@ -680,7 +685,7 @@ protected:
     wxButton* m_buttonOkay;
     wxButton* m_buttonCancel;
 
-    // Virtual event handlers, overide them in your derived class
+    // Virtual event handlers, override them in your derived class
     virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
     virtual void onExpandNode( wxTreeEvent& event ) { event.Skip(); }
     virtual void onOkay( wxCommandEvent& event ) { event.Skip(); }
@@ -690,6 +695,7 @@ protected:
 public:
 
     AbstractFolderPickerGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Select a folder"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1, -1 ), long style = wxDEFAULT_DIALOG_STYLE|wxMAXIMIZE_BOX|wxRESIZE_BORDER );
+
     ~AbstractFolderPickerGenerated();
 
 };
@@ -733,7 +739,7 @@ protected:
     wxButton* m_buttonStartSync;
     wxButton* m_buttonCancel;
 
-    // Virtual event handlers, overide them in your derived class
+    // Virtual event handlers, override them in your derived class
     virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
     virtual void onStartSync( wxCommandEvent& event ) { event.Skip(); }
     virtual void onCancel( wxCommandEvent& event ) { event.Skip(); }
@@ -742,6 +748,7 @@ protected:
 public:
 
     SyncConfirmationDlgGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = wxEmptyString, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE );
+
     ~SyncConfirmationDlgGenerated();
 
 };
@@ -784,6 +791,7 @@ public:
     wxStaticBitmap* m_bitmapIgnoreErrors;
 
     CompareProgressDlgGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1, -1 ), long style = wxBORDER_RAISED, const wxString& name = wxEmptyString );
+
     ~CompareProgressDlgGenerated();
 
 };
@@ -846,6 +854,7 @@ public:
     wxButton* m_buttonStop;
 
     SyncProgressPanelGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1, -1 ), long style = wxTAB_TRAVERSAL, const wxString& name = wxEmptyString );
+
     ~SyncProgressPanelGenerated();
 
 };
@@ -863,7 +872,7 @@ protected:
     zen::ToggleButton* m_bpButtonInfo;
     wxStaticLine* m_staticline13;
 
-    // Virtual event handlers, overide them in your derived class
+    // Virtual event handlers, override them in your derived class
     virtual void onErrors( wxCommandEvent& event ) { event.Skip(); }
     virtual void onWarnings( wxCommandEvent& event ) { event.Skip(); }
     virtual void onInfo( wxCommandEvent& event ) { event.Skip(); }
@@ -873,6 +882,7 @@ public:
     zen::Grid* m_gridMessages;
 
     LogPanelGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxTAB_TRAVERSAL, const wxString& name = wxEmptyString );
+
     ~LogPanelGenerated();
 
 };
@@ -908,7 +918,7 @@ protected:
     wxButton* m_buttonSaveAs;
     wxButton* m_buttonCancel;
 
-    // Virtual event handlers, overide them in your derived class
+    // Virtual event handlers, override them in your derived class
     virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
     virtual void onToggleRunMinimized( wxCommandEvent& event ) { event.Skip(); }
     virtual void onToggleIgnoreErrors( wxCommandEvent& event ) { event.Skip(); }
@@ -921,6 +931,7 @@ public:
     wxChoice* m_choicePostSyncAction;
 
     BatchDlgGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Save as a Batch Job"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER );
+
     ~BatchDlgGenerated();
 
 };
@@ -945,7 +956,7 @@ protected:
     wxButton* m_buttonOK;
     wxButton* m_buttonCancel;
 
-    // Virtual event handlers, overide them in your derived class
+    // Virtual event handlers, override them in your derived class
     virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
     virtual void onUseRecycler( wxCommandEvent& event ) { event.Skip(); }
     virtual void onOkay( wxCommandEvent& event ) { event.Skip(); }
@@ -955,6 +966,7 @@ protected:
 public:
 
     DeleteDlgGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Delete Items"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1, -1 ), long style = wxDEFAULT_DIALOG_STYLE|wxMAXIMIZE_BOX|wxRESIZE_BORDER );
+
     ~DeleteDlgGenerated();
 
 };
@@ -981,7 +993,7 @@ protected:
     wxButton* m_buttonOK;
     wxButton* m_buttonCancel;
 
-    // Virtual event handlers, overide them in your derived class
+    // Virtual event handlers, override them in your derived class
     virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
     virtual void onOkay( wxCommandEvent& event ) { event.Skip(); }
     virtual void onCancel( wxCommandEvent& event ) { event.Skip(); }
@@ -992,6 +1004,7 @@ public:
     wxBitmapButton* m_bpButtonSelectAltTargetFolder;
 
     CopyToDlgGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Copy Items"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1, -1 ), long style = wxDEFAULT_DIALOG_STYLE|wxMAXIMIZE_BOX|wxRESIZE_BORDER );
+
     ~CopyToDlgGenerated();
 
 };
@@ -1052,6 +1065,11 @@ protected:
     wxBitmapButton* m_bpButtonPlaySyncDone;
     wxTextCtrl* m_textCtrlSoundPathSyncDone;
     wxButton* m_buttonSelectSoundSyncDone;
+    wxStaticBitmap* m_bitmapAlertPending;
+    wxStaticText* m_staticText17111;
+    wxBitmapButton* m_bpButtonPlayAlertPending;
+    wxTextCtrl* m_textCtrlSoundPathAlertPending;
+    wxButton* m_buttonSelectSoundAlertPending;
     wxStaticLine* m_staticline3611;
     wxStaticBitmap* m_bitmapConsole;
     wxStaticText* m_staticText85;
@@ -1073,7 +1091,7 @@ protected:
     wxButton* m_buttonOkay;
     wxButton* m_buttonCancel;
 
-    // Virtual event handlers, overide them in your derived class
+    // Virtual event handlers, override them in your derived class
     virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
     virtual void onRestoreDialogs( wxCommandEvent& event ) { event.Skip(); }
     virtual void onShowLogFolder( wxHyperlinkEvent& event ) { event.Skip(); }
@@ -1083,6 +1101,8 @@ protected:
     virtual void onSelectSoundCompareDone( wxCommandEvent& event ) { event.Skip(); }
     virtual void onPlaySyncDone( wxCommandEvent& event ) { event.Skip(); }
     virtual void onSelectSoundSyncDone( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onPlayAlertPending( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onSelectSoundAlertPending( wxCommandEvent& event ) { event.Skip(); }
     virtual void onAddRow( wxCommandEvent& event ) { event.Skip(); }
     virtual void onRemoveRow( wxCommandEvent& event ) { event.Skip(); }
     virtual void onDefault( wxCommandEvent& event ) { event.Skip(); }
@@ -1093,6 +1113,7 @@ protected:
 public:
 
     OptionsDlgGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Options"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER );
+
     ~OptionsDlgGenerated();
 
 };
@@ -1111,6 +1132,7 @@ public:
     wxStaticText* m_staticTextMain;
 
     TooltipDlgGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = wxEmptyString, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE );
+
     ~TooltipDlgGenerated();
 
 };
@@ -1131,7 +1153,7 @@ protected:
     wxButton* m_buttonOkay;
     wxButton* m_buttonCancel;
 
-    // Virtual event handlers, overide them in your derived class
+    // Virtual event handlers, override them in your derived class
     virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
     virtual void onChangeSelectionFrom( wxCalendarEvent& event ) { event.Skip(); }
     virtual void onChangeSelectionTo( wxCalendarEvent& event ) { event.Skip(); }
@@ -1142,6 +1164,7 @@ protected:
 public:
 
     SelectTimespanDlgGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Select Time Span"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE );
+
     ~SelectTimespanDlgGenerated();
 
 };
@@ -1190,7 +1213,7 @@ protected:
     wxBoxSizer* bSizerStdButtons;
     wxButton* m_buttonClose;
 
-    // Virtual event handlers, overide them in your derived class
+    // Virtual event handlers, override them in your derived class
     virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
     virtual void onDonate( wxCommandEvent& event ) { event.Skip(); }
     virtual void onShowDonationDetails( wxCommandEvent& event ) { event.Skip(); }
@@ -1204,6 +1227,7 @@ protected:
 public:
 
     AboutDlgGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("About"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE );
+
     ~AboutDlgGenerated();
 
 };
@@ -1224,13 +1248,14 @@ protected:
     wxBoxSizer* bSizerStdButtons;
     wxButton* m_buttonCancel;
 
-    // Virtual event handlers, overide them in your derived class
+    // Virtual event handlers, override them in your derived class
     virtual void onCancel( wxCommandEvent& event ) { event.Skip(); }
 
 
 public:
 
     DownloadProgressDlgGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = wxEmptyString, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = 0 );
+
     ~DownloadProgressDlgGenerated();
 
 };
@@ -1268,7 +1293,7 @@ protected:
     wxBoxSizer* bSizerStdButtons;
     wxButton* m_buttonCancel;
 
-    // Virtual event handlers, overide them in your derived class
+    // Virtual event handlers, override them in your derived class
     virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
     virtual void onActivateOnline( wxCommandEvent& event ) { event.Skip(); }
     virtual void onCopyUrl( wxCommandEvent& event ) { event.Skip(); }
@@ -1280,6 +1305,7 @@ protected:
 public:
 
     ActivationDlgGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("dummy"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER );
+
     ~ActivationDlgGenerated();
 
 };
@@ -1300,7 +1326,7 @@ protected:
     wxButton* m_buttonOkay;
     wxButton* m_buttonCancel;
 
-    // Virtual event handlers, overide them in your derived class
+    // Virtual event handlers, override them in your derived class
     virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
     virtual void onOkay( wxCommandEvent& event ) { event.Skip(); }
     virtual void onCancel( wxCommandEvent& event ) { event.Skip(); }
@@ -1309,6 +1335,7 @@ protected:
 public:
 
     CfgHighlightDlgGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Highlight Configurations"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE );
+
     ~CfgHighlightDlgGenerated();
 
 };
@@ -1339,7 +1366,7 @@ protected:
     wxBoxSizer* bSizerStdButtons;
     wxButton* m_buttonClose;
 
-    // Virtual event handlers, overide them in your derived class
+    // Virtual event handlers, override them in your derived class
     virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
     virtual void onShowAppBundle( wxCommandEvent& event ) { event.Skip(); }
     virtual void onOpenSecuritySettings( wxCommandEvent& event ) { event.Skip(); }
@@ -1350,6 +1377,7 @@ protected:
 public:
 
     WarnAccessRightsMissingDlgGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Grant Full Disk Access"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE );
+
     ~WarnAccessRightsMissingDlgGenerated();
 
 };

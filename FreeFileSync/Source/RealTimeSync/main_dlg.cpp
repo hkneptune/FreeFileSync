@@ -12,6 +12,7 @@
 #include <wx+/popup_dlg.h>
 #include <wx+/image_resources.h>
 #include <zen/file_access.h>
+#include <zen/file_path.h>
 #include <zen/build_info.h>
 #include <zen/time.h>
 #include "config.h"

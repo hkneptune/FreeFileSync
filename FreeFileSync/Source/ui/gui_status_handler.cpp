@@ -29,11 +29,13 @@ StatusHandlerTemporaryPanel::StatusHandlerTemporaryPanel(MainDialog& dlg,
                                                          const std::chrono::system_clock::time_point& startTime,
                                                          bool ignoreErrors,
                                                          size_t autoRetryCount,
-                                                         std::chrono::seconds autoRetryDelay) :
+                                                         std::chrono::seconds autoRetryDelay,
+                                                         const Zstring& soundFileAlertPending) :
     mainDlg_(dlg),
     ignoreErrors_(ignoreErrors),
     autoRetryCount_(autoRetryCount),
     autoRetryDelay_(autoRetryDelay),
+    soundFileAlertPending_(soundFileAlertPending),
     startTime_(startTime)
 {
     mainDlg_.compareStatus_->init(*this, ignoreErrors_, autoRetryCount_); //clear old values before showing panel
@@ -210,6 +212,7 @@ void StatusHandlerTemporaryPanel::reportWarning(const std::wstring& msg, bool& w
         bool dontWarnAgain = false;
         switch (showConfirmationDialog(&mainDlg_, DialogInfoType::warning,
                                        PopupDialogCfg().setDetailInstructions(msg).
+                                       remindWhenPending(soundFileAlertPending_).
                                        setCheckBox(dontWarnAgain, _("&Don't show this warning again")),
                                        _("&Ignore")))
         {
@@ -249,7 +252,8 @@ ProcessCallback::Response StatusHandlerTemporaryPanel::reportError(const ErrorIn
         forceUiUpdateNoThrow(); //noexcept! => don't throw here when error occurs during clean up!
 
         switch (showConfirmationDialog(&mainDlg_, DialogInfoType::error,
-                                       PopupDialogCfg().setDetailInstructions(errorInfo.msg),
+                                       PopupDialogCfg().setDetailInstructions(errorInfo.msg).
+                                       remindWhenPending(soundFileAlertPending_),
                                        _("&Ignore"), _("Ignore &all"), _("&Retry")))
         {
             case ConfirmationButton3::accept: //ignore
@@ -289,8 +293,8 @@ void StatusHandlerTemporaryPanel::reportFatalError(const std::wstring& msg)
         forceUiUpdateNoThrow(); //noexcept! => don't throw here when error occurs during clean up!
 
         switch (showConfirmationDialog(&mainDlg_, DialogInfoType::error,
-                                       PopupDialogCfg().setTitle(_("Error")).
-                                       setDetailInstructions(msg),
+                                       PopupDialogCfg().setDetailInstructions(msg).
+                                       remindWhenPending(soundFileAlertPending_),
                                        _("&Ignore"), _("Ignore &all")))
         {
             case ConfirmationButton2::accept: //ignore
@@ -345,6 +349,7 @@ StatusHandlerFloatingDialog::StatusHandlerFloatingDialog(wxFrame* parentDlg,
                                                          size_t autoRetryCount,
                                                          std::chrono::seconds autoRetryDelay,
                                                          const Zstring& soundFileSyncComplete,
+                                                         const Zstring& soundFileAlertPending,
                                                          const wxSize& progressDlgSize, bool dlgMaximize,
                                                          bool autoCloseDialog) :
     jobNames_(jobNames),
@@ -352,6 +357,7 @@ StatusHandlerFloatingDialog::StatusHandlerFloatingDialog(wxFrame* parentDlg,
     autoRetryCount_(autoRetryCount),
     autoRetryDelay_(autoRetryDelay),
     soundFileSyncComplete_(soundFileSyncComplete),
+    soundFileAlertPending_(soundFileAlertPending),
     progressDlg_(SyncProgressDialog::create(progressDlgSize, dlgMaximize, [this] { userRequestAbort(); }, *this, parentDlg, true /*showProgress*/, autoCloseDialog,
 jobNames, startTime, ignoreErrors, autoRetryCount, PostSyncAction2::none)) {}
 
@@ -497,7 +503,7 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(c
         if (!autoClose) //only play when showing results dialog
             if (!soundFileSyncComplete_.empty())
             {
-                //wxWidgets shows modal error dialog by default => NO!
+                //wxWidgets shows modal error dialog by default => "no, wxWidgets, NO!"
                 wxLog* oldLogTarget = wxLog::SetActiveTarget(new wxLogStderr); //transfer and receive ownership!
                 ZEN_ON_SCOPE_EXIT(delete wxLog::SetActiveTarget(oldLogTarget));
 
@@ -570,6 +576,7 @@ void StatusHandlerFloatingDialog::reportWarning(const std::wstring& msg, bool& w
         bool dontWarnAgain = false;
         switch (showConfirmationDialog(progressDlg_->getWindowIfVisible(), DialogInfoType::warning,
                                        PopupDialogCfg().setDetailInstructions(msg).
+                                       remindWhenPending(soundFileAlertPending_).
                                        setCheckBox(dontWarnAgain, _("&Don't show this warning again")),
                                        _("&Ignore")))
         {
@@ -609,7 +616,8 @@ ProcessCallback::Response StatusHandlerFloatingDialog::reportError(const ErrorIn
         forceUiUpdateNoThrow(); //noexcept! => don't throw here when error occurs during clean up!
 
         switch (showConfirmationDialog(progressDlg_->getWindowIfVisible(), DialogInfoType::error,
-                                       PopupDialogCfg().setDetailInstructions(errorInfo.msg),
+                                       PopupDialogCfg().setDetailInstructions(errorInfo.msg).
+                                       remindWhenPending(soundFileAlertPending_),
                                        _("&Ignore"), _("Ignore &all"), _("&Retry")))
         {
             case ConfirmationButton3::accept: //ignore
@@ -649,8 +657,8 @@ void StatusHandlerFloatingDialog::reportFatalError(const std::wstring& msg)
         forceUiUpdateNoThrow(); //noexcept! => don't throw here when error occurs during clean up!
 
         switch (showConfirmationDialog(progressDlg_->getWindowIfVisible(), DialogInfoType::error,
-                                       PopupDialogCfg().setTitle(_("Error")).
-                                       setDetailInstructions(msg),
+                                       PopupDialogCfg().setDetailInstructions(msg).
+                                       remindWhenPending(soundFileAlertPending_),
                                        _("&Ignore"), _("Ignore &all")))
         {
             case ConfirmationButton2::accept: //ignore

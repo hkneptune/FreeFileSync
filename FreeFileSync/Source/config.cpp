@@ -23,21 +23,21 @@ using namespace fff; //functionally needed for correct overload resolution!!!
 namespace
 {
 //-------------------------------------------------------------------------------------------------------------------------------
-const int XML_FORMAT_GLOBAL_CFG = 22; //2021-07-31
+const int XML_FORMAT_GLOBAL_CFG = 23; //2021-12-02
 const int XML_FORMAT_SYNC_CFG   = 17; //2020-10-14
 //-------------------------------------------------------------------------------------------------------------------------------
 }
 
 
 const ExternalApp fff::extCommandFileBrowse
-        //"xdg-open \"%parent_path%\"" -> not good enough: we need %local_path% for proper MTP/Google Drive handling
-        {L"Browse directory", "xdg-open \"$(dirname \"%local_path%\")\""};
-        //mark for extraction: _("Browse directory") Linux doesn't use the term "folder"
+//"xdg-open \"%parent_path%\"" -> not good enough: we need %local_path% for proper MTP/Google Drive handling
+{L"Browse directory", "xdg-open \"$(dirname \"%local_path%\")\""};
+//mark for extraction: _("Browse directory") Linux doesn't use the term "folder"
 
 
 const ExternalApp fff::extCommandOpenDefault
-        //"xdg-open \"%parent_path%\"" -> not good enough: we need %local_path% for proper MTP/Google Drive handling
-        {L"Open with default application", "xdg-open \"%local_path%\""};
+//"xdg-open \"%parent_path%\"" -> not good enough: we need %local_path% for proper MTP/Google Drive handling
+{L"Open with default application", "xdg-open \"%local_path%\""};
 
 
 XmlType getXmlTypeNoThrow(const XmlDoc& doc) //throw()
@@ -87,8 +87,11 @@ void setXmlType(XmlDoc& doc, XmlType type) //throw()
 }
 
 
+
+
 XmlGlobalSettings::XmlGlobalSettings() :
-    soundFileSyncFinished(getResourceDirPf() + Zstr("bell.wav"))
+    soundFileSyncFinished(getResourceDirPf() + Zstr("bell.wav")),
+    soundFileAlertPending(getResourceDirPf() + Zstr("remind.wav"))
 {
 }
 
@@ -1502,8 +1505,6 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     in2["VerifyCopiedFiles"        ].attribute("Enabled", cfg.verifyFileCopy);
     in2["LogFiles"                 ].attribute("MaxAge",  cfg.logfilesMaxAgeDays);
     in2["LogFiles"                 ].attribute("Format",  cfg.logFormat);
-    in2["NotificationSound"        ].attribute("CompareFinished", cfg.soundFileCompareFinished);
-    in2["NotificationSound"        ].attribute("SyncFinished",    cfg.soundFileSyncFinished);
 
     //TODO: remove old parameter after migration! 2021-03-06
     if (formatVer < 21)
@@ -1514,18 +1515,6 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     }
 
     in2["ProgressDialog"].attribute("AutoClose", cfg.progressDlgAutoClose);
-
-    //TODO: remove if parameter migration after some time! 2019-05-29
-    if (formatVer < 13)
-    {
-        if (!cfg.soundFileCompareFinished.empty()) cfg.soundFileCompareFinished = getResourceDirPf() + cfg.soundFileCompareFinished;
-        if (!cfg.soundFileSyncFinished   .empty()) cfg.soundFileSyncFinished    = getResourceDirPf() + cfg.soundFileSyncFinished;
-    }
-    else
-    {
-        cfg.soundFileCompareFinished = resolveFfsResourceMacro(cfg.soundFileCompareFinished);
-        cfg.soundFileSyncFinished    = resolveFfsResourceMacro(cfg.soundFileSyncFinished);
-    }
 
     //TODO: remove if parameter migration after some time! 2018-08-13
     if (formatVer < 14)
@@ -1572,6 +1561,32 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
         inOpt["WarnDependentBaseFolders"      ].attribute("Show", cfg.warnDlgs.warnDependentBaseFolders);
         inOpt["WarnDirectoryLockFailed"       ].attribute("Show", cfg.warnDlgs.warnDirectoryLockFailed);
         inOpt["WarnVersioningFolderPartOfSync"].attribute("Show", cfg.warnDlgs.warnVersioningFolderPartOfSync);
+    }
+
+    //TODO: remove after migration! 2021-12-02
+    if (formatVer < 23)
+    {
+        in2["NotificationSound"].attribute("CompareFinished", cfg.soundFileCompareFinished);
+        in2["NotificationSound"].attribute("SyncFinished",    cfg.soundFileSyncFinished);
+    }
+    else
+    {
+        in2["Sounds"]["CompareFinished"].attribute("Path", cfg.soundFileCompareFinished);
+        in2["Sounds"]["SyncFinished"   ].attribute("Path", cfg.soundFileSyncFinished);
+        in2["Sounds"]["AlertPending"   ].attribute("Path", cfg.soundFileAlertPending);
+    }
+
+    //TODO: remove if parameter migration after some time! 2019-05-29
+    if (formatVer < 13)
+    {
+        if (!cfg.soundFileCompareFinished.empty()) cfg.soundFileCompareFinished = getResourceDirPf() + cfg.soundFileCompareFinished;
+        if (!cfg.soundFileSyncFinished   .empty()) cfg.soundFileSyncFinished    = getResourceDirPf() + cfg.soundFileSyncFinished;
+    }
+    else
+    {
+        cfg.soundFileCompareFinished = resolveFfsResourceMacro(cfg.soundFileCompareFinished);
+        cfg.soundFileSyncFinished    = resolveFfsResourceMacro(cfg.soundFileSyncFinished);
+        cfg.soundFileAlertPending    = resolveFfsResourceMacro(cfg.soundFileAlertPending);
     }
 
     XmlIn inMainWin = in["MainDialog"];
@@ -2329,8 +2344,6 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
     out["VerifyCopiedFiles"        ].attribute("Enabled", cfg.verifyFileCopy);
     out["LogFiles"                 ].attribute("MaxAge",  cfg.logfilesMaxAgeDays);
     out["LogFiles"                 ].attribute("Format",  cfg.logFormat);
-    out["NotificationSound"        ].attribute("CompareFinished", substituteFfsResourcePath(cfg.soundFileCompareFinished));
-    out["NotificationSound"        ].attribute("SyncFinished",    substituteFfsResourcePath(cfg.soundFileSyncFinished));
 
     out["ProgressDialog"].attribute("AutoClose", cfg.progressDlgAutoClose);
 
@@ -2351,6 +2364,10 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
     outOpt["WarnDependentBaseFolders"      ].attribute("Show", cfg.warnDlgs.warnDependentBaseFolders);
     outOpt["WarnDirectoryLockFailed"       ].attribute("Show", cfg.warnDlgs.warnDirectoryLockFailed);
     outOpt["WarnVersioningFolderPartOfSync"].attribute("Show", cfg.warnDlgs.warnVersioningFolderPartOfSync);
+
+    out["Sounds"]["CompareFinished"].attribute("Path", substituteFfsResourcePath(cfg.soundFileCompareFinished));
+    out["Sounds"]["SyncFinished"   ].attribute("Path", substituteFfsResourcePath(cfg.soundFileSyncFinished));
+    out["Sounds"]["AlertPending"   ].attribute("Path", substituteFfsResourcePath(cfg.soundFileAlertPending));
 
     //gui specific global settings (optional)
     XmlOut outMainWin = out["MainDialog"];

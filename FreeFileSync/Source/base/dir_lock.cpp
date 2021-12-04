@@ -3,6 +3,7 @@
 // * GNU General Public License: https://www.gnu.org/licenses/gpl-3.0          *
 // * Copyright (C) Zenju (zenju AT freefilesync DOT org) - All Rights Reserved *
 // *****************************************************************************
+
 #include "dir_lock.h"
 #include <map>
 #include <memory>
@@ -12,6 +13,7 @@
 #include <zen/scope_guard.h>
 #include <zen/guid.h>
 #include <zen/file_access.h>
+#include <zen/file_path.h>
 #include <zen/file_io.h>
 #include <zen/sys_info.h>
 
@@ -500,8 +502,8 @@ public:
         tidyUp();
 
         //optimization: check if we already own a lock for this path
-        auto itGuid = guidByPath_.find(lockFilePath);
-        if (itGuid != guidByPath_.end())
+        if (auto itGuid = guidByPath_.find(lockFilePath);
+            itGuid != guidByPath_.end())
             if (const std::shared_ptr<SharedDirLock>& activeLock = getActiveLock(itGuid->second)) //returns null-lock if not found
                 return activeLock; //SharedDirLock is still active -> enlarge circle of shared ownership
 

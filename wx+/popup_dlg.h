@@ -8,6 +8,7 @@
 #define POPUP_DLG_H_820780154723456
 
 #include <set>
+#include <zen/zstring.h>
 #include <wx/window.h>
 #include <wx/bitmap.h>
 #include <wx/string.h>
@@ -68,6 +69,7 @@ struct PopupDialogCfg
     PopupDialogCfg& setMainInstructions  (const wxString& label) { textMain   = label; return *this; } //set at least one of these!
     PopupDialogCfg& setDetailInstructions(const wxString& label) { textDetail = label; return *this; } //
     PopupDialogCfg& disableButton(ConfirmationButton3 button) { disabledButtons.insert(button); return *this; }
+    PopupDialogCfg& remindWhenPending(const Zstring& soundFilePath) { soundFileAlertPending = soundFilePath; return *this; }
     PopupDialogCfg& setCheckBox(bool& value, const wxString& label, ConfirmationButton3 disableWhenChecked = ConfirmationButton3::cancel)
     {
         checkBoxValue = &value;
@@ -84,6 +86,7 @@ private:
     wxString textMain;
     wxString textDetail;
     std::set<ConfirmationButton3> disabledButtons;
+    Zstring soundFileAlertPending;
     bool* checkBoxValue = nullptr; //in/out
     wxString checkBoxLabel;
     ConfirmationButton3 buttonToDisableWhenChecked = ConfirmationButton3::cancel;

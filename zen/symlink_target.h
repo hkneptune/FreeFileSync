@@ -9,6 +9,7 @@
 
 #include "scope_guard.h"
 #include "file_error.h"
+#include "file_path.h"
 
     #include <unistd.h>
     #include <stdlib.h> //realpath
@@ -58,11 +59,15 @@ zen::SymlinkRawContent getSymlinkRawContent_impl(const Zstring& linkPath) //thro
 Zstring getResolvedSymlinkPath_impl(const Zstring& linkPath) //throw FileError
 {
     using namespace zen;
-    char* targetPath = ::realpath(linkPath.c_str(), nullptr);
-    if (!targetPath)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtPath(linkPath)), "realpath");
-    ZEN_ON_SCOPE_EXIT(::free(targetPath));
-    return targetPath;
+    try
+    {
+        char* targetPath = ::realpath(linkPath.c_str(), nullptr);
+        if (!targetPath)
+            THROW_LAST_SYS_ERROR("realpath");
+        ZEN_ON_SCOPE_EXIT(::free(targetPath));
+        return targetPath;
+    }
+    catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtPath(linkPath)), e.toString()); }
 }
 }
 

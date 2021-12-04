@@ -8,6 +8,7 @@
 #include "time.h"
 #include "thread.h"
 #include "file_access.h"
+#include "file_path.h"
 
     #include <stdlib.h> //getenv()
     #include <unistd.h> //getcwd()
@@ -44,7 +45,7 @@ Zstring resolveRelativePath(const Zstring& relativePath)
     assert(runningOnMainThread());
     /* MSDN: "Multithreaded applications and shared library code should not use the GetFullPathName function
               and should avoid using relative path names. The current directory state written by the
-              SetCurrentDirectory function is stored as a global variable in each process, 
+              SetCurrentDirectory function is stored as a global variable in each process,
               therefore multithreaded applications cannot reliably use this value without possible data corruption from other threads, [...]"
 
       => Just plain wrong, there is no data corruption. What MSDN really means: GetFullPathName() is *perfectly* thread-safe, but depends

@@ -1,3 +1,14 @@
+FreeFileSync 11.15 [2021-12-03]
+-------------------------------
+Play sound reminder when waiting for user confirmation
+Enhanced crash diagnostics with known triggers
+Defer reporting third-party incompatibilities until after crashing
+Support running FreeFileSync from Dokany-based encrypted volumes
+Fixed Server 2019 not being detected for log file
+Use native representation for modified config (macOS)
+Improved WinMerge detection for external app integration
+
+
 FreeFileSync 11.14 [2021-09-20]
 -------------------------------
 Authenticate (S)FTP connections using OpenSSL 3.0

@@ -17,6 +17,10 @@
     #include <glib.h>
     #include <fcntl.h>
 
+warn_static("remove after test (including openssl-headers set for ftp.cpp")
+//#include <openssl/ssl.h> //SSL_OP_IGNORE_UNEXPECTED_EOF
+
+
 using namespace zen;
 using namespace fff;
 using AFS = AbstractFileSystem;
@@ -454,6 +458,19 @@ public:
         {
             options.emplace_back(CURLOPT_USE_SSL,    CURLUSESSL_ALL); //require SSL for both control and data
             options.emplace_back(CURLOPT_FTPSSLAUTH, CURLFTPAUTH_TLS); //try TLS first, then SSL (currently: CURLFTPAUTH_DEFAULT == CURLFTPAUTH_SSL)
+
+
+            warn_static("remove after test")
+#if 0
+            using SslContextCbType =     CURLcode (*)(CURL* curl, SSL_CTX* ssl_ctx, void* userptr); //needed for cdecl function pointer cast
+            SslContextCbType onSslContextWrapper = [](CURL* curl, SSL_CTX* ssl_ctx, void* userptr)
+            {
+                assert((::SSL_CTX_get_options(ssl_ctx) & SSL_OP_IGNORE_UNEXPECTED_EOF) == 0);
+                ::SSL_CTX_set_options(ssl_ctx, SSL_OP_IGNORE_UNEXPECTED_EOF); //does not set, but *adds* options; no-fail
+                return CURLE_OK;
+            };
+            options.emplace_back(CURLOPT_SSL_CTX_FUNCTION, onSslContextWrapper);
+#endif
         }
 
         //let's not hold our breath until Curl adds a reasonable PASV handling => patch libcurl accordingly!

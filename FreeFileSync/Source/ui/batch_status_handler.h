@@ -27,6 +27,7 @@ public:
                        size_t autoRetryCount,
                        std::chrono::seconds autoRetryDelay,
                        const Zstring& soundFileSyncComplete,
+                       const Zstring& soundFileAlertPending,
                        wxSize progressDlgSize, bool dlgMaximize,
                        bool autoCloseDialog,
                        PostSyncAction postSyncAction,
@@ -67,6 +68,7 @@ private:
     const size_t autoRetryCount_;
     const std::chrono::seconds autoRetryDelay_;
     const Zstring soundFileSyncComplete_;
+    const Zstring soundFileAlertPending_;
 
     SyncProgressDialog* progressDlg_; //managed to have the same lifetime as this handler!
     zen::ErrorLog errorLog_; //list of non-resolved errors and warnings

@@ -17,15 +17,6 @@ namespace zen
 {
 //note: certain functions require COM initialization! (vista_file_op.h)
 
-struct PathComponents
-{
-    Zstring rootPath; //itemPath = rootPath + (FILE_NAME_SEPARATOR?) + relPath
-    Zstring relPath;  //
-};
-std::optional<PathComponents> parsePathComponents(const Zstring& itemPath); //no value on failure
-
-std::optional<Zstring> getParentFolderPath(const Zstring& itemPath);
-
 //POSITIVE existence checks; if false: 1. item not existing 2. different type 3.device access error or similar
 bool fileAvailable(const Zstring& filePath); //noexcept
 bool dirAvailable (const Zstring& dirPath ); //

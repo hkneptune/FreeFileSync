@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Oct 26 2018)
+// C++ code generated with wxFormBuilder (version 3.10.1-0-g8feb16b3)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO *NOT* EDIT THIS FILE!
@@ -3879,11 +3879,11 @@ SyncProgressPanelGenerated::SyncProgressPanelGenerated( wxWindow* parent, wxWind
 
     bSizerStdButtons = new wxBoxSizer( wxHORIZONTAL );
 
-    m_checkBoxAutoClose = new wxCheckBox( this, wxID_ANY, _("Auto-close"), wxDefaultPosition, wxDefaultSize, 0 );
-    bSizerStdButtons->Add( m_checkBoxAutoClose, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
-
 
     bSizerStdButtons->Add( 0, 0, 1, wxEXPAND, 5 );
+
+    m_checkBoxAutoClose = new wxCheckBox( this, wxID_ANY, _("Auto-close"), wxDefaultPosition, wxDefaultSize, 0 );
+    bSizerStdButtons->Add( m_checkBoxAutoClose, 0, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxLEFT, 5 );
 
     m_buttonClose = new wxButton( this, wxID_OK, _("Close"), wxDefaultPosition, wxSize( -1, -1 ), 0 );
 
@@ -4672,6 +4672,32 @@ OptionsDlgGenerated::OptionsDlgGenerated( wxWindow* parent, wxWindowID id, const
 
     ffgSizer11->Add( bSizer2901, 0, wxALIGN_CENTER_VERTICAL|wxEXPAND, 5 );
 
+    m_bitmapAlertPending = new wxStaticBitmap( m_panel39, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
+    ffgSizer11->Add( m_bitmapAlertPending, 0, wxALIGN_CENTER_VERTICAL, 5 );
+
+    m_staticText17111 = new wxStaticText( m_panel39, wxID_ANY, _("Alert pending:"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticText17111->Wrap( -1 );
+    m_staticText17111->SetForegroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_GRAYTEXT ) );
+
+    ffgSizer11->Add( m_staticText17111, 0, wxALIGN_CENTER_VERTICAL, 5 );
+
+    wxBoxSizer* bSizer29011;
+    bSizer29011 = new wxBoxSizer( wxHORIZONTAL );
+
+    m_bpButtonPlayAlertPending = new wxBitmapButton( m_panel39, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, wxBU_AUTODRAW|0 );
+    bSizer29011->Add( m_bpButtonPlayAlertPending, 0, wxEXPAND, 5 );
+
+    m_textCtrlSoundPathAlertPending = new wxTextCtrl( m_panel39, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0 );
+    bSizer29011->Add( m_textCtrlSoundPathAlertPending, 1, wxALIGN_CENTER_VERTICAL, 5 );
+
+    m_buttonSelectSoundAlertPending = new wxButton( m_panel39, wxID_ANY, _("Browse"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_buttonSelectSoundAlertPending->SetToolTip( _("Select a folder") );
+
+    bSizer29011->Add( m_buttonSelectSoundAlertPending, 0, wxEXPAND, 5 );
+
+
+    ffgSizer11->Add( bSizer29011, 1, wxEXPAND, 5 );
+
 
     bSizer301->Add( ffgSizer11, 1, wxALL, 5 );
 
@@ -4819,9 +4845,9 @@ OptionsDlgGenerated::OptionsDlgGenerated( wxWindow* parent, wxWindowID id, const
     // Columns
     m_gridCustomCommand->EnableDragColMove( false );
     m_gridCustomCommand->EnableDragColSize( true );
-    m_gridCustomCommand->SetColLabelSize( -1 );
     m_gridCustomCommand->SetColLabelValue( 0, _("Description") );
     m_gridCustomCommand->SetColLabelValue( 1, _("Command line") );
+    m_gridCustomCommand->SetColLabelSize( -1 );
     m_gridCustomCommand->SetColLabelAlignment( wxALIGN_CENTER, wxALIGN_CENTER );
 
     // Rows
@@ -4886,6 +4912,9 @@ OptionsDlgGenerated::OptionsDlgGenerated( wxWindow* parent, wxWindowID id, const
     m_bpButtonPlaySyncDone->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::onPlaySyncDone ), NULL, this );
     m_textCtrlSoundPathSyncDone->Connect( wxEVT_COMMAND_TEXT_UPDATED, wxCommandEventHandler( OptionsDlgGenerated::onChangeSoundFilePath ), NULL, this );
     m_buttonSelectSoundSyncDone->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::onSelectSoundSyncDone ), NULL, this );
+    m_bpButtonPlayAlertPending->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::onPlayAlertPending ), NULL, this );
+    m_textCtrlSoundPathAlertPending->Connect( wxEVT_COMMAND_TEXT_UPDATED, wxCommandEventHandler( OptionsDlgGenerated::onChangeSoundFilePath ), NULL, this );
+    m_buttonSelectSoundAlertPending->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::onSelectSoundAlertPending ), NULL, this );
     m_bpButtonAddRow->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::onAddRow ), NULL, this );
     m_bpButtonRemoveRow->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::onRemoveRow ), NULL, this );
     m_buttonDefault->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( OptionsDlgGenerated::onDefault ), NULL, this );
@@ -5635,24 +5664,18 @@ WarnAccessRightsMissingDlgGenerated::WarnAccessRightsMissingDlgGenerated( wxWind
     m_staticline36 = new wxStaticLine( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
     bSizer95->Add( m_staticline36, 0, wxEXPAND, 5 );
 
-    wxBoxSizer* bSizer25;
-    bSizer25 = new wxBoxSizer( wxVERTICAL );
-
     m_checkBoxDontShowAgain = new wxCheckBox( this, wxID_ANY, _("&Don't show this dialog again"), wxDefaultPosition, wxDefaultSize, 0 );
-    bSizer25->Add( m_checkBoxDontShowAgain, 0, wxALIGN_CENTER_HORIZONTAL|wxALL, 5 );
+    bSizer95->Add( m_checkBoxDontShowAgain, 0, wxALIGN_CENTER_HORIZONTAL|wxALL, 5 );
 
     bSizerStdButtons = new wxBoxSizer( wxHORIZONTAL );
 
     m_buttonClose = new wxButton( this, wxID_OK, _("Close"), wxDefaultPosition, wxSize( -1, -1 ), 0 );
 
     m_buttonClose->SetDefault();
-    bSizerStdButtons->Add( m_buttonClose, 0, wxALIGN_CENTER_VERTICAL|wxBOTTOM|wxRIGHT|wxLEFT, 5 );
+    bSizerStdButtons->Add( m_buttonClose, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
 
 
-    bSizer25->Add( bSizerStdButtons, 0, wxALIGN_RIGHT, 5 );
-
-
-    bSizer95->Add( bSizer25, 0, wxEXPAND, 5 );
+    bSizer95->Add( bSizerStdButtons, 0, wxALIGN_RIGHT, 5 );
 
 
     bSizer330->Add( bSizer95, 1, wxEXPAND, 5 );

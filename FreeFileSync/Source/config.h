@@ -166,6 +166,7 @@ struct XmlGlobalSettings
 
     Zstring soundFileCompareFinished;
     Zstring soundFileSyncFinished;
+    Zstring soundFileAlertPending;
 
     ConfirmationDialogs confirmDlgs;
     WarningDialogs warnDlgs;

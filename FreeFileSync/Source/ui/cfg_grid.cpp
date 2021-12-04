@@ -572,7 +572,7 @@ private:
 
                     if (!item->isLastRunCfg &&
                         !AFS::isNullPath(item->cfgItem.logFilePath))
-                        return getSyncResultLabel(item->cfgItem.logResult) + SPACED_DASH + AFS::getDisplayPath(item->cfgItem.logFilePath);
+                        return getSyncResultLabel(item->cfgItem.logResult) + L"\n" + AFS::getDisplayPath(item->cfgItem.logFilePath);
                     break;
             }
         return std::wstring();

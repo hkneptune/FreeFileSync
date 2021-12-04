@@ -483,7 +483,7 @@ private:
                         break;
 
                     case ColumnTypeRim::size:
-                        visitFSObject(*fsObj, [&](const FolderPair& folder) { value = L'<' + _("Folder") + L'>'; },
+                        visitFSObject(*fsObj, [&](const FolderPair& folder) { /*value = L'<' + _("Folder") + L'>'; -> redundant!? */ },
                         [&](const FilePair& file) { value = formatNumber(file.getFileSize<side>()); },
                         //[&](const FilePair& file) { value = numberTo<std::wstring>(file.getFilePrint<side>()); }, // -> test file id
                         [&](const SymlinkPair& symlink) { value = L'<' + _("Symlink") + L'>'; });

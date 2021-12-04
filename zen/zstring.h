@@ -136,9 +136,9 @@ Zstring getFileExtension(const Zstring& filePath)
 
 
 //common unicode characters
-const wchar_t EM_DASH = L'\u2014';
 const wchar_t EN_DASH = L'\u2013';
-const wchar_t* const SPACED_DASH = L" \u2013 "; //using 'EN DASH'
+const wchar_t EM_DASH = L'\u2014';
+const wchar_t* const SPACED_DASH = L" \u2014 "; //using 'EM DASH'
 const wchar_t LTR_MARK = L'\u200E'; //UTF-8: E2 80 8E
 const wchar_t* const ELLIPSIS = L"\u2026"; //"..."
 const wchar_t MULT_SIGN = L'\u00D7'; //fancy "x"

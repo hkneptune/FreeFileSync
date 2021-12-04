@@ -80,6 +80,7 @@ cppFiles+=ui/version_check.cpp
 cppFiles+=../../libcurl/rest.cpp
 cppFiles+=../../zen/file_access.cpp
 cppFiles+=../../zen/file_io.cpp
+cppFiles+=../../zen/file_path.cpp
 cppFiles+=../../zen/file_traverser.cpp
 cppFiles+=../../zen/http.cpp
 cppFiles+=../../zen/zstring.cpp

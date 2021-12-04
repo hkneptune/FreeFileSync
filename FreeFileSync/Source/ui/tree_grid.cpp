@@ -730,7 +730,7 @@ private:
                             return dirRight;
                         else if (dirRight.empty())
                             return dirLeft;
-                        return dirLeft + L' ' + EN_DASH + L'\n' + dirRight;
+                        return dirLeft + /*L' ' + EM_DASH + */ L'\n' + dirRight;
                     }
                 break;
 

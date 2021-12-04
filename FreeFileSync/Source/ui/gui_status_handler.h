@@ -22,7 +22,12 @@ namespace fff
 class StatusHandlerTemporaryPanel : private wxEvtHandler, public StatusHandler
 {
 public:
-    StatusHandlerTemporaryPanel(MainDialog& dlg, const std::chrono::system_clock::time_point& startTime, bool ignoreErrors, size_t autoRetryCount, std::chrono::seconds autoRetryDelay);
+    StatusHandlerTemporaryPanel(MainDialog& dlg,
+                                const std::chrono::system_clock::time_point& startTime,
+                                bool ignoreErrors,
+                                size_t autoRetryCount,
+                                std::chrono::seconds autoRetryDelay,
+                                const Zstring& soundFileAlertPending);
     ~StatusHandlerTemporaryPanel();
 
     void     initNewPhase    (int itemsTotal, int64_t bytesTotal, ProcessPhase phaseID) override; //
@@ -50,6 +55,8 @@ private:
     const bool ignoreErrors_;
     const size_t autoRetryCount_;
     const std::chrono::seconds autoRetryDelay_;
+    const Zstring soundFileAlertPending_;
+
     const std::chrono::system_clock::time_point startTime_;
     const std::chrono::steady_clock::time_point startTimeSteady_ = std::chrono::steady_clock::now();
 };
@@ -66,6 +73,7 @@ public:
                                 size_t autoRetryCount,
                                 std::chrono::seconds autoRetryDelay,
                                 const Zstring& soundFileSyncComplete,
+                                const Zstring& soundFileAlertPending,
                                 const wxSize& progressDlgSize, bool dlgMaximize,
                                 bool autoCloseDialog); //noexcept!
     ~StatusHandlerFloatingDialog();
@@ -105,6 +113,7 @@ private:
     const size_t autoRetryCount_;
     const std::chrono::seconds autoRetryDelay_;
     const Zstring soundFileSyncComplete_;
+    const Zstring soundFileAlertPending_;
 
     SyncProgressDialog* progressDlg_; //managed to have the same lifetime as this handler!
     zen::ErrorLog errorLog_;

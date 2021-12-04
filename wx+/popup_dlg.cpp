@@ -6,14 +6,17 @@
 
 #include "popup_dlg.h"
 #include <zen/basic_math.h>
+#include <zen/utf.h>
 #include <wx/app.h>
 #include <wx/display.h>
+#include <wx/sound.h>
 #include "no_flicker.h"
 #include "font_size.h"
 #include "image_resources.h"
 #include "popup_dlg_generated.h"
 #include "std_button_layout.h"
 #include "taskbar.h"
+    #include "window_tools.h"
 
 
 using namespace zen;
@@ -194,6 +197,27 @@ public:
 
         Bind(wxEVT_CHAR_HOOK, [this](wxKeyEvent& event) { onLocalKeyEvent(event); }); //dialog-specific local key events
 
+        //play sound reminder when waiting for user confirmation
+        if (!cfg.soundFileAlertPending.empty())
+        {
+            timer_.Bind(wxEVT_TIMER, [this, parent, alertSoundPath = cfg.soundFileAlertPending](wxTimerEvent& event)
+            {
+                //wxWidgets shows modal error dialog by default => "no, wxWidgets, NO!"
+                wxLog* oldLogTarget = wxLog::SetActiveTarget(new wxLogStderr); //transfer and receive ownership!
+                ZEN_ON_SCOPE_EXIT(delete wxLog::SetActiveTarget(oldLogTarget));
+
+                wxSound::Play(utfTo<wxString>(alertSoundPath), wxSOUND_ASYNC);
+
+                RequestUserAttention(wxUSER_ATTENTION_INFO);
+                /*  wxUSER_ATTENTION_INFO:  flashes window 3 times, unconditionally
+                    wxUSER_ATTENTION_ERROR: flashes without limit, but *only* if not in foreground (FLASHW_TIMERNOFG) :( */
+                if (parent)
+                    if (auto tlw = dynamic_cast<wxTopLevelWindow*>(&getRootWindow(*parent)))
+                        tlw->RequestUserAttention(wxUSER_ATTENTION_INFO); //top-level window needed for the taskbar flash!
+            });
+            timer_.Start(60'000 /*unit: [ms]*/);
+        }
+
         //------------------------------------------------------------------------------
         StdButtons stdBtns;
         stdBtns.setAffirmative(m_buttonAccept);
@@ -312,6 +336,7 @@ private:
     bool* checkBoxValue_;
     const ConfirmationButton3 buttonToDisableWhenChecked_;
     std::unique_ptr<Taskbar> taskbar_;
+    wxTimer timer_;
 };
 
 //########################################################################################

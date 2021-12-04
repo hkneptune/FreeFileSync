@@ -47,6 +47,11 @@ void setStandardButtonLayout(wxBoxSizer& sizer, const StdButtons& buttons)
 {
     assert(sizer.GetOrientation() == wxHORIZONTAL);
 
+    //GNOME Human Interface Guidelines: https://developer.gnome.org/hig-book/3.2/hig-book.html#alert-spacing
+    const int spaceH    = fastFromDIP( 6); //OK
+    const int spaceRimH = fastFromDIP(12); //OK
+    const int spaceRimV = fastFromDIP(12); //OK
+
     StdButtons buttonsTmp = buttons;
 
     auto detach = [&](wxButton*& btn)
@@ -54,15 +59,11 @@ void setStandardButtonLayout(wxBoxSizer& sizer, const StdButtons& buttons)
         if (btn)
         {
             assert(btn->GetContainingSizer() == &sizer);
-            if (btn->IsShown())
-            {
-                bool rv = sizer.Detach(btn);
-                assert(rv);
-                if (!rv)
-                    btn = nullptr;
-            }
-            else
-                btn = nullptr;
+            if (btn->IsShown() && sizer.Detach(btn))
+                return;
+
+            assert(false); //why is it hidden!?
+            btn = nullptr;
         }
     };
 
@@ -71,10 +72,30 @@ void setStandardButtonLayout(wxBoxSizer& sizer, const StdButtons& buttons)
     detach(buttonsTmp.btnNo);
     detach(buttonsTmp.btnCancel);
 
-    //GNOME Human Interface Guidelines: https://developer.gnome.org/hig-book/3.2/hig-book.html#alert-spacing
-    const int spaceH    = fastFromDIP( 6); //OK
-    const int spaceRimH = fastFromDIP(12); //OK
-    const int spaceRimV = fastFromDIP(12); //OK
+
+    //"All your fixed-size spacers are belong to us!" => have a clean slate: consider repeated setStandardButtonLayout() calls
+    for (size_t pos = sizer.GetItemCount(); pos-- > 0;)
+        if (wxSizerItem& item = *sizer.GetItem(pos);
+            item.IsSpacer() && item.GetProportion() == 0 && item.GetSize().y == 0)
+        {
+            [[maybe_unused]] bool rv = sizer.Detach(pos);
+            assert(rv);
+        }
+
+    //set border on left considering existing items
+    if (!sizer.IsEmpty()) //for yet another retarded reason wxWidgets will have wxSizer::GetItem(0) cause an assert rather than just return nullptr as documented
+        if (wxSizerItem& item = *sizer.GetItem(static_cast<size_t>(0));
+            item.IsShown())
+        {
+            assert(item.GetBorder() <= spaceRimV); //pragmatic check: other controls in the sizer should not have a larger border
+
+            if (const int flag = item.GetFlag();
+                flag & wxLEFT)
+                item.SetFlag(flag & ~wxLEFT);
+
+            sizer.Prepend(spaceRimH, 0);
+        }
+
 
     bool settingFirstButton = true;
     auto attach = [&](wxButton* btn)
@@ -92,20 +113,6 @@ void setStandardButtonLayout(wxBoxSizer& sizer, const StdButtons& buttons)
             sizer.Add(btn, 0, wxTOP | wxBOTTOM | wxALIGN_CENTER_VERTICAL, spaceRimV);
         }
     };
-
-    //set border on left considering existing items
-    if (sizer.GetChildren().GetCount() > 0) //for yet another retarded reason wxWidgets will have wxSizer::GetItem(0) cause an assert rather than just return nullptr as documented
-        if (wxSizerItem* item = sizer.GetItem(static_cast<size_t>(0)))
-        {
-            assert(item->GetBorder() <= spaceRimV); //pragmatic check: other controls in the sizer should not have a larger border
-            int flag = item->GetFlag();
-            if (flag & wxLEFT)
-            {
-                flag &= ~wxLEFT;
-                item->SetFlag(flag);
-            }
-            sizer.Insert(static_cast<size_t>(0), spaceRimH, 0);
-        }
 
     sizer.Add(spaceRimH, 0);
     attach(buttonsTmp.btnNo);

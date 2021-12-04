@@ -34,6 +34,7 @@ cppFiles+=../../../xBRZ/src/xbrz.cpp
 cppFiles+=../../../zen/dir_watcher.cpp
 cppFiles+=../../../zen/file_access.cpp
 cppFiles+=../../../zen/file_io.cpp
+cppFiles+=../../../zen/file_path.cpp
 cppFiles+=../../../zen/file_traverser.cpp
 cppFiles+=../../../zen/format_unit.cpp
 cppFiles+=../../../zen/legacy_compiler.cpp

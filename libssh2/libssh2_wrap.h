@@ -112,7 +112,7 @@ inline int libssh2_sftp_rename(LIBSSH2_SFTP* sftp, const std::string& pathFrom, 
 {
     return libssh2_sftp_rename_ex(sftp,
                                   pathFrom.c_str(), static_cast<unsigned int>(pathFrom.size()),
-                                  pathTo.c_str(), static_cast<unsigned int>(pathTo.size()), flags);
+                                  pathTo  .c_str(), static_cast<unsigned int>(pathTo.size()), flags);
 }
 
 

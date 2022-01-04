@@ -67,7 +67,7 @@ BatchDialog::BatchDialog(wxWindow* parent, BatchDialogConfig& dlgCfg) :
 {
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonSaveAs).setCancel(m_buttonCancel));
 
-    m_staticTextHeader->SetLabel(replaceCpy(m_staticTextHeader->GetLabel(), L"%x", L"FreeFileSync.exe <" + _("configuration file") + L">.ffs_batch"));
+    m_staticTextHeader->SetLabelText(replaceCpy(m_staticTextHeader->GetLabelText(), L"%x", L"FreeFileSync.exe <" + _("configuration file") + L">.ffs_batch"));
     m_staticTextHeader->Wrap(fastFromDIP(520));
 
     m_bitmapBatchJob->SetBitmap(loadImage("cfg_batch"));

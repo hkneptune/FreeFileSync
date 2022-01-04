@@ -16,7 +16,7 @@
 #include "popup_dlg_generated.h"
 #include "std_button_layout.h"
 #include "taskbar.h"
-    #include "window_tools.h"
+#include "window_tools.h"
 
 
 using namespace zen;
@@ -155,19 +155,16 @@ public:
 
         int maxWidth  = fastFromDIP(500);
         int maxHeight = fastFromDIP(400); //try to determine better value based on actual display resolution:
-
         if (parent)
-        {
-            const int disPos = wxDisplay::GetFromWindow(parent); //window must be visible
-            if (disPos != wxNOT_FOUND)
+            if (const int disPos = wxDisplay::GetFromWindow(parent); //window must be visible
+                disPos != wxNOT_FOUND)
                 maxHeight = wxDisplay(disPos).GetClientArea().GetHeight() *  2 / 3;
-        }
 
         assert(!cfg.textMain.empty() || !cfg.textDetail.empty());
         if (!cfg.textMain.empty())
         {
             setMainInstructionFont(*m_staticTextMain);
-            m_staticTextMain->SetLabel(cfg.textMain);
+            m_staticTextMain->SetLabelText(cfg.textMain);
             m_staticTextMain->Wrap(maxWidth); //call *after* SetLabel()
         }
         else
@@ -175,10 +172,7 @@ public:
 
         if (!cfg.textDetail.empty())
         {
-            wxString text;
-            if (!cfg.textMain.empty())
-                text += L'\n';
-            text += trimCpy(cfg.textDetail) + L'\n'; //add empty top/bottom lines *instead* of using border space!
+            const wxString& text = trimCpy(cfg.textDetail) + L'\n'; //add empty line *instead* of using border space!
 
             setBestInitialSize(*m_richTextDetail, text, wxSize(maxWidth, maxHeight));
             setTextWithUrls(*m_richTextDetail, text);

@@ -67,10 +67,10 @@ void Tooltip::show(const wxString& text, wxPoint mousePos, const wxImage* img)
         tipWindow_->bitmapLeft_->SetBitmap(newImg);
         tipWindow_->Refresh(); //needed if bitmap size changed!
     }
-
-    if (text != tipWindow_->staticTextMain_->GetLabel())
+    
+    if (text != tipWindow_->staticTextMain_->GetLabelText())
     {
-        tipWindow_->staticTextMain_->SetLabel(text);
+        tipWindow_->staticTextMain_->SetLabelText(text);
         tipWindow_->staticTextMain_->Wrap(fastFromDIP(600));
     }
 

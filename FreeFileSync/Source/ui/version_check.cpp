@@ -159,7 +159,7 @@ void showUpdateAvailableDialog(wxWindow* parent, const std::string& onlineVersio
     try
     {
         updateDetailsMsg = utfTo<std::wstring>(sendHttpGet(utfTo<Zstring>("https://api.freefilesync.org/latest_changes?" + xWwwFormUrlEncode({{"since", ffsVersion}})),
-        ffsUpdateCheckUserAgent, nullptr /*caCertFilePath*/, nullptr /*notifyUnbufferedIO*/).readAll()); //throw SysError
+        ffsUpdateCheckUserAgent, Zstring() /*caCertFilePath*/, nullptr /*notifyUnbufferedIO*/).readAll()); //throw SysError
     }
     catch (const SysError& e) { updateDetailsMsg = _("Failed to retrieve update information.") + + L"\n\n" + e.toString(); }
 
@@ -183,7 +183,7 @@ void showUpdateAvailableDialog(wxWindow* parent, const std::string& onlineVersio
 std::string getOnlineVersion(const std::vector<std::pair<std::string, std::string>>& postParams) //throw SysError
 {
     const std::string response = sendHttpPost(Zstr("https://api.freefilesync.org/latest_version"), postParams,
-                                              ffsUpdateCheckUserAgent, nullptr /*caCertFilePath*/, nullptr /*notifyUnbufferedIO*/).readAll(); //throw SysError
+                                              ffsUpdateCheckUserAgent, Zstring() /*caCertFilePath*/, nullptr /*notifyUnbufferedIO*/).readAll(); //throw SysError
 
     if (response.empty() ||
     !std::all_of(response.begin(), response.end(), [](char c) { return isDigit(c) || c == FFS_VERSION_SEPARATOR; }) ||
@@ -326,7 +326,7 @@ std::shared_ptr<const UpdateCheckResult> fff::automaticUpdateCheckRunAsync(const
 }
 
 
-void fff::automaticUpdateCheckEval(wxWindow* parent, time_t& lastUpdateCheck, std::string& lastOnlineVersion, const UpdateCheckResult* asyncResult)
+void fff::automaticUpdateCheckEval(wxWindow& parent, time_t& lastUpdateCheck, std::string& lastOnlineVersion, const UpdateCheckResult* asyncResult)
 {
     assert(runningOnMainThread());
 
@@ -339,7 +339,7 @@ void fff::automaticUpdateCheckEval(wxWindow* parent, time_t& lastUpdateCheck, st
         lastOnlineVersion = result.onlineVersion;
 
             if (haveNewerVersionOnline(result.onlineVersion))
-                showUpdateAvailableDialog(parent, result.onlineVersion);
+                showUpdateAvailableDialog(&parent, result.onlineVersion);
     }
     else
     {
@@ -347,7 +347,7 @@ void fff::automaticUpdateCheckEval(wxWindow* parent, time_t& lastUpdateCheck, st
         {
             lastOnlineVersion = "Unknown";
 
-                switch (showConfirmationDialog(parent, DialogInfoType::error, PopupDialogCfg().
+                switch (showConfirmationDialog(&parent, DialogInfoType::error, PopupDialogCfg().
                                                setTitle(_("Check for Program Updates")).
                                                setMainInstructions(_("Cannot find current FreeFileSync version number online. A newer version is likely available. Check manually now?")).
                                                setDetailInstructions(result.error->toString()),
@@ -357,7 +357,8 @@ void fff::automaticUpdateCheckEval(wxWindow* parent, time_t& lastUpdateCheck, st
                         wxLaunchDefaultBrowser(L"https://freefilesync.org/get_latest.php");
                         break;
                     case ConfirmationButton2::accept2: //retry
-                        automaticUpdateCheckEval(parent, lastUpdateCheck, lastOnlineVersion, asyncResult); //note: retry via recursion!!!
+                        automaticUpdateCheckEval(parent, lastUpdateCheck, lastOnlineVersion,
+                                                 automaticUpdateCheckRunAsync(automaticUpdateCheckPrepare(parent).get()).get()); //note: retry via recursion!!!
                         break;
                     case ConfirmationButton2::cancel:
                         break;

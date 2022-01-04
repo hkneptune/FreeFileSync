@@ -8,7 +8,7 @@
 #include <variant>
 #include <unordered_set> //needed by clang
 #include <unordered_map> //
-#include <libcurl/rest.h>
+#include <libcurl/curl_wrap.h> //DON'T include <curl/curl.h> directly!
 #include <zen/basic_math.h>
 #include <zen/base64.h>
 #include <zen/crc.h>
@@ -232,7 +232,7 @@ private:
     struct HttpInitSession
     {
         HttpInitSession(std::shared_ptr<UniCounterCookie> cook, const Zstring& server, const Zstring& caCertFilePath) :
-            cookie(std::move(cook)), session(server, caCertFilePath, HTTP_SESSION_ACCESS_TIME_OUT) {}
+            cookie(std::move(cook)), session(server, true /*useTls*/, caCertFilePath, HTTP_SESSION_ACCESS_TIME_OUT) {}
 
         std::shared_ptr<UniCounterCookie> cookie;
         HttpSession session; //life time must be subset of UniCounterCookie
@@ -309,11 +309,12 @@ constinit Global<HttpSessionManager> globalHttpSessionManager; //caveat: life ti
 //===========================================================================================================================
 
 //try to get a grip on this crazy REST API: - parameters are passed via query string, header, or body, using GET, POST, PUT, PATCH, DELETE, ... it's a dice roll
-HttpSession::Result gdriveHttpsRequest(const std::string& serverRelPath, //throw SysError
+HttpSession::Result gdriveHttpsRequest(const std::string& serverRelPath, //throw SysError, X
                                        const std::vector<std::string>& extraHeaders,
                                        const std::vector<CurlOption>& extraOptions,
-                                       const std::function<void  (const void* buffer, size_t bytesToWrite)>& writeResponse /*throw X*/, //optional
-                                       const std::function<size_t(      void* buffer, size_t bytesToRead )>& readRequest   /*throw X*/) //optional; returning 0 signals EOF
+                                       const std::function<void  (std::span<const char> buf)>& writeResponse /*throw X*/, //optional
+                                       const std::function<size_t(std::span<      char> buf)>& readRequest   /*throw X*/, //optional; returning 0 signals EOF
+                                       const std::function<void  (const std::string_view& header)>&          receiveHeader /*throw X*/) //optional
 {
     const std::shared_ptr<HttpSessionManager> mgr = globalHttpSessionManager.get();
     if (!mgr)
@@ -331,7 +332,7 @@ HttpSession::Result gdriveHttpsRequest(const std::string& serverRelPath, //throw
         };
         append(options, extraOptions);
 
-        httpResult = session.perform(serverRelPath, extraHeaders, options, writeResponse, readRequest); //throw SysError
+        httpResult = session.perform(serverRelPath, extraHeaders, options, writeResponse, readRequest, receiveHeader); //throw SysError, X
     });
     return httpResult;
 }
@@ -352,7 +353,7 @@ GdriveUser getGdriveUser(const std::string& accessToken) //throw SysError
     });
     std::string response;
     gdriveHttpsRequest("/drive/v3/about?" + queryParams, {"Authorization: Bearer " + accessToken}, {} /*extraOptions*/, //throw SysError
-    [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
+    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/);
 
     JsonValue jresponse;
     try { jresponse = parseJson(response); }
@@ -403,8 +404,8 @@ GdriveAccessInfo gdriveExchangeAuthCode(const GdriveAuthCode& authCode) //throw 
         {"code_verifier", authCode.codeChallenge},
     });
     std::string response;
-    gdriveHttpsRequest("/oauth2/v4/token", {} /*extraHeaders*/, {{ CURLOPT_POSTFIELDS, postBuf.c_str()}}, //throw SysError
-    [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
+    gdriveHttpsRequest("/oauth2/v4/token", {} /*extraHeaders*/, {{CURLOPT_POSTFIELDS, postBuf.c_str()}}, //throw SysError
+    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/);
 
     JsonValue jresponse;
     try { jresponse = parseJson(response); }
@@ -665,10 +666,9 @@ GdriveAccessToken gdriveRefreshAccess(const std::string& refreshToken) //throw S
         {"client_secret", getGdriveClientSecret()},
         {"grant_type",    "refresh_token"},
     });
-
     std::string response;
     gdriveHttpsRequest("/oauth2/v4/token", {} /*extraHeaders*/, {{CURLOPT_POSTFIELDS, postBuf.c_str()}}, //throw SysError
-    [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
+    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/);
 
     JsonValue jresponse;
     try { jresponse = parseJson(response); }
@@ -696,7 +696,7 @@ void gdriveRevokeAccess(const std::string& accessToken) //throw SysError
     mgr->access(HttpSessionId(Zstr("accounts.google.com")), [&](HttpSession& session) //throw SysError
     {
         httpResult = session.perform("/o/oauth2/revoke?token=" + accessToken, {"Content-Type: application/x-www-form-urlencoded"}, {} /*extraOptions*/,
-        [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/); //throw SysError
+        [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/); //throw SysError
     });
 
     if (httpResult.statusCode != 200)
@@ -709,7 +709,7 @@ int64_t gdriveGetMyDriveFreeSpace(const std::string& accessToken) //throw SysErr
     //https://developers.google.com/drive/api/v3/reference/about
     std::string response;
     gdriveHttpsRequest("/drive/v3/about?fields=storageQuota", {"Authorization: Bearer " + accessToken}, {} /*extraOptions*/, //throw SysError
-    [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
+    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/);
 
     JsonValue jresponse;
     try { jresponse = parseJson(response); }
@@ -758,7 +758,7 @@ std::vector<DriveDetails> getSharedDrives(const std::string& accessToken) //thro
 
             std::string response;
             gdriveHttpsRequest("/drive/v3/drives?" + queryParams, {"Authorization: Bearer " + accessToken}, {} /*extraOptions*/, //throw SysError
-            [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
+            [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/);
 
             JsonValue jresponse;
             try { jresponse = parseJson(response); }
@@ -881,7 +881,7 @@ GdriveItemDetails getItemDetails(const std::string& itemId, const std::string& a
     });
     std::string response;
     gdriveHttpsRequest("/drive/v3/files/" + itemId + '?' + queryParams, {"Authorization: Bearer " + accessToken}, {} /*extraOptions*/, //throw SysError
-    [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
+    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/);
     try
     {
         const JsonValue jvalue = parseJson(response); //throw JsonParsingError
@@ -927,7 +927,7 @@ std::vector<GdriveItem> readFolderContent(const std::string& folderId, const std
 
             std::string response;
             gdriveHttpsRequest("/drive/v3/files?" + queryParams, {"Authorization: Bearer " + accessToken}, {} /*extraOptions*/, //throw SysError
-            [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
+            [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/);
 
             JsonValue jresponse;
             try { jresponse = parseJson(response); }
@@ -997,7 +997,7 @@ ChangesDelta getChangesDelta(const std::string& sharedDriveId /*empty for "My Dr
 
         std::string response;
         gdriveHttpsRequest("/drive/v3/changes?" + queryParams, {"Authorization: Bearer " + accessToken}, {} /*extraOptions*/, //throw SysError
-        [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
+        [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/);
 
         JsonValue jresponse;
         try { jresponse = parseJson(response); }
@@ -1090,7 +1090,7 @@ std::string /*startPageToken*/ getChangesCurrentToken(const std::string& sharedD
 
     std::string response;
     gdriveHttpsRequest("/drive/v3/changes/startPageToken?" + queryParams, {"Authorization: Bearer " + accessToken}, {} /*extraOptions*/, //throw SysError
-    [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
+    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/);
 
     JsonValue jresponse;
     try { jresponse = parseJson(response); }
@@ -1115,7 +1115,7 @@ void gdriveDeleteItem(const std::string& itemId, const std::string& accessToken)
     });
     std::string response;
     const HttpSession::Result httpResult = gdriveHttpsRequest("/drive/v3/files/" + itemId + '?' + queryParams, {"Authorization: Bearer " + accessToken}, //throw SysError
-    {{CURLOPT_CUSTOMREQUEST, "DELETE"}}, [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
+    {{CURLOPT_CUSTOMREQUEST, "DELETE"}}, [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/);
 
     if (response.empty() && httpResult.statusCode == 204)
         return; //"If successful, this method returns an empty response body"
@@ -1137,8 +1137,8 @@ void gdriveUnlinkParent(const std::string& itemId, const std::string& parentId, 
     std::string response;
     const HttpSession::Result httpResult = gdriveHttpsRequest("/drive/v3/files/" + itemId + '?' + queryParams, //throw SysError
     {"Authorization: Bearer " + accessToken, "Content-Type: application/json; charset=UTF-8"},
-    {{ CURLOPT_CUSTOMREQUEST, "PATCH"}, { CURLOPT_POSTFIELDS, "{}"}},
-    [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
+    {{CURLOPT_CUSTOMREQUEST, "PATCH"}, { CURLOPT_POSTFIELDS, "{}"}},
+    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/);
 
     if (response.empty() && httpResult.statusCode == 204)
         return; //removing last parent of item not owned by us returns "204 No Content" (instead of 200 + file body)
@@ -1175,7 +1175,7 @@ void gdriveMoveToTrash(const std::string& itemId, const std::string& accessToken
     std::string response;
     gdriveHttpsRequest("/drive/v3/files/" + itemId + '?' + queryParams, {"Authorization: Bearer " + accessToken, "Content-Type: application/json; charset=UTF-8"}, //throw SysError
     {{CURLOPT_CUSTOMREQUEST, "PATCH"}, {CURLOPT_POSTFIELDS, postBuf.c_str()}},
-    [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
+    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/);
 
     JsonValue jresponse;
     try { jresponse = parseJson(response); /*throw JsonParsingError*/ }
@@ -1205,7 +1205,7 @@ std::string /*folderId*/ gdriveCreateFolderPlain(const Zstring& folderName, cons
     std::string response;
     gdriveHttpsRequest("/drive/v3/files?" + queryParams, {"Authorization: Bearer " + accessToken, "Content-Type: application/json; charset=UTF-8"},
     {{CURLOPT_POSTFIELDS, postBuf.c_str()}},
-    [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/); //throw SysError
+    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/); //throw SysError
 
     JsonValue jresponse;
     try { jresponse = parseJson(response); }
@@ -1242,7 +1242,7 @@ std::string /*shortcutId*/ gdriveCreateShortcutPlain(const Zstring& shortcutName
     std::string response;
     gdriveHttpsRequest("/drive/v3/files?" + queryParams, {"Authorization: Bearer " + accessToken, "Content-Type: application/json; charset=UTF-8"},
     {{CURLOPT_POSTFIELDS, postBuf.c_str()}},
-    [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/); //throw SysError
+    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/); //throw SysError
 
     JsonValue jresponse;
     try { jresponse = parseJson(response); }
@@ -1282,7 +1282,7 @@ std::string /*fileId*/ gdriveCopyFile(const std::string& fileId, const std::stri
     std::string response;
     gdriveHttpsRequest("/drive/v3/files/" + fileId + "/copy?" + queryParams, //throw SysError
     {"Authorization: Bearer " + accessToken, "Content-Type: application/json; charset=UTF-8"}, {{CURLOPT_POSTFIELDS, postBuf.c_str()}},
-    [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
+    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/);
 
     JsonValue jresponse;
     try { jresponse = parseJson(response); /*throw JsonParsingError*/ }
@@ -1331,7 +1331,7 @@ void gdriveMoveAndRenameItem(const std::string& itemId, const std::string& paren
     gdriveHttpsRequest("/drive/v3/files/" + itemId + '?' + queryParams, //throw SysError
     {"Authorization: Bearer " + accessToken, "Content-Type: application/json; charset=UTF-8"},
     {{CURLOPT_CUSTOMREQUEST, "PATCH"}, {CURLOPT_POSTFIELDS, postBuf.c_str()}},
-    [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
+    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/);
 
     JsonValue jresponse;
     try { jresponse = parseJson(response); /*throw JsonParsingError*/ }
@@ -1368,7 +1368,7 @@ void setModTime(const std::string& itemId, time_t modTime, const std::string& ac
     std::string response;
     gdriveHttpsRequest("/drive/v3/files/" + itemId + '?' + queryParams, {"Authorization: Bearer " + accessToken, "Content-Type: application/json; charset=UTF-8"}, //throw SysError
     {{CURLOPT_CUSTOMREQUEST, "PATCH"}, {CURLOPT_POSTFIELDS, postBuf.c_str()}},
-    [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
+    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/);
 
     JsonValue jresponse;
     try { jresponse = parseJson(response); /*throw JsonParsingError*/ }
@@ -1403,10 +1403,10 @@ void gdriveDownloadFileImpl(const std::string& fileId, const std::function<void(
 
     const HttpSession::Result httpResult = gdriveHttpsRequest("/drive/v3/files/" + fileId + '?' + queryParams, //throw SysError, X
     {"Authorization: Bearer " + accessToken}, {} /*extraOptions*/,
-    [&](const void* buffer, size_t bytesToWrite)
+    [&](std::span<const char> buf)
     {
         if (responseHead.size() < 10000) //don't access writeBlock() in case of error! (=> support acknowledgeAbuse retry handling)
-            responseHead.append(static_cast<const char*>(buffer), bytesToWrite);
+            responseHead.append(buf.data(), buf.size());
         else
         {
             if (!headFlushed)
@@ -1415,9 +1415,9 @@ void gdriveDownloadFileImpl(const std::string& fileId, const std::function<void(
                 writeBlock(responseHead.c_str(), responseHead.size()); //throw X
             }
 
-            writeBlock(buffer, bytesToWrite); //throw X
+            writeBlock(buf.data(), buf.size()); //throw X
         }
-    }, nullptr /*readRequest*/);
+    }, nullptr /*readRequest*/, nullptr /*receiveHeader*/);
 
     if (httpResult.statusCode / 100 != 2)
     {
@@ -1542,7 +1542,7 @@ TODO:
         "Content-Length: " + numberTo<std::string>(postBufHead.size() + streamSize + postBufTail.size())
     },
     {{CURLOPT_POST, 1}}, //otherwise HttpSession::perform() will PUT
-    [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, readMultipartBlock );
+    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, readMultipartBlock, nullptr /*receiveHeader*/);
 
     JsonValue jresponse;
     try { jresponse = parseJson(response); }
@@ -1590,30 +1590,22 @@ std::string /*itemId*/ gdriveUploadFile(const Zstring& fileName, const std::stri
 
         std::string uploadUrl;
 
-        auto onBytesReceived = [&](const char* buffer, size_t len)
+        auto onHeaderData = [&](const std::string_view& header)
         {
-            //inside libcurl's C callstack => better not throw exceptions here!!!
             //"The callback will be called once for each header and only complete header lines are passed on to the callback" (including \r\n at the end)
-            if (startsWithAsciiNoCase(std::string_view(buffer, len), "Location:"))
+            if (startsWithAsciiNoCase(header, "Location:"))
             {
-                uploadUrl.assign(buffer, len); //not null-terminated!
+                uploadUrl = header;
                 uploadUrl = afterFirst(uploadUrl, ':', IfNotFoundReturn::none);
                 trim(uploadUrl);
             }
-            return len;
-        };
-        using ReadCbType = decltype(onBytesReceived);
-        using ReadCbWrapperType =          size_t (*)(const char* buffer, size_t size, size_t nitems, ReadCbType* callbackData); //needed for cdecl function pointer cast
-        ReadCbWrapperType onBytesReceivedWrapper = [](const char* buffer, size_t size, size_t nitems, ReadCbType* callbackData)
-        {
-            return (*callbackData)(buffer, size * nitems); //free this poor little C-API from its shackles and redirect to a proper lambda
         };
 
         std::string response;
         const HttpSession::Result httpResult = gdriveHttpsRequest("/upload/drive/v3/files?" + queryParams, //throw SysError
         {"Authorization: Bearer " + accessToken, "Content-Type: application/json; charset=UTF-8"},
-        {{CURLOPT_POSTFIELDS, postBuf.c_str()}, {CURLOPT_HEADERDATA, &onBytesReceived}, {CURLOPT_HEADERFUNCTION, onBytesReceivedWrapper}},
-        [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
+        {{CURLOPT_POSTFIELDS, postBuf.c_str()}},
+        [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, onHeaderData);
 
         if (httpResult.statusCode != 200)
             throw SysError(formatGdriveErrorRaw(response));
@@ -1629,12 +1621,12 @@ std::string /*itemId*/ gdriveUploadFile(const Zstring& fileName, const std::stri
     //not officially documented, but Google Drive supports compressed file upload when "Content-Encoding: gzip" is set! :)))
     InputStreamAsGzip gzipStream(readBlock); //throw SysError
 
-    auto readBlockAsGzip = [&](void* buffer, size_t bytesToRead) { return gzipStream.read(buffer, bytesToRead); }; //throw SysError, X
+    auto readBlockAsGzip = [&](std::span<char> buf) { return gzipStream.read(buf.data(), buf.size()); }; //throw SysError, X
     //returns "bytesToRead" bytes unless end of stream! => fits into "0 signals EOF: Posix read() semantics"
 
     std::string response;
     gdriveHttpsRequest(uploadUrlRelative, { "Content-Encoding: gzip"  }, {} /*extraOptions*/, //throw SysError, X
-    [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, readBlockAsGzip);
+    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, readBlockAsGzip, nullptr /*receiveHeader*/);
 
     JsonValue jresponse;
     try { jresponse = parseJson(response); }
@@ -1659,7 +1651,7 @@ std::string /*itemId*/ getMyDriveId(const std::string& accessToken) //throw SysE
     });
     std::string response;
     gdriveHttpsRequest("/drive/v3/files/root?" + queryParams, {"Authorization: Bearer " + accessToken}, {} /*extraOptions*/, //throw SysError
-    [&](const void* buffer, size_t bytesToWrite) { response.append(static_cast<const char*>(buffer), bytesToWrite); }, nullptr /*readRequest*/);
+    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/);
 
     JsonValue jresponse;
     try { jresponse = parseJson(response); }

@@ -5,13 +5,18 @@
 // *****************************************************************************
 
 #include "open_ssl.h"
-#include <bit> //std::endian
-#include <stdexcept>
 #include "base64.h"
-#include "build_info.h"
+#include "thread.h"
 #include <openssl/pem.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+    #include <openssl/core_names.h>
+    #include <openssl/encoder.h>
+    #include <openssl/decoder.h>
+    #include <openssl/param_build.h>
+#endif
+
 
 using namespace zen;
 
@@ -29,7 +34,8 @@ void zen::openSslInit()
     //see apps_shutdown():     https://github.com/openssl/openssl/blob/master/apps/openssl.c
     //see Curl_ossl_cleanup(): https://github.com/curl/curl/blob/master/lib/vtls/openssl.c
 
-    //excplicitly init OpenSSL on main thread: seems to initialize atomically! But it still might help to avoid issues:
+        assert(runningOnMainThread()); 
+            //excplicitly init OpenSSL on main thread: seems to initialize atomically! But it still might help to avoid issues:
     [[maybe_unused]] const int rv = ::OPENSSL_init_ssl(OPENSSL_INIT_SSL_DEFAULT | OPENSSL_INIT_NO_LOAD_CONFIG, nullptr);
     assert(rv == 1); //https://www.openssl.org/docs/man1.1.0/ssl/OPENSSL_init_ssl.html
 }
@@ -101,67 +107,83 @@ std::shared_ptr<EVP_PKEY> generateRsaKeyPair(int bits) //throw SysError
 
 //================================================================================
 
-using BioToEvpFunc = EVP_PKEY* (*)(BIO* bp, EVP_PKEY** x, pem_password_cb* cb, void* u);
-
-std::shared_ptr<EVP_PKEY> streamToEvpKey(const std::string& keyStream, BioToEvpFunc bioToEvp, const char* functionName) //throw SysError
-{
-    BIO* bio = ::BIO_new_mem_buf(keyStream.c_str(), static_cast<int>(keyStream.size()));
-    if (!bio)
-        throw SysError(formatLastOpenSSLError("BIO_new_mem_buf"));
-    ZEN_ON_SCOPE_EXIT(::BIO_free_all(bio));
-
-    if (EVP_PKEY* evp = bioToEvp(bio,      //BIO* bp
-                                 nullptr,  //EVP_PKEY** x
-                                 nullptr,  //pem_password_cb* cb
-                                 nullptr)) //void* u
-        return std::shared_ptr<EVP_PKEY>(evp, ::EVP_PKEY_free);
-    throw SysError(formatLastOpenSSLError(functionName));
-}
-
-
-using BioToRsaFunc = RSA* (*)(BIO* bp, RSA** x, pem_password_cb* cb, void* u);
-
-std::shared_ptr<EVP_PKEY> streamToEvpKey(const std::string& keyStream, BioToRsaFunc bioToRsa, const char* functionName) //throw SysError
-{
-    BIO* bio = ::BIO_new_mem_buf(keyStream.c_str(), static_cast<int>(keyStream.size()));
-    if (!bio)
-        throw SysError(formatLastOpenSSLError("BIO_new_mem_buf"));
-    ZEN_ON_SCOPE_EXIT(::BIO_free_all(bio));
-
-    RSA* rsa = bioToRsa(bio,      //BIO* bp
-                        nullptr,  //RSA** x
-                        nullptr,  //pem_password_cb* cb
-                        nullptr); //void* u
-    if (!rsa)
-        throw SysError(formatLastOpenSSLError(functionName));
-    ZEN_ON_SCOPE_EXIT(::RSA_free(rsa));
-
-    EVP_PKEY* evp = ::EVP_PKEY_new();
-    if (!evp)
-        throw SysError(formatLastOpenSSLError("EVP_PKEY_new"));
-    std::shared_ptr<EVP_PKEY> sharedKey(evp, ::EVP_PKEY_free);
-
-    if (::EVP_PKEY_set1_RSA(evp, rsa) != 1) //no ownership transfer (internally ref-counted)
-        throw SysError(formatLastOpenSSLError("EVP_PKEY_set1_RSA"));
-
-    return sharedKey;
-}
-
-//--------------------------------------------------------------------------------
-
 std::shared_ptr<EVP_PKEY> streamToKey(const std::string& keyStream, RsaStreamType streamType, bool publicKey) //throw SysError
 {
     switch (streamType)
     {
         case RsaStreamType::pkix:
-            return publicKey ?
-                   streamToEvpKey(keyStream, ::PEM_read_bio_PUBKEY,     "PEM_read_bio_PUBKEY") :    //throw SysError
-                   streamToEvpKey(keyStream, ::PEM_read_bio_PrivateKey, "PEM_read_bio_PrivateKey"); //
+        {
+            BIO* bio = ::BIO_new_mem_buf(keyStream.c_str(), static_cast<int>(keyStream.size()));
+            if (!bio)
+                throw SysError(formatLastOpenSSLError("BIO_new_mem_buf"));
+            ZEN_ON_SCOPE_EXIT(::BIO_free_all(bio));
+
+            if (EVP_PKEY* evp = (publicKey ?
+                                 ::PEM_read_bio_PUBKEY :
+                                 ::PEM_read_bio_PrivateKey)
+                                (bio,      //BIO* bp
+                                 nullptr,  //EVP_PKEY** x
+                                 nullptr,  //pem_password_cb* cb
+                                 nullptr)) //void* u
+                return std::shared_ptr<EVP_PKEY>(evp, ::EVP_PKEY_free);
+            throw SysError(formatLastOpenSSLError(publicKey ? "PEM_read_bio_PUBKEY" : "PEM_read_bio_PrivateKey"));
+        }
 
         case RsaStreamType::pkcs1:
-            return publicKey ?
-                   streamToEvpKey(keyStream, ::PEM_read_bio_RSAPublicKey,  "PEM_read_bio_RSAPublicKey") : //throw SysError
-                   streamToEvpKey(keyStream, ::PEM_read_bio_RSAPrivateKey, "PEM_read_bio_RSAPrivateKey"); //
+        {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+            EVP_PKEY* evp = nullptr;
+            auto guardEvp = makeGuard<ScopeGuardRunMode::onExit>([&] { if (evp) ::EVP_PKEY_free(evp); });
+
+            const int selection = publicKey ? OSSL_KEYMGMT_SELECT_PUBLIC_KEY : OSSL_KEYMGMT_SELECT_PRIVATE_KEY;
+
+            OSSL_DECODER_CTX* decCtx = ::OSSL_DECODER_CTX_new_for_pkey(&evp,      //EVP_PKEY** pkey
+                                                                       "PEM",     //const char* input_type
+                                                                       nullptr,   //const char* input_struct
+                                                                       "RSA",     //const char* keytype
+                                                                       selection, //int selection
+                                                                       nullptr,   //OSSL_LIB_CTX* libctx
+                                                                       nullptr);  //const char* propquery
+            if (!decCtx)
+                throw SysError(formatLastOpenSSLError("OSSL_DECODER_CTX_new_for_pkey"));
+            ZEN_ON_SCOPE_EXIT(::OSSL_DECODER_CTX_free(decCtx));
+
+            //key stream is password-protected? => OSSL_DECODER_CTX_set_passphrase()
+
+            const unsigned char* keyBuf = reinterpret_cast<const unsigned char*>(keyStream.c_str());
+            size_t keyLen = keyStream.size();
+            if (::OSSL_DECODER_from_data(decCtx, &keyBuf, &keyLen) != 1)
+                throw SysError(formatLastOpenSSLError("OSSL_DECODER_from_data"));
+
+            guardEvp.dismiss();                                     //pass ownership
+            return std::shared_ptr<EVP_PKEY>(evp, ::EVP_PKEY_free); //
+#else
+            BIO* bio = ::BIO_new_mem_buf(keyStream.c_str(), static_cast<int>(keyStream.size()));
+            if (!bio)
+                throw SysError(formatLastOpenSSLError("BIO_new_mem_buf"));
+            ZEN_ON_SCOPE_EXIT(::BIO_free_all(bio));
+
+            RSA* rsa = (publicKey ?
+                        ::PEM_read_bio_RSAPublicKey :
+                        ::PEM_read_bio_RSAPrivateKey)(bio,      //BIO* bp
+                                                      nullptr,  //RSA** x
+                                                      nullptr,  //pem_password_cb* cb
+                                                      nullptr); //void* u
+            if (!rsa)
+                throw SysError(formatLastOpenSSLError(publicKey ? "PEM_read_bio_RSAPublicKey" : "PEM_read_bio_RSAPrivateKey"));
+            ZEN_ON_SCOPE_EXIT(::RSA_free(rsa));
+
+            EVP_PKEY* evp = ::EVP_PKEY_new();
+            if (!evp)
+                throw SysError(formatLastOpenSSLError("EVP_PKEY_new"));
+            std::shared_ptr<EVP_PKEY> sharedKey(evp, ::EVP_PKEY_free);
+
+            if (::EVP_PKEY_set1_RSA(evp, rsa) != 1) //no ownership transfer (internally ref-counted)
+                throw SysError(formatLastOpenSSLError("EVP_PKEY_set1_RSA"));
+
+            return sharedKey;
+#endif
+        }
 
         case RsaStreamType::raw:
             break;
@@ -179,102 +201,113 @@ std::shared_ptr<EVP_PKEY> streamToKey(const std::string& keyStream, RsaStreamTyp
 
 //================================================================================
 
-using EvpToBioFunc = int (*)(BIO* bio, const EVP_PKEY* evp);
-
-std::string evpKeyToStream(const EVP_PKEY* evp, EvpToBioFunc evpToBio, const char* functionName) //throw SysError
-{
-    BIO* bio = ::BIO_new(BIO_s_mem());
-    if (!bio)
-        throw SysError(formatLastOpenSSLError("BIO_new"));
-    ZEN_ON_SCOPE_EXIT(::BIO_free_all(bio));
-
-    if (evpToBio(bio, evp) != 1)
-        throw SysError(formatLastOpenSSLError(functionName));
-    //---------------------------------------------
-    const int keyLen = BIO_pending(bio);
-    if (keyLen < 0)
-        throw SysError(formatLastOpenSSLError("BIO_pending"));
-    if (keyLen == 0)
-        throw SysError(formatSystemError("BIO_pending", L"", L"Unexpected failure.")); //no more error details
-
-    std::string keyStream(keyLen, '\0');
-
-    if (::BIO_read(bio, &keyStream[0], keyLen) != keyLen)
-        throw SysError(formatLastOpenSSLError("BIO_read"));
-    return keyStream;
-}
-
-
-using RsaToBioFunc = int (*)(BIO* bp, const RSA* x);
-
-std::string evpKeyToStream(const EVP_PKEY* evp, RsaToBioFunc rsaToBio, const char* functionName) //throw SysError
-{
-    BIO* bio = ::BIO_new(BIO_s_mem());
-    if (!bio)
-        throw SysError(formatLastOpenSSLError("BIO_new"));
-    ZEN_ON_SCOPE_EXIT(::BIO_free_all(bio));
-
-    const RSA* rsa = ::EVP_PKEY_get0_RSA(evp); //unowned reference!
-    if (!rsa)
-        throw SysError(formatLastOpenSSLError("EVP_PKEY_get0_RSA"));
-
-    if (rsaToBio(bio, rsa) != 1)
-        throw SysError(formatLastOpenSSLError(functionName));
-    //---------------------------------------------
-    const int keyLen = BIO_pending(bio);
-    if (keyLen < 0)
-        throw SysError(formatLastOpenSSLError("BIO_pending"));
-    if (keyLen == 0)
-        throw SysError(formatSystemError("BIO_pending", L"", L"Unexpected failure.")); //no more error details
-
-    std::string keyStream(keyLen, '\0');
-
-    if (::BIO_read(bio, &keyStream[0], keyLen) != keyLen)
-        throw SysError(formatLastOpenSSLError("BIO_read"));
-    return keyStream;
-}
-
-
-//fix OpenSSL API inconsistencies:
-int PEM_write_bio_PrivateKey2(BIO* bio, const EVP_PKEY* key)
-{
-    return ::PEM_write_bio_PrivateKey(bio,      //BIO* bp
-                                      key,      //const EVP_PKEY* x
-                                      nullptr,  //const EVP_CIPHER* enc
-                                      nullptr,  //const unsigned char* kstr
-                                      0,        //int klen
-                                      nullptr,  //pem_password_cb* cb
-                                      nullptr); //void* u
-}
-
-int PEM_write_bio_RSAPrivateKey2(BIO* bio, const RSA* rsa)
-{
-    return ::PEM_write_bio_RSAPrivateKey(bio,      //BIO* bp
-                                         rsa,      //const RSA* x
-                                         nullptr,  //const EVP_CIPHER* enc
-                                         nullptr,  //const unsigned char* kstr
-                                         0,        //int klen
-                                         nullptr,  //pem_password_cb* cb
-                                         nullptr); //void* u
-}
-
-int PEM_write_bio_RSAPublicKey2(BIO* bio, const RSA* rsa) { return ::PEM_write_bio_RSAPublicKey(bio, rsa); }
-
-//--------------------------------------------------------------------------------
-
 std::string keyToStream(const EVP_PKEY* evp, RsaStreamType streamType, bool publicKey) //throw SysError
 {
+    //assert(::EVP_PKEY_get_base_id(evp) == EVP_PKEY_RSA);
+
     switch (streamType)
     {
         case RsaStreamType::pkix:
-            return publicKey ?
-                   evpKeyToStream(evp, ::PEM_write_bio_PUBKEY,      "PEM_write_bio_PUBKEY") :    //throw SysError
-                   evpKeyToStream(evp, ::PEM_write_bio_PrivateKey2, "PEM_write_bio_PrivateKey"); //
+        {
+            //fix OpenSSL API inconsistencies:
+            auto PEM_write_bio_PrivateKey2 = [](BIO* bio, const EVP_PKEY* key)
+            {
+                return ::PEM_write_bio_PrivateKey(bio,      //BIO* bp
+                                                  key,      //const EVP_PKEY* x
+                                                  nullptr,  //const EVP_CIPHER* enc
+                                                  nullptr,  //const unsigned char* kstr
+                                                  0,        //int klen
+                                                  nullptr,  //pem_password_cb* cb
+                                                  nullptr); //void* u
+            };
+
+            BIO* bio = ::BIO_new(BIO_s_mem());
+            if (!bio)
+                throw SysError(formatLastOpenSSLError("BIO_new"));
+            ZEN_ON_SCOPE_EXIT(::BIO_free_all(bio));
+
+            if ((publicKey ?
+                 ::PEM_write_bio_PUBKEY :
+                 PEM_write_bio_PrivateKey2)(bio, evp) != 1)
+                throw SysError(formatLastOpenSSLError(publicKey ? "PEM_write_bio_PUBKEY" : "PEM_write_bio_PrivateKey"));
+            //---------------------------------------------
+            const int keyLen = BIO_pending(bio);
+            if (keyLen < 0)
+                throw SysError(formatLastOpenSSLError("BIO_pending"));
+            if (keyLen == 0)
+                throw SysError(formatSystemError("BIO_pending", L"", L"Unexpected failure.")); //no more error details
+
+            std::string keyStream(keyLen, '\0');
+
+            if (::BIO_read(bio, &keyStream[0], keyLen) != keyLen)
+                throw SysError(formatLastOpenSSLError("BIO_read"));
+            return keyStream;
+        }
 
         case RsaStreamType::pkcs1:
-            return publicKey ?
-                   evpKeyToStream(evp, ::PEM_write_bio_RSAPublicKey2,  "PEM_write_bio_RSAPublicKey") : //throw SysError
-                   evpKeyToStream(evp, ::PEM_write_bio_RSAPrivateKey2, "PEM_write_bio_RSAPrivateKey"); //
+        {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+            const int selection = publicKey ? OSSL_KEYMGMT_SELECT_PUBLIC_KEY : OSSL_KEYMGMT_SELECT_PRIVATE_KEY;
+
+            OSSL_ENCODER_CTX* encCtx = ::OSSL_ENCODER_CTX_new_for_pkey(evp,       //const EVP_PKEY* pkey
+                                                                       selection, //int selection
+                                                                       "PEM",     //const char* output_type
+                                                                       nullptr,   //const char* output_structure
+                                                                       nullptr);  //const char* propquery
+            if (!encCtx)
+                throw SysError(formatLastOpenSSLError("OSSL_ENCODER_CTX_new_for_pkey"));
+            ZEN_ON_SCOPE_EXIT(::OSSL_ENCODER_CTX_free(encCtx));
+
+            //password-protect stream? => OSSL_ENCODER_CTX_set_passphrase()
+
+            unsigned char* keyBuf = nullptr;
+            size_t keyLen = 0;
+            if (::OSSL_ENCODER_to_data(encCtx, &keyBuf, &keyLen) != 1)
+                throw SysError(formatLastOpenSSLError("OSSL_ENCODER_to_data"));
+            ZEN_ON_SCOPE_EXIT(::OPENSSL_free(keyBuf));
+
+            return {reinterpret_cast<const char*>(keyBuf), keyLen};
+#else
+            //fix OpenSSL API inconsistencies:
+            auto PEM_write_bio_RSAPrivateKey2 = [](BIO* bio, const RSA* rsa)
+            {
+                return ::PEM_write_bio_RSAPrivateKey(bio,      //BIO* bp
+                                                     rsa,      //const RSA* x
+                                                     nullptr,  //const EVP_CIPHER* enc
+                                                     nullptr,  //const unsigned char* kstr
+                                                     0,        //int klen
+                                                     nullptr,  //pem_password_cb* cb
+                                                     nullptr); //void* u
+            };
+            auto PEM_write_bio_RSAPublicKey2 = [](BIO* bio, const RSA* rsa) { return ::PEM_write_bio_RSAPublicKey(bio, rsa); };
+
+            BIO* bio = ::BIO_new(BIO_s_mem());
+            if (!bio)
+                throw SysError(formatLastOpenSSLError("BIO_new"));
+            ZEN_ON_SCOPE_EXIT(::BIO_free_all(bio));
+
+            const RSA* rsa = ::EVP_PKEY_get0_RSA(evp); //unowned reference!
+            if (!rsa)
+                throw SysError(formatLastOpenSSLError("EVP_PKEY_get0_RSA"));
+
+            if ((publicKey ?
+                 PEM_write_bio_RSAPublicKey2 :
+                 PEM_write_bio_RSAPrivateKey2)(bio, rsa) != 1)
+                throw SysError(formatLastOpenSSLError(publicKey ? "PEM_write_bio_RSAPublicKey" : "PEM_write_bio_RSAPrivateKey"));
+            //---------------------------------------------
+            const int keyLen = BIO_pending(bio);
+            if (keyLen < 0)
+                throw SysError(formatLastOpenSSLError("BIO_pending"));
+            if (keyLen == 0)
+                throw SysError(formatSystemError("BIO_pending", L"", L"Unexpected failure.")); //no more error details
+
+            std::string keyStream(keyLen, '\0');
+
+            if (::BIO_read(bio, &keyStream[0], keyLen) != keyLen)
+                throw SysError(formatLastOpenSSLError("BIO_read"));
+            return keyStream;
+#endif
+        }
 
         case RsaStreamType::raw:
             break;
@@ -373,266 +406,6 @@ void zen::verifySignature(const std::string& message, const std::string& signatu
 }
 
 
-namespace
-{
-std::wstring getSslErrorLiteral(int ec)
-{
-    switch (ec)
-    {
-            ZEN_CHECK_CASE_FOR_CONSTANT(SSL_ERROR_NONE);
-            ZEN_CHECK_CASE_FOR_CONSTANT(SSL_ERROR_SSL);
-            ZEN_CHECK_CASE_FOR_CONSTANT(SSL_ERROR_WANT_READ);
-            ZEN_CHECK_CASE_FOR_CONSTANT(SSL_ERROR_WANT_WRITE);
-            ZEN_CHECK_CASE_FOR_CONSTANT(SSL_ERROR_WANT_X509_LOOKUP);
-            ZEN_CHECK_CASE_FOR_CONSTANT(SSL_ERROR_SYSCALL);
-            ZEN_CHECK_CASE_FOR_CONSTANT(SSL_ERROR_ZERO_RETURN);
-            ZEN_CHECK_CASE_FOR_CONSTANT(SSL_ERROR_WANT_CONNECT);
-            ZEN_CHECK_CASE_FOR_CONSTANT(SSL_ERROR_WANT_ACCEPT);
-            ZEN_CHECK_CASE_FOR_CONSTANT(SSL_ERROR_WANT_ASYNC);
-            ZEN_CHECK_CASE_FOR_CONSTANT(SSL_ERROR_WANT_ASYNC_JOB);
-            ZEN_CHECK_CASE_FOR_CONSTANT(SSL_ERROR_WANT_CLIENT_HELLO_CB);
-
-        default:
-            return L"SSL error " + numberTo<std::wstring>(ec);
-    }
-}
-
-
-std::wstring formatX509ErrorCode(long ec)
-{
-    switch (ec)
-    {
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_OK);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_UNSPECIFIED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_UNABLE_TO_GET_CRL);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_UNABLE_TO_DECRYPT_CERT_SIGNATURE);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_UNABLE_TO_DECRYPT_CRL_SIGNATURE);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_CERT_SIGNATURE_FAILURE);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_CRL_SIGNATURE_FAILURE);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_CERT_NOT_YET_VALID);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_CERT_HAS_EXPIRED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_CRL_NOT_YET_VALID);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_CRL_HAS_EXPIRED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_ERROR_IN_CERT_NOT_BEFORE_FIELD);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_ERROR_IN_CERT_NOT_AFTER_FIELD);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_ERROR_IN_CRL_LAST_UPDATE_FIELD);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_ERROR_IN_CRL_NEXT_UPDATE_FIELD);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_OUT_OF_MEM);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_CERT_CHAIN_TOO_LONG);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_CERT_REVOKED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_INVALID_CA);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_PATH_LENGTH_EXCEEDED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_INVALID_PURPOSE);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_CERT_UNTRUSTED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_CERT_REJECTED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_SUBJECT_ISSUER_MISMATCH);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_AKID_SKID_MISMATCH);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_AKID_ISSUER_SERIAL_MISMATCH);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_KEYUSAGE_NO_CERTSIGN);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_UNABLE_TO_GET_CRL_ISSUER);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_UNHANDLED_CRITICAL_EXTENSION);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_KEYUSAGE_NO_CRL_SIGN);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_UNHANDLED_CRITICAL_CRL_EXTENSION);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_INVALID_NON_CA);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_PROXY_PATH_LENGTH_EXCEEDED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_KEYUSAGE_NO_DIGITAL_SIGNATURE);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_PROXY_CERTIFICATES_NOT_ALLOWED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_INVALID_EXTENSION);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_INVALID_POLICY_EXTENSION);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_NO_EXPLICIT_POLICY);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_DIFFERENT_CRL_SCOPE);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_UNSUPPORTED_EXTENSION_FEATURE);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_UNNESTED_RESOURCE);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_PERMITTED_VIOLATION);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_EXCLUDED_VIOLATION);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_SUBTREE_MINMAX);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_APPLICATION_VERIFICATION);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_UNSUPPORTED_CONSTRAINT_TYPE);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_UNSUPPORTED_CONSTRAINT_SYNTAX);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_UNSUPPORTED_NAME_SYNTAX);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_CRL_PATH_VALIDATION_ERROR);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_PATH_LOOP);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_SUITE_B_INVALID_VERSION);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_SUITE_B_INVALID_ALGORITHM);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_SUITE_B_INVALID_CURVE);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_SUITE_B_INVALID_SIGNATURE_ALGORITHM);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_SUITE_B_LOS_NOT_ALLOWED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_SUITE_B_CANNOT_SIGN_P_384_WITH_P_256);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_HOSTNAME_MISMATCH);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_EMAIL_MISMATCH);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_IP_ADDRESS_MISMATCH);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_DANE_NO_MATCH);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_EE_KEY_TOO_SMALL);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_CA_KEY_TOO_SMALL);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_CA_MD_TOO_WEAK);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_INVALID_CALL);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_STORE_LOOKUP);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_NO_VALID_SCTS);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_PROXY_SUBJECT_NAME_VIOLATION);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_OCSP_VERIFY_NEEDED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_OCSP_VERIFY_FAILED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(X509_V_ERR_OCSP_CERT_UNKNOWN);
-
-        default:
-            return replaceCpy<std::wstring>(L"X509 error %x", L"%x", numberTo<std::wstring>(ec));
-    }
-}
-}
-
-class TlsContext::Impl
-{
-public:
-    Impl(int socket, //throw SysError
-         const std::string& server,
-         const Zstring* caCertFilePath /*optional: enable certificate validation*/)
-    {
-        ZEN_ON_SCOPE_FAIL(cleanup(); /*destructor call would lead to member double clean-up!!!*/);
-
-        ctx_ = ::SSL_CTX_new(::TLS_client_method());
-        if (!ctx_)
-            throw SysError(formatLastOpenSSLError("SSL_CTX_new"));
-
-        ssl_ = ::SSL_new(ctx_);
-        if (!ssl_)
-            throw SysError(formatLastOpenSSLError("SSL_new"));
-
-        BIO* bio = ::BIO_new_socket(socket, BIO_NOCLOSE);
-        if (!bio)
-            throw SysError(formatLastOpenSSLError("BIO_new_socket"));
-        ::SSL_set0_rbio(ssl_, bio); //pass ownership
-
-        if (::BIO_up_ref(bio) != 1)
-            throw SysError(formatLastOpenSSLError("BIO_up_ref"));
-        ::SSL_set0_wbio(ssl_, bio); //pass ownership
-
-        assert(::SSL_get_mode(ssl_) == SSL_MODE_AUTO_RETRY); //verify OpenSSL default
-        ::SSL_set_mode(ssl_, SSL_MODE_ENABLE_PARTIAL_WRITE);
-
-        if (::SSL_set_tlsext_host_name(ssl_, server.c_str()) != 1) //enable SNI (Server Name Indication)
-            throw SysError(formatLastOpenSSLError("SSL_set_tlsext_host_name"));
-
-        if (caCertFilePath)
-        {
-            if (!::SSL_CTX_load_verify_locations(ctx_, utfTo<std::string>(*caCertFilePath).c_str(), nullptr))
-                throw SysError(formatLastOpenSSLError("SSL_CTX_load_verify_locations"));
-            //alternative: SSL_CTX_set_default_verify_paths(): use OpenSSL default paths considering SSL_CERT_FILE environment variable
-
-            //1. enable check for valid certificate: see SSL_get_verify_result()
-            ::SSL_set_verify(ssl_, SSL_VERIFY_PEER, nullptr);
-
-            //2. enable check that the certificate matches our host: see SSL_get_verify_result()
-            if (::SSL_set1_host(ssl_, server.c_str()) != 1) //no ownership transfer
-                throw SysError(formatSystemError("SSL_set1_host", L"", L"Unexpected failure.")); //no more error details
-        }
-
-        const int rv = ::SSL_connect(ssl_); //implicitly calls SSL_set_connect_state()
-        if (rv != 1)
-            throw SysError(formatLastOpenSSLError("SSL_connect") + L' ' + getSslErrorLiteral(::SSL_get_error(ssl_, rv)));
-
-        if (caCertFilePath)
-        {
-            const long verifyResult = ::SSL_get_verify_result(ssl_);
-            if (verifyResult != X509_V_OK)
-                throw SysError(formatSystemError("SSL_get_verify_result", formatX509ErrorCode(verifyResult), L""));
-        }
-    }
-
-    ~Impl()
-    {
-        //"SSL_shutdown() must not be called if a previous fatal error has occurred on a connection"
-        const bool scopeFail = std::uncaught_exceptions() > exeptionCount_;
-        if (!scopeFail)
-        {
-            //"It is acceptable for an application to only send its shutdown alert and then close
-            //the underlying connection without waiting for the peer's response."
-            [[maybe_unused]] const int rv = ::SSL_shutdown(ssl_);
-            assert(rv == 0); //"the close_notify was sent but the peer did not send it back yet."
-        }
-
-        cleanup();
-    }
-
-    size_t tryRead(void* buffer, size_t bytesToRead) //throw SysError; may return short, only 0 means EOF!
-    {
-        if (bytesToRead == 0) //"read() with a count of 0 returns zero" => indistinguishable from end of file! => check!
-            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
-
-        size_t bytesReceived = 0;
-        const int rv = ::SSL_read_ex(ssl_, buffer, bytesToRead, &bytesReceived);
-        if (rv != 1)
-        {
-            const int sslError = ::SSL_get_error(ssl_, rv);
-            if (sslError == SSL_ERROR_ZERO_RETURN)
-                return 0; //EOF + close_notify alert
-
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L /*OpenSSL 3.0.0*/ || \
-    OPENSSL_VERSION_NUMBER == 0x1010105fL /*OpenSSL 1.1.1e*/
-            const auto ec = ::ERR_peek_last_error();
-            if (sslError == SSL_ERROR_SSL && ERR_GET_REASON(ec) == SSL_R_UNEXPECTED_EOF_WHILE_READING) //EOF: only expected for HTTP/1.0
-#else //obsolete handling: https://github.com/openssl/openssl/issues/10880#issuecomment-575746226
-            if ((sslError == SSL_ERROR_SYSCALL && ::ERR_peek_last_error() == 0)) //EOF: only expected for HTTP/1.0
-#endif
-                return 0;
-
-            throw SysError(formatLastOpenSSLError("SSL_read_ex") + L' ' + getSslErrorLiteral(sslError));
-        }
-        assert(bytesReceived > 0); //SSL_read_ex() considers EOF an error!
-        if (bytesReceived > bytesToRead) //better safe than sorry
-            throw SysError(formatSystemError("SSL_read_ex", L"", L"Buffer overflow."));
-
-        return bytesReceived; //"zero indicates end of file"
-    }
-
-    size_t tryWrite(const void* buffer, size_t bytesToWrite) //throw SysError; may return short! CONTRACT: bytesToWrite > 0
-    {
-        if (bytesToWrite == 0)
-            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
-
-        size_t bytesWritten = 0;
-        const int rv = ::SSL_write_ex(ssl_, buffer, bytesToWrite, &bytesWritten);
-        if (rv != 1)
-            throw SysError(formatLastOpenSSLError("SSL_write_ex") + L' ' + getSslErrorLiteral(::SSL_get_error(ssl_, rv)));
-
-        if (bytesWritten > bytesToWrite)
-            throw SysError(formatSystemError("SSL_write_ex", L"", L"Buffer overflow."));
-        if (bytesWritten == 0)
-            throw SysError(formatSystemError("SSL_write_ex", L"", L"Zero bytes processed."));
-
-        return bytesWritten;
-    }
-
-private:
-    void cleanup()
-    {
-        if (ssl_)
-            ::SSL_free(ssl_);
-
-        if (ctx_)
-            ::SSL_CTX_free(ctx_);
-    }
-
-    Impl           (const Impl&) = delete;
-    Impl& operator=(const Impl&) = delete;
-
-    SSL_CTX* ctx_ = nullptr;
-    SSL*     ssl_ = nullptr;
-    const int exeptionCount_ = std::uncaught_exceptions();
-};
-
-
-zen::TlsContext::TlsContext(int socket, const Zstring& server, const Zstring* caCertFilePath) :
-    pimpl_(std::make_unique<Impl>(socket, utfTo<std::string>(server), caCertFilePath)) {} //throw SysError
-zen::TlsContext::~TlsContext() {}
-size_t zen::TlsContext::tryRead (      void* buffer, size_t bytesToRead ) { return pimpl_->tryRead (buffer,  bytesToRead); } //throw SysError
-size_t zen::TlsContext::tryWrite(const void* buffer, size_t bytesToWrite) { return pimpl_->tryWrite(buffer, bytesToWrite); } //throw SysError
-
-
 bool zen::isPuttyKeyStream(const std::string& keyStream)
 {
     std::string firstLine(keyStream.begin(), std::find_if(keyStream.begin(), keyStream.end(), isLineBreak<char>));
@@ -727,8 +500,8 @@ std::string zen::convertPuttyKeyToPkix(const std::string& keyStream, const std::
         const auto block2 = std::string("\0\0\0\1", 4) + passphrase;
 
         unsigned char key[2 * SHA_DIGEST_LENGTH] = {};
-        SHA1(reinterpret_cast<const unsigned char*>(block1.c_str()), block1.size(), &key[0]);                 //no-fail
-        SHA1(reinterpret_cast<const unsigned char*>(block2.c_str()), block2.size(), &key[SHA_DIGEST_LENGTH]); //
+        ::SHA1(reinterpret_cast<const unsigned char*>(block1.c_str()), block1.size(), &key[0]);                 //no-fail
+        ::SHA1(reinterpret_cast<const unsigned char*>(block2.c_str()), block2.size(), &key[SHA_DIGEST_LENGTH]); //
 
         EVP_CIPHER_CTX* cipCtx = ::EVP_CIPHER_CTX_new();
         if (!cipCtx)
@@ -771,7 +544,7 @@ std::string zen::convertPuttyKeyToPkix(const std::string& keyStream, const std::
         macKeyBlob += passphrase;
 
     unsigned char macKey[SHA_DIGEST_LENGTH] = {};
-    SHA1(reinterpret_cast<const unsigned char*>(macKeyBlob.c_str()), macKeyBlob.size(), &macKey[0]); //no-fail
+    ::SHA1(reinterpret_cast<const unsigned char*>(macKeyBlob.c_str()), macKeyBlob.size(), &macKey[0]); //no-fail
 
     auto numToBeString = [](size_t n) -> std::string
     {
@@ -886,6 +659,40 @@ std::string zen::convertPuttyKeyToPkix(const std::string& keyStream, const std::
             throw SysError(formatLastOpenSSLError("BN_mod"));
         //----------------------------------------------------------
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+        OSSL_PARAM_BLD* paramBld = ::OSSL_PARAM_BLD_new();
+        if (!paramBld)
+            throw SysError(formatLastOpenSSLError("OSSL_PARAM_BLD_new"));
+        ZEN_ON_SCOPE_EXIT(::OSSL_PARAM_BLD_free(paramBld));
+
+        if (::OSSL_PARAM_BLD_push_BN(paramBld, OSSL_PKEY_PARAM_RSA_N, n.get()) != 1) throw SysError(formatLastOpenSSLError("OSSL_PARAM_BLD_push_BN(n)"));
+        if (::OSSL_PARAM_BLD_push_BN(paramBld, OSSL_PKEY_PARAM_RSA_E, e.get()) != 1) throw SysError(formatLastOpenSSLError("OSSL_PARAM_BLD_push_BN(e)"));
+        if (::OSSL_PARAM_BLD_push_BN(paramBld, OSSL_PKEY_PARAM_RSA_D, d.get()) != 1) throw SysError(formatLastOpenSSLError("OSSL_PARAM_BLD_push_BN(d)"));
+        if (::OSSL_PARAM_BLD_push_BN(paramBld, OSSL_PKEY_PARAM_RSA_FACTOR1, p.get()) != 1) throw SysError(formatLastOpenSSLError("OSSL_PARAM_BLD_push_BN(p)"));
+        if (::OSSL_PARAM_BLD_push_BN(paramBld, OSSL_PKEY_PARAM_RSA_FACTOR2, q.get()) != 1) throw SysError(formatLastOpenSSLError("OSSL_PARAM_BLD_push_BN(q)"));
+        if (::OSSL_PARAM_BLD_push_BN(paramBld, OSSL_PKEY_PARAM_RSA_EXPONENT1,    dmp1.get()) != 1) throw SysError(formatLastOpenSSLError("OSSL_PARAM_BLD_push_BN(dmp1)"));
+        if (::OSSL_PARAM_BLD_push_BN(paramBld, OSSL_PKEY_PARAM_RSA_EXPONENT2,    dmq1.get()) != 1) throw SysError(formatLastOpenSSLError("OSSL_PARAM_BLD_push_BN(dmq1)"));
+        if (::OSSL_PARAM_BLD_push_BN(paramBld, OSSL_PKEY_PARAM_RSA_COEFFICIENT1, iqmp.get()) != 1) throw SysError(formatLastOpenSSLError("OSSL_PARAM_BLD_push_BN(iqmp)"));
+
+        OSSL_PARAM* sslParams = ::OSSL_PARAM_BLD_to_param(paramBld);
+        if (!sslParams)
+            throw SysError(formatLastOpenSSLError("OSSL_PARAM_BLD_to_param"));
+        ZEN_ON_SCOPE_EXIT(::OSSL_PARAM_free(sslParams));
+
+
+        EVP_PKEY_CTX* evpCtx = ::EVP_PKEY_CTX_new_from_name(nullptr, "RSA", nullptr);
+        if (!evpCtx)
+            throw SysError(formatLastOpenSSLError("EVP_PKEY_CTX_new_from_name(RSA)"));
+        ZEN_ON_SCOPE_EXIT(::EVP_PKEY_CTX_free(evpCtx));
+
+        if (::EVP_PKEY_fromdata_init(evpCtx) != 1)
+            throw SysError(formatLastOpenSSLError("EVP_PKEY_fromdata_init"));
+
+        EVP_PKEY* evp = nullptr;
+        if (::EVP_PKEY_fromdata(evpCtx, &evp, EVP_PKEY_KEYPAIR, sslParams) != 1)
+            throw SysError(formatLastOpenSSLError("EVP_PKEY_fromdata"));
+        ZEN_ON_SCOPE_EXIT(::EVP_PKEY_free(evp));
+#else
         RSA* rsa = ::RSA_new();
         if (!rsa)
             throw SysError(formatLastOpenSSLError("RSA_new"));
@@ -907,7 +714,7 @@ std::string zen::convertPuttyKeyToPkix(const std::string& keyStream, const std::
 
         if (::EVP_PKEY_set1_RSA(evp, rsa) != 1) //no ownership transfer (internally ref-counted)
             throw SysError(formatLastOpenSSLError("EVP_PKEY_set1_RSA"));
-
+#endif
         return keyToStream(evp, RsaStreamType::pkix, false /*publicKey*/); //throw SysError
     }
     //----------------------------------------------------------
@@ -919,7 +726,37 @@ std::string zen::convertPuttyKeyToPkix(const std::string& keyStream, const std::
         std::unique_ptr<BIGNUM, BnFree> pub = extractBigNumPub (); //
         std::unique_ptr<BIGNUM, BnFree> pri = extractBigNumPriv(); //
         //----------------------------------------------------------
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+        OSSL_PARAM_BLD* paramBld = ::OSSL_PARAM_BLD_new();
+        if (!paramBld)
+            throw SysError(formatLastOpenSSLError("OSSL_PARAM_BLD_new"));
+        ZEN_ON_SCOPE_EXIT(::OSSL_PARAM_BLD_free(paramBld));
 
+        if (::OSSL_PARAM_BLD_push_BN(paramBld, OSSL_PKEY_PARAM_FFC_P,      p.get()) != 1) throw SysError(formatLastOpenSSLError("OSSL_PARAM_BLD_push_BN(p)"));
+        if (::OSSL_PARAM_BLD_push_BN(paramBld, OSSL_PKEY_PARAM_FFC_Q,      q.get()) != 1) throw SysError(formatLastOpenSSLError("OSSL_PARAM_BLD_push_BN(q)"));
+        if (::OSSL_PARAM_BLD_push_BN(paramBld, OSSL_PKEY_PARAM_FFC_G,      g.get()) != 1) throw SysError(formatLastOpenSSLError("OSSL_PARAM_BLD_push_BN(g)"));
+        if (::OSSL_PARAM_BLD_push_BN(paramBld, OSSL_PKEY_PARAM_PUB_KEY,  pub.get()) != 1) throw SysError(formatLastOpenSSLError("OSSL_PARAM_BLD_push_BN(pub)"));
+        if (::OSSL_PARAM_BLD_push_BN(paramBld, OSSL_PKEY_PARAM_PRIV_KEY, pri.get()) != 1) throw SysError(formatLastOpenSSLError("OSSL_PARAM_BLD_push_BN(pri)"));
+
+        OSSL_PARAM* sslParams = ::OSSL_PARAM_BLD_to_param(paramBld);
+        if (!sslParams)
+            throw SysError(formatLastOpenSSLError("OSSL_PARAM_BLD_to_param"));
+        ZEN_ON_SCOPE_EXIT(::OSSL_PARAM_free(sslParams));
+
+
+        EVP_PKEY_CTX* evpCtx = ::EVP_PKEY_CTX_new_from_name(nullptr, "DSA", nullptr);
+        if (!evpCtx)
+            throw SysError(formatLastOpenSSLError("EVP_PKEY_CTX_new_from_name(DSA)"));
+        ZEN_ON_SCOPE_EXIT(::EVP_PKEY_CTX_free(evpCtx));
+
+        if (::EVP_PKEY_fromdata_init(evpCtx) != 1)
+            throw SysError(formatLastOpenSSLError("EVP_PKEY_fromdata_init"));
+
+        EVP_PKEY* evp = nullptr;
+        if (::EVP_PKEY_fromdata(evpCtx, &evp, EVP_PKEY_KEYPAIR, sslParams) != 1)
+            throw SysError(formatLastOpenSSLError("EVP_PKEY_fromdata"));
+        ZEN_ON_SCOPE_EXIT(::EVP_PKEY_free(evp));
+#else
         DSA* dsa = ::DSA_new();
         if (!dsa)
             throw SysError(formatLastOpenSSLError("DSA_new"));
@@ -938,7 +775,7 @@ std::string zen::convertPuttyKeyToPkix(const std::string& keyStream, const std::
 
         if (::EVP_PKEY_set1_DSA(evp, dsa) != 1) //no ownership transfer (internally ref-counted)
             throw SysError(formatLastOpenSSLError("EVP_PKEY_set1_DSA"));
-
+#endif
         return keyToStream(evp, RsaStreamType::pkix, false /*publicKey*/); //throw SysError
     }
     //----------------------------------------------------------
@@ -953,7 +790,51 @@ std::string zen::convertPuttyKeyToPkix(const std::string& keyStream, const std::
         const std::string pointStream = extractStringPub();
         std::unique_ptr<BIGNUM, BnFree> pri = extractBigNumPriv(); //throw SysError
         //----------------------------------------------------------
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+        const char* groupName = [&]
+        {
+            if (algoShort == "nistp256")
+                return SN_X9_62_prime256v1; //same as SECG secp256r1
+            if (algoShort == "nistp384")
+                return SN_secp384r1;
+            if (algoShort == "nistp521")
+                return SN_secp521r1;
+            throw SysError(L"Unknown elliptic curve: " + utfTo<std::wstring>(algorithm));
+        }();
 
+        OSSL_PARAM_BLD* paramBld = ::OSSL_PARAM_BLD_new();
+        if (!paramBld)
+            throw SysError(formatLastOpenSSLError("OSSL_PARAM_BLD_new"));
+        ZEN_ON_SCOPE_EXIT(::OSSL_PARAM_BLD_free(paramBld));
+
+        if (::OSSL_PARAM_BLD_push_utf8_string(paramBld, OSSL_PKEY_PARAM_GROUP_NAME, groupName, 0) != 1)
+            throw SysError(formatLastOpenSSLError("OSSL_PARAM_BLD_push_utf8_string(group)"));
+
+        if (::OSSL_PARAM_BLD_push_octet_string(paramBld, OSSL_PKEY_PARAM_PUB_KEY, &pointStream[0], pointStream.size()) != 1)
+            throw SysError(formatLastOpenSSLError("OSSL_PARAM_BLD_push_octet_string(pub)"));
+
+        if (::OSSL_PARAM_BLD_push_BN(paramBld, OSSL_PKEY_PARAM_PRIV_KEY, pri.get()) != 1)
+            throw SysError(formatLastOpenSSLError("OSSL_PARAM_BLD_push_BN(priv)"));
+
+        OSSL_PARAM* sslParams = ::OSSL_PARAM_BLD_to_param(paramBld);
+        if (!sslParams)
+            throw SysError(formatLastOpenSSLError("OSSL_PARAM_BLD_to_param"));
+        ZEN_ON_SCOPE_EXIT(::OSSL_PARAM_free(sslParams));
+
+
+        EVP_PKEY_CTX* evpCtx = ::EVP_PKEY_CTX_new_from_name(nullptr, "EC", nullptr);
+        if (!evpCtx)
+            throw SysError(formatLastOpenSSLError("EVP_PKEY_CTX_new_from_name(EC)"));
+        ZEN_ON_SCOPE_EXIT(::EVP_PKEY_CTX_free(evpCtx));
+
+        if (::EVP_PKEY_fromdata_init(evpCtx) != 1)
+            throw SysError(formatLastOpenSSLError("EVP_PKEY_fromdata_init"));
+
+        EVP_PKEY* evp = nullptr;
+        if (::EVP_PKEY_fromdata(evpCtx, &evp, EVP_PKEY_KEYPAIR, sslParams) != 1)
+            throw SysError(formatLastOpenSSLError("EVP_PKEY_fromdata"));
+        ZEN_ON_SCOPE_EXIT(::EVP_PKEY_free(evp));
+#else
         const int curveNid = [&]
         {
             if (algoShort == "nistp256")
@@ -999,7 +880,7 @@ std::string zen::convertPuttyKeyToPkix(const std::string& keyStream, const std::
 
         if (::EVP_PKEY_set1_EC_KEY(evp, ecKey) != 1) //no ownership transfer (internally ref-counted)
             throw SysError(formatLastOpenSSLError("EVP_PKEY_set1_EC_KEY"));
-
+#endif
         return keyToStream(evp, RsaStreamType::pkix, false /*publicKey*/); //throw SysError
     }
     //----------------------------------------------------------

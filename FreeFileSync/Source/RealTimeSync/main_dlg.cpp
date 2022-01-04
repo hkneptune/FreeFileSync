@@ -91,7 +91,7 @@ MainDialog::MainDialog(const Zstring& cfgFileName) :
 
     m_bpButtonAddFolder      ->SetBitmapLabel(loadImage("item_add"));
     m_bpButtonRemoveTopFolder->SetBitmapLabel(loadImage("item_remove"));
-    setBitmapTextLabel(*m_buttonStart, loadImage("startRts"), m_buttonStart->GetLabel(), fastFromDIP(5), fastFromDIP(8));
+    setBitmapTextLabel(*m_buttonStart, loadImage("startRts"), m_buttonStart->GetLabelText(), fastFromDIP(5), fastFromDIP(8));
 
     Bind(wxEVT_CHAR_HOOK, [this](wxKeyEvent& event) { onLocalKeyEvent(event); });
 
@@ -201,11 +201,11 @@ void MainDialog::onMenuAbout(wxCommandEvent& event)
 
 void MainDialog::onLocalKeyEvent(wxKeyEvent& event)
 {
-    const int keyCode = event.GetKeyCode();
-    if (keyCode == WXK_ESCAPE)
+    switch (event.GetKeyCode())
     {
-        Close();
-        return;
+        case WXK_ESCAPE:
+            Close();
+            return;
     }
     event.Skip();
 }

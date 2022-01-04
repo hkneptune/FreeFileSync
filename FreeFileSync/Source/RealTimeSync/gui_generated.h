@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Oct 26 2018)
+// C++ code generated with wxFormBuilder (version 3.10.1-0-g8feb16b3)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO *NOT* EDIT THIS FILE!
@@ -87,7 +87,7 @@ protected:
     wxStaticLine* m_staticline5;
     zen::BitmapTextButton* m_buttonStart;
 
-    // Virtual event handlers, overide them in your derived class
+    // Virtual event handlers, override them in your derived class
     virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
     virtual void onConfigNew( wxCommandEvent& event ) { event.Skip(); }
     virtual void onConfigLoad( wxCommandEvent& event ) { event.Skip(); }
@@ -123,6 +123,7 @@ public:
     wxTextCtrl* m_txtCtrlDirectory;
 
     FolderGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1, -1 ), long style = 0, const wxString& name = wxEmptyString );
+
     ~FolderGenerated();
 
 };

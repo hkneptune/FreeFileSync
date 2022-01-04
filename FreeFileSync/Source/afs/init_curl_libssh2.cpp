@@ -5,60 +5,47 @@
 // *****************************************************************************
 
 #include "init_curl_libssh2.h"
-#include <cassert>
 #include <zen/thread.h>
-#include <zen/file_error.h>
-#include <libcurl/curl_wrap.h> //DON'T include <curl/curl.h> directly!
-#include <zen/open_ssl.h>
-#include "libssh2/libssh2_wrap.h" //DON'T include <libssh2_sftp.h> directly!
-
+#include <libcurl/curl_wrap.h>    //DON'T include <curl/curl.h> directly!
+#include <libssh2/libssh2_wrap.h> //DON'T include <libssh2_sftp.h> directly!
 
 using namespace zen;
 
 
 namespace
 {
-int uniInitLevel = 0; //support interleaving initialization calls! (e.g. use for libssh2 and libCurl)
+int uniInitLevel = 0; //support interleaving initialization calls! (e.g. use for libssh2 and libcurl)
 //zero-initialized POD => not subject to static initialization order fiasco
 
 void libsshCurlUnifiedInit()
 {
-    assert(runningOnMainThread()); //all OpenSSL/libssh2/libcurl require init on main thread!
+    assert(runningOnMainThread());
     assert(uniInitLevel >= 0);
-    if (++uniInitLevel != 1) //non-atomic => also require call from main thread
+    if (++uniInitLevel != 1) //non-atomic => require call from main thread
         return;
 
-
-    openSslInit();
+    libcurlInit(); //includes WSAStartup() also needed by libssh2
 
     [[maybe_unused]] const int rc2 = ::libssh2_init(0);
-    /*
-        we need libssh2's crypto init:
+    assert(rc2 == 0); //libssh2 unconditionally returns 0 => why then have a return value in first place???
+    /*  we need libssh2's crypto init:
         - there is other OpenSSL-related initialization which might be needed (and hopefully won't hurt...)
 
         2019-02-26: following reasons are obsolete due to HAVE_EVP_AES_128_CTR:
         // - initializes a few statically allocated constants => avoid (minor) race condition if these were initialized by worker threads
-        // - enable proper clean up of these variables in libssh2_exit() (otherwise: memory leaks!)
-    */
-    assert(rc2 == 0); //libssh2 unconditionally returns 0 => why then have a return value in first place???
-
-
-    [[maybe_unused]] const CURLcode rc3 = ::curl_global_init(CURL_GLOBAL_NOTHING /*CURL_GLOBAL_DEFAULT = CURL_GLOBAL_SSL|CURL_GLOBAL_WIN32*/);
-    assert(rc3 == CURLE_OK);
+        // - enable proper clean up of these variables in libssh2_exit() (otherwise: memory leaks!)  */
 }
 
 
 void libsshCurlUnifiedTearDown()
 {
-    assert(runningOnMainThread()); //symmetry with libsshCurlUnifiedInit
+    assert(runningOnMainThread());
     assert(uniInitLevel >= 1);
     if (--uniInitLevel != 0)
         return;
 
-    ::curl_global_cleanup();
     ::libssh2_exit();
-    openSslTearDown();
-
+    libcurlTearDown();
 }
 }
 

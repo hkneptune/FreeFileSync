@@ -46,7 +46,7 @@ void initBitmapRadioButtons(const std::vector<std::pair<ToggleButton*, std::stri
 
     auto generateSelectImage = [physicalLeft](wxButton& btn, const std::string& imgName, bool selected)
     {
-        wxImage imgTxt = createImageFromText(btn.GetLabel(), btn.GetFont(),
+        wxImage imgTxt = createImageFromText(btn.GetLabelText(), btn.GetFont(),
                                              selected ? *wxBLACK : //accessibility: always set both foreground AND background colors! see renderSelectedButton()
                                              btn.GetForegroundColour());
 
@@ -1297,7 +1297,7 @@ void ConfigDialog::setMiscSyncOptions(const MiscSyncConfig& miscCfg)
         wxStaticText* staticTextDevice    = dynamic_cast<wxStaticText*>(fgSizerPerf->GetItem(i * 2 + 1)->GetWindow());
 
         spinCtrlParallelOps->SetValue(static_cast<int>(getDeviceParallelOps(deviceParallelOps_, afsDevice)));
-        staticTextDevice->SetLabel(AFS::getDisplayPath(AbstractPath(afsDevice, AfsPath())));
+        staticTextDevice->SetLabelText(AFS::getDisplayPath(AbstractPath(afsDevice, AfsPath())));
         ++i;
     }
     m_staticTextPerfParallelOps->Enable(enableExtraFeatures_ && !devicesForEdit_.empty());

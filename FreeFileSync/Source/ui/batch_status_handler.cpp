@@ -287,7 +287,7 @@ void BatchStatusHandler::reportWarning(const std::wstring& msg, bool& warningAct
                 bool dontWarnAgain = false;
                 switch (showQuestionDialog(progressDlg_->getWindowIfVisible(), DialogInfoType::warning,
                                            PopupDialogCfg().setDetailInstructions(msg + L"\n\n" + _("You can switch to FreeFileSync's main window to resolve this issue.")).
-                                           remindWhenPending(soundFileAlertPending_).
+                                           alertWhenPending(soundFileAlertPending_).
                                            setCheckBox(dontWarnAgain, _("&Don't show this warning again"), static_cast<ConfirmationButton3>(QuestionButton2::no)),
                                            _("&Ignore"), _("&Switch")))
                 {
@@ -343,7 +343,7 @@ ProcessCallback::Response BatchStatusHandler::reportError(const ErrorInfo& error
 
                 switch (showConfirmationDialog(progressDlg_->getWindowIfVisible(), DialogInfoType::error,
                                                PopupDialogCfg().setDetailInstructions(errorInfo.msg).
-                                               remindWhenPending(soundFileAlertPending_),
+                                               alertWhenPending(soundFileAlertPending_),
                                                _("&Ignore"), _("Ignore &all"), _("&Retry")))
                 {
                     case ConfirmationButton3::accept: //ignore
@@ -393,7 +393,7 @@ void BatchStatusHandler::reportFatalError(const std::wstring& msg)
 
                 switch (showConfirmationDialog(progressDlg_->getWindowIfVisible(), DialogInfoType::error,
                                                PopupDialogCfg().setDetailInstructions(msg).
-                                               remindWhenPending(soundFileAlertPending_),
+                                               alertWhenPending(soundFileAlertPending_),
                                                _("&Ignore"), _("Ignore &all")))
                 {
                     case ConfirmationButton2::accept: //ignore

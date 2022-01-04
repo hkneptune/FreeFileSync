@@ -166,10 +166,10 @@ std::weak_ordering compareNoCaseUtf8(const char* lhs, size_t lhsLen, const char*
 
 std::weak_ordering compareNatural(const Zstring& lhs, const Zstring& rhs)
 {
-    //Unicode normal forms:
-    //      Windows: CompareString() already ignores NFD/NFC differences: nice...
-    //      Linux:  g_unichar_toupper() can't ignore differences
-    //      macOS:  CFStringCompare() considers differences
+    /* Unicode normal forms:
+          Windows: CompareString() already ignores NFD/NFC differences: nice...
+          Linux:  g_unichar_toupper() can't ignore differences
+          macOS:  CFStringCompare() considers differences */
 
     const Zstring& lhsNorm = getUnicodeNormalForm(lhs);
     const Zstring& rhsNorm = getUnicodeNormalForm(rhs);

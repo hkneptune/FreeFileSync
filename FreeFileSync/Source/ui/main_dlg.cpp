@@ -279,7 +279,7 @@ void updateTopButton(wxBitmapButton& btn, const wxImage& img, const wxString& va
 {
     wxImage btnIconImg = makeGrey ? greyScale(img) : img;
 
-    wxImage btnLabelImg = createImageFromText(btn.GetLabel(), btn.GetFont(), wxSystemSettings::GetColour(makeGrey ? wxSYS_COLOUR_GRAYTEXT : wxSYS_COLOUR_BTNTEXT));
+    wxImage btnLabelImg = createImageFromText(btn.GetLabelText(), btn.GetFont(), wxSystemSettings::GetColour(makeGrey ? wxSYS_COLOUR_GRAYTEXT : wxSYS_COLOUR_BTNTEXT));
 
     wxImage varLabelImg = createImageFromText(varName,
                                               wxFont(wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD),
@@ -685,18 +685,27 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
 
 
     //set tool tips with (non-translated!) short cut hint
-    m_bpButtonNew        ->SetToolTip(replaceCpy(_("&New"),                  L"&", L"") + L" (Ctrl+N)"); //
-    m_bpButtonOpen       ->SetToolTip(replaceCpy(_("&Open..."),              L"&", L"") + L" (Ctrl+O)"); //
-    m_bpButtonSave       ->SetToolTip(replaceCpy(_("&Save"),                 L"&", L"") + L" (Ctrl+S)"); //reuse texts from gui builder
-    m_bpButtonSaveAs     ->SetToolTip(replaceCpy(_("Save &as..."),           L"&", L""));                //
-    m_bpButtonSaveAsBatch->SetToolTip(replaceCpy(_("Save as &batch job..."), L"&", L""));                //
+    auto setCommandToolTip = [](wxButton& btn, const wxString& label, wxString shortcut)
+    {
+        wxString tooltip = wxControl::RemoveMnemonics(label);
+        if (!shortcut.empty())
+        {
+            tooltip += L" (" + shortcut + L')';
+        }
+        btn.SetToolTip(tooltip);
+    };
+    setCommandToolTip(*m_bpButtonNew,         _("&New"),                  L"Ctrl+N"); //
+    setCommandToolTip(*m_bpButtonOpen,        _("&Open..."),              L"Ctrl+O"); //
+    setCommandToolTip(*m_bpButtonSave,        _("&Save"),                 L"Ctrl+S"); //reuse texts from GUI builder
+    setCommandToolTip(*m_bpButtonSaveAs,      _("Save &as..."),           L"");       //
+    setCommandToolTip(*m_bpButtonSaveAsBatch, _("Save as &batch job..."), L"");       //
 
-    m_bpButtonToggleLog ->SetToolTip(replaceCpy(_("Show &log"),                 L"&", L"") + L" (F4)"); //
-    m_buttonCompare     ->SetToolTip(replaceCpy(_("Start &comparison"),         L"&", L"") + L" (F5)"); //
-    m_bpButtonCmpConfig ->SetToolTip(replaceCpy(_("C&omparison settings"),      L"&", L"") + L" (F6)"); //
-    m_bpButtonSyncConfig->SetToolTip(replaceCpy(_("S&ynchronization settings"), L"&", L"") + L" (F8)"); //
-    m_buttonSync        ->SetToolTip(replaceCpy(_("Start &synchronization"),    L"&", L"") + L" (F9)"); //
-    m_bpButtonSwapSides ->SetToolTip(_("Swap sides") + L" (Ctrl+W)");
+    setCommandToolTip(*m_bpButtonToggleLog,   _("Show &log"),                 L"F4"); //
+    setCommandToolTip(*m_buttonCompare,       _("Start &comparison"),         L"F5"); //
+    setCommandToolTip(*m_bpButtonCmpConfig,   _("C&omparison settings"),      L"F6"); //
+    setCommandToolTip(*m_bpButtonSyncConfig,  _("S&ynchronization settings"), L"F8"); //
+    setCommandToolTip(*m_buttonSync,          _("Start &synchronization"),    L"F9"); //
+    setCommandToolTip(*m_bpButtonSwapSides,   _("Swap sides"),                L"Ctrl+Tab");
 
     //m_bpButtonCmpContext ->SetToolTip(m_bpButtonCmpConfig ->GetToolTipText());
     //m_bpButtonSyncContext->SetToolTip(m_bpButtonSyncConfig->GetToolTipText());
@@ -866,7 +875,8 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
         m_gridCfgHistory->makeRowVisible(selectedRows.front());
 
 
-    m_buttonCompare->SetFocus();
+    //start up: user most likely wants to change config, or start comparison by pressing ENTER
+    m_gridCfgHistory->SetFocus();
 
     //----------------------------------------------------------------------------------------------------------------------------------------------------------------
     //some convenience: if FFS is started with a *.ffs_gui file as commandline parameter AND all directories contained exist, comparison shall be started right away
@@ -991,7 +1001,7 @@ void MainDialog::onClose(wxCloseEvent& event)
         }
 
         const bool cancelled = !saveOldConfig(); //notify user about changed settings
-        if (cancelled)
+        if (cancelled) //...or error
         {
             event.Veto();
             return;
@@ -1756,9 +1766,9 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
 
 void MainDialog::flashStatusInformation(const wxString& text)
 {
-    oldStatusMsgs_.push_back(m_staticTextStatusCenter->GetLabel());
+    oldStatusMsgs_.push_back(m_staticTextStatusCenter->GetLabelText());
 
-    m_staticTextStatusCenter->SetLabel(text);
+    m_staticTextStatusCenter->SetLabelText(text);
     m_staticTextStatusCenter->SetForegroundColour(wxColor(31, 57, 226)); //highlight color: blue
     m_staticTextStatusCenter->SetFont(m_staticTextStatusCenter->GetFont().Bold());
 
@@ -1774,7 +1784,7 @@ void MainDialog::flashStatusInformation(const wxString& text)
 
             if (oldStatusMsgs_.empty()) //restore original status text
             {
-                m_staticTextStatusCenter->SetLabel(oldMsg);
+                m_staticTextStatusCenter->SetLabelText(oldMsg);
                 m_staticTextStatusCenter->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT)); //reset color
 
                 wxFont font = m_staticTextStatusCenter->GetFont();
@@ -2124,17 +2134,20 @@ void MainDialog::onLocalKeyEvent(wxKeyEvent& event) //process key events without
     const int keyCode = event.GetKeyCode();
 
     //CTRL + X
+    /*   if (event.ControlDown())
+            switch (keyCode)
+            {
+                case 'F': //CTRL + F
+                    showFindPanel();
+                    return; //-> swallow event!
+            }                                      */
+
     if (event.ControlDown())
         switch (keyCode)
         {
-            //        case 'F': //CTRL + F
-            //            showFindPanel();
-            //            return; //-> swallow event!
-
-            case 'W': //CTRL + W
-                //don't use F10: and avoid accidental clicks: https://freefilesync.org/forum/viewtopic.php?t=1663
-                wxCommandEvent dummy(wxEVT_COMMAND_BUTTON_CLICKED);
-                m_bpButtonSwapSides->Command(dummy); //simulate click
+            case WXK_TAB: //CTRL + TAB
+            case WXK_NUMPAD_TAB: //don't use F10: avoid accidental clicks: https://freefilesync.org/forum/viewtopic.php?t=1663
+                swapSides();
                 return; //-> swallow event!
         }
 
@@ -2167,6 +2180,7 @@ void MainDialog::onLocalKeyEvent(wxKeyEvent& event) //process key events without
         //return; //-> swallow event!
 
         case WXK_F11:
+            warn_static("F11 not working at all on macOS!")
             setGridViewType(m_bpButtonViewType->isActive() ? GridViewType::difference : GridViewType::action);
             return; //-> swallow event!
 
@@ -2809,7 +2823,7 @@ void MainDialog::onSetLayoutContext(wxMouseEvent& event)
 {
     ContextMenu menu;
 
-    menu.addItem(replaceCpy(_("&Reset layout"), L"&", L""), [&] { resetLayout(); }, loadImage("reset_sicon"));
+    menu.addItem(_("&Reset layout"), [&] { resetLayout(); }, loadImage("reset_sicon"));
     //----------------------------------------------------------------------------------------
 
     bool addedSeparator = false;
@@ -2942,7 +2956,9 @@ void MainDialog::cfgHistoryRemoveObsolete(const std::vector<Zstring>& filePaths)
     guiQueue_.processAsync(getUnavailableCfgFilesAsync, [this](const std::vector<Zstring>& filePaths2)
     {
         cfggrid::getDataView(*m_gridCfgHistory).removeItems(filePaths2);
-        m_gridCfgHistory->Refresh();
+
+        //restore grid selection (after rows were removed)
+        cfggrid::addAndSelect(*m_gridCfgHistory, activeConfigFiles_, false /*scrollToSelection*/);
     });
 }
 
@@ -3040,7 +3056,7 @@ void MainDialog::onConfigSave(wxCommandEvent& event)
 }
 
 
-bool MainDialog::trySaveConfig(const Zstring* guiCfgPath) //return true if saved successfully
+bool MainDialog::trySaveConfig(const Zstring* guiCfgPath) //"false": error/cancel
 {
     Zstring cfgFilePath;
 
@@ -3090,7 +3106,7 @@ bool MainDialog::trySaveConfig(const Zstring* guiCfgPath) //return true if saved
 }
 
 
-bool MainDialog::trySaveBatchConfig(const Zstring* batchCfgPath)
+bool MainDialog::trySaveBatchConfig(const Zstring* batchCfgPath) //"false": error/cancel
 {
     //essentially behave like trySaveConfig(): the collateral damage of not saving GUI-only settings "m_bpButtonViewType" is negligible
 
@@ -3172,7 +3188,7 @@ bool MainDialog::trySaveBatchConfig(const Zstring* batchCfgPath)
 }
 
 
-bool MainDialog::saveOldConfig() //return false on user abort
+bool MainDialog::saveOldConfig() //"false": error/cancel
 {
     const XmlGuiConfig guiCfg = getConfig();
 
@@ -3199,9 +3215,9 @@ bool MainDialog::saveOldConfig() //return false on user abort
                             switch (getXmlType(activeCfgFilePath)) //throw FileError
                             {
                                 case XmlType::gui:
-                                    return trySaveConfig(&activeCfgFilePath);
+                                    return trySaveConfig(&activeCfgFilePath); //"false": error/cancel
                                 case XmlType::batch:
-                                    return trySaveBatchConfig(&activeCfgFilePath);
+                                    return trySaveBatchConfig(&activeCfgFilePath); //"false": error/cancel
                                 case XmlType::global:
                                 case XmlType::other:
                                     showNotificationDialog(this, DialogInfoType::error,
@@ -3269,7 +3285,7 @@ void MainDialog::onCfgGridSelection(GridSelectEvent& event)
             assert(false);
 
     if (filePaths.empty() || //ignore accidental clicks in empty space of configuration panel
-        !loadConfiguration(filePaths))
+        !loadConfiguration(filePaths, true /*ignoreBrokenConfig*/)) //=> allow user to delete broken config entry!
         //user changed m_gridCfgHistory selection so it's this method's responsibility to synchronize with activeConfigFiles:
         //- if user cancelled saving old config
         //- there's an error loading new config
@@ -3295,13 +3311,10 @@ void MainDialog::onConfigNew(wxCommandEvent& event)
 }
 
 
-bool MainDialog::loadConfiguration(const std::vector<Zstring>& filePaths)
+bool MainDialog::loadConfiguration(const std::vector<Zstring>& filePaths, bool ignoreBrokenConfig) //"false": error/cancel
 {
-    if (!saveOldConfig())
-        return false; //cancelled by user
-
-    XmlGuiConfig newGuiCfg; //contains default values
-
+    XmlGuiConfig newGuiCfg; //default values
+    std::wstring warningMsg;
     //set default file filter: this is only ever relevant when creating new configurations!
     //a default XmlGuiConfig does not need these user-specific exclusions!
     newGuiCfg.mainCfg.globalFilter = globalCfg_.defaultFilter;
@@ -3309,25 +3322,27 @@ bool MainDialog::loadConfiguration(const std::vector<Zstring>& filePaths)
     if (!filePaths.empty()) //empty cfg file list means "use default"
         try
         {
-            //allow reading batch configurations also
-            std::wstring warningMsg;
             std::tie(newGuiCfg, warningMsg) = readAnyConfig(filePaths); //throw FileError
-
-            if (!warningMsg.empty())
-            {
-                showNotificationDialog(this, DialogInfoType::warning, PopupDialogCfg().setDetailInstructions(warningMsg));
-                setConfig(newGuiCfg, filePaths);
-                setLastUsedConfig(XmlGuiConfig(), filePaths); //simulate changed config due to parsing errors
-                return true;
-            }
+            //allow reading batch configurations, too
         }
         catch (const FileError& e)
         {
             showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
-            return false;
+            if (!ignoreBrokenConfig)
+                return false;
         }
 
+    if (!saveOldConfig()) //=> error/cancel
+        return false;
+
     setConfig(newGuiCfg, filePaths);
+
+    if (!warningMsg.empty())
+    {
+        showNotificationDialog(this, DialogInfoType::warning, PopupDialogCfg().setDetailInstructions(warningMsg));
+        setLastUsedConfig(XmlGuiConfig(), filePaths); //simulate changed config due to parsing errors
+    }
+
     //flashStatusInformation("Configuration loaded"); -> irrelevant!?
     return true;
 }
@@ -3380,11 +3395,12 @@ void MainDialog::removeSelectedCfgHistoryItems(bool deleteFromDisk)
             filePaths = deletedPaths;
         }
 
-        //FIRST: discard unsaved changes (*before* removing cfg items) => no point in saving before removing, right?
-        setLastUsedConfig(getConfig(), {} /*cfgFilePaths*/);
-
         cfggrid::getDataView(*m_gridCfgHistory).removeItems(filePaths);
         m_gridCfgHistory->Refresh(); //grid size changed => clears selection!
+
+        //discard unsaved changes => no point in saving before loading next config, right?
+        //- bonus: clear activeConfigFiles_ if loadConfiguration() fails so that old configs don't reappear after restart
+        setLastUsedConfig(getConfig(), {} /*cfgFilePaths*/);
 
         //set active selection on next item to allow "batch-deletion" by holding down DEL key
         //user expects that selected config is also loaded: https://freefilesync.org/forum/viewtopic.php?t=5723
@@ -3397,8 +3413,7 @@ void MainDialog::removeSelectedCfgHistoryItems(bool deleteFromDisk)
                 nextCfgPaths.push_back(cfg->cfgItem.cfgFilePath);
         }
 
-        if (!loadConfiguration(nextCfgPaths))
-            setLastUsedConfig(lastSavedCfg_, {}); //error/(cancel) => clear activeConfigFiles_ so that old configs don't reappear after restart
+        loadConfiguration(nextCfgPaths); //=> error/(cancel)
     }
 }
 
@@ -3421,8 +3436,8 @@ void MainDialog::renameSelectedCfgHistoryItem()
 
         //FIRST: 1. consolidate unsaved changes using the *old* config file name, if any!
         //2. get rid of multiple-selection if exists 3. load cfg to allow non-failing(!) setLastUsedConfig() below
-        if (!loadConfiguration({cfgPathOld}))
-            return; //error/cancel
+        if (!loadConfiguration({cfgPathOld})) //=> error/cancel
+            return;
 
         const Zstring fileName     =  afterLast(cfgPathOld, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
         /**/  Zstring folderPathPf = beforeLast(cfgPathOld, FILE_NAME_SEPARATOR, IfNotFoundReturn::none);
@@ -3732,7 +3747,7 @@ void MainDialog::setConfig(const XmlGuiConfig& newGuiCfg, const std::vector<Zstr
     //set first folder pair
     firstFolderPair_->setValues(currentCfg_.mainCfg.firstPair);
 
-    //folderHistoryLeft->addItem(currentCfg.mainCfg.firstPair.leftDirectory);
+    //folderHistoryLeft- >addItem(currentCfg.mainCfg.firstPair.leftDirectory);
     //folderHistoryRight->addItem(currentCfg.mainCfg.firstPair.rightDirectory);
 
     setAddFolderPairs(currentCfg_.mainCfg.additionalPairs);
@@ -4221,7 +4236,7 @@ void MainDialog::updateStatistics()
             fnt.SetWeight(isZeroValue ? wxFONTWEIGHT_NORMAL : wxFONTWEIGHT_BOLD);
             txtControl.SetFont(fnt);
 
-            txtControl.SetLabel(valueAsString);
+            txtControl.SetLabelText(valueAsString);
             bmpControl.SetBitmap(greyScaleIfDisabled(mirrorIfRtl(loadImage(imageName)), !isZeroValue));
         }
     };
@@ -4606,11 +4621,11 @@ void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::s
     }();
 
     m_bitmapSyncResult->SetBitmap(syncResultImage);
-    m_staticTextSyncResult->SetLabel(getSyncResultLabel(summary.syncResult));
+    m_staticTextSyncResult->SetLabelText(getSyncResultLabel(summary.syncResult));
 
 
-    m_staticTextItemsProcessed->SetLabel(formatNumber(summary.statsProcessed.items));
-    m_staticTextBytesProcessed->SetLabel(L'(' + formatFilesizeShort(summary.statsProcessed.bytes) + L')');
+    m_staticTextItemsProcessed->SetLabelText(formatNumber(summary.statsProcessed.items));
+    m_staticTextBytesProcessed->SetLabelText(L'(' + formatFilesizeShort(summary.statsProcessed.bytes) + L')');
 
     const bool hideRemainingStats = (summary.statsTotal.items < 0 && summary.statsTotal.bytes < 0) || //no total items/bytes: e.g. for pure folder comparison
                                     summary.statsProcessed == summary.statsTotal;  //...if everything was processed successfully
@@ -4622,13 +4637,13 @@ void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::s
 
     if (!hideRemainingStats)
     {
-        m_staticTextItemsRemaining->SetLabel(              formatNumber(summary.statsTotal.items - summary.statsProcessed.items));
-        m_staticTextBytesRemaining->SetLabel(L'(' + formatFilesizeShort(summary.statsTotal.bytes - summary.statsProcessed.bytes) + L')');
+        m_staticTextItemsRemaining->SetLabelText(              formatNumber(summary.statsTotal.items - summary.statsProcessed.items));
+        m_staticTextBytesRemaining->SetLabelText(L'(' + formatFilesizeShort(summary.statsTotal.bytes - summary.statsProcessed.bytes) + L')');
     }
 
     const int64_t totalTimeSec = std::chrono::duration_cast<std::chrono::seconds>(summary.totalTime).count();
 
-    m_staticTextTimeElapsed->SetLabel(wxTimeSpan::Seconds(totalTimeSec).Format(L"%H:%M:%S"));
+    m_staticTextTimeElapsed->SetLabelText(wxTimeSpan::Seconds(totalTimeSec).Format(L"%H:%M:%S"));
     //totalTimeSec < 3600 ? wxTimeSpan::Seconds(totalTimeSec).Format(L"%M:%S") -> let's use full precision for max. clarity: https://freefilesync.org/forum/viewtopic.php?t=6308
 
     logPanel_->setLog(errorLog);
@@ -4744,25 +4759,19 @@ void MainDialog::onGridLabelLeftClickC(GridLabelClickEvent& event)
 }
 
 
-void MainDialog::onSwapSides(wxCommandEvent& event)
+void MainDialog::onSwapSides(wxEvent& event)
 {
-    if (globalCfg_.confirmDlgs.confirmSwapSides)
-    {
-        bool dontWarnAgain = false;
-        switch (showConfirmationDialog(this, DialogInfoType::info,
-                                       PopupDialogCfg().setMainInstructions(_("Please confirm you want to swap sides.")).
-                                       setCheckBox(dontWarnAgain, _("&Don't show this dialog again")),
-                                       _("&Swap")))
-        {
-            case ConfirmationButton::accept: //swap
-                globalCfg_.confirmDlgs.confirmSwapSides = !dontWarnAgain;
-                break;
-            case ConfirmationButton::cancel:
-                return;
-        }
-    }
-    //------------------------------------------------------
+    ContextMenu menu;
+    menu.addItem(_("Swap sides") +
+                 L"\tCtrl+Tab",
+                 [&] { swapSides(); });
 
+    menu.popup(*m_bpButtonSwapSides, {m_bpButtonSwapSides->GetSize().x, 0});
+}
+
+
+void MainDialog::swapSides()
+{
     //swap directory names:
     LocalPairConfig lpc1st = firstFolderPair_->getValues();
     std::swap(lpc1st.folderPathPhraseLeft, lpc1st.folderPathPhraseRight);
@@ -4827,6 +4836,8 @@ void MainDialog::onSwapSides(wxCommandEvent& event)
     }
 
     updateGui(); //e.g. unsaved changes
+
+    flashStatusInformation(_("Left and right sides have been swapped"));
 }
 
 
@@ -5689,7 +5700,7 @@ void MainDialog::onMenuCheckVersionAutomatically(wxCommandEvent& event)
     {
         flashStatusInformation(_("Searching for program updates..."));
         //synchronous update check is sufficient here:
-        automaticUpdateCheckEval(this, globalCfg_.lastUpdateCheck, globalCfg_.lastOnlineVersion,
+        automaticUpdateCheckEval(*this, globalCfg_.lastUpdateCheck, globalCfg_.lastOnlineVersion,
                                  automaticUpdateCheckRunAsync(automaticUpdateCheckPrepare(*this).get()).get());
     }
 }
@@ -5725,7 +5736,7 @@ void MainDialog::onStartupUpdateCheck(wxIdleEvent& event)
         guiQueue_.processAsync([resultPrep] { return automaticUpdateCheckRunAsync(resultPrep.get()); }, //run on worker thread: (long-running part of the check)
                                [this, showNewVersionReminder] (std::shared_ptr<const UpdateCheckResult>&& resultAsync)
         {
-            automaticUpdateCheckEval(this, globalCfg_.lastUpdateCheck, globalCfg_.lastOnlineVersion,
+            automaticUpdateCheckEval(*this, globalCfg_.lastUpdateCheck, globalCfg_.lastOnlineVersion,
                                      resultAsync.get()); //run on main thread:
             showNewVersionReminder();
         });

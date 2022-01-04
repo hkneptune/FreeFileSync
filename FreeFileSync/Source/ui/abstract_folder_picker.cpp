@@ -253,7 +253,7 @@ void AbstractFolderPickerDlg::findAndNavigateToExistingPath(const AbstractPath& 
     if (!AFS::getParentPath(folderPath))
         return m_staticTextStatus->SetLabel(L"");
 
-    m_staticTextStatus->SetLabel(_("Scanning...") + L' ' + utfTo<std::wstring>(FILE_NAME_SEPARATOR + folderPath.afsPath.value)); //keep it short!
+    m_staticTextStatus->SetLabelText(_("Scanning...") + L' ' + utfTo<std::wstring>(FILE_NAME_SEPARATOR + folderPath.afsPath.value)); //keep it short!
 
     guiQueue_.processAsync([folderPath]() -> std::optional<AFS::ItemType>
     {

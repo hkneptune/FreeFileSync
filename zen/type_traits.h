@@ -184,4 +184,10 @@ LessDescending<Predicate> makeSortDirection(Predicate pred, std::false_type) { r
     template<class T> constexpr bool HasMemberTypeV_##TYPENAME = HasMemberType_##TYPENAME<T>::value;
 }
 
+
+//---------------------------------------------------------------------------
+//ZEN macro consistency checks: => place in most-used header!
+
+
+
 #endif //TYPE_TRAITS_H_3425628658765467

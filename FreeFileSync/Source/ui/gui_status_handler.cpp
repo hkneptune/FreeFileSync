@@ -212,7 +212,7 @@ void StatusHandlerTemporaryPanel::reportWarning(const std::wstring& msg, bool& w
         bool dontWarnAgain = false;
         switch (showConfirmationDialog(&mainDlg_, DialogInfoType::warning,
                                        PopupDialogCfg().setDetailInstructions(msg).
-                                       remindWhenPending(soundFileAlertPending_).
+                                       alertWhenPending(soundFileAlertPending_).
                                        setCheckBox(dontWarnAgain, _("&Don't show this warning again")),
                                        _("&Ignore")))
         {
@@ -253,7 +253,7 @@ ProcessCallback::Response StatusHandlerTemporaryPanel::reportError(const ErrorIn
 
         switch (showConfirmationDialog(&mainDlg_, DialogInfoType::error,
                                        PopupDialogCfg().setDetailInstructions(errorInfo.msg).
-                                       remindWhenPending(soundFileAlertPending_),
+                                       alertWhenPending(soundFileAlertPending_),
                                        _("&Ignore"), _("Ignore &all"), _("&Retry")))
         {
             case ConfirmationButton3::accept: //ignore
@@ -294,7 +294,7 @@ void StatusHandlerTemporaryPanel::reportFatalError(const std::wstring& msg)
 
         switch (showConfirmationDialog(&mainDlg_, DialogInfoType::error,
                                        PopupDialogCfg().setDetailInstructions(msg).
-                                       remindWhenPending(soundFileAlertPending_),
+                                       alertWhenPending(soundFileAlertPending_),
                                        _("&Ignore"), _("Ignore &all")))
         {
             case ConfirmationButton2::accept: //ignore
@@ -576,7 +576,7 @@ void StatusHandlerFloatingDialog::reportWarning(const std::wstring& msg, bool& w
         bool dontWarnAgain = false;
         switch (showConfirmationDialog(progressDlg_->getWindowIfVisible(), DialogInfoType::warning,
                                        PopupDialogCfg().setDetailInstructions(msg).
-                                       remindWhenPending(soundFileAlertPending_).
+                                       alertWhenPending(soundFileAlertPending_).
                                        setCheckBox(dontWarnAgain, _("&Don't show this warning again")),
                                        _("&Ignore")))
         {
@@ -617,7 +617,7 @@ ProcessCallback::Response StatusHandlerFloatingDialog::reportError(const ErrorIn
 
         switch (showConfirmationDialog(progressDlg_->getWindowIfVisible(), DialogInfoType::error,
                                        PopupDialogCfg().setDetailInstructions(errorInfo.msg).
-                                       remindWhenPending(soundFileAlertPending_),
+                                       alertWhenPending(soundFileAlertPending_),
                                        _("&Ignore"), _("Ignore &all"), _("&Retry")))
         {
             case ConfirmationButton3::accept: //ignore
@@ -658,7 +658,7 @@ void StatusHandlerFloatingDialog::reportFatalError(const std::wstring& msg)
 
         switch (showConfirmationDialog(progressDlg_->getWindowIfVisible(), DialogInfoType::error,
                                        PopupDialogCfg().setDetailInstructions(msg).
-                                       remindWhenPending(soundFileAlertPending_),
+                                       alertWhenPending(soundFileAlertPending_),
                                        _("&Ignore"), _("Ignore &all")))
         {
             case ConfirmationButton2::accept: //ignore

@@ -30,15 +30,17 @@ void setText(wxTextCtrl& control, const wxString& newText, bool* additionalLayou
 }
 
 
-void setText(wxStaticText& control, wxString newText, bool* additionalLayoutChange = nullptr)
+void setText(wxStaticText& control, const wxString& newText, bool* additionalLayoutChange = nullptr)
 {
+    //wxControl::EscapeMnemonics() (& -> &&) =>  wxControl::GetLabelText/SetLabelText
+    //e.g. "filenames in the sync progress dialog": https://sourceforge.net/p/freefilesync/bugs/279/
 
-    const wxString& label = control.GetLabel(); //perf: don't call twice!
+    const wxString& label = control.GetLabelText(); //perf: don't call twice!
     if (additionalLayoutChange && !*additionalLayoutChange)
         *additionalLayoutChange = label.length() != newText.length(); //avoid screen flicker: update layout only when necessary
 
     if (label != newText)
-        control.SetLabel(newText);
+        control.SetLabelText(newText);
 }
 
 

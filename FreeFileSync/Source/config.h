@@ -83,7 +83,6 @@ struct ConfirmationDialogs
     bool confirmSaveConfig        = true;
     bool confirmSyncStart         = true;
     bool confirmCommandMassInvoke = true;
-    bool confirmSwapSides         = true;
 
     bool operator==(const ConfirmationDialogs&) const = default;
 };
@@ -148,7 +147,7 @@ struct DpiLayout
 
 struct XmlGlobalSettings
 {
-    XmlGlobalSettings(); //clang needs this anyway
+    XmlGlobalSettings();
 
     //---------------------------------------------------------------------
     //Shared (GUI/BATCH) settings

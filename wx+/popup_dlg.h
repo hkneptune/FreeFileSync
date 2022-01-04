@@ -69,7 +69,7 @@ struct PopupDialogCfg
     PopupDialogCfg& setMainInstructions  (const wxString& label) { textMain   = label; return *this; } //set at least one of these!
     PopupDialogCfg& setDetailInstructions(const wxString& label) { textDetail = label; return *this; } //
     PopupDialogCfg& disableButton(ConfirmationButton3 button) { disabledButtons.insert(button); return *this; }
-    PopupDialogCfg& remindWhenPending(const Zstring& soundFilePath) { soundFileAlertPending = soundFilePath; return *this; }
+    PopupDialogCfg& alertWhenPending(const Zstring& soundFilePath) { soundFileAlertPending = soundFilePath; return *this; }
     PopupDialogCfg& setCheckBox(bool& value, const wxString& label, ConfirmationButton3 disableWhenChecked = ConfirmationButton3::cancel)
     {
         checkBoxValue = &value;

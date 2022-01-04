@@ -21,7 +21,7 @@ namespace fff
 class CompareProgressPanel
 {
 public:
-    CompareProgressPanel(wxFrame& parentWindow); //CompareProgressPanel will be owned by parentWindow!
+    explicit CompareProgressPanel(wxFrame& parentWindow); //CompareProgressPanel will be owned by parentWindow!
 
     wxWindow* getAsWindow(); //convenience! don't abuse!
 

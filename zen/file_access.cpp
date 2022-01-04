@@ -17,7 +17,7 @@
 #include "guid.h"
 
     #include <sys/vfs.h> //statfs
-    #include <sys/time.h> //lutimes
+    //#include <sys/time.h> //lutimes
     #ifdef HAVE_SELINUX
         #include <selinux/selinux.h>
     #endif
@@ -309,42 +309,51 @@ namespace
 {
 void setWriteTimeNative(const Zstring& itemPath, const timespec& modTime, ProcSymlink procSl) //throw FileError
 {
-    /*
-    [2013-05-01] sigh, we can't use utimensat() on NTFS volumes on Ubuntu: silent failure!!! what morons are programming this shit???
-    => fallback to "retarded-idiot version"! -- DarkByte
+    /* [2013-05-01] sigh, we can't use utimensat() on NTFS volumes on Ubuntu: silent failure!!! what morons are programming this shit???
+        => fallback to "retarded-idiot version"! -- DarkByte
 
-    [2015-03-09]
-     - cannot reproduce issues with NTFS and utimensat() on Ubuntu
-     - utimensat() is supposed to obsolete utime/utimes and is also used by "cp" and "touch"
-        => let's give utimensat another chance:
-        using open()/futimens() for regular files and utimensat(AT_SYMLINK_NOFOLLOW) for symlinks is consistent with "cp" and "touch"!
-    */
+        [2015-03-09]
+         - cannot reproduce issues with NTFS and utimensat() on Ubuntu
+         - utimensat() is supposed to obsolete utime/utimes and is also used by "cp" and "touch"
+            => let's give utimensat another chance:
+            using open()/futimens() for regular files and utimensat(AT_SYMLINK_NOFOLLOW) for symlinks is consistent with "cp" and "touch"!
+        cp:    https://github.com/coreutils/coreutils/blob/master/src/cp.c
+            => utimens: https://github.com/coreutils/gnulib/blob/master/lib/utimens.c
+        touch: https://github.com/coreutils/coreutils/blob/master/src/touch.c
+            => fdutimensat: https://github.com/coreutils/gnulib/blob/master/lib/fdutimensat.c                  */
     timespec newTimes[2] = {};
-    newTimes[0].tv_sec = ::time(nullptr); //access time; using UTIME_OMIT for tv_nsec would trigger even more bugs: https://freefilesync.org/forum/viewtopic.php?t=1701
+    newTimes[0].tv_sec = ::time(nullptr); //access time; don't use UTIME_NOW/UTIME_OMIT: more bugs! https://freefilesync.org/forum/viewtopic.php?t=1701
     newTimes[1] = modTime; //modification time
     //test: even modTime == 0 is correctly applied (no NOOP!) test2: same behavior for "utime()"
 
-    if (procSl == ProcSymlink::follow)
+    //hell knows why files on gvfs-mounted Samba shares fail to open(O_WRONLY) returning EOPNOTSUPP:
+    //https://freefilesync.org/forum/viewtopic.php?t=2803 => utimensat() works (but not for gvfs SFTP)
+    if (::utimensat(AT_FDCWD, itemPath.c_str(), newTimes, procSl == ProcSymlink::direct ? AT_SYMLINK_NOFOLLOW : 0) == 0)
+        return;
+    try
     {
-        //hell knows why files on gvfs-mounted Samba shares fail to open(O_WRONLY) returning EOPNOTSUPP:
-        //https://freefilesync.org/forum/viewtopic.php?t=2803 => utimensat() works (but not for gvfs SFTP)
-        if (::utimensat(AT_FDCWD, itemPath.c_str(), newTimes, 0) == 0)
-            return;
+        if (procSl == ProcSymlink::direct)
+            try
+            {
+                if (getItemType(itemPath) == ItemType::symlink) //throw FileError
+                    THROW_LAST_SYS_ERROR("utimensat(AT_SYMLINK_NOFOLLOW)"); //use lutimes()? just a wrapper around utimensat()!
+                //else: fall back
+            }
+            catch (const FileError& e) { throw SysError(e.toString()); }
 
         //in other cases utimensat() returns EINVAL for CIFS/NTFS drives, but open+futimens works: https://freefilesync.org/forum/viewtopic.php?t=387
-        const int fdFile = ::open(itemPath.c_str(), O_WRONLY | O_APPEND | O_CLOEXEC); //2017-07-04: O_WRONLY | O_APPEND seems to avoid EOPNOTSUPP on gvfs SFTP!
+        //2017-07-04: O_WRONLY | O_APPEND seems to avoid EOPNOTSUPP on gvfs SFTP!
+        const int fdFile = ::open(itemPath.c_str(), O_WRONLY | O_APPEND | O_CLOEXEC);
         if (fdFile == -1)
-            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write modification time of %x."), L"%x", fmtPath(itemPath)), "open");
+            THROW_LAST_SYS_ERROR("open");
         ZEN_ON_SCOPE_EXIT(::close(fdFile));
 
         if (::futimens(fdFile, newTimes) != 0)
-            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write modification time of %x."), L"%x", fmtPath(itemPath)), "futimens");
+            THROW_LAST_SYS_ERROR("futimens");
+
+        //need  more fallbacks? e.g. futimes()? careful, bugs! futimes() rounds instead of truncates when falling back on utime()!
     }
-    else
-    {
-        if (::utimensat(AT_FDCWD, itemPath.c_str(), newTimes, AT_SYMLINK_NOFOLLOW) != 0)
-            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write modification time of %x."), L"%x", fmtPath(itemPath)), "utimensat");
-    }
+    catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot write modification time of %x."), L"%x", fmtPath(itemPath)), e.toString()); }
 }
 
 

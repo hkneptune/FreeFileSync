@@ -97,7 +97,7 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
     build += SPACED_BULLET;
     build += utfTo<wxString>(formatTime(formatDateTag, getCompileTime()));
 
-    m_staticTextVersion->SetLabel(replaceCpy(_("Version: %x"), L"%x", build));
+    m_staticTextVersion->SetLabelText(replaceCpy(_("Version: %x"), L"%x", build));
 
     //------------------------------------
     {
@@ -254,8 +254,8 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, Zstrin
     setRelativeFontSize(*m_toggleBtnSftp,   1.25);
     setRelativeFontSize(*m_toggleBtnFtp,    1.25);
 
-    setBitmapTextLabel(*m_buttonGdriveAddUser,    loadImage("user_add",    fastFromDIP(20)), m_buttonGdriveAddUser   ->GetLabel());
-    setBitmapTextLabel(*m_buttonGdriveRemoveUser, loadImage("user_remove", fastFromDIP(20)), m_buttonGdriveRemoveUser->GetLabel());
+    setBitmapTextLabel(*m_buttonGdriveAddUser,    loadImage("user_add",    fastFromDIP(20)), m_buttonGdriveAddUser   ->GetLabelText());
+    setBitmapTextLabel(*m_buttonGdriveRemoveUser, loadImage("user_remove", fastFromDIP(20)), m_buttonGdriveRemoveUser->GetLabelText());
 
     m_bitmapGdriveUser ->SetBitmap(loadImage("user",   fastFromDIP(20)));
     m_bitmapGdriveDrive->SetBitmap(loadImage("drive",  fastFromDIP(20)));
@@ -276,7 +276,7 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, Zstrin
     setupFileDrop(*m_panelAuth);
     m_panelAuth->Bind(EVENT_DROP_FILE, [this](FileDropEvent& event) { onKeyFileDropped(event); });
 
-    m_staticTextConnectionsLabelSub->SetLabel(L'(' + _("Connections") + L')');
+    m_staticTextConnectionsLabelSub->SetLabelText(L'(' + _("Connections") + L')');
 
     //use spacer to keep dialog height stable, no matter if key file options are visible
     bSizerAuthInner->Add(0, m_panelAuth->GetSize().y);
@@ -607,11 +607,11 @@ void CloudSetupDlg::updateGui()
             {
                 case SftpAuthType::password:
                     m_radioBtnPassword->SetValue(true);
-                    m_staticTextPassword->SetLabel(_("Password:"));
+                    m_staticTextPassword->SetLabelText(_("Password:"));
                     break;
                 case SftpAuthType::keyFile:
                     m_radioBtnKeyfile->SetValue(true);
-                    m_staticTextPassword->SetLabel(_("Key passphrase:"));
+                    m_staticTextPassword->SetLabelText(_("Key passphrase:"));
                     break;
                 case SftpAuthType::agent:
                     m_radioBtnAgent->SetValue(true);
@@ -620,7 +620,7 @@ void CloudSetupDlg::updateGui()
             break;
 
         case CloudType::ftp:
-            m_staticTextPassword->SetLabel(_("Password:"));
+            m_staticTextPassword->SetLabelText(_("Password:"));
             break;
     }
 
@@ -813,9 +813,8 @@ CopyToDialog::CopyToDialog(wxWindow* parent,
 
     const auto& [itemList, itemCount] = getSelectedItemsAsString(rowsOnLeft, rowsOnRight);
 
-    const wxString header = _P("Copy the following item to another folder?",
-                               "Copy the following %x items to another folder?", itemCount);
-    m_staticTextHeader->SetLabel(header);
+    m_staticTextHeader->SetLabelText(_P("Copy the following item to another folder?",
+                                        "Copy the following %x items to another folder?", itemCount));
     m_staticTextHeader->Wrap(fastFromDIP(460)); //needs to be reapplied after SetLabel()
 
     m_textCtrlFileList->ChangeValue(itemList);
@@ -956,16 +955,16 @@ void DeleteDialog::updateGui()
     if (m_checkBoxUseRecycler->GetValue())
     {
         m_bitmapDeleteType->SetBitmap(imgTrash_);
-        m_staticTextHeader->SetLabel(_P("Do you really want to move the following item to the recycle bin?",
-                                        "Do you really want to move the following %x items to the recycle bin?", itemCount_));
-        m_buttonOK->SetLabel(_("Move")); //no access key needed: use ENTER!
+        m_staticTextHeader->SetLabelText(_P("Do you really want to move the following item to the recycle bin?",
+                                            "Do you really want to move the following %x items to the recycle bin?", itemCount_));
+        m_buttonOK->SetLabelText(_("Move")); //no access key needed: use ENTER!
     }
     else
     {
         m_bitmapDeleteType->SetBitmap(loadImage("delete_permanently"));
-        m_staticTextHeader->SetLabel(_P("Do you really want to delete the following item?",
-                                        "Do you really want to delete the following %x items?", itemCount_));
-        m_buttonOK->SetLabel(replaceCpy(_("&Delete"), L"&", L""));
+        m_staticTextHeader->SetLabelText(_P("Do you really want to delete the following item?",
+                                            "Do you really want to delete the following %x items?", itemCount_));
+        m_buttonOK->SetLabelText(wxControl::RemoveMnemonics(_("&Delete"))); //no access key needed: use ENTER!
     }
     m_staticTextHeader->Wrap(fastFromDIP(460)); //needs to be reapplied after SetLabel()
 
@@ -1037,8 +1036,8 @@ SyncConfirmationDlg::SyncConfirmationDlg(wxWindow* parent,
     setMainInstructionFont(*m_staticTextCaption);
     m_bitmapSync->SetBitmap(loadImage(syncSelection ? "start_sync_selection" : "start_sync"));
 
-    m_staticTextCaption->SetLabel(syncSelection ?_("Start to synchronize the selection?") : _("Start synchronization now?"));
-    m_staticTextSyncVar->SetLabel(getVariantName(syncVar));
+    m_staticTextCaption->SetLabelText(syncSelection ?_("Start to synchronize the selection?") : _("Start synchronization now?"));
+    m_staticTextSyncVar->SetLabelText(getVariantName(syncVar));
 
     const char* varImgName = nullptr;
     if (syncVar)
@@ -1203,7 +1202,7 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
     m_bpButtonAddRow          ->SetBitmapLabel(loadImage("item_add"));
     m_bpButtonRemoveRow       ->SetBitmapLabel(loadImage("item_remove"));
 
-    m_staticTextAllDialogsShown->SetLabel(L'(' + _("No dialogs hidden") + L')');
+    m_staticTextAllDialogsShown->SetLabelText(L'(' + _("No dialogs hidden") + L')');
 
     m_staticTextResetDialogs->Wrap(std::max(fastFromDIP(250),
                                             m_buttonRestoreDialogs     ->GetSize().x +
@@ -1326,9 +1325,9 @@ void OptionsDlg::playSoundWithDiagnostics(const wxString& filePath)
 {
     try
     {
-        //wxSOUND_ASYNC: NO failure indication (on Windows)!
+        //::PlaySound() => NO failure indication on Windows! does not set last last error!
         //wxSound::Play(..., wxSOUND_SYNC) can return false, but does not provide details!
-        //=> check file access manually first:
+        //=> check file access manually:
         [[maybe_unused]] std::string stream = getFileContent(utfTo<Zstring>(filePath), nullptr /*notifyUnbufferedIO*/); //throw FileError
 
         [[maybe_unused]] const bool success = wxSound::Play(filePath, wxSOUND_ASYNC);
@@ -1760,11 +1759,11 @@ private:
     void updateGui()
     {
         const double fraction = bytesTotal_ == 0 ? 0 : 1.0 * bytesCurrent_ / bytesTotal_;
-        m_staticTextHeader->SetLabel(_("Downloading update...") + L' ' +
-                                     numberTo<std::wstring>(std::lround(fraction * 100)) + L"% (" + formatFilesizeShort(bytesCurrent_) + L')');
+        m_staticTextHeader->SetLabelText(_("Downloading update...") + L' ' +
+                                         numberTo<std::wstring>(std::lround(fraction * 100)) + L"% (" + formatFilesizeShort(bytesCurrent_) + L')');
         m_gaugeProgress->SetValue(std::round(fraction * GAUGE_FULL_RANGE));
 
-        m_staticTextDetails->SetLabel(utfTo<std::wstring>(filePath_));
+        m_staticTextDetails->SetLabelText(utfTo<std::wstring>(filePath_));
     }
 
     bool cancelled_ = false;

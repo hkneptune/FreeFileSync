@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version Oct 26 2018)
+// C++ code generated with wxFormBuilder (version 3.10.1-0-g8feb16b3)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO *NOT* EDIT THIS FILE!
@@ -61,7 +61,7 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
 
     m_staticText9 = new wxStaticText( this, wxID_ANY, _("Usage:"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticText9->Wrap( -1 );
-    m_staticText9->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
+    m_staticText9->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL, false, wxEmptyString ) );
 
     bSizer16->Add( m_staticText9, 0, wxALL, 5 );
 
@@ -283,7 +283,7 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
     m_buttonStart = new zen::BitmapTextButton( this, wxID_OK, _("Start"), wxDefaultPosition, wxSize( -1, -1 ), 0 );
 
     m_buttonStart->SetDefault();
-    m_buttonStart->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
+    m_buttonStart->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL, false, wxEmptyString ) );
 
     bSizerMain->Add( m_buttonStart, 0, wxALIGN_CENTER_HORIZONTAL|wxALL, 5 );
 

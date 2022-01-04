@@ -7,9 +7,11 @@
 #ifndef CURL_WRAP_H_2879058325032785032789645
 #define CURL_WRAP_H_2879058325032785032789645
 
-#include <zen/scope_guard.h>
+#include <chrono>
+#include <span>
+#include <functional>
 #include <zen/sys_error.h>
-
+#include <zen/zstring.h>
 
 
 //-------------------------------------------------
@@ -22,6 +24,10 @@
 
 namespace zen
 {
+void libcurlInit();
+void libcurlTearDown();
+
+
 struct CurlOption
 {
     template <class T>
@@ -34,128 +40,40 @@ struct CurlOption
     uint64_t value = 0;
 };
 
-namespace
+
+class HttpSession
 {
-std::wstring formatCurlStatusCode(CURLcode sc)
-{
-    switch (sc)
+public:
+    HttpSession(const Zstring& server, bool useTls, const Zstring& caCertFilePath /*optional*/, std::chrono::seconds timeOut); //throw SysError
+    ~HttpSession();
+
+    struct Result
     {
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_OK);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_UNSUPPORTED_PROTOCOL);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_FAILED_INIT);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_URL_MALFORMAT);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_NOT_BUILT_IN);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_COULDNT_RESOLVE_PROXY);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_COULDNT_RESOLVE_HOST);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_COULDNT_CONNECT);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_WEIRD_SERVER_REPLY);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_REMOTE_ACCESS_DENIED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_FTP_ACCEPT_FAILED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_FTP_WEIRD_PASS_REPLY);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_FTP_ACCEPT_TIMEOUT);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_FTP_WEIRD_PASV_REPLY);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_FTP_WEIRD_227_FORMAT);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_FTP_CANT_GET_HOST);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_HTTP2);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_FTP_COULDNT_SET_TYPE);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_PARTIAL_FILE);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_FTP_COULDNT_RETR_FILE);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_OBSOLETE20);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_QUOTE_ERROR);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_HTTP_RETURNED_ERROR);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_WRITE_ERROR);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_OBSOLETE24);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_UPLOAD_FAILED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_READ_ERROR);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_OUT_OF_MEMORY);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_OPERATION_TIMEDOUT);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_OBSOLETE29);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_FTP_PORT_FAILED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_FTP_COULDNT_USE_REST);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_OBSOLETE32);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_RANGE_ERROR);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_HTTP_POST_ERROR);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_SSL_CONNECT_ERROR);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_BAD_DOWNLOAD_RESUME);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_FILE_COULDNT_READ_FILE);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_LDAP_CANNOT_BIND);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_LDAP_SEARCH_FAILED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_OBSOLETE40);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_FUNCTION_NOT_FOUND);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_ABORTED_BY_CALLBACK);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_BAD_FUNCTION_ARGUMENT);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_OBSOLETE44);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_INTERFACE_FAILED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_OBSOLETE46);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_TOO_MANY_REDIRECTS);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_UNKNOWN_OPTION);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_SETOPT_OPTION_SYNTAX);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_OBSOLETE50);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_OBSOLETE51);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_GOT_NOTHING);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_SSL_ENGINE_NOTFOUND);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_SSL_ENGINE_SETFAILED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_SEND_ERROR);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_RECV_ERROR);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_OBSOLETE57);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_SSL_CERTPROBLEM);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_SSL_CIPHER);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_PEER_FAILED_VERIFICATION);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_BAD_CONTENT_ENCODING);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_LDAP_INVALID_URL);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_FILESIZE_EXCEEDED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_USE_SSL_FAILED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_SEND_FAIL_REWIND);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_SSL_ENGINE_INITFAILED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_LOGIN_DENIED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_TFTP_NOTFOUND);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_TFTP_PERM);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_REMOTE_DISK_FULL);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_TFTP_ILLEGAL);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_TFTP_UNKNOWNID);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_REMOTE_FILE_EXISTS);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_TFTP_NOSUCHUSER);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_CONV_FAILED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_CONV_REQD);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_SSL_CACERT_BADFILE);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_REMOTE_FILE_NOT_FOUND);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_SSH);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_SSL_SHUTDOWN_FAILED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_AGAIN);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_SSL_CRL_BADFILE);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_SSL_ISSUER_ERROR);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_FTP_PRET_FAILED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_RTSP_CSEQ_ERROR);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_RTSP_SESSION_ERROR);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_FTP_BAD_FILE_LIST);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_CHUNK_FAILED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_NO_CONNECTION_AVAILABLE);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_SSL_PINNEDPUBKEYNOTMATCH);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_SSL_INVALIDCERTSTATUS);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_HTTP2_STREAM);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_RECURSIVE_API_CALL);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_AUTH_ERROR);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_HTTP3);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_QUIC_CONNECT_ERROR);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_PROXY);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_SSL_CLIENTCERT);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURL_LAST);
-    }
-    static_assert(CURL_LAST == CURLE_SSL_CLIENTCERT + 1);
+        int statusCode = 0;
+        //std::string contentType;
+    };
+    Result perform(const std::string& serverRelPath,
+                   const std::vector<std::string>& extraHeaders, const std::vector<CurlOption>& extraOptions,
+                   const std::function<void  (std::span<const char> buf)>& writeResponse /*throw X*/,  //
+                   const std::function<size_t(std::span<      char> buf)>& readRequest   /*throw X*/,  //optional
+                   const std::function<void  (const std::string_view& header)>& receiveHeader /*throw X*/); //throw SysError, X
 
-    return replaceCpy<std::wstring>(L"Curl status %x", L"%x", numberTo<std::wstring>(static_cast<int>(sc)));
-}
+    std::chrono::steady_clock::time_point getLastUseTime() const { return lastSuccessfulUseTime_; }
+
+private:
+    HttpSession           (const HttpSession&) = delete;
+    HttpSession& operator=(const HttpSession&) = delete;
+
+    const std::string serverPrefix_;
+    const std::string caCertFilePath_; //optional
+    const std::chrono::seconds timeOutSec_;
+    CURL* easyHandle_ = nullptr;
+    std::chrono::steady_clock::time_point lastSuccessfulUseTime_ = std::chrono::steady_clock::now();
+};
 
 
-void applyCurlOptions(CURL* easyHandle, const std::vector<CurlOption>& options) //throw SysError
-{
-    for (const CurlOption& opt : options)
-        if (const CURLcode rc = ::curl_easy_setopt(easyHandle, opt.option, opt.value);
-            rc != CURLE_OK)
-            throw SysError(formatSystemError("curl_easy_setopt(" + numberTo<std::string>(static_cast<int>(opt.option)) + ")",
-                                             formatCurlStatusCode(rc), utfTo<std::wstring>(::curl_easy_strerror(rc))));
-}
-}
+std::wstring formatCurlStatusCode(CURLcode sc);
+void applyCurlOptions(CURL* easyHandle, const std::vector<CurlOption>& options); //throw SysError
 }
 
 #else

@@ -10,7 +10,6 @@
 #include <algorithm>
 #include <atomic>
 #include "string_tools.h"
-#include "legacy_compiler.h" //constinit
 
 
 //Zbase - a policy based string class optimizing performance and flexibility
@@ -298,6 +297,11 @@ private:
     Zbase& operator=   (int) = delete; //detect usage errors by creating an intentional ambiguity with "Char"
     Zbase& operator+=  (int) = delete; //
     void   push_back   (int) = delete; //
+    Zbase              (std::nullptr_t) = delete;
+    Zbase(size_t count, std::nullptr_t) = delete;
+    Zbase& operator=   (std::nullptr_t) = delete;
+    Zbase& operator+=  (std::nullptr_t) = delete;
+    void   push_back   (std::nullptr_t) = delete;
 
     Char* rawStr_;
 };

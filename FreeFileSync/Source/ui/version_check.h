@@ -29,7 +29,7 @@ std::shared_ptr<const UpdateCheckResultPrep> automaticUpdateCheckPrepare(wxWindo
 //run on worker thread: (long-running part of the check)
 std::shared_ptr<const UpdateCheckResult> automaticUpdateCheckRunAsync(const UpdateCheckResultPrep* resultPrep);
 //run on main thread:
-void automaticUpdateCheckEval(wxWindow* parent, time_t& lastUpdateCheck, std::string& lastOnlineVersion,
+void automaticUpdateCheckEval(wxWindow& parent, time_t& lastUpdateCheck, std::string& lastOnlineVersion,
                               const UpdateCheckResult* asyncResult);
 //----------------------------------------------------------------------------
 //call from main thread:

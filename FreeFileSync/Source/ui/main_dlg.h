@@ -76,11 +76,11 @@ private:
     void setGlobalCfgOnInit(const XmlGlobalSettings& globalSettings); //messes with Maximize(), window sizes, so call just once!
     XmlGlobalSettings getGlobalCfgBeforeExit(); //destructive "get" thanks to "Iconize(false), Maximize(false)"
 
-    bool loadConfiguration(const std::vector<Zstring>& filepaths); //return "true" if loaded successfully; "false" if cancelled or error
+    bool loadConfiguration(const std::vector<Zstring>& filepaths, bool ignoreBrokenConfig = false); //"false": error/cancel
 
-    bool trySaveConfig     (const Zstring* guiCfgPath); //return true if saved successfully
-    bool trySaveBatchConfig(const Zstring* batchCfgPath); //
-    bool saveOldConfig(); //return false on user abort
+    bool trySaveConfig     (const Zstring* guiCfgPath);   //
+    bool trySaveBatchConfig(const Zstring* batchCfgPath); //"false": error/cancel
+    bool saveOldConfig();                                 //
 
     void updateGlobalFilterButton();
 
@@ -162,6 +162,8 @@ private:
     void onCheckRows       (CheckRowsEvent&     event);
     void onSetSyncDirection(SyncDirectionEvent& event);
 
+    void swapSides();
+
     void onGridDoubleClickRim(zen::GridClickEvent& event, bool leftSide);
 
     void onGridLabelLeftClickRim(zen::GridLabelClickEvent& event, bool onLeft);
@@ -204,8 +206,10 @@ private:
     void onToggleLog            (wxCommandEvent& event) override;
     void onCompare              (wxCommandEvent& event) override;
     void onStartSync            (wxCommandEvent& event) override;
-    void onSwapSides            (wxCommandEvent& event) override;
     void onClose                (wxCloseEvent&   event) override;
+    void onSwapSides            (wxCommandEvent& event) override { onSwapSides(static_cast<wxEvent&>(event)); }
+    void onSwapSidesMouse       (wxMouseEvent&   event) override { onSwapSides(static_cast<wxEvent&>(event)); }
+    void onSwapSides            (wxEvent& event);
 
     void startSyncForSelecction(const std::vector<FileSystemObject*>& selection);
 

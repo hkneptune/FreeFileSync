@@ -180,10 +180,7 @@ wxImage zen::stackImages(const wxImage& img1, const wxImage& img2, ImageStackLay
 
 wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const wxColor& col, ImageStackAlignment textAlign)
 {
-    //assert(!contains(text, L"&")); //accelerator keys not supported here
-    wxString textFmt = replaceCpy(text, L"&", L"", false);
-
-    const std::vector<std::pair<wxString, wxSize>> lineInfo = getTextExtentInfo(textFmt, font);
+    const std::vector<std::pair<wxString, wxSize>> lineInfo = getTextExtentInfo(text, font);
 
     int maxWidth   = 0;
     int lineHeight = 0;

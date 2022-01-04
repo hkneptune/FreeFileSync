@@ -5,10 +5,14 @@
 // *****************************************************************************
 
 #include "http.h"
-    #include "socket.h"
-    #include "open_ssl.h"
+
+    #include <libcurl/curl_wrap.h> //DON'T include <curl/curl.h> directly!
+    #include "stream_buffer.h"
+    #include "thread.h"
 
 using namespace zen;
+
+const std::chrono::seconds HTTP_ACCESS_TIME_OUT(20);
 
 
 
@@ -17,15 +21,15 @@ class HttpInputStream::Impl
 {
 public:
     Impl(const Zstring& url,
-         const std::string* postBuf /*issue POST if bound, GET otherwise*/,
+         const std::string* postBuf, //issue POST if bound, GET otherwise
          const std::string& contentType, //required for POST
-         bool disableGetCache /*not relevant for POST (= never cached)*/,
+         bool disableGetCache, //not relevant for POST (= never cached)
          const Zstring& userAgent,
-         const Zstring* caCertFilePath /*optional: enable certificate validation*/,
-         const IoCallback& notifyUnbufferedIO) : //throw SysError, X
+         const Zstring& caCertFilePath, //optional: enable certificate validation
+         const IoCallback& notifyUnbufferedIO /*throw X*/) : //throw SysError, X
         notifyUnbufferedIO_(notifyUnbufferedIO)
     {
-        ZEN_ON_SCOPE_FAIL(cleanup(); /*destructor call would lead to member double clean-up!!!*/);
+        ZEN_ON_SCOPE_FAIL(cleanup()); //destructor call would lead to member double clean-up!!!
 
         //may be sending large POST: call back first
         if (notifyUnbufferedIO_) notifyUnbufferedIO_(0); //throw X
@@ -43,76 +47,95 @@ public:
             throw SysError(L"URL uses unexpected protocol.");
         }();
 
-        assert(postBuf || contentType.empty());
-
         std::map<std::string, std::string, LessAsciiNoCase> headers;
 
+        assert(postBuf || contentType.empty());
         if (postBuf && !contentType.empty())
             headers["Content-Type"] = contentType;
 
-        if (useTls) //HTTP default port: 443, see %WINDIR%\system32\drivers\etc\services
+        if (!postBuf /*=> HTTP GET*/ && disableGetCache) //libcurl doesn't cache internally, so it should be enough to set this header
+            headers["Cache-Control"] = "no-cache"; //= similar to WinInet's INTERNET_FLAG_RELOAD
+        //caveat: INTERNET_FLAG_RELOAD issues "Pragma: no-cache" instead if "request is going through a proxy"
+
+
+        auto promiseHeader = std::make_shared<std::promise<std::string>>();
+        std::future<std::string> futHeader = promiseHeader->get_future();
+
+        worker_ = InterruptibleThread([asyncStreamOut = this->asyncStreamIn_, promiseHeader, headers = std::move(headers),
+                                                      server, useTls, caCertFilePath, userAgent = utfTo<std::string>(userAgent),
+                                                      postBuf = postBuf ? std::optional<std::string>(*postBuf) : std::nullopt, //[!] life-time!
+                                                      serverRelPath = utfTo<std::string>(page)]
         {
-            socket_ = std::make_unique<Socket>(server, Zstr("https")); //throw SysError
-            tlsCtx_ = std::make_unique<TlsContext>(socket_->get(), server, caCertFilePath); //throw SysError
-        }
-        else //HTTP default port: 80, see %WINDIR%\system32\drivers\etc\services
-            socket_ = std::make_unique<Socket>(server, Zstr("http")); //throw SysError
+            setCurrentThreadName(Zstr("HttpInputStream ") + server);
 
-        //we don't support "chunked and gzip transfer encoding" => HTTP 1.0 => no "Content-Length" support!
-        headers["Host"      ] = utfTo<std::string>(server); //only required for HTTP/1.1 but a few servers expect it even for HTTP/1.0
-        headers["User-Agent"] = utfTo<std::string>(userAgent);
-        headers["Accept"    ] = "*/*"; //won't hurt?
-
-        if (!postBuf /*HTTP GET*/ && disableGetCache)
-            headers["Pragma"] = "no-cache"; //HTTP 1.0 only! superseeded by "Cache-Control"
-
-        if (postBuf)
-            headers["Content-Length"] = numberTo<std::string>(postBuf->size());
-
-        //https://www.w3.org/Protocols/HTTP/1.0/spec.html#Request-Line
-        std::string msg = (postBuf ? "POST " : "GET ") + utfTo<std::string>(page) + " HTTP/1.0\r\n";
-        for (const auto& [name, value] : headers)
-            msg += name + ": " + value + "\r\n";
-        msg += "\r\n";
-        if (postBuf)
-            msg += *postBuf;
-
-        //send request
-        for (size_t bytesToSend = msg.size(); bytesToSend > 0;)
-            bytesToSend -= tlsCtx_ ?
-                           tlsCtx_->tryWrite(             &*(msg.end() - bytesToSend), bytesToSend) : //throw SysError
-                           tryWriteSocket(socket_->get(), &*(msg.end() - bytesToSend), bytesToSend);  //throw SysError
-
-        //shutdownSocketSend(socket_->get()); //throw SysError
-        //NO! Sending TCP FIN before receiving response (aka "TCP Half Closed") is not always supported! e.g. Cloudflare server will immediately end connection: recv() returns 0.
-        //"clients SHOULD NOT half-close their TCP connections": https://github.com/httpwg/http-core/issues/22
-
-        //receive response:
-        std::string headBuf;
-        const std::string headerDelim = "\r\n\r\n";
-        for (std::string buf;;)
-        {
-            const size_t blockSize = std::min(static_cast<size_t>(1024), memBuf_.size()); //smaller block size: try to only read header part
-            buf.resize(buf.size() + blockSize);
-            const size_t bytesReceived = tryRead(&*(buf.end() - blockSize), blockSize); //throw SysError
-            buf.resize(buf.size() - (blockSize - bytesReceived)); //caveat: unsigned arithmetics
-
-            if (contains(buf, headerDelim))
+            bool headerReceived = false;
+            try
             {
-                headBuf                   = beforeFirst(buf, headerDelim, IfNotFoundReturn::none);
-                const std::string bodyBuf = afterFirst (buf, headerDelim, IfNotFoundReturn::none);
-                //put excess bytes into instance buffer for body retrieval
-                assert(bufPos_ == 0 && bufPosEnd_ == 0);
-                bufPosEnd_ = bodyBuf.size();
-                std::copy(bodyBuf.begin(), bodyBuf.end(), reinterpret_cast<char*>(&memBuf_[0]));
-                break;
+                std::vector<std::string> curlHeaders;
+                for (const auto& [name, value] : headers)
+                    curlHeaders.push_back(name + ": " + value);
+
+                std::vector<CurlOption> extraOptions {{CURLOPT_USERAGENT, userAgent.c_str()}};
+                //CURLOPT_FOLLOWLOCATION already off by default :)
+                if (postBuf)
+                {
+                    extraOptions.emplace_back(CURLOPT_POSTFIELDS,          postBuf->c_str());
+                    extraOptions.emplace_back(CURLOPT_POSTFIELDSIZE_LARGE, postBuf->size()); //postBuf not necessarily null-terminated!                    
+                }
+
+                //carefully with these callbacks! First receive HTTP header without blocking,
+                //and only then allow AsyncStreamBuffer::write() which can block!
+
+                std::string headerBuf;
+                auto onHeaderData = [&](const std::string_view& headerLine)
+                {
+                    if (headerReceived)
+                        throw SysError(L"Unexpected header data after end of HTTP header.");
+
+                    //"The callback will be called once for each header and only complete header lines are passed on to the callback" (including \r\n at the end)
+                    headerBuf += headerLine;
+
+                    if (headerLine == "\r\n")
+                    {
+                        headerReceived = true;
+                        promiseHeader->set_value(std::move(headerBuf));
+                    }
+                };
+
+                HttpSession httpSession(server, useTls, caCertFilePath, HTTP_ACCESS_TIME_OUT); //throw SysError
+
+                auto writeResponse = [&](std::span<const char> buf)
+                {
+                    if (!headerReceived)
+                        throw SysError(L"Received HTTP body without header.");
+
+                    return asyncStreamOut->write(buf.data(), buf.size()); //throw ThreadStopRequest
+                };
+
+                httpSession.perform(serverRelPath, //throw SysError, ThreadStopRequest
+                                    curlHeaders, extraOptions,
+                                    writeResponse /*throw ThreadStopRequest*/,
+                                    nullptr /*readRequest*/,
+                                    onHeaderData /*throw SysError*/);
+
+                if (!headerReceived)
+                    throw SysError(L"HTTP response is missing header.");
+
+                asyncStreamOut->closeStream();
             }
-            if (bytesReceived == 0)
-                break;
-        }
-        //parse header
-        const std::string statusBuf  = beforeFirst(headBuf, "\r\n", IfNotFoundReturn::all);
-        const std::string headersBuf = afterFirst (headBuf, "\r\n", IfNotFoundReturn::none);
+            catch (SysError&) //let ThreadStopRequest pass through!
+            {
+                if (!headerReceived)
+                    promiseHeader->set_exception(std::current_exception());
+
+                asyncStreamOut->setWriteError(std::current_exception());
+            }
+        });
+
+        const std::string headBuf = futHeader.get(); //throw SysError
+        //parse header: https://www.w3.org/Protocols/HTTP/1.0/spec.html#Request-Line
+        const std::string& statusBuf  = beforeFirst(headBuf, "\r\n", IfNotFoundReturn::all);
+        const std::string& headersBuf = afterFirst (headBuf, "\r\n", IfNotFoundReturn::none);
 
         const std::vector<std::string> statusItems = split(statusBuf, ' ', SplitOnEmpty::allow); //HTTP-Version SP Status-Code SP Reason-Phrase CRLF
         if (statusItems.size() < 2 || !startsWith(statusItems[0], "HTTP/"))
@@ -124,16 +147,15 @@ public:
             responseHeaders_[trimCpy(beforeFirst(line, ':', IfNotFoundReturn::all))] =
                 /**/         trimCpy(afterFirst (line, ':', IfNotFoundReturn::none));
 
-        //try to get "Content-Length" header if available
-        if (const std::string* value = getHeader("Content-Length"))
-            contentRemaining_ = stringTo<int64_t>(*value) - (bufPosEnd_ - bufPos_);
+        /* let's NOT consider "Content-Length" header:
+            - may be unavailable ("Transfer-Encoding: chunked")
+            - may refer to compressed data size ("Content-Encoding: gzip") */
 
         //let's not get too finicky: at least report the logical amount of bytes sent/received (excluding HTTP headers)
         if (notifyUnbufferedIO_) notifyUnbufferedIO_(postBuf ? postBuf->size() : 0); //throw X
     }
 
     ~Impl() { cleanup(); }
-
 
     const int getStatusCode() const { return statusCode_; }
 
@@ -145,79 +167,37 @@ public:
 
     size_t read(void* buffer, size_t bytesToRead) //throw SysError, X; return "bytesToRead" bytes unless end of stream!
     {
-        const size_t blockSize = getBlockSize();
-        assert(memBuf_.size() >= blockSize);
-        assert(bufPos_ <= bufPosEnd_ && bufPosEnd_ <= memBuf_.size());
-
-        auto       it    = static_cast<std::byte*>(buffer);
-        const auto itEnd = it + bytesToRead;
-        for (;;)
-        {
-            const size_t junkSize = std::min(static_cast<size_t>(itEnd - it), bufPosEnd_ - bufPos_);
-            std::memcpy(it, &memBuf_[0] + bufPos_, junkSize);
-            bufPos_ += junkSize;
-            it      += junkSize;
-
-            if (it == itEnd)
-                break;
-            //--------------------------------------------------------------------
-            const size_t bytesRead = tryRead(&memBuf_[0], blockSize); //throw SysError; may return short, only 0 means EOF! => CONTRACT: bytesToRead > 0
-            bufPos_ = 0;
-            bufPosEnd_ = bytesRead;
-
-            if (notifyUnbufferedIO_) notifyUnbufferedIO_(bytesRead); //throw X
-
-            if (bytesRead == 0) //end of file
-                break;
-        }
-        return it - static_cast<std::byte*>(buffer);
+        const size_t bytesRead = asyncStreamIn_->read(buffer, bytesToRead); //throw SysError
+        reportBytesProcessed(); //throw X
+        return bytesRead;
+        //no need for asyncStreamIn_->checkWriteErrors(): once end of stream is reached, asyncStreamOut->closeStream() was called => no errors occured
     }
 
     size_t getBlockSize() const { return 64 * 1024; }
 
 private:
-    size_t tryRead(void* buffer, size_t bytesToRead) //throw SysError; may return short, only 0 means EOF!
+    Impl           (const Impl&) = delete;
+    Impl& operator=(const Impl&) = delete;
+
+    void reportBytesProcessed() //throw X
     {
-        assert(bytesToRead <= getBlockSize()); //block size might be 1000 while reading HTTP header
-
-        if (contentRemaining_ >= 0)
-        {
-            if (contentRemaining_ == 0)
-                return 0;
-            bytesToRead = static_cast<size_t>(std::min(static_cast<int64_t>(bytesToRead), contentRemaining_)); //[!] contentRemaining_ > 4 GB possible!
-        }
-        const size_t bytesReceived = tlsCtx_ ?
-                                     tlsCtx_->tryRead(                buffer, bytesToRead) : //throw SysError; may return short, only 0 means EOF!
-                                     tryReadSocket   (socket_->get(), buffer, bytesToRead);  //
-        if (contentRemaining_ >= 0)
-            contentRemaining_ -= bytesReceived;
-
-        if (bytesReceived == 0 && contentRemaining_ > 0)
-            throw SysError(formatSystemError("HttpInputStream::tryRead", L"", L"Incomplete server response: " +
-                                             numberTo<std::wstring>(contentRemaining_) + L" more bytes expected."));
-
-        return bytesReceived; //"zero indicates end of file"
+        const int64_t totalBytesDownloaded = asyncStreamIn_->getTotalBytesWritten();
+        if (notifyUnbufferedIO_) notifyUnbufferedIO_(totalBytesDownloaded - totalBytesReported_); //throw X
+        totalBytesReported_ = totalBytesDownloaded;
     }
 
     void cleanup()
     {
+        asyncStreamIn_->setReadError(std::make_exception_ptr(ThreadStopRequest()));
     }
 
-    Impl           (const Impl&) = delete;
-    Impl& operator=(const Impl&) = delete;
-
-    std::unique_ptr<Socket> socket_;     //*bound* after constructor has run
-    std::unique_ptr<TlsContext> tlsCtx_; //optional: support HTTPS
+    std::shared_ptr<AsyncStreamBuffer> asyncStreamIn_ = std::make_shared<AsyncStreamBuffer>(512 * 1024);
+    InterruptibleThread worker_;
+    int64_t totalBytesReported_ = 0;
     int statusCode_ = 0;
     std::map<std::string, std::string, LessAsciiNoCase> responseHeaders_;
 
-    int64_t contentRemaining_ = -1; //consider "Content-Length" if available
-
     const IoCallback notifyUnbufferedIO_; //throw X
-
-    std::vector<std::byte> memBuf_ = std::vector<std::byte>(getBlockSize());
-    size_t bufPos_    = 0; //buffered I/O; see file_io.cpp
-    size_t bufPosEnd_ = 0; //
 };
 
 
@@ -238,7 +218,7 @@ std::unique_ptr<HttpInputStream::Impl> sendHttpRequestImpl(const Zstring& url,
                                                            const std::string* postBuf /*issue POST if bound, GET otherwise*/,
                                                            const std::string& contentType, //required for POST
                                                            const Zstring& userAgent,
-                                                           const Zstring* caCertFilePath /*optional: enable certificate validation*/,
+                                                           const Zstring& caCertFilePath /*optional: enable certificate validation*/,
                                                            const IoCallback& notifyUnbufferedIO) //throw SysError, X
 {
     Zstring urlRed = url;
@@ -338,14 +318,14 @@ std::vector<std::pair<std::string, std::string>> zen::xWwwFormUrlDecode(const st
 }
 
 
-HttpInputStream zen::sendHttpGet(const Zstring& url, const Zstring& userAgent, const Zstring* caCertFilePath, const IoCallback& notifyUnbufferedIO) //throw SysError, X
+HttpInputStream zen::sendHttpGet(const Zstring& url, const Zstring& userAgent, const Zstring& caCertFilePath, const IoCallback& notifyUnbufferedIO) //throw SysError, X
 {
     return sendHttpRequestImpl(url, nullptr /*postBuf*/, "" /*contentType*/, userAgent, caCertFilePath, notifyUnbufferedIO); //throw SysError, X, X
 }
 
 
 HttpInputStream zen::sendHttpPost(const Zstring& url, const std::vector<std::pair<std::string, std::string>>& postParams,
-                                  const Zstring& userAgent, const Zstring* caCertFilePath, const IoCallback& notifyUnbufferedIO) //throw SysError, X
+                                  const Zstring& userAgent, const Zstring& caCertFilePath, const IoCallback& notifyUnbufferedIO) //throw SysError, X
 {
     return sendHttpPost(url, xWwwFormUrlEncode(postParams), "application/x-www-form-urlencoded", userAgent, caCertFilePath, notifyUnbufferedIO); //throw SysError, X
 }
@@ -353,7 +333,7 @@ HttpInputStream zen::sendHttpPost(const Zstring& url, const std::vector<std::pai
 
 
 HttpInputStream zen::sendHttpPost(const Zstring& url, const std::string& postBuf, const std::string& contentType,
-                                  const Zstring& userAgent, const Zstring* caCertFilePath, const IoCallback& notifyUnbufferedIO) //throw SysError, X
+                                  const Zstring& userAgent, const Zstring& caCertFilePath, const IoCallback& notifyUnbufferedIO) //throw SysError, X
 {
     return sendHttpRequestImpl(url, &postBuf, contentType, userAgent, caCertFilePath, notifyUnbufferedIO); //throw SysError, X
 }
@@ -368,7 +348,7 @@ bool zen::internetIsAlive() //noexcept
                                                                 "" /*contentType*/,
                                                                 true /*disableGetCache*/,
                                                                 Zstr("FreeFileSync"),
-                                                                nullptr /*caCertFilePath*/,
+                                                                Zstring() /*caCertFilePath*/,
                                                                 nullptr /*notifyUnbufferedIO*/); //throw SysError
         const int statusCode = response->getStatusCode();
 
@@ -386,72 +366,72 @@ std::wstring zen::formatHttpError(int sc)
     {
         switch (sc)
         {
-			//*INDENT-OFF*
-			case 300: return L"Multiple choices.";
-			case 301: return L"Moved permanently.";
-			case 302: return L"Moved temporarily.";
-			case 303: return L"See other";
-			case 304: return L"Not modified.";
-			case 305: return L"Use proxy.";
-			case 306: return L"Switch proxy.";
-			case 307: return L"Temporary redirect.";
-			case 308: return L"Permanent redirect.";
+            //*INDENT-OFF*
+            case 300: return L"Multiple choices.";
+            case 301: return L"Moved permanently.";
+            case 302: return L"Moved temporarily.";
+            case 303: return L"See other";
+            case 304: return L"Not modified.";
+            case 305: return L"Use proxy.";
+            case 306: return L"Switch proxy.";
+            case 307: return L"Temporary redirect.";
+            case 308: return L"Permanent redirect.";
 
-			case 400: return L"Bad request.";
-			case 401: return L"Unauthorized.";
-			case 402: return L"Payment required.";
-			case 403: return L"Forbidden.";
-			case 404: return L"Not found.";
-			case 405: return L"Method not allowed.";
-			case 406: return L"Not acceptable.";
-			case 407: return L"Proxy authentication required.";
-			case 408: return L"Request timeout.";
-			case 409: return L"Conflict.";
-			case 410: return L"Gone.";
-			case 411: return L"Length required.";
-			case 412: return L"Precondition failed.";
-			case 413: return L"Payload too large.";
-			case 414: return L"URI too long.";
-			case 415: return L"Unsupported media type.";
-			case 416: return L"Range not satisfiable.";
-			case 417: return L"Expectation failed.";
-			case 418: return L"I'm a teapot.";
-			case 421: return L"Misdirected request.";
-			case 422: return L"Unprocessable entity.";
-			case 423: return L"Locked.";
-			case 424: return L"Failed dependency.";
-			case 425: return L"Too early.";
-			case 426: return L"Upgrade required.";
-			case 428: return L"Precondition required.";
-			case 429: return L"Too many requests.";
-			case 431: return L"Request header fields too large.";
-			case 451: return L"Unavailable for legal reasons.";
+            case 400: return L"Bad request.";
+            case 401: return L"Unauthorized.";
+            case 402: return L"Payment required.";
+            case 403: return L"Forbidden.";
+            case 404: return L"Not found.";
+            case 405: return L"Method not allowed.";
+            case 406: return L"Not acceptable.";
+            case 407: return L"Proxy authentication required.";
+            case 408: return L"Request timeout.";
+            case 409: return L"Conflict.";
+            case 410: return L"Gone.";
+            case 411: return L"Length required.";
+            case 412: return L"Precondition failed.";
+            case 413: return L"Payload too large.";
+            case 414: return L"URI too long.";
+            case 415: return L"Unsupported media type.";
+            case 416: return L"Range not satisfiable.";
+            case 417: return L"Expectation failed.";
+            case 418: return L"I'm a teapot.";
+            case 421: return L"Misdirected request.";
+            case 422: return L"Unprocessable entity.";
+            case 423: return L"Locked.";
+            case 424: return L"Failed dependency.";
+            case 425: return L"Too early.";
+            case 426: return L"Upgrade required.";
+            case 428: return L"Precondition required.";
+            case 429: return L"Too many requests.";
+            case 431: return L"Request header fields too large.";
+            case 451: return L"Unavailable for legal reasons.";
 
-			case 500: return L"Internal server error.";
-			case 501: return L"Not implemented.";
-			case 502: return L"Bad gateway.";
-			case 503: return L"Service unavailable.";
-			case 504: return L"Gateway timeout.";
-			case 505: return L"HTTP version not supported.";
-			case 506: return L"Variant also negotiates.";
-			case 507: return L"Insufficient storage.";
-			case 508: return L"Loop detected.";
-			case 510: return L"Not extended.";
-			case 511: return L"Network authentication required.";
+            case 500: return L"Internal server error.";
+            case 501: return L"Not implemented.";
+            case 502: return L"Bad gateway.";
+            case 503: return L"Service unavailable.";
+            case 504: return L"Gateway timeout.";
+            case 505: return L"HTTP version not supported.";
+            case 506: return L"Variant also negotiates.";
+            case 507: return L"Insufficient storage.";
+            case 508: return L"Loop detected.";
+            case 510: return L"Not extended.";
+            case 511: return L"Network authentication required.";
 
-			//Cloudflare errors regarding origin server:
-			case 520: return L"Unknown error (Cloudflare)";
-			case 521: return L"Web server is down (Cloudflare)";
-			case 522: return L"Connection timed out (Cloudflare)";
-			case 523: return L"Origin is unreachable (Cloudflare)";
-			case 524: return L"A timeout occurred (Cloudflare)";
-			case 525: return L"SSL handshake failed (Cloudflare)";
-			case 526: return L"Invalid SSL certificate (Cloudflare)";
-			case 527: return L"Railgun error (Cloudflare)";
-			case 530: return L"Origin DNS error (Cloudflare)";
+            //Cloudflare errors regarding origin server:
+            case 520: return L"Unknown error (Cloudflare)";
+            case 521: return L"Web server is down (Cloudflare)";
+            case 522: return L"Connection timed out (Cloudflare)";
+            case 523: return L"Origin is unreachable (Cloudflare)";
+            case 524: return L"A timeout occurred (Cloudflare)";
+            case 525: return L"SSL handshake failed (Cloudflare)";
+            case 526: return L"Invalid SSL certificate (Cloudflare)";
+            case 527: return L"Railgun error (Cloudflare)";
+            case 530: return L"Origin DNS error (Cloudflare)";
 
-			default:  return L"";
-			//*INDENT-ON*
+            default:  return L"";
+            //*INDENT-ON*
         }
     }();
 

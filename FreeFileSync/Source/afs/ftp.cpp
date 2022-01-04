@@ -334,13 +334,13 @@ public:
         if (sessionId_.port > 0)
             options.emplace_back(CURLOPT_PORT, static_cast<long>(sessionId_.port));
 
-        options.emplace_back(CURLOPT_NOSIGNAL, 1L); //thread-safety: https://curl.haxx.se/libcurl/c/threadsafe.html
+        options.emplace_back(CURLOPT_NOSIGNAL, 1); //thread-safety: https://curl.haxx.se/libcurl/c/threadsafe.html
 
         options.emplace_back(CURLOPT_CONNECTTIMEOUT, timeoutSec);
 
         //CURLOPT_TIMEOUT: "Since this puts a hard limit for how long time a request is allowed to take, it has limited use in dynamic use cases with varying transfer times."
         options.emplace_back(CURLOPT_LOW_SPEED_TIME, timeoutSec);
-        options.emplace_back(CURLOPT_LOW_SPEED_LIMIT, 1L); //[bytes], can't use "0" which means "inactive", so use some low number
+        options.emplace_back(CURLOPT_LOW_SPEED_LIMIT, 1); //[bytes], can't use "0" which means "inactive", so use some low number
 
         //unlike CURLOPT_TIMEOUT, this one is NOT a limit on the total transfer time
         options.emplace_back(CURLOPT_FTP_RESPONSE_TIMEOUT, timeoutSec); //== alias of CURLOPT_SERVER_RESPONSE_TIMEOUT
@@ -348,7 +348,7 @@ public:
         //CURLOPT_ACCEPTTIMEOUT_MS? => only relevant for "active" FTP connections
 
         //long-running file uploads require us to send keep-alives for the TCP control connection: https://freefilesync.org/forum/viewtopic.php?t=6928
-        options.emplace_back(CURLOPT_TCP_KEEPALIVE, 1L);
+        options.emplace_back(CURLOPT_TCP_KEEPALIVE, 1);
 
 
         std::optional<SysError> callbackException;
@@ -445,14 +445,14 @@ public:
         options.emplace_back(CURLOPT_CAINFO, "cacert.pem"); //hopefully latest version from https://curl.haxx.se/docs/caextract.html
         //libcurl forwards this char-string to OpenSSL as is, which (thank god) accepts UTF8
 #else
-        options.emplace_back(CURLOPT_CAINFO, 0L); //be explicit: "even when [CURLOPT_SSL_VERIFYPEER] is disabled [...] curl may still load the certificate file specified in CURLOPT_CAINFO."
+        options.emplace_back(CURLOPT_CAINFO, 0); //be explicit: "even when [CURLOPT_SSL_VERIFYPEER] is disabled [...] curl may still load the certificate file specified in CURLOPT_CAINFO."
 
         //check if server certificate can be trusted? (Default: 1L)
         //  => may fail with: "CURLE_PEER_FAILED_VERIFICATION: SSL certificate problem: certificate has expired"
-        options.emplace_back(CURLOPT_SSL_VERIFYPEER, 0L);
+        options.emplace_back(CURLOPT_SSL_VERIFYPEER, 0);
         //check that server name matches the name in the certificate? (Default: 2L)
         //  => may fail with: "CURLE_PEER_FAILED_VERIFICATION: SSL: no alternative certificate subject name matches target host name 'freefilesync.org'"
-        options.emplace_back(CURLOPT_SSL_VERIFYHOST, 0L);
+        options.emplace_back(CURLOPT_SSL_VERIFYHOST, 0);
 #endif
         if (sessionId_.useTls) //https://tools.ietf.org/html/rfc4217
         {

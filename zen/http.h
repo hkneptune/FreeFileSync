@@ -13,10 +13,8 @@
 
 namespace zen
 {
-/*
-    - thread-safe! (Window/Linux/macOS)
-    - Linux/macOS: init OpenSSL before use!
-*/
+/*  - thread-safe! (Window/Linux/macOS)
+    - Linux/macOS: init libcurl before use!   */
 class HttpInputStream
 {
 public:
@@ -38,19 +36,19 @@ private:
 
 HttpInputStream sendHttpGet(const Zstring& url,
                             const Zstring& userAgent,
-                            const Zstring* caCertFilePath /*optional: enable certificate validation*/,
+                            const Zstring& caCertFilePath /*optional: enable certificate validation*/,
                             const IoCallback& notifyUnbufferedIO /*throw X*/); //throw SysError, X
 
 HttpInputStream sendHttpPost(const Zstring& url,
                              const std::vector<std::pair<std::string, std::string>>& postParams,
                              const Zstring& userAgent,
-                             const Zstring* caCertFilePath /*optional: enable certificate validation*/,
+                             const Zstring& caCertFilePath /*optional: enable certificate validation*/,
                              const IoCallback& notifyUnbufferedIO /*throw X*/); //throw SysError, X
 
 HttpInputStream sendHttpPost(const Zstring& url,
                              const std::string& postBuf, const std::string& contentType,
                              const Zstring& userAgent,
-                             const Zstring* caCertFilePath /*optional: enable certificate validation*/,
+                             const Zstring& caCertFilePath /*optional: enable certificate validation*/,
                              const IoCallback& notifyUnbufferedIO /*throw X*/); //throw SysError, X
 
 bool internetIsAlive(); //noexcept

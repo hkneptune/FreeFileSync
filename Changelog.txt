@@ -1,9 +1,24 @@
+FreeFileSync 11.16 [2022-01-02]
+-------------------------------
+Allow to select and remove invalid config file
+Migrated all HTTPS requests to use libcurl (Linux, macOS)
+Set keyboard focus on config panel after startup
+Added computer name to log file trailer
+Context menu instead of confirmation dialog for swap sides
+Fixed config selection lost after auto-cleaning obsolete rows
+Install app files with owner set to root (Linux)
+Don't override keyboard shortcut "CTRL + W" (macOS)
+Migrated key conversion routines deprecated in OpenSSL 3.0
+Boxed app icon to fit OS theme (macOS)
+Fixed manual retry after automatic update check error
+Fixed missing ampersands in middle grid tooltip
+
+
 FreeFileSync 11.15 [2021-12-03]
 -------------------------------
 Play sound reminder when waiting for user confirmation
 Enhanced crash diagnostics with known triggers
 Defer reporting third-party incompatibilities until after crashing
-Support running FreeFileSync from Dokany-based encrypted volumes
 Fixed Server 2019 not being detected for log file
 Use native representation for modified config (macOS)
 Improved WinMerge detection for external app integration

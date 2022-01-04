@@ -1548,7 +1548,6 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
             inOpt["ConfirmExternalCommandMassInvoke"].attribute("Show", cfg.confirmDlgs.confirmCommandMassInvoke);
         else
             inOpt["ConfirmCommandMassInvoke"].attribute("Show", cfg.confirmDlgs.confirmCommandMassInvoke);
-        inOpt["ConfirmSwapSides"              ].attribute("Show", cfg.confirmDlgs.confirmSwapSides);
         inOpt["WarnFolderNotExisting"         ].attribute("Show", cfg.warnDlgs.warnFolderNotExisting);
         inOpt["WarnFoldersDifferInCase"       ].attribute("Show", cfg.warnDlgs.warnFoldersDifferInCase);
         inOpt["WarnUnresolvedConflicts"       ].attribute("Show", cfg.warnDlgs.warnUnresolvedConflicts);
@@ -2351,7 +2350,6 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
     outOpt["ConfirmStartSync"              ].attribute("Show", cfg.confirmDlgs.confirmSyncStart);
     outOpt["ConfirmSaveConfig"             ].attribute("Show", cfg.confirmDlgs.confirmSaveConfig);
     outOpt["ConfirmCommandMassInvoke"      ].attribute("Show", cfg.confirmDlgs.confirmCommandMassInvoke);
-    outOpt["ConfirmSwapSides"              ].attribute("Show", cfg.confirmDlgs.confirmSwapSides);
     outOpt["WarnFolderNotExisting"         ].attribute("Show", cfg.warnDlgs.warnFolderNotExisting);
     outOpt["WarnFoldersDifferInCase"       ].attribute("Show", cfg.warnDlgs.warnFoldersDifferInCase);
     outOpt["WarnUnresolvedConflicts"       ].attribute("Show", cfg.warnDlgs.warnUnresolvedConflicts);

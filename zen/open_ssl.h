@@ -36,23 +36,6 @@ std::string convertRsaKey(const std::string& keyStream, RsaStreamType typeFrom, 
 
 bool isPuttyKeyStream(const std::string& keyStream);
 std::string convertPuttyKeyToPkix(const std::string& keyStream, const std::string& passphrase); //throw SysError
-
-
-class TlsContext
-{
-public:
-    TlsContext(int socket, //throw SysError
-               const Zstring& server,
-               const Zstring* caCertFilePath /*optional: enable certificate validation*/);
-    ~TlsContext();
-
-    size_t tryRead(       void* buffer, size_t bytesToRead ); //throw SysError; may return short, only 0 means EOF!
-    size_t tryWrite(const void* buffer, size_t bytesToWrite); //throw SysError; may return short! CONTRACT: bytesToWrite > 0
-
-private:
-    class Impl;
-    const std::unique_ptr<Impl> pimpl_;
-};
 }
 
 #endif //OPEN_SSL_H_801974580936508934568792347506

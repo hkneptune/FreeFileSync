@@ -28,7 +28,7 @@ Zstring zen::getLoginUser() //throw FileError
 {
     const uid_t userIdNo = ::getuid(); //never fails
 
-    if (userIdNo != 0) //nofail; root(0) => consider as request for elevation, NOT impersonation
+    if (userIdNo != 0) //nofail; non-root
     {
         std::vector<char> buf(std::max<long>(10000, ::sysconf(_SC_GETPW_R_SIZE_MAX))); //::sysconf may return long(-1)
         passwd buf2 = {};
@@ -45,7 +45,7 @@ Zstring zen::getLoginUser() //throw FileError
 
         return pwsEntry->pw_name;
     }
-    //else root(0): what now!?
+    //else: root(0) => consider as request for elevation, NOT impersonation!
 
     //getlogin() is smarter than simply evaluating $LOGNAME! even in contexts without
     //$LOGNAME, e.g. "sudo su" on Ubuntu, it returns the correct non-root user!
@@ -69,6 +69,29 @@ Zstring zen::getLoginUser() //throw FileError
     //apparently the current user really IS root: https://freefilesync.org/forum/viewtopic.php?t=8405
     return "root";
 
+}
+
+
+Zstring zen::getUserDescription() //throw FileError
+{
+    const Zstring userName     = getLoginUser(); //throw FileError
+    const Zstring computerName = []() -> Zstring //throw FileError
+    {
+        std::vector<char> buf(10000);
+        if (::gethostname(&buf[0], buf.size()) != 0)
+            THROW_LAST_FILE_ERROR(_("Cannot get process information."), "gethostname");
+
+        Zstring hostName = &buf[0];
+        if (endsWithAsciiNoCase(hostName, ".local")) //strip fluff (macOS) => apparently not added on Linux?
+            hostName = beforeLast(hostName, '.', IfNotFoundReturn::none);
+
+        return hostName;
+    }();
+
+    if (contains(getUpperCase(computerName), getUpperCase(userName)))
+        return userName; //no need for text duplication! e.g. "Zenju (Zenju-PC)"
+
+    return userName + Zstr(" (") + computerName + Zstr(')'); //e.g. "Admin (Zenju-PC)"
 }
 
 

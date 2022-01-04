@@ -110,7 +110,7 @@ std::string generateLogFooterTxt(const std::wstring& logFilePath, int logItemsTo
     return output += '\n' + std::string(SEPARATION_LINE_LEN, '_') + '\n' +
 
                      utfTo<std::string>(getOsDescription() + /*throw FileError*/ +
-                                        L" [" + utfTo<std::wstring>(getLoginUser()) /*throw FileError*/ + L']' +
+                                        L" - " + utfTo<std::wstring>(getUserDescription()) /*throw FileError*/ + 
                                         (!cm.model .empty() ? L" - " + cm.model  : L"") +
                                         (!cm.vendor.empty() ? L" - " + cm.vendor : L"") + L'\n' +
 
@@ -346,7 +346,7 @@ std::string generateLogFooterHtml(const std::wstring& logFilePath, int logItemsT
     <div style="font-size:small;">
         <img src="https://freefilesync.org/images/log/)" + osImage + R"(" width="24" height="24" alt="" style="vertical-align:middle;">
         <span style="vertical-align:middle;">)" + htmlTxt(getOsDescription()) + /*throw FileError*/ + 
-            " [" + htmlTxt(getLoginUser()) /*throw FileError*/ + ']' +
+            " &ndash; " + htmlTxt(getUserDescription()) /*throw FileError*/ + 
             (!cm.model .empty() ? " &ndash; " + htmlTxt(cm.model ) : "") +
             (!cm.vendor.empty() ? " &ndash; " + htmlTxt(cm.vendor) : "") + R"(</span>
     </div>

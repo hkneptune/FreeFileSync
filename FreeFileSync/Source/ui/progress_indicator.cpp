@@ -133,7 +133,7 @@ class CurveDataProgressSeparatorLine : public CurveData
 class CompareProgressPanel::Impl : public CompareProgressDlgGenerated
 {
 public:
-    Impl(wxFrame& parentWindow);
+    explicit Impl(wxFrame& parentWindow);
 
     void init(const Statistics& syncStat, bool ignoreErrors, size_t autoRetryCount); //constructor/destructor semantics, but underlying Window is reused
     void teardown();                                                                 //
@@ -889,7 +889,7 @@ dlgSizeBuf_(dlgSize)
 
     enumPostSyncAction_.add(PostSyncAction2::none, L"");
     if (parentFrame_) //enable EXIT option for gui mode sync
-        enumPostSyncAction_.add(PostSyncAction2::exit, replaceCpy(_("E&xit"), L"&", L"")); //reuse translation
+        enumPostSyncAction_.add(PostSyncAction2::exit, wxControl::RemoveMnemonics(_("E&xit"))); //reuse label translation
     enumPostSyncAction_.add(PostSyncAction2::sleep,    _("System: Sleep"));
     enumPostSyncAction_.add(PostSyncAction2::shutdown, _("System: Shut down"));
 
@@ -1228,7 +1228,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateStaticGui() //depends on "syn
     if (!syncStat_)
         return;
 
-    pnl_.m_staticTextPhase->SetLabel(getDialogPhaseText(*syncStat_, paused_));
+    pnl_.m_staticTextPhase->SetLabelText(getDialogPhaseText(*syncStat_, paused_));
     //pnl_.m_bitmapStatus->SetToolTip(); -> redundant
 
     const wxImage statusImage = [&]
@@ -1355,7 +1355,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult syncResult, 
     }();
     pnl_.m_bitmapStatus->SetBitmap(statusImage);
 
-    pnl_.m_staticTextPhase->SetLabel(getSyncResultLabel(syncResult));
+    pnl_.m_staticTextPhase->SetLabelText(getSyncResultLabel(syncResult));
     //pnl_.m_bitmapStatus->SetToolTip(); -> redundant
 
     //show status on Windows 7 taskbar

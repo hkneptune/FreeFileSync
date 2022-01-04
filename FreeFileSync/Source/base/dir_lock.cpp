@@ -182,7 +182,7 @@ LockInformation getLockInfoFromCurrentProcess() //throw FileError
 
     if (::getdomainname(&buffer[0], buffer.size()) != 0)
         THROW_LAST_FILE_ERROR(_("Cannot get process information."), "getdomainname");
-    lockInfo.computerName += &buffer[0];
+    lockInfo.computerName += &buffer[0]; //can be "(none)"!
 
     lockInfo.processId = ::getpid(); //never fails
 

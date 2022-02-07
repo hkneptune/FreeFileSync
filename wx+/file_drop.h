@@ -18,7 +18,7 @@ namespace zen
 {
 /*  register simple file drop event (without issue of freezing dialogs and without wxFileDropTarget overdesign)
     CAVEAT: a drop target window must not be directly or indirectly contained within a wxStaticBoxSizer until the following wxGTK bug
-    is fixed. According to wxWidgets release cycles this is expected to be: never https://trac.wxwidgets.org/ticket/2763
+    is fixed. According to wxWidgets release cycles this is expected to be: never https://github.com/wxWidgets/wxWidgets/issues/2763
 
     1. setup a window to emit EVENT_DROP_FILE:
         - simple file system paths:        setupFileDrop

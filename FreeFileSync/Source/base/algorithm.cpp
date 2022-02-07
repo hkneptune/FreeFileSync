@@ -1300,7 +1300,7 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
     const std::wstring txtCreatingFolder(_("Creating folder %x"       ));
     const std::wstring txtCreatingLink  (_("Creating symbolic link %x"));
 
-    auto copyItem = [&](const AbstractPath& targetPath, ItemStatReporter<>& statReporter, //throw FileError
+    auto copyItem = [&](const AbstractPath& targetPath, ItemStatReporter<ProcessCallback>& statReporter, //throw FileError
                         const std::function<void(const std::function<void()>& deleteTargetItem)>& copyItemPlain) //throw FileError
     {
         //start deleting existing target as required by copyFileTransactional():
@@ -1366,7 +1366,7 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
 
         [&](const FilePair& file)
         {
-            ItemStatReporter<> statReporter(1, file.getFileSize<side>(), callback);
+            ItemStatReporter statReporter(1, file.getFileSize<side>(), callback);
             notifyItemCopy(txtCreatingFile, AFS::getDisplayPath(targetPath));
 
             const FileAttributes attr = file.getAttributes<side>();
@@ -1375,7 +1375,6 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
             copyItem(targetPath, statReporter, [&](const std::function<void()>& deleteTargetItem) //throw FileError
             {
                 auto notifyUnbufferedIO = [&](int64_t bytesDelta)
-
                 {
                     statReporter.reportDelta(0, bytesDelta);
                     callback.requestUiUpdate(); //throw X
@@ -1390,7 +1389,7 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
 
         [&](const SymlinkPair& symlink)
         {
-            ItemStatReporter<> statReporter(1, 0, callback);
+            ItemStatReporter statReporter(1, 0, callback);
             notifyItemCopy(txtCreatingLink, AFS::getDisplayPath(targetPath));
 
             copyItem(targetPath, statReporter, [&](const std::function<void()>& deleteTargetItem) //throw FileError
@@ -1478,7 +1477,7 @@ void deleteFromGridAndHDOneSide(std::vector<FileSystemObject*>& rowsToDelete,
     for (FileSystemObject* fsObj : rowsToDelete) //all pointers are required(!) to be bound
         tryReportingError([&]
     {
-        ItemStatReporter<> statReporter(1, 0, callback);
+        ItemStatReporter statReporter(1, 0, callback);
 
         if (!fsObj->isEmpty<side>()) //element may be implicitly deleted, e.g. if parent folder was deleted first
         {
@@ -1761,23 +1760,23 @@ void TempFileBuffer::createTempFiles(const std::set<FileDescriptor>& workLoad, P
 
         tryReportingError([&]
         {
-            ItemStatReporter statReporter(1, descr.attr.fileSize, callback);
+            std::wstring statusMsg = replaceCpy(_("Creating file %x"), L"%x", fmtPath(tempFilePath));
+            callback.logInfo(statusMsg); //throw X
+            PercentStatReporter statReporter(std::move(statusMsg), descr.attr.fileSize, callback); //throw X
 
-            std::wstring msg = replaceCpy(_("Creating file %x"), L"%x", fmtPath(tempFilePath)); //throw X
-            callback.logInfo(msg);                 //throw X
-            callback.updateStatus(std::move(msg)); //
-
-            auto notifyUnbufferedIO = [&](int64_t bytesDelta)
-            {
-                statReporter.reportDelta(0, bytesDelta);
-                callback.requestUiUpdate(); //throw X
-            };
             //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
-            /*const AFS::FileCopyResult result =*/ AFS::copyFileTransactional(descr.path, sourceAttr, //throw FileError, ErrorFileLocked, X
-                                                                              createItemPathNative(tempFilePath),
-                                                                              false /*copyFilePermissions*/, true /*transactionalCopy*/, nullptr /*onDeleteTargetFile*/, notifyUnbufferedIO);
+            /*const AFS::FileCopyResult result =*/
+            AFS::copyFileTransactional(descr.path, sourceAttr, //throw FileError, ErrorFileLocked, X
+                                       createItemPathNative(tempFilePath),
+                                       false /*copyFilePermissions*/, true /*transactionalCopy*/, nullptr /*onDeleteTargetFile*/,
+                                       [&](int64_t bytesDelta)
+            {
+                statReporter.updateStatus(0, bytesDelta); //throw X
+                callback.requestUiUpdate(); //throw X  => not reliably covered by PercentStatReporter::updateStatus()! e.g. during first few seconds: STATUS_PERCENT_DELAY!
+
+            });
             //result.errorModTime? => irrelevant for temp files!
-            statReporter.reportDelta(1, 0);
+            statReporter.updateStatus(1, 0); //throw X
 
             tempFilePaths_[descr] = tempFilePath;
         }, callback); //throw X

@@ -12,7 +12,7 @@
 
 using namespace zen;
 
-const std::chrono::seconds HTTP_ACCESS_TIME_OUT(20);
+constexpr std::chrono::seconds HTTP_ACCESS_TIME_OUT(20);
 
 
 
@@ -80,7 +80,7 @@ public:
                 if (postBuf)
                 {
                     extraOptions.emplace_back(CURLOPT_POSTFIELDS,          postBuf->c_str());
-                    extraOptions.emplace_back(CURLOPT_POSTFIELDSIZE_LARGE, postBuf->size()); //postBuf not necessarily null-terminated!                    
+                    extraOptions.emplace_back(CURLOPT_POSTFIELDSIZE_LARGE, postBuf->size()); //postBuf not necessarily null-terminated!
                 }
 
                 //carefully with these callbacks! First receive HTTP header without blocking,

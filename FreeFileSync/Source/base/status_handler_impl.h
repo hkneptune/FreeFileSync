@@ -7,9 +7,11 @@
 #ifndef STATUS_HANDLER_IMPL_H_07682758976
 #define STATUS_HANDLER_IMPL_H_07682758976
 
+#include <zen/basic_math.h>
 #include <zen/file_error.h>
 #include <zen/thread.h>
 #include "process_callback.h"
+#include "speed_test.h"
 
 
 namespace fff
@@ -287,7 +289,7 @@ private:
 
 
 //manage statistics reporting for a single item of work
-template <class Callback = PhaseCallback>
+template <class Callback>
 class ItemStatReporter
 {
 public:
@@ -307,7 +309,7 @@ public:
             cb_.updateDataTotal(itemsReported_ - itemsExpected_, bytesReported_ - bytesExpected_); //noexcept!
     }
 
-    void updateStatus(std::wstring&& msg) { cb_.updateStatus(std::move(msg)); } //throw ThreadStopRequest
+    void updateStatus(std::wstring&& msg) { cb_.updateStatus(std::move(msg)); } //throw X
 
     void reportDelta(int itemsDelta, int64_t bytesDelta) //noexcept!
     {
@@ -328,6 +330,9 @@ public:
         }
     }
 
+    int64_t getBytesReported() const { return bytesReported_; }
+    int64_t getBytesExpected() const { return bytesExpected_; }
+
 private:
     int itemsReported_ = 0;
     int64_t bytesReported_ = 0;
@@ -338,6 +343,94 @@ private:
 };
 
 using AsyncItemStatReporter = ItemStatReporter<AsyncCallback>;
+
+//=====================================================================================================================
+
+constexpr std::chrono::seconds STATUS_PERCENT_DELAY(2);
+constexpr std::chrono::seconds STATUS_PERCENT_MIN_DURATION(3);
+const int                      STATUS_PERCENT_MIN_CHANGES_PER_SEC = 2;
+constexpr std::chrono::seconds STATUS_PERCENT_SPEED_WINDOW(10);
+
+template <class Callback>
+struct PercentStatReporter
+{
+    PercentStatReporter(std::wstring&& statusMsg, int64_t bytesExpected, Callback& cb) : //throw X
+        msgPrefix_(statusMsg + L"... "),
+        statReporter_(1 /*itemsExpected*/, bytesExpected, cb)
+    {
+        statReporter_.updateStatus(std::move(statusMsg)); //throw X
+    }
+
+    void updateStatus(int itemsDelta, int64_t bytesDelta) //throw X
+    {
+        statReporter_.reportDelta(itemsDelta, bytesDelta);
+
+        const auto now = std::chrono::steady_clock::now();
+        if (now >= lastUpdate_ + UI_UPDATE_INTERVAL / 2) //every ~50 ms
+        {
+            lastUpdate_ = now;
+
+            const int64_t bytesCopied = statReporter_.getBytesReported();
+            const int64_t bytesTotal  = statReporter_.getBytesExpected();
+
+            if (!showPercent_ && bytesCopied > 0)
+            {
+                if (startTime_ == std::chrono::steady_clock::time_point())
+                {
+                    startTime_ = now; //get higher-quality perf stats when starting timing here rather than constructor!?
+                    speedTest_.addSample(std::chrono::seconds(0), 0 /*itemsCurrent*/, bytesCopied);
+                }
+                else if (const std::chrono::nanoseconds elapsed = now - startTime_;
+                         elapsed >= STATUS_PERCENT_DELAY)
+                {
+                    speedTest_.addSample(elapsed, 0 /*itemsCurrent*/, bytesCopied);
+
+                    if (const std::optional<double> remSecs = speedTest_.getRemainingSec(0, bytesTotal - bytesCopied))
+                        if (*remSecs > std::chrono::duration<double>(STATUS_PERCENT_MIN_DURATION).count())
+                        {
+                            showPercent_ = true;
+                            speedTest_.clear(); //discard (probably messy) numbers
+                        }
+                }
+            }
+            if (showPercent_)
+            {
+                speedTest_.addSample(now - startTime_, 0 /*itemsCurrent*/, bytesCopied);
+                const std::optional<double> bps = speedTest_.getBytesPerSec();
+
+                statReporter_.updateStatus(msgPrefix_ + formatPercent(std::min(static_cast<double>(bytesCopied) / bytesTotal, 1.0), //> 100% possible! see process_callback.h notes
+                                                                      bps ? *bps : 0, bytesTotal)); //throw X
+            }
+        }
+    }
+
+    void updateStatus(std::wstring&& msg) { statReporter_.updateStatus(std::move(msg)); } //throw X
+
+private:
+    static std::wstring formatPercent(double fraction, double bytesPerSec, int64_t bytesTotal)
+    {
+        const double totalSecs = numeric::isNull(bytesPerSec) ? 0 : bytesTotal / bytesPerSec;
+        const double expectedSteps = totalSecs * STATUS_PERCENT_MIN_CHANGES_PER_SEC;
+
+        const wchar_t* format = [&] //TODO? protect against format flickering!?
+        {
+            if (expectedSteps <=   100) return L"%.0f";
+            if (expectedSteps <=  1000) return L"%.1f";
+            if (expectedSteps <= 10000) return L"%.2f";
+            /**/                        return L"%.3f";
+        }();
+        return zen::printNumber<std::wstring>(format, fraction * 100) + L'%'; //need to localize percent!?
+    }
+
+    bool showPercent_ = false;
+    const std::wstring msgPrefix_;
+    std::chrono::steady_clock::time_point startTime_;
+    std::chrono::steady_clock::time_point lastUpdate_;
+    SpeedTest speedTest_{STATUS_PERCENT_SPEED_WINDOW};
+    ItemStatReporter<Callback> statReporter_;
+};
+
+using AsyncPercentStatReporter = PercentStatReporter<AsyncCallback>;
 
 //=====================================================================================================================
 

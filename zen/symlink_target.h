@@ -43,16 +43,16 @@ namespace
 zen::SymlinkRawContent getSymlinkRawContent_impl(const Zstring& linkPath) //throw FileError
 {
     using namespace zen;
-    const size_t BUFFER_SIZE = 10000;
-    std::vector<char> buffer(BUFFER_SIZE);
+    const size_t bufSize = 10000;
+    std::vector<char> buf(bufSize);
 
-    const ssize_t bytesWritten = ::readlink(linkPath.c_str(), &buffer[0], BUFFER_SIZE);
+    const ssize_t bytesWritten = ::readlink(linkPath.c_str(), &buf[0], bufSize);
     if (bytesWritten < 0)
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(linkPath)), "readlink");
-    if (bytesWritten >= static_cast<ssize_t>(BUFFER_SIZE)) //detect truncation; not an error for readlink!
+    if (bytesWritten >= static_cast<ssize_t>(bufSize)) //detect truncation; not an error for readlink!
         throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(linkPath)), formatSystemError("readlink", L"", L"Buffer truncated."));
 
-    return {Zstring(&buffer[0], bytesWritten)}; //readlink does not append 0-termination!
+    return {Zstring(&buf[0], bytesWritten)}; //readlink does not append 0-termination!
 }
 
 

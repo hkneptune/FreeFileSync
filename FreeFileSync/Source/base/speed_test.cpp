@@ -4,7 +4,7 @@
 // * Copyright (C) Zenju (zenju AT freefilesync DOT org) - All Rights Reserved *
 // *****************************************************************************
 
-#include "perf_check.h"
+#include "speed_test.h"
 #include <zen/basic_math.h>
 #include <zen/i18n.h>
 #include <zen/format_unit.h>
@@ -13,73 +13,81 @@ using namespace zen;
 using namespace fff;
 
 
-PerfCheck::PerfCheck(std::chrono::milliseconds windowSizeRemTime,
-                     std::chrono::milliseconds windowSizeSpeed) :
-    windowSizeRemTime_(windowSizeRemTime),
-    windowSizeSpeed_  (windowSizeSpeed),
-    windowMax_(std::max(windowSizeRemTime, windowSizeSpeed)) {}
-
-
-void PerfCheck::addSample(std::chrono::nanoseconds timeElapsed, int itemsCurrent, int64_t bytesCurrent)
+void SpeedTest::addSample(std::chrono::nanoseconds timeElapsed, int itemsCurrent, int64_t bytesCurrent)
 {
-    samples_.insert(samples_.end(), {timeElapsed, { itemsCurrent, bytesCurrent}}); //use fact that time is monotonously ascending
+    //time expected to be monotonously ascending
+    assert(samples_.empty() || samples_.back().timeElapsed <= timeElapsed);
 
-    //remove all records earlier than "now - windowMax"
-    auto it = samples_.upper_bound(timeElapsed - windowMax_);
-    if (it != samples_.begin())
-        samples_.erase(samples_.begin(), --it); //keep one point before newBegin in order to handle "measurement holes"
+    samples_.push_back(Sample{timeElapsed, itemsCurrent, bytesCurrent});
+
+    //remove old records outside of "window"
+    std::optional<Sample> lastPop;
+    while (!samples_.empty() && samples_.front().timeElapsed <= timeElapsed - windowSize_)
+    {
+        lastPop = samples_.front();
+        samples_.pop_front();
+    }
+    if (lastPop) //keep one point before new start to handle gaps
+        samples_.push_front(*lastPop);
 }
 
 
-std::tuple<double /*timeDelta*/, int /*itemsDelta*/, int64_t /*bytesDelta*/> PerfCheck::getBlockDeltas(std::chrono::milliseconds windowSize) const
+std::optional<double> SpeedTest::getRemainingSec(int /*itemsRemaining*/, int64_t bytesRemaining) const
 {
-    if (samples_.empty()) return {};
+    if (!samples_.empty())
+    {
+        const double timeDelta = std::chrono::duration<double>(samples_.back().timeElapsed - samples_.front().timeElapsed).count();
+        const int64_t bytesDelta = samples_.back().bytes - samples_.front().bytes;
 
-    auto itBack = samples_.rbegin();
-    //find start of records "window"
-    auto itFront = samples_.upper_bound(itBack->first - windowSize);
-    if (itFront != samples_.begin())
-        --itFront; //one point before window begin in order to handle "measurement holes"
+        //"items" counts logical operations *NOT* disk accesses, so we better play safe and use "bytes" only!
 
-    const double timeDelta = std::chrono::duration<double>(itBack->first - itFront->first).count();
-    const int     itemsDelta = itBack->second.items - itFront->second.items;
-    const int64_t bytesDelta = itBack->second.bytes - itFront->second.bytes;
-
-    return {timeDelta, itemsDelta, bytesDelta};
+        if (bytesDelta != 0) //sign(dataRemaining) != sign(bytesDelta) usually an error, so show it!
+            return bytesRemaining * timeDelta / bytesDelta;
+    }
+    return std::nullopt;
 }
 
 
-std::optional<double> PerfCheck::getRemainingTimeSec(int64_t bytesRemaining) const
+std::optional<double> SpeedTest::getBytesPerSec() const
 {
-    const auto [timeDelta, itemsDelta, bytesDelta] = getBlockDeltas(windowSizeRemTime_);
+    if (!samples_.empty())
+    {
+        const double timeDelta = std::chrono::duration<double>(samples_.back().timeElapsed - samples_.front().timeElapsed).count();
+        const int64_t bytesDelta = samples_.back().bytes - samples_.front().bytes;
 
-    //"items" counts logical operations *NOT* disk accesses, so we better play safe and use "bytes" only!
+        if (!numeric::isNull(timeDelta))
+            return bytesDelta / timeDelta;
+    }
+    return std::nullopt;
+}
 
-    if (bytesDelta != 0) //sign(dataRemaining) != sign(bytesDelta) usually an error, so show it!
-        return bytesRemaining * timeDelta / bytesDelta;
 
+std::optional<double> SpeedTest::getItemsPerSec() const
+{
+    if (!samples_.empty())
+    {
+        const double timeDelta = std::chrono::duration<double>(samples_.back().timeElapsed - samples_.front().timeElapsed).count();
+        const int itemsDelta = samples_.back().items - samples_.front().items;
+
+        if (!numeric::isNull(timeDelta))
+            return itemsDelta / timeDelta;
+    }
+    return std::nullopt;
+}
+
+
+std::wstring SpeedTest::getBytesPerSecFmt() const
+{
+    if (const std::optional<double> bps = getBytesPerSec())
+        return replaceCpy(_("%x/sec"), L"%x", formatFilesizeShort(std::llround(*bps)));
     return {};
 }
 
 
-std::optional<std::wstring> PerfCheck::getBytesPerSecond() const
+std::wstring SpeedTest::getItemsPerSecFmt() const
 {
-    const auto [timeDelta, itemsDelta, bytesDelta] = getBlockDeltas(windowSizeSpeed_);
-
-    if (!numeric::isNull(timeDelta))
-        return replaceCpy(_("%x/sec"), L"%x", formatFilesizeShort(std::llround(bytesDelta / timeDelta)));
-
-    return {};
-}
-
-
-std::optional<std::wstring> PerfCheck::getItemsPerSecond() const
-{
-    const auto [timeDelta, itemsDelta, bytesDelta] = getBlockDeltas(windowSizeSpeed_);
-
-    if (!numeric::isNull(timeDelta))
-        return replaceCpy(_("%x/sec"), L"%x", replaceCpy(_("%x items"), L"%x", formatTwoDigitPrecision(itemsDelta / timeDelta)));
-
+    if (const std::optional<double> ips = getItemsPerSec())
+        return replaceCpy(_("%x/sec"), L"%x", replaceCpy(_("%x items"), L"%x", formatTwoDigitPrecision(*ips)));
     return {};
 }
 

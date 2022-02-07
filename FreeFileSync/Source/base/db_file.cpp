@@ -711,19 +711,26 @@ private:
 
 struct StreamStatusNotifier
 {
-    StreamStatusNotifier(const std::wstring& msgPrefix, AsyncCallback& acb /*throw ThreadStopRequest*/) :
-        msgPrefix_(msgPrefix), acb_(acb) {}
+    StreamStatusNotifier(const std::wstring& statusMsg, AsyncCallback& acb /*throw ThreadStopRequest*/) :
+        msgPrefix_(statusMsg), acb_(acb) {}
 
     void operator()(int64_t bytesDelta) //throw ThreadStopRequest
     {
         bytesTotal_ += bytesDelta;
-        acb_.updateStatus(msgPrefix_ + L" (" + formatFilesizeShort(bytesTotal_) + L')'); //throw ThreadStopRequest
+
+        const auto now = std::chrono::steady_clock::now();
+        if (now >= lastUpdate_ + UI_UPDATE_INTERVAL / 2) //every ~50 ms
+        {
+            lastUpdate_ = now;
+            acb_.updateStatus(msgPrefix_ + formatFilesizeShort(bytesTotal_)); //throw ThreadStopRequest
+        }
     }
 
 private:
     const std::wstring msgPrefix_;
     int64_t bytesTotal_ = 0;
     AsyncCallback& acb_;
+    std::chrono::steady_clock::time_point lastUpdate_;
 };
 
 

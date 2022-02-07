@@ -110,7 +110,7 @@ std::string generateLogFooterTxt(const std::wstring& logFilePath, int logItemsTo
     return output += '\n' + std::string(SEPARATION_LINE_LEN, '_') + '\n' +
 
                      utfTo<std::string>(getOsDescription() + /*throw FileError*/ +
-                                        L" - " + utfTo<std::wstring>(getUserDescription()) /*throw FileError*/ + 
+                                        L" - " + utfTo<std::wstring>(getUserDescription()) /*throw FileError*/ +
                                         (!cm.model .empty() ? L" - " + cm.model  : L"") +
                                         (!cm.vendor.empty() ? L" - " + cm.vendor : L"") + L'\n' +
 

@@ -62,7 +62,7 @@ struct PhaseCallback
 
 
 //interface for comparison and synchronization process status updates (used by GUI or Batch mode)
-const std::chrono::milliseconds UI_UPDATE_INTERVAL(100); //perform ui updates not more often than necessary,
+constexpr std::chrono::milliseconds UI_UPDATE_INTERVAL(100); //perform ui updates not more often than necessary,
 //100 ms seems to be a good value with only a minimal performance loss; also used by Win 7 copy progress bar
 //this one is required by async directory existence check!
 

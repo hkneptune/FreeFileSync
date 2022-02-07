@@ -22,7 +22,7 @@ using namespace fff;
 
 namespace
 {
-const std::chrono::seconds TEMP_PANEL_DISPLAY_DELAY(1);
+constexpr std::chrono::seconds TEMP_PANEL_DISPLAY_DELAY(1);
 }
 
 StatusHandlerTemporaryPanel::StatusHandlerTemporaryPanel(MainDialog& dlg,

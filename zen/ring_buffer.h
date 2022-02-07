@@ -182,6 +182,7 @@ public:
 
         Iterator(Container& container, size_t offset) : container_(&container), offset_(offset) {}
         Iterator& operator++() { ++offset_; return *this; }
+        Iterator& operator--() { --offset_; return *this; }
         Iterator& operator+=(ptrdiff_t offset) { offset_ += offset; return *this; }
         inline friend bool operator==(const Iterator& lhs, const Iterator& rhs) { assert(lhs.container_ == rhs.container_); return lhs.offset_ == rhs.offset_; }
         inline friend ptrdiff_t operator-(const Iterator& lhs, const Iterator& rhs) { return lhs.offset_ - rhs.offset_; }
@@ -226,7 +227,7 @@ private:
     static T* uninitializedMoveIfNoexcept(T* first, T* last, T* firstTrg, std::true_type ) { return std::uninitialized_move(first, last, firstTrg); }
     static T* uninitializedMoveIfNoexcept(T* first, T* last, T* firstTrg, std::false_type) { return std::uninitialized_copy(first, last, firstTrg); } //throw ?
 
-    void checkInvariants()
+    void checkInvariants() const
     {
         assert(bufStart_ == 0 || bufStart_ < capacity_);
         assert(size_ <= capacity_);

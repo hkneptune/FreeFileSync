@@ -7,40 +7,40 @@
 #ifndef PERF_CHECK_H_87804217589312454
 #define PERF_CHECK_H_87804217589312454
 
-#include <map>
 #include <chrono>
 #include <optional>
 #include <string>
+#include <zen/ring_buffer.h>
 
 
 namespace fff
 {
-class PerfCheck
+class SpeedTest
 {
 public:
-    PerfCheck(std::chrono::milliseconds windowSizeRemTime,
-              std::chrono::milliseconds windowSizeSpeed);
+    explicit SpeedTest(std::chrono::milliseconds windowSize) : windowSize_(windowSize) {}
 
     void addSample(std::chrono::nanoseconds timeElapsed, int itemsCurrent, int64_t bytesCurrent);
 
-    std::optional<double> getRemainingTimeSec(int64_t bytesRemaining) const;
-    std::optional<std::wstring> getBytesPerSecond() const; //for window
-    std::optional<std::wstring> getItemsPerSecond() const; //
+    std::optional<double> getRemainingSec(int itemsRemaining, int64_t bytesRemaining) const;
+    std::optional<double> getBytesPerSec() const;
+    std::optional<double> getItemsPerSec() const;
+
+    std::wstring getBytesPerSecFmt() const; //empty if not (yet) available
+    std::wstring getItemsPerSecFmt() const; //
+
+    void clear() { samples_.clear(); }
 
 private:
-    struct Record
+    struct Sample
     {
+        std::chrono::nanoseconds timeElapsed{}; //std::chrono::duration is uninitialized by default! WTF
         int     items = 0;
         int64_t bytes = 0;
     };
 
-    std::tuple<double, int, int64_t> getBlockDeltas(std::chrono::milliseconds windowSize) const;
-
-    std::chrono::milliseconds windowSizeRemTime_;
-    std::chrono::milliseconds windowSizeSpeed_;
-    std::chrono::milliseconds windowMax_;
-
-    std::map<std::chrono::nanoseconds, Record> samples_;
+    const std::chrono::milliseconds windowSize_;
+    zen::RingBuffer<Sample> samples_;
 };
 }
 

@@ -40,8 +40,15 @@ bool Application::OnInit()
 {
     //do not call wxApp::OnInit() to avoid using wxWidgets command line parser
 
+    auto logInitError = [&](const std::wstring& msg)
+    {
+        //error handling strategy unknown and no sync log output available at this point!
+        auto titleFmt = copyStringTo<std::wstring>(wxTheApp->GetAppDisplayName()) + SPACED_DASH +  _("Error");
+        std::cerr << utfTo<std::string>(titleFmt + SPACED_DASH + msg) << '\n';
+    };
+
     try { imageResourcesInit(fff::getResourceDirPf() + Zstr("Icons.zip")); }
-    catch (FileError&) { assert(false); }
+    catch (const FileError& e) { logInitError(e.toString()); }
     //errors are not really critical in this context
 
     //GTK should already have been initialized by wxWidgets (see \src\gtk\app.cpp:wxApp::Initialize)
@@ -76,12 +83,12 @@ bool Application::OnInit()
     }
     catch (const SysError& e)
     {
-        std::cerr << utfTo<std::string>(e.toString()) << "\n" "Loading GTK3\'s old CSS format instead...\n";
+        logInitError(e.toString() + L"\n" L"Loading GTK3\'s old CSS format instead...\n");
         try
         {
             loadCSS("Gtk3Styles.old.css"); //throw SysError
         }
-        catch (const SysError& e2) { std::cerr << utfTo<std::string>(e2.toString()) << '\n'; }
+        catch (const SysError& e2) { logInitError(e2.toString()); }
     }
 #else
 #error unknown GTK version!
@@ -97,7 +104,7 @@ bool Application::OnInit()
             THROW_LAST_SYS_ERROR("signal(SIGHUP)");
         else assert(!oldHandler);
     }
-    catch (const SysError& e) { std::cerr << utfTo<std::string>(e.toString()) << '\n'; }
+    catch (const SysError& e) { logInitError(e.toString()); }
 
 
     //Windows User Experience Interaction Guidelines: tool tips should have 5s timeout, info tips no timeout => compromise:
@@ -108,14 +115,10 @@ bool Application::OnInit()
 
     try
     {
+        fff::localizationInit(fff::getResourceDirPf() + Zstr("Languages.zip")); //throw FileError
         fff::setLanguage(getProgramLanguage()); //throw FileError
     }
-    catch (const FileError& e)
-    {
-        //following dialog does NOT trigger "exit on frame delete" while we are in OnInit(): https://docs.wxwidgets.org/trunk/overview_app.html#overview_app_shutdown
-        showNotificationDialog(nullptr, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
-        //continue!
-    }
+    catch (const FileError& e) { logInitError(e.toString()); }
 
 
     Bind(wxEVT_QUERY_END_SESSION, [this](wxCloseEvent& event) { onQueryEndSession(event); }); //can veto
@@ -165,7 +168,7 @@ void Application::onEnterEventLoop(wxEvent& event)
 
 int Application::OnExit()
 {
-    fff::releaseWxLocale();
+    fff::localizationCleanup();
     imageResourcesCleanup();
     return wxApp::OnExit();
 }

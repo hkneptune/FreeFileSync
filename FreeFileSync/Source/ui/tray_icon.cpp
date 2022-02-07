@@ -5,7 +5,6 @@
 // *****************************************************************************
 
 #include "tray_icon.h"
-//#include <zen/basic_math.h>
 #include <zen/i18n.h>
 #include <wx/taskbar.h>
 #include <wx/menu.h>
@@ -86,12 +85,11 @@ wxIcon FfsTrayIcon::ProgressIconGenerator::get(double fraction)
         //fill black border row
         if (startFillPixel <= pixelCount - genImage.GetWidth())
         {
-            /*
-                --------
-                ---bbbbb
-                bbbbSyyy  S : start yellow remainder
-                yyyyyyyy
-            */
+            /*    --------
+                  ---bbbbb
+                  bbbbSyyy  S : start yellow remainder
+                  yyyyyyyy                          */
+
             int bStart = startFillPixel - genImage.GetWidth();
             if (bStart % genImage.GetWidth() != 0) //add one more black pixel, see ascii-art
                 --bStart;
@@ -100,11 +98,11 @@ wxIcon FfsTrayIcon::ProgressIconGenerator::get(double fraction)
         else if (startFillPixel < pixelCount)
         {
             /* special handling for last row:
-                --------
-                --------
-                ---bbbbb
-                ---bSyyy  S : start yellow remainder
-            */
+                  --------
+                  --------
+                  ---bbbbb
+                  ---bSyyy  S : start yellow remainder            */
+
             int bStart = startFillPixel - genImage.GetWidth() - 1;
             int bEnd = (bStart / genImage.GetWidth() + 1) * genImage.GetWidth();
 

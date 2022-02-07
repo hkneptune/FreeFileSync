@@ -24,7 +24,7 @@ struct TranslationInfo
     Zstring lngFileName;
     std::string lngStream;
 };
-const std::vector<TranslationInfo>& getExistingTranslations();
+const std::vector<TranslationInfo>& getAvailableTranslations();
 
 wxLanguage getSystemLanguage();
 wxLanguage getLanguage();
@@ -32,7 +32,8 @@ wxLayoutDirection getLayoutDirection();
 
 void setLanguage(wxLanguage lng); //throw FileError
 
-void releaseWxLocale(); //wxLocale crashes miserably on wxGTK when destructor runs during global cleanup => call in wxApp::OnExit
+void localizationInit(const Zstring& zipPath); //throw FileError
+void localizationCleanup(); //wxLocale crashes miserably on wxGTK when destructor runs during global cleanup => call in wxApp::OnExit
 //"You should delete all wxWidgets object that you created by the time OnExit() finishes. In particular, do not destroy them from application class' destructor!"
 }
 

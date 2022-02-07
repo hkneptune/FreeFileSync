@@ -28,8 +28,8 @@
 #include "log_panel.h"
 #include "app_icon.h"
 #include "../ffs_paths.h"
-#include "../perf_check.h"
 #include "../icon_buffer.h"
+#include "../base/speed_test.h"
 
 
 using namespace zen;
@@ -38,13 +38,13 @@ using namespace fff;
 
 namespace
 {
-constexpr std::chrono::seconds WINDOW_BYTES_PER_SEC  (5); //window size used for statistics
-constexpr std::chrono::seconds WINDOW_REMAINING_TIME(60); //USB memory stick can have 40-second-hangs
+constexpr std::chrono::seconds PERF_WINDOW_BYTES_PER_SEC  (4); //window size used for statistics
+constexpr std::chrono::seconds PERF_WINDOW_REMAINING_TIME(60); //USB memory stick can have 40-second-hangs
 constexpr std::chrono::seconds      SPEED_ESTIMATE_SAMPLE_SKIP(1);
 constexpr std::chrono::milliseconds SPEED_ESTIMATE_UPDATE_INTERVAL(500);
 constexpr std::chrono::seconds      GRAPH_TOTAL_TIME_UPDATE_INTERVAL(2);
 
-const size_t PROGRESS_GRAPH_SAMPLE_SIZE_MAX = 2'500'000; //sizeof(single node) worst case ~ 3 * 8 byte ptr + 16 byte key/value = 40 byte
+const size_t PROGRESS_GRAPH_SAMPLE_SIZE_MAX = 2'500'000; //sizeof(CurveDataStatistics::Sample) == 16 byte key/value
 
 inline wxColor getColorBytes() { return {111, 255,  99}; } //light green
 inline wxColor getColorItems() { return {127, 147, 255}; } //light blue
@@ -167,7 +167,8 @@ private:
     const Statistics* syncStat_ = nullptr; //only bound while sync is running
 
     std::unique_ptr<Taskbar> taskbar_;
-    PerfCheck perf_{WINDOW_REMAINING_TIME, WINDOW_BYTES_PER_SEC}; //estimate remaining time
+    SpeedTest remTimeTest_{PERF_WINDOW_REMAINING_TIME};
+    SpeedTest speedTest_  {PERF_WINDOW_BYTES_PER_SEC};
 
     std::chrono::nanoseconds timeLastSpeedEstimate_ = std::chrono::seconds(-100); //used for calculating intervals between showing and collecting perf samples
     //initial value: just some big number
@@ -252,7 +253,8 @@ void CompareProgressPanel::Impl::teardown()
 void CompareProgressPanel::Impl::initNewPhase()
 {
     //start new measurement
-    perf_ = PerfCheck(WINDOW_REMAINING_TIME, WINDOW_BYTES_PER_SEC);
+    remTimeTest_.clear();
+    speedTest_  .clear();
     timeLastSpeedEstimate_ = std::chrono::seconds(-100); //make sure estimate is updated upon next check
     phaseStart_ = stopWatch_.elapsed();
 
@@ -326,7 +328,7 @@ void CompareProgressPanel::Impl::updateProgressGui()
         const double fractionItems = itemsTotal == 0 ? 0 : 1.0 * itemsCurrent / itemsTotal;
 
         //dialog caption, taskbar
-        setTitle(formatFraction(fractionTotal) + L" | " + getDialogPhaseText(*syncStat_, false /*paused*/));
+        setTitle(formatPercent0(fractionTotal) + L' ' + getDialogPhaseText(*syncStat_, false /*paused*/));
 
         //progress indicators
         if (taskbar_.get()) taskbar_->setProgress(fractionTotal);
@@ -363,17 +365,18 @@ void CompareProgressPanel::Impl::updateProgressGui()
             timeLastSpeedEstimate_ = timeElapsed;
 
             if (numeric::dist(phaseStart_, timeElapsed) >= SPEED_ESTIMATE_SAMPLE_SKIP) //discard stats for first second: probably messy
-                perf_.addSample(timeElapsed, itemsCurrent, bytesCurrent);
+            {
+                remTimeTest_.addSample(timeElapsed, itemsCurrent, bytesCurrent);
+                speedTest_  .addSample(timeElapsed, itemsCurrent, bytesCurrent);
+            }
 
             //current speed -> Win 7 copy uses 1 sec update interval instead
-            std::optional<std::wstring> bps = perf_.getBytesPerSecond();
-            std::optional<std::wstring> ips = perf_.getItemsPerSecond();
-            m_panelProgressGraph->setAttributes(m_panelProgressGraph->getAttributes().setCornerText(bps ? *bps : L"", GraphCorner::topL));
-            m_panelProgressGraph->setAttributes(m_panelProgressGraph->getAttributes().setCornerText(ips ? *ips : L"", GraphCorner::bottomL));
+            m_panelProgressGraph->setAttributes(m_panelProgressGraph->getAttributes().setCornerText(speedTest_.getBytesPerSecFmt(), GraphCorner::topL));
+            m_panelProgressGraph->setAttributes(m_panelProgressGraph->getAttributes().setCornerText(speedTest_.getItemsPerSecFmt(), GraphCorner::bottomL));
 
             //remaining time: display with relative error of 10% - based on samples taken every 0.5 sec only
             //-> call more often than once per second to correctly show last few seconds countdown, but don't call too often to avoid occasional jitter
-            std::optional<double> remTimeSec = perf_.getRemainingTimeSec(bytesTotal - bytesCurrent);
+            std::optional<double> remTimeSec = remTimeTest_.getRemainingSec(itemsTotal - itemsCurrent, bytesTotal - bytesCurrent);
             setText(*m_staticTextTimeRemaining, remTimeSec ? formatRemainingTime(*remTimeSec) : std::wstring(1, EM_DASH), &layoutChanged);
         }
 
@@ -417,23 +420,27 @@ public:
 
     void clear() { samples_.clear(); lastSample_ = {}; }
 
-    void addRecord(std::chrono::nanoseconds timeElapsed, double value)
+    void addSample(double timeElapsed /*[sec]*/, double value /*[items|bytes]*/)
     {
-        assert(!samples_.empty() || (lastSample_ == std::pair<std::chrono::nanoseconds, double>()));
+        assert(( samples_.empty() && lastSample_.x == 0 && lastSample_.y == 0) ||
+               (!samples_.empty() && samples_.back().x <= lastSample_.x));
+
+        if (timeElapsed < lastSample_.x) //time *required* to be monotonously ascending for std::partition_point
+        {
+            assert(false);
+            return;
+        }
 
         lastSample_ = {timeElapsed, value};
 
-        //allow for at most one sample per 100ms (handles duplicate inserts, too!) => this is unrelated to UI_UPDATE_INTERVAL!
-        if (!samples_.empty()) //always unconditionally insert first sample!
-            if (numeric::dist(timeElapsed, samples_.rbegin()->first) < std::chrono::milliseconds(100))
-                return;
+        //allow for at most one sample per 100ms (handles duplicate inserts, too!) => unrelated to UI_UPDATE_INTERVAL!
+        if (!samples_.empty() && timeElapsed - samples_.back().x < 0.1)
+            return;
 
-        samples_.insert(samples_.end(), {timeElapsed, value}); //time is "expected" to be monotonously ascending
-        //documentation differs about whether "hint" should be before or after the to be inserted element!
-        //however "std::map<>::end()" is interpreted correctly by GCC and VS2010
+        samples_.push_back(CurvePoint{timeElapsed, value});
 
         if (samples_.size() > PROGRESS_GRAPH_SAMPLE_SIZE_MAX) //limit buffer size
-            samples_.erase(samples_.begin());
+            samples_.pop_front();
     }
 
 private:
@@ -441,57 +448,49 @@ private:
     {
         if (samples_.empty())
             return {};
-
-        const std::chrono::nanoseconds upperEnd = std::max(samples_.rbegin()->first, lastSample_.first);
-
         /*
-        //report some additional width by 5% elapsed time to make graph recalibrate before hitting the right border
-        //caveat: graph for batch mode binary comparison does NOT start at elapsed time 0!! ProcessPhase::comparingContent and ProcessPhase::synchronizing!
-        //=> consider width of current sample set!
-        upperEndMs += 0.05 *(upperEndMs - samples.begin()->first);
+            //report some additional width by 5% elapsed time to make graph recalibrate before hitting the right border
+            //caveat: graph for batch mode binary comparison does NOT start at elapsed time 0!! ProcessPhase::comparingContent and ProcessPhase::synchronizing!
+            //=> consider width of current sample set!
+            upperEndMs += 0.05 *(upperEndMs - samples.begin()->first);
         */
-
-        return {std::chrono::duration<double>(samples_.begin()->first).count(), //need not start with 0, e.g. "binary comparison, graph reset, followed by sync"
-                std::chrono::duration<double>(upperEnd).count()};
+        return {samples_.front().x, //need not start with 0, e.g. "binary comparison, graph reset, followed by sync"
+                lastSample_.x};
     }
 
     std::optional<CurvePoint> getLessEq(double x) const override //x: seconds since begin
     {
-        const auto timeX = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::duration<double>(x)); //round down
-
-        //------ add artifical last sample value -------
-        if (!samples_.empty() && samples_.rbegin()->first < lastSample_.first)
-            if (lastSample_.first <= timeX)
-                return CurvePoint{std::chrono::duration<double>(lastSample_.first).count(), lastSample_.second};
+        //--------- add artifical last sample value --------
+        if (!samples_.empty() && lastSample_.x <= x)
+            return lastSample_;
         //--------------------------------------------------
 
-        //find first key > x, then go one step back: => samples must be a std::map, NOT std::multimap!!!
-        auto it = samples_.upper_bound(timeX);
+        //find first item > x, then go one step back:
+        auto it = std::partition_point(samples_.begin(), samples_.end(),
+        /*find first item for which "!pred"*/ [x](const CurvePoint& p) { return p.x <= x; });
         if (it == samples_.begin())
             return std::nullopt;
-        //=> samples not empty in this context
-        --it;
-        return CurvePoint{std::chrono::duration<double>(it->first).count(), it->second};
+        --it; //bound!
+        return *it;
     }
 
     std::optional<CurvePoint> getGreaterEq(double x) const override
     {
-        const std::chrono::nanoseconds timeX(static_cast<std::chrono::nanoseconds::rep>(std::ceil(x * (1000 * 1000 * 1000)))); //round up!
+        //find first item >= x
+        const auto it = std::partition_point(samples_.begin(), samples_.end(),
+        /*find first item for which "!pred"*/ [x](const CurvePoint& p) { return p.x < x; });
+        if (it != samples_.end())
+            return *it;
 
-        //------ add artifical last sample value -------
-        if (!samples_.empty() && samples_.rbegin()->first < lastSample_.first)
-            if (samples_.rbegin()->first < timeX && timeX <= lastSample_.first)
-                return CurvePoint{std::chrono::duration<double>(lastSample_.first).count(), lastSample_.second};
+        //--------- add artifical last sample value --------
+        if (!samples_.empty() && x <= lastSample_.x)
+            return lastSample_;
         //--------------------------------------------------
-
-        auto it = samples_.lower_bound(timeX);
-        if (it == samples_.end())
-            return std::nullopt;
-        return CurvePoint{std::chrono::duration<double>(it->first).count(), it->second};
+        return std::nullopt;
     }
 
-    std::map <std::chrono::nanoseconds, double> samples_;    //[!] don't use std::multimap, see getLessEq()
-    std::pair<std::chrono::nanoseconds, double> lastSample_; //artificial most current record at the end of samples to visualize current time!
+    RingBuffer<CurvePoint> samples_; //x: monotonously ascending with time!
+    CurvePoint lastSample_; //artificial record after end of samples to visualize current time!
 };
 
 
@@ -715,7 +714,8 @@ private:
     bool closePressed_ = false;
 
     //remaining time
-    PerfCheck perf_{WINDOW_REMAINING_TIME, WINDOW_BYTES_PER_SEC};
+    SpeedTest remTimeTest_{PERF_WINDOW_REMAINING_TIME};
+    SpeedTest speedTest_  {PERF_WINDOW_BYTES_PER_SEC};
     std::chrono::nanoseconds timeLastSpeedEstimate_    = std::chrono::seconds(-100); //used for calculating intervals between collecting perf samples
     std::chrono::nanoseconds timeLastGraphTotalUpdate_ = std::chrono::seconds(-100);
 
@@ -974,7 +974,8 @@ void SyncProgressDialogImpl<TopLevelDialog>::initNewPhase()
     notifyProgressChange(); //make sure graphs get initial values
 
     //start new measurement
-    perf_ = PerfCheck(WINDOW_REMAINING_TIME, WINDOW_BYTES_PER_SEC);
+    remTimeTest_.clear();
+    speedTest_  .clear();
     timeLastGraphTotalUpdate_ = timeLastSpeedEstimate_ = std::chrono::seconds(-100); //make sure estimate is updated upon next check
     phaseStart_ = stopWatch_.elapsed();
 
@@ -987,9 +988,10 @@ void SyncProgressDialogImpl<TopLevelDialog>::notifyProgressChange() //noexcept!
 {
     if (syncStat_) //sync running
     {
+        const double timeElapsedDouble = std::chrono::duration<double>(stopWatch_.elapsed()).count();
         const ProgressStats stats = syncStat_->getStatsCurrent();
-        curveBytes_.ref().addRecord(stopWatch_.elapsed(), stats.bytes);
-        curveItems_.ref().addRecord(stopWatch_.elapsed(), stats.items);
+        curveBytes_.ref().addSample(timeElapsedDouble, stats.bytes);
+        curveItems_.ref().addSample(timeElapsedDouble, stats.items);
     }
 }
 
@@ -1007,7 +1009,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::setExternalStatus(const wxString& s
     if (!jobName_.empty())
         tooltip += L" | " + jobName_;
 
-    tooltip += L"\n" + statusTxt;
+    tooltip += L'\n' + statusTxt;
 
     if (!progress.empty())
         tooltip += L' ' + progress;
@@ -1015,7 +1017,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::setExternalStatus(const wxString& s
     //window caption/taskbar; inverse order: progress, status, jobname
     wxString title;
     if (!progress.empty())
-        title += progress + L" | ";
+        title += progress + L' ';
 
     title += statusTxt;
 
@@ -1023,20 +1025,31 @@ void SyncProgressDialogImpl<TopLevelDialog>::setExternalStatus(const wxString& s
         title += L" | " + jobName_;
 
     const TimeComp tc = getLocalTime(std::chrono::system_clock::to_time_t(syncStartTime_)); //returns empty string on failure
-    title += L" | " + utfTo<std::wstring>(formatTime(formatDateTimeTag, tc));
+
+    const Zchar* format = [&]
+    {
+        if (const TimeComp& tcNow = getLocalTime();
+            tc.day   == tcNow.day &&
+            tc.month == tcNow.month &&
+            tc.year  == tcNow.year)
+            return formatTimeTag;
+        return formatDateTimeTag;
+    }();
+    title += L" | " + utfTo<std::wstring>(formatTime(format, tc));
+
     //---------------------------------------------------------------------------
 
     //systray tooltip, if window is minimized
     if (trayIcon_)
         trayIcon_->setToolTip(tooltip);
 
-    //show text in dialog title (and at the same time in taskbar)
+    //top level dialog title also shows in Windows taskbar!
     if (parentFrame_)
+    {
         if (parentFrame_->GetTitle() != title)
             parentFrame_->SetTitle(title);
-
-    //always set a title: we don't want wxGTK to show "nameless window" instead
-    if (this->GetTitle() != title)
+    }
+    else if (this->GetTitle() != title)
         this->SetTitle(title);
 }
 
@@ -1084,7 +1097,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
         const double fractionTotal = bytesTotal + itemsTotal == 0 ? 0 : 1.0 * (bytesCurrent + itemsCurrent) / (bytesTotal + itemsTotal);
         //add both data + obj-count, to handle "deletion-only" cases
 
-        setExternalStatus(getDialogPhaseText(*syncStat_, paused_), formatFraction(fractionTotal)); //status text may be "paused"!
+        setExternalStatus(getDialogPhaseText(*syncStat_, paused_), formatPercent0(fractionTotal)); //status text may be "paused"!
 
         //progress indicators
         if (trayIcon_.get()) trayIcon_->setProgress(fractionTotal);
@@ -1105,8 +1118,8 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
 
     //even though notifyProgressChange() already set the latest data, let's add another sample to have all curves consider "timeNowMs"
     //no problem with adding too many records: CurveDataStatistics will remove duplicate entries!
-    curveBytes_.ref().addRecord(timeElapsed, bytesCurrent);
-    curveItems_.ref().addRecord(timeElapsed, itemsCurrent);
+    curveBytes_.ref().addSample(timeElapsedDouble, bytesCurrent);
+    curveItems_.ref().addSample(timeElapsedDouble, itemsCurrent);
 
     //item and data stats
     if (!haveTotalStats)
@@ -1140,13 +1153,14 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
         timeLastSpeedEstimate_ = timeElapsed;
 
         if (numeric::dist(phaseStart_, timeElapsed) >= SPEED_ESTIMATE_SAMPLE_SKIP) //discard stats for first second: probably messy
-            perf_.addSample(timeElapsed, itemsCurrent, bytesCurrent);
+        {
+            remTimeTest_.addSample(timeElapsed, itemsCurrent, bytesCurrent);
+            speedTest_  .addSample(timeElapsed, itemsCurrent, bytesCurrent);
+        }
 
         //current speed -> Win 7 copy uses 1 sec update interval instead
-        std::optional<std::wstring> bps = perf_.getBytesPerSecond();
-        std::optional<std::wstring> ips = perf_.getItemsPerSecond();
-        pnl_.m_panelGraphBytes->setAttributes(pnl_.m_panelGraphBytes->getAttributes().setCornerText(bps ? *bps : L"", GraphCorner::topL));
-        pnl_.m_panelGraphItems->setAttributes(pnl_.m_panelGraphItems->getAttributes().setCornerText(ips ? *ips : L"", GraphCorner::topL));
+        pnl_.m_panelGraphBytes->setAttributes(pnl_.m_panelGraphBytes->getAttributes().setCornerText(speedTest_.getBytesPerSecFmt(), GraphCorner::topL));
+        pnl_.m_panelGraphItems->setAttributes(pnl_.m_panelGraphItems->getAttributes().setCornerText(speedTest_.getItemsPerSecFmt(), GraphCorner::topL));
 
         //remaining time
         if (!haveTotalStats)
@@ -1158,7 +1172,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
         {
             //remaining time: display with relative error of 10% - based on samples taken every 0.5 sec only
             //-> call more often than once per second to correctly show last few seconds countdown, but don't call too often to avoid occasional jitter
-            std::optional<double> remTimeSec = perf_.getRemainingTimeSec(bytesTotal - bytesCurrent);
+            std::optional<double> remTimeSec = remTimeTest_.getRemainingSec(itemsTotal - itemsCurrent, bytesTotal - bytesCurrent);
             setText(*pnl_.m_staticTextTimeRemaining, remTimeSec ? formatRemainingTime(*remTimeSec) : std::wstring(1, EM_DASH), &layoutChanged);
 
             const double timeRemainingSec = remTimeSec ? *remTimeSec : 0;

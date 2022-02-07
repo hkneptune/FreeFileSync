@@ -180,24 +180,14 @@ namespace
 
 
 //expand volume name if possible, return original input otherwise
-Zstring expandVolumeName(Zstring pathPhrase)  // [volname]:\folder       [volname]\folder       [volname]folder     -> C:\folder
+Zstring expandVolumeName(Zstring pathPhrase)  // [volname]:\folder    [volname]\folder    [volname]folder    -> C:\folder
 {
     //we only expect the [.*] pattern at the beginning => do not touch dir names like "C:\somedir\[stuff]"
     trim(pathPhrase, true, false);
+
     if (startsWith(pathPhrase, Zstr('[')))
     {
-        const size_t posEnd = pathPhrase.find(Zstr(']'));
-        if (posEnd != Zstring::npos)
-        {
-            Zstring volName = Zstring(pathPhrase.c_str() + 1, posEnd - 1);
-            Zstring relPath = Zstring(pathPhrase.c_str() + posEnd + 1);
-
-            if (startsWith(relPath, FILE_NAME_SEPARATOR))
-                relPath = afterFirst(relPath, FILE_NAME_SEPARATOR, IfNotFoundReturn::none);
-            else if (startsWith(relPath, Zstr(":\\"))) //Win-only
-                relPath = afterFirst(relPath, Zstr('\\'), IfNotFoundReturn::none);
-            return "/.../[" + volName + "]/" + relPath;
-        }
+        return "/.../" + pathPhrase;
     }
     return pathPhrase;
 }

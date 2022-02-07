@@ -72,10 +72,10 @@ namespace
 //Google Drive REST API Reference: https://developers.google.com/drive/api/v3/reference
 const Zchar* GOOGLE_REST_API_SERVER = Zstr("www.googleapis.com");
 
-const std::chrono::seconds HTTP_SESSION_ACCESS_TIME_OUT(15);
-const std::chrono::seconds HTTP_SESSION_MAX_IDLE_TIME  (20);
-const std::chrono::seconds HTTP_SESSION_CLEANUP_INTERVAL(4);
-const std::chrono::seconds GDRIVE_SYNC_INTERVAL         (5);
+constexpr std::chrono::seconds HTTP_SESSION_ACCESS_TIME_OUT(15);
+constexpr std::chrono::seconds HTTP_SESSION_MAX_IDLE_TIME  (20);
+constexpr std::chrono::seconds HTTP_SESSION_CLEANUP_INTERVAL(4);
+constexpr std::chrono::seconds GDRIVE_SYNC_INTERVAL         (5);
 
 const int GDRIVE_STREAM_BUFFER_SIZE = 512 * 1024; //unit: [byte]
 

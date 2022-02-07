@@ -210,6 +210,10 @@ bool fff::haveNewerVersionOnline(const std::string& onlineVersion)
     };
     const std::vector<size_t> current = parseVersion(ffsVersion);
     const std::vector<size_t> online  = parseVersion(onlineVersion);
+
+    if (online.empty() || online[0] == 0) //online version string may be "Unknown", see automaticUpdateCheckEval() below!
+        return true;
+
     return online > current; //std::vector compares lexicographically
 }
 

@@ -25,8 +25,8 @@ using namespace rts;
 
 namespace
 {
-const std::chrono::seconds RETRY_AFTER_ERROR_INTERVAL(15);
-const std::chrono::milliseconds UI_UPDATE_INTERVAL(100); //perform ui updates not more often than necessary, 100 seems to be a good value with only a minimal performance loss
+constexpr std::chrono::seconds RETRY_AFTER_ERROR_INTERVAL(15);
+constexpr std::chrono::milliseconds UI_UPDATE_INTERVAL(100); //perform ui updates not more often than necessary, 100 seems to be a good value with only a minimal performance loss
 
 
 std::chrono::steady_clock::time_point lastExec;

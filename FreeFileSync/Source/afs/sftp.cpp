@@ -86,9 +86,9 @@ OpenSSL supports the same ciphers like WinCNG plus the following:
 
 const Zchar sftpPrefix[] = Zstr("sftp:");
 
-const std::chrono::seconds SFTP_SESSION_MAX_IDLE_TIME           (20);
-const std::chrono::seconds SFTP_SESSION_CLEANUP_INTERVAL         (4); //facilitate default of 5-seconds delay for error retry
-const std::chrono::seconds SFTP_CHANNEL_LIMIT_DETECTION_TIME_OUT(30);
+constexpr std::chrono::seconds SFTP_SESSION_MAX_IDLE_TIME           (20);
+constexpr std::chrono::seconds SFTP_SESSION_CLEANUP_INTERVAL         (4); //facilitate default of 5-seconds delay for error retry
+constexpr std::chrono::seconds SFTP_CHANNEL_LIMIT_DETECTION_TIME_OUT(30);
 
 //permissions for new files: rw- rw- rw- [0666] => consider umask! (e.g. 0022 for ffs.org)
 const long SFTP_DEFAULT_PERMISSION_FILE = LIBSSH2_SFTP_S_IRUSR | LIBSSH2_SFTP_S_IWUSR |

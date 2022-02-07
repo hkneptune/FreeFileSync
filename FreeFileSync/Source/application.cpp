@@ -57,9 +57,16 @@ bool Application::OnInit()
 {
     //do not call wxApp::OnInit() to avoid using wxWidgets command line parser
 
+    auto logInitError = [&](const std::wstring& msg)
+    {
+        //error handling strategy unknown and no sync log output available at this point!
+        auto titleFmt = copyStringTo<std::wstring>(wxTheApp->GetAppDisplayName()) + SPACED_DASH +  _("Error");
+        std::cerr << utfTo<std::string>(titleFmt + SPACED_DASH + msg) << '\n';
+    };
+
     //parallel xBRZ-scaling! => run as early as possible
     try { imageResourcesInit(getResourceDirPf() + Zstr("Icons.zip")); }
-    catch (FileError&) { assert(false); }
+    catch (const FileError& e) { logInitError(e.toString()); }
     //errors are not really critical in this context
 
     //GTK should already have been initialized by wxWidgets (see \src\gtk\app.cpp:wxApp::Initialize)
@@ -101,12 +108,12 @@ bool Application::OnInit()
     }
     catch (const SysError& e)
     {
-        std::cerr << utfTo<std::string>(e.toString()) << "\n" "Loading GTK3\'s old CSS format instead...\n";
+        logInitError(e.toString() + L"\n" L"Loading GTK3\'s old CSS format instead...");
         try
         {
             loadCSS("Gtk3Styles.old.css"); //throw SysError
         }
-        catch (const SysError& e2) { std::cerr << utfTo<std::string>(e2.toString()) << '\n'; }
+        catch (const SysError& e2) { logInitError(e2.toString()); }
     }
 #else
 #error unknown GTK version!
@@ -122,7 +129,7 @@ bool Application::OnInit()
             THROW_LAST_SYS_ERROR("signal(SIGHUP)");
         else assert(!oldHandler);
     }
-    catch (const SysError& e) { std::cerr << utfTo<std::string>(e.toString()) << '\n'; }
+    catch (const SysError& e) { logInitError(e.toString()); }
 
 
     //Windows User Experience Interaction Guidelines: tool tips should have 5s timeout, info tips no timeout => compromise:
@@ -131,12 +138,9 @@ bool Application::OnInit()
 
     SetAppName(L"FreeFileSync"); //if not set, the default is the executable's name!
 
-    try
-    {
-        //tentatively set program language to OS default until GlobalSettings.xml is read later
-        setLanguage(XmlGlobalSettings().programLanguage); //throw FileError
-    }
-    catch (FileError&) { assert(false); }
+    //tentatively set program language to OS default until GlobalSettings.xml is read later
+    try { localizationInit(getResourceDirPf() + Zstr("Languages.zip")); } //throw FileError
+    catch (const FileError& e) { logInitError(e.toString()); }
 
     initAfs({getResourceDirPf(), getConfigDirPathPf()}); //bonus: using FTP Gdrive implicitly inits OpenSSL (used in runSanityChecks() on Linux) alredy during globals init
 
@@ -162,7 +166,7 @@ void Application::onEnterEventLoop(wxEvent& event)
 
 int Application::OnExit()
 {
-    releaseWxLocale();
+    localizationCleanup();
     imageResourcesCleanup();
     teardownAfs();
     return wxApp::OnExit();

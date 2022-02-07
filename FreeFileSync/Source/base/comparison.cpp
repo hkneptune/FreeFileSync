@@ -476,23 +476,22 @@ namespace
 {
 void categorizeFileByContent(FilePair& file, const std::wstring& txtComparingContentOfFiles, AsyncCallback& acb, std::mutex& singleThread) //throw ThreadStopRequest
 {
-    acb.updateStatus(replaceCpy(txtComparingContentOfFiles, L"%x", fmtPath(file.getRelativePathAny()))); //throw ThreadStopRequest
-
     bool haveSameContent = false;
     const std::wstring errMsg = tryReportingError([&]
     {
-        AsyncItemStatReporter statReporter(1, file.getFileSize<SelectSide::left>(), acb);
+        PercentStatReporter statReporter(replaceCpy(txtComparingContentOfFiles, L"%x", fmtPath(file.getRelativePathAny())),
+                                         file.getFileSize<SelectSide::left>(), acb); //throw ThreadStopRequest
 
         //callbacks run *outside* singleThread_ lock! => fine
         auto notifyUnbufferedIO = [&statReporter](int64_t bytesDelta)
         {
-            statReporter.reportDelta(0, bytesDelta);
-            interruptionPoint(); //throw ThreadStopRequest
+            statReporter.updateStatus(0, bytesDelta); //throw ThreadStopRequest
+            interruptionPoint(); //throw ThreadStopRequest => not reliably covered by AsyncPercentStatReporter::updateStatus()!
         };
 
         haveSameContent = parallel::filesHaveSameContent(file.getAbstractPath<SelectSide::left >(),
                                                          file.getAbstractPath<SelectSide::right>(), notifyUnbufferedIO, singleThread); //throw FileError, ThreadStopRequest
-        statReporter.reportDelta(1, 0);
+        statReporter.updateStatus(1, 0); //throw ThreadStopRequest
     }, acb); //throw ThreadStopRequest
 
     if (!errMsg.empty())

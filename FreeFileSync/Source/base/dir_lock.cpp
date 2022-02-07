@@ -28,9 +28,9 @@ using namespace fff;
 
 namespace
 {
-const std::chrono::seconds EMIT_LIFE_SIGN_INTERVAL   (5); //show life sign;
-const std::chrono::seconds POLL_LIFE_SIGN_INTERVAL   (4); //poll for life sign;
-const std::chrono::seconds DETECT_ABANDONED_INTERVAL(30); //assume abandoned lock;
+constexpr std::chrono::seconds EMIT_LIFE_SIGN_INTERVAL   (5); //show life sign;
+constexpr std::chrono::seconds POLL_LIFE_SIGN_INTERVAL   (4); //poll for life sign;
+constexpr std::chrono::seconds DETECT_ABANDONED_INTERVAL(30); //assume abandoned lock;
 
 const char LOCK_FILE_DESCR[] = "FreeFileSync";
 const int LOCK_FILE_VERSION = 3; //2020-02-07

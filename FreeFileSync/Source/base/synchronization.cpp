@@ -39,6 +39,7 @@ int getCUD(const SyncStatistics& stat)
            stat.updateCount() +
            stat.deleteCount();
 }
+
 }
 
 
@@ -996,7 +997,7 @@ private:
     AFS::FileCopyResult copyFileWithCallback(const FileDescriptor& sourceDescr, //throw FileError, ThreadStopRequest, X
                                              const AbstractPath& targetPath,
                                              const std::function<void()>& onDeleteTargetFile /*throw X*/, //optional!
-                                             AsyncItemStatReporter& statReporter);
+                                             AsyncPercentStatReporter& statReporter);
     std::vector<FileError>& errorsModTime_;
 
     DeletionHandler& delHandlerLeft_;
@@ -1469,6 +1470,7 @@ FolderPairSyncer::PassNo FolderPairSyncer::getPass(const FolderPair& folder)
 inline
 void FolderPairSyncer::synchronizeFile(FilePair& file) //throw FileError, ErrorMoveUnsupported, ThreadStopRequest
 {
+    assert(isLocked(singleThread_));
     const SyncOperation syncOp = file.getSyncOperation();
 
     if (std::optional<SelectSide> sideTrg = getTargetDirection(syncOp))
@@ -1497,9 +1499,11 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
                     return; //if parent directory creation failed, there's no reason to show more errors!
 
             const AbstractPath targetPath = file.getAbstractPath<sideTrg>();
-            reportInfo(txtCreatingFile_, AFS::getDisplayPath(targetPath)); //throw ThreadStopRequest
 
-            AsyncItemStatReporter statReporter(1, file.getFileSize<sideSrc>(), acb_);
+            std::wstring statusMsg = replaceCpy(txtCreatingFile_, L"%x", fmtPath(AFS::getDisplayPath(targetPath)));
+            acb_.logInfo(statusMsg); //throw ThreadStopRequest
+            AsyncPercentStatReporter statReporter(std::move(statusMsg), file.getFileSize<sideSrc>(), acb_); //throw ThreadStopRequest
+
             try
             {
                 const AFS::FileCopyResult result = copyFileWithCallback({file.getAbstractPath<sideSrc>(), file.getAttributes<sideSrc>()},
@@ -1507,7 +1511,7 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
                                                                         nullptr, //onDeleteTargetFile: nothing to delete
                                                                         //if existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
                                                                         statReporter); //throw FileError, ThreadStopRequest
-                statReporter.reportDelta(1, 0);
+                statReporter.updateStatus(1, 0); //throw ThreadStopRequest
 
                 //update FilePair
                 file.setSyncedTo<sideTrg>(file.getItemName<sideSrc>(), result.fileSize,
@@ -1542,7 +1546,8 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
                 {
                     logInfo(txtSourceItemNotExist_, AFS::getDisplayPath(file.getAbstractPath<sideSrc>())); //throw ThreadStopRequest
 
-                    statReporter.reportDelta(1, 0); //even if the source item does not exist anymore, significant I/O work was done => report
+                    statReporter.updateStatus(1, 0); //throw ThreadStopRequest
+                    //even if the source item does not exist anymore, significant I/O work was done => report
                     file.removeObject<sideSrc>(); //source deleted meanwhile...nothing was done (logical point of view!)
                     //remove only *after* evaluating "file, sideSrc"!
                 }
@@ -1612,9 +1617,9 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
             if (file.isFollowedSymlink<sideTrg>()) //follow link when updating file rather than delete it and replace with regular file!!!
                 targetPathResolvedOld = targetPathResolvedNew = parallel::getSymlinkResolvedPath(file.getAbstractPath<sideTrg>(), singleThread_); //throw FileError
 
-            reportInfo(txtUpdatingFile_, AFS::getDisplayPath(targetPathResolvedOld)); //throw ThreadStopRequest
-
-            AsyncItemStatReporter statReporter(1, file.getFileSize<sideSrc>(), acb_);
+            std::wstring statusMsg = replaceCpy(txtUpdatingFile_, L"%x", fmtPath(AFS::getDisplayPath(targetPathResolvedOld)));
+            acb_.logInfo(statusMsg); //throw ThreadStopRequest
+            AsyncPercentStatReporter statReporter(std::move(statusMsg), file.getFileSize<sideSrc>(), acb_); //throw ThreadStopRequest
 
             if (file.isFollowedSymlink<sideTrg>()) //since we follow the link, we need to sync case sensitivity of the link manually!
                 if (getUnicodeNormalForm(file.getItemName<sideTrg>()) !=
@@ -1624,27 +1629,29 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
 
             auto onDeleteTargetFile = [&] //delete target at appropriate time
             {
+                assert(isLocked(singleThread_));
                 //updateStatus(this->delHandlerTrg.getTxtRemovingFile(), AFS::getDisplayPath(targetPathResolvedOld)); -> superfluous/confuses user
 
                 FileAttributes followedTargetAttr = file.getAttributes<sideTrg>();
                 followedTargetAttr.isFollowedSymlink = false;
 
-                delHandlerTrg.removeFileWithCallback({targetPathResolvedOld, followedTargetAttr}, file.getRelativePath<sideTrg>(), statReporter, singleThread_); //throw FileError, X
+                AsyncItemStatReporter delStatReporter(0, 0, acb_); //=> decouple from AsyncPercentStatReporter above!
                 //no (logical) item count update desired - but total byte count may change, e.g. move(copy) old file to versioning dir
-                statReporter.reportDelta(-1, 0); //undo item stats reporting within DeletionHandler::removeFileWithCallback()
-
-                //file.removeObject<sideTrg>(); -> doesn't make sense for isFollowedSymlink(); "file, sideTrg" evaluated below!
-
+                delHandlerTrg.removeFileWithCallback({targetPathResolvedOld, followedTargetAttr}, file.getRelativePath<sideTrg>(), delStatReporter, singleThread_); //throw FileError, X
+                delStatReporter.reportDelta(-1, 0); //noexcept! undo item stats reporting within DeletionHandler::removeFileWithCallback()
                 //if fail-safe file copy is active, then the next operation will be a simple "rename"
                 //=> don't risk updateStatus() throwing ThreadStopRequest() leaving the target deleted rather than updated!
                 //=> if failSafeFileCopy_ : don't run callbacks that could throw
+
+                //file.removeObject<sideTrg>(); -> doesn't make sense for isFollowedSymlink(); "file, sideTrg" evaluated below!
             };
 
             const AFS::FileCopyResult result = copyFileWithCallback({file.getAbstractPath<sideSrc>(), file.getAttributes<sideSrc>()},
                                                                     targetPathResolvedNew,
                                                                     onDeleteTargetFile,
                                                                     statReporter); //throw FileError, ThreadStopRequest, X
-            statReporter.reportDelta(1, 0); //we model "delete + copy" as ONE logical operation
+            statReporter.updateStatus(1, 0); //throw ThreadStopRequest
+            //we model "delete + copy" as ONE logical operation
 
             //update FilePair
             file.setSyncedTo<sideTrg>(file.getItemName<sideSrc>(), result.fileSize,
@@ -1719,6 +1726,7 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
 inline
 void FolderPairSyncer::synchronizeLink(SymlinkPair& link) //throw FileError, ThreadStopRequest
 {
+    assert(isLocked(singleThread_));
     const SyncOperation syncOp = link.getSyncOperation();
 
     if (std::optional<SelectSide> sideTrg = getTargetDirection(syncOp))
@@ -1868,6 +1876,7 @@ void FolderPairSyncer::synchronizeLinkInt(SymlinkPair& symlink, SyncOperation sy
 inline
 void FolderPairSyncer::synchronizeFolder(FolderPair& folder) //throw FileError, ThreadStopRequest
 {
+    assert(isLocked(singleThread_));
     const SyncOperation syncOp = folder.getSyncOperation();
 
     if (std::optional<SelectSide> sideTrg = getTargetDirection(syncOp))
@@ -2004,12 +2013,12 @@ void FolderPairSyncer::synchronizeFolderInt(FolderPair& folder, SyncOperation sy
 AFS::FileCopyResult FolderPairSyncer::copyFileWithCallback(const FileDescriptor& sourceDescr, //throw FileError, ThreadStopRequest, X
                                                            const AbstractPath& targetPath,
                                                            const std::function<void()>& onDeleteTargetFile /*throw X*/,
-                                                           AsyncItemStatReporter& statReporter)
+                                                           AsyncPercentStatReporter& statReporter) /*throw ThreadStopRequest*/
 {
     const AbstractPath& sourcePath = sourceDescr.path;
     const AFS::StreamAttributes sourceAttr{sourceDescr.attr.modTime, sourceDescr.attr.fileSize, sourceDescr.attr.filePrint};
 
-    auto copyOperation = [this, &sourceAttr, &targetPath, &onDeleteTargetFile, &statReporter](const AbstractPath& sourcePathTmp)
+    auto copyOperation = [&](const AbstractPath& sourcePathTmp)
     {
         //already existing + no onDeleteTargetFile: undefined behavior! (e.g. fail/overwrite/auto-rename)
         const AFS::FileCopyResult result = parallel::copyFileTransactional(sourcePathTmp, sourceAttr, //throw FileError, ErrorFileLocked, ThreadStopRequest, X
@@ -2025,8 +2034,8 @@ AFS::FileCopyResult FolderPairSyncer::copyFileWithCallback(const FileDescriptor&
         },
         [&](int64_t bytesDelta) //callback runs *outside* singleThread_ lock! => fine
         {
-            statReporter.reportDelta(0, bytesDelta);
-            interruptionPoint(); //throw ThreadStopRequest
+            statReporter.updateStatus(0, bytesDelta); //throw ThreadStopRequest
+            interruptionPoint(); //throw ThreadStopRequest => not reliably covered by AsyncPercentStatReporter::updateStatus()!
         },
         singleThread_);
 

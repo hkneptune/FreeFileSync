@@ -54,7 +54,7 @@ private:
 
 struct SparseCurveData : public CurveData
 {
-    SparseCurveData(bool addSteps = false) : addSteps_(addSteps) {} //addSteps: add points to get a staircase effect or connect points via a direct line
+    explicit SparseCurveData(bool addSteps = false) : addSteps_(addSteps) {} //addSteps: add points to get a staircase effect or connect points via a direct line
 
     virtual std::optional<CurvePoint> getLessEq   (double x) const = 0;
     virtual std::optional<CurvePoint> getGreaterEq(double x) const = 0;

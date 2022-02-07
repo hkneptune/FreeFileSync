@@ -80,7 +80,7 @@ public:
 private:
     bool paused_;
     std::chrono::steady_clock::time_point startTime_ = std::chrono::steady_clock::now();
-    std::chrono::nanoseconds elapsedUntilPause_{}; //std::chrono::duration is uninitialized by default! WTF! When will this stupidity end???
+    std::chrono::nanoseconds elapsedUntilPause_{}; //std::chrono::duration is uninitialized by default! WTF! When will this stupidity end!
 };
 
 

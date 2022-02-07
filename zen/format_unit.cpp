@@ -90,14 +90,12 @@ std::wstring formatUnitTime(int val, UnitRemTime unit)
 {
     switch (unit)
     {
-        case UnitRemTime::sec:
-            return _P("1 sec", "%x sec", val);
-        case UnitRemTime::min:
-            return _P("1 min", "%x min", val);
-        case UnitRemTime::hour:
-            return _P("1 hour", "%x hours", val);
-        case UnitRemTime::day:
-            return _P("1 day", "%x days", val);
+        //*INDENT-OFF*
+        case UnitRemTime::sec:  return _P("1 sec",  "%x sec",   val);
+        case UnitRemTime::min:  return _P("1 min",  "%x min",   val);
+        case UnitRemTime::hour: return _P("1 hour", "%x hours", val);
+        case UnitRemTime::day:  return _P("1 day",  "%x days",  val);
+        //*INDENT-ON*
     }
     assert(false);
     return _("Error");
@@ -152,15 +150,10 @@ std::wstring zen::formatRemainingTime(double timeInSec)
 }
 
 
-//std::wstring zen::fractionToString1Dec(double fraction)
-//{
-//    return printNumber<std::wstring>(L"%.1f", fraction * 100.0) + L'%'; //no need to internationalize fraction!?
-//}
-
-
-std::wstring zen::formatFraction(double fraction)
+std::wstring zen::formatPercent0(double fraction)
 {
-    return printNumber<std::wstring>(L"%.2f", fraction * 100.0) + L'%'; //no need to internationalize fraction!?
+    return numberTo<std::wstring>(std::lround(fraction * 100)) + L'%'; //need to localize percent!?
+    //return printNumber<std::wstring>(L"%.2f", fraction * 100) + L'%';
 }
 
 
@@ -193,7 +186,6 @@ WeekDay impl::getFirstDayOfWeekImpl() //throw SysError
         ---------------------------------------
         LC_TIME=en_DK.utf8    => Monday
         LC_TIME=en_US.utf8    => Sunday       */
-
     const char* firstDay = ::nl_langinfo(_NL_TIME_FIRST_WEEKDAY); //[1-Sunday, 7-Saturday]
     ASSERT_SYSERROR(firstDay && 1 <= *firstDay && *firstDay <= 7);
 

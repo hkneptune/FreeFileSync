@@ -46,8 +46,8 @@ namespace
 //Extensions to FTP: https://tools.ietf.org/html/rfc3659
 //FTP commands       https://en.wikipedia.org/wiki/List_of_FTP_commands
 
-const std::chrono::seconds FTP_SESSION_MAX_IDLE_TIME  (20);
-const std::chrono::seconds FTP_SESSION_CLEANUP_INTERVAL(4);
+constexpr std::chrono::seconds FTP_SESSION_MAX_IDLE_TIME  (20);
+constexpr std::chrono::seconds FTP_SESSION_CLEANUP_INTERVAL(4);
 const int FTP_STREAM_BUFFER_SIZE = 512 * 1024; //unit: [byte]
 //FTP stream buffer should be at least as big as the biggest AFS block size (currently 256 KB for MTP),
 //but there seems to be no reason for an upper limit

@@ -159,7 +159,7 @@ Iterator binarySearch(Iterator first, Iterator last, const T& value, CompLess le
 {
     static_assert(std::is_same_v<typename std::iterator_traits<Iterator>::iterator_category, std::random_access_iterator_tag>);
 
-    first = std::lower_bound(first, last, value, less);
+    first = std::lower_bound(first, last, value, less); //alternative: std::partition_point
     if (first != last && !less(value, *first))
         return first;
     else

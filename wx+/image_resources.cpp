@@ -73,6 +73,7 @@ ImageHolder xbrzScale(int width, int height, const unsigned char* imageRgb, cons
 
 auto getScalerTask(const std::string& imageName, const wxImage& img, int hqScale, Protected<std::vector<std::pair<std::string, ImageHolder>>>& result)
 {
+    assert(runningOnMainThread());
     return [imageName,
             width  = img.GetWidth(),  //
             height = img.GetHeight(), //don't call wxWidgets functions from worker thread
@@ -89,18 +90,20 @@ auto getScalerTask(const std::string& imageName, const wxImage& img, int hqScale
 class HqParallelScaler
 {
 public:
-    HqParallelScaler(int hqScale) : hqScale_(hqScale) { assert(hqScale > 1); }
+    explicit HqParallelScaler(int hqScale) : hqScale_(hqScale) { assert(hqScale > 1); }
 
     ~HqParallelScaler() { threadGroup_ = {}; } //imgKeeper_ must out-live threadGroup!!!
 
     void add(const std::string& imageName, const wxImage& img)
     {
+        assert(runningOnMainThread());
         imgKeeper_.push_back(img); //retain (ref-counted) wxImage so that the rgb/alpha pointers remain valid after passed to threads
         threadGroup_->run(getScalerTask(imageName, img, hqScale_, result_));
     }
 
     std::unordered_map<std::string, wxImage> waitAndGetResult()
     {
+        assert(runningOnMainThread());
         threadGroup_->wait();
 
         std::unordered_map<std::string, wxImage> output;
@@ -184,14 +187,17 @@ ImageBuffer::ImageBuffer(const Zstring& zipPath) //throw FileError
         //do NOT rely on wxConvLocal! On failure shows unhelpful popup "Cannot convert from the charset 'Unknown encoding (-1)'!"
 
         while (const auto& entry = std::unique_ptr<wxZipEntry>(zipStream.GetNextEntry())) //take ownership!
-            if (std::string stream(entry->GetSize(), '\0'); !stream.empty() && zipStream.ReadAll(&stream[0], stream.size()))
+            if (std::string stream(entry->GetSize(), '\0');
+                zipStream.ReadAll(stream.data(), stream.size()))
                 streams.emplace_back(utfTo<Zstring>(entry->GetName()), std::move(stream));
             else
                 assert(false);
     }
     catch (FileError&) //fall back to folder
     {
-        traverseFolder(beforeLast(zipPath, Zstr(".zip"), IfNotFoundReturn::none), [&](const FileInfo& fi)
+        const Zstring fallbackFolder = beforeLast(zipPath, Zstr(".zip"), IfNotFoundReturn::none);
+        if (dirAvailable(fallbackFolder)) //Debug build (only!?)
+            traverseFolder(fallbackFolder, [&](const FileInfo& fi)
         {
             if (endsWith(fi.fullPath, Zstr(".png")))
             {
@@ -199,6 +205,8 @@ ImageBuffer::ImageBuffer(const Zstring& zipPath) //throw FileError
                 streams.emplace_back(fi.itemName, std::move(stream));
             }
         }, nullptr, nullptr, [](const std::wstring& errorMsg) { throw FileError(errorMsg); });
+        else
+            throw;
     }
     //--------------------------------------------------------------------
 

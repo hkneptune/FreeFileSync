@@ -133,7 +133,7 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
     const int scrollDelta = GetCharHeight();
     m_scrolledWindowTranslators->SetScrollRate(scrollDelta, scrollDelta);
 
-    for (const TranslationInfo& ti : getExistingTranslations())
+    for (const TranslationInfo& ti : getAvailableTranslations())
     {
         //country flag
         wxStaticBitmap* staticBitmapFlag = new wxStaticBitmap(m_scrolledWindowTranslators, wxID_ANY, wxBitmap(loadImage(ti.languageFlag)));
@@ -809,7 +809,7 @@ CopyToDialog::CopyToDialog(wxWindow* parent,
         it re-enables all windows that are supposed to be disabled during the current modal loop!
         This only affects Ubuntu/wxGTK! No such issue on Debian/wxGTK or Suse/wxGTK
         => another Unity problem like the following?
-        https://trac.wxwidgets.org/ticket/14823 "Menu not disabled when showing modal dialogs in wxGTK under Unity"        */
+        https://github.com/wxWidgets/wxWidgets/issues/14823 "Menu not disabled when showing modal dialogs in wxGTK under Unity"        */
 
     const auto& [itemList, itemCount] = getSelectedItemsAsString(rowsOnLeft, rowsOnRight);
 
@@ -934,7 +934,7 @@ DeleteDialog::DeleteDialog(wxWindow* parent,
         it re-enables all windows that are supposed to be disabled during the current modal loop!
         This only affects Ubuntu/wxGTK! No such issue on Debian/wxGTK or Suse/wxGTK
         => another Unity problem like the following?
-        https://trac.wxwidgets.org/ticket/14823 "Menu not disabled when showing modal dialogs in wxGTK under Unity"             */
+        https://github.com/wxWidgets/wxWidgets/issues/14823 "Menu not disabled when showing modal dialogs in wxGTK under Unity"             */
 
     m_checkBoxUseRecycler->SetValue(useRecycleBin);
 

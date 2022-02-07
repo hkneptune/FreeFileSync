@@ -22,7 +22,6 @@
 #include <wx/log.h>
 #include "parse_plural.h"
 #include "parse_lng.h"
-#include "ffs_paths.h"
 
     #include <wchar.h> //wcscasecmp
 
@@ -98,10 +97,8 @@ FFSTranslation::FFSTranslation(const std::string& lngStream) //throw lng::Parsin
 }
 
 
-std::vector<TranslationInfo> loadTranslations()
+std::vector<TranslationInfo> loadTranslations(const Zstring& zipPath) //throw FileError
 {
-    const Zstring& zipPath = getResourceDirPf() + Zstr("Languages.zip");
-
     std::vector<std::pair<Zstring /*file name*/, std::string /*byte stream*/>> streams;
 
     try //to load from ZIP first:
@@ -112,23 +109,25 @@ std::vector<TranslationInfo> loadTranslations()
 
         while (const auto& entry = std::unique_ptr<wxZipEntry>(zipStream.GetNextEntry())) //take ownership!
             if (std::string stream(entry->GetSize(), '\0');
-                !stream.empty() && zipStream.ReadAll(&stream[0], stream.size()))
+                zipStream.ReadAll(stream.data(), stream.size()))
                 streams.emplace_back(utfTo<Zstring>(entry->GetName()), std::move(stream));
             else
                 assert(false);
     }
     catch (FileError&) //fall back to folder
     {
-        traverseFolder(beforeLast(zipPath, Zstr(".zip"), IfNotFoundReturn::none), [&](const FileInfo& fi)
+        const Zstring fallbackFolder = beforeLast(zipPath, Zstr(".zip"), IfNotFoundReturn::none);
+        if (dirAvailable(fallbackFolder)) //Debug build (only!?)
+            traverseFolder(fallbackFolder, [&](const FileInfo& fi)
         {
             if (endsWith(fi.fullPath, Zstr(".lng")))
-                try
-                {
-                    std::string stream = getFileContent(fi.fullPath, nullptr /*notifyUnbufferedIO*/); //throw FileError
-                    streams.emplace_back(fi.itemName, std::move(stream));
-                }
-                catch (FileError&) { assert(false); }
-        }, nullptr, nullptr, [](const std::wstring& errorMsg) { assert(false); }); //errors are not really critical in this context
+            {
+                std::string stream = getFileContent(fi.fullPath, nullptr /*notifyUnbufferedIO*/); //throw FileError
+                streams.emplace_back(fi.itemName, std::move(stream));
+            }
+        }, nullptr, nullptr, [](const std::wstring& errorMsg) { throw FileError(errorMsg); });
+        else
+            throw;
     }
     //--------------------------------------------------------------------
 
@@ -174,7 +173,7 @@ std::vector<TranslationInfo> loadTranslations()
             }
             else assert(false);
         }
-        catch (lng::ParsingError&) { assert(false); } //better not show an error message here; scenario: batch jobs
+        catch (lng::ParsingError&) { assert(false); }
 
     std::sort(locMapping.begin(), locMapping.end(), [](const TranslationInfo& lhs, const TranslationInfo& rhs)
     {
@@ -467,20 +466,33 @@ private:
     wxLayoutDirection layoutDir_ = wxLayout_Default;
     std::unique_ptr<wxLocale> locale_;
 };
+
+
+std::vector<TranslationInfo> globalTranslations;
 }
 
 
-const std::vector<TranslationInfo>& fff::getExistingTranslations()
+const std::vector<TranslationInfo>& fff::getAvailableTranslations()
 {
-    static const std::vector<TranslationInfo> translations = loadTranslations();
-    return translations;
+    assert(!globalTranslations.empty()); //localizationInit() not called, or failed!?
+    return globalTranslations;
 }
 
 
-void fff::releaseWxLocale()
+void fff::localizationInit(const Zstring& zipPath) //throw FileError
 {
+    assert(globalTranslations.empty());
+    globalTranslations = loadTranslations(zipPath); //throw FileError
+    setLanguage(getSystemLanguage()); //throw FileError
+}
+
+
+void fff::localizationCleanup()
+{
+    assert(!globalTranslations.empty());
     wxWidgetsLocale::getInstance().tearDown();
     setTranslator(nullptr); //good place for clean up rather than some time during static destruction: is this an actual benefit???
+    globalTranslations.clear();
 }
 
 
@@ -493,7 +505,7 @@ void fff::setLanguage(wxLanguage lng) //throw FileError
     std::string lngStream;
     Zstring lngFileName;
 
-    for (const TranslationInfo& e : getExistingTranslations())
+    for (const TranslationInfo& e : getAvailableTranslations())
         if (e.languageID == lng)
         {
             lngStream   = e.lngStream;

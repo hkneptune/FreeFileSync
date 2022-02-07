@@ -1,3 +1,14 @@
+FreeFileSync 11.17 [2022-02-04]
+-------------------------------
+Show per-file progress in percent when copying large files
+Log app initialization errors
+Fixed uncaught exception after installation
+Defer testing for third-party buggy DLLs until after crashing
+Consider ReFS 128-bit file ID failure states (Windows)
+Refer to volume by name: support names including brackets
+Support local installation with non-standard home (Linux)
+
+
 FreeFileSync 11.16 [2022-01-02]
 -------------------------------
 Allow to select and remove invalid config file

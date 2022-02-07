@@ -319,9 +319,13 @@ private:
                         if (item->cfgItem.lastSyncTime == 0)
                             return std::wstring(1, EN_DASH);
 
+                        //return utfTo<std::wstring>(formatTime(formatDateTimeTag, getLocalTime(item->cfgItem.lastSyncTime)));
+
                         const int daysPast = getDaysPast(item->cfgItem.lastSyncTime);
-                        return daysPast == 0 ? _("Today") : _P("1 day", "%x days", daysPast);
-                        //return formatTime(formatDateTimeTag, getLocalTime(item->lastSyncTime));
+                        return daysPast == 0 ?
+                               utfTo<std::wstring>(formatTime(Zstr("%R") /*equivalent to "%H:%M"*/, getLocalTime(item->cfgItem.lastSyncTime))) :
+                               //_("Today") :
+                               _P("1 day", "%x days", daysPast);
                     }
                     break;
 

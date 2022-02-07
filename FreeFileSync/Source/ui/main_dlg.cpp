@@ -62,8 +62,8 @@ const size_t EXT_APP_MASS_INVOKE_THRESHOLD = 10; //more is likely a user mistake
 const size_t EXT_APP_MAX_TOTAL_WAIT_TIME_MS = 1000;
 
 const int TOP_BUTTON_OPTIMAL_WIDTH_DIP = 170;
-const std::chrono::milliseconds LAST_USED_CFG_EXISTENCE_CHECK_TIME_MAX(500);
-const std::chrono::milliseconds FILE_GRID_POST_UPDATE_DELAY(400);
+constexpr std::chrono::milliseconds LAST_USED_CFG_EXISTENCE_CHECK_TIME_MAX(500);
+constexpr std::chrono::milliseconds FILE_GRID_POST_UPDATE_DELAY(400);
 
 const Zchar macroNameItemPath   [] = Zstr("%item_path%");
 const Zchar macroNameItemPath2  [] = Zstr("%item_path2%");
@@ -760,7 +760,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     fixMenuIcons(*m_menuHelp);
 
     //create language selection menu
-    for (const TranslationInfo& ti : getExistingTranslations())
+    for (const TranslationInfo& ti : getAvailableTranslations())
     {
         wxMenuItem* newItem = new wxMenuItem(m_menuLanguages, wxID_ANY, ti.languageName);
         newItem->SetBitmap(loadImage(ti.languageFlag)); //GTK: set *before* inserting into menu

@@ -185,6 +185,8 @@ Zstring getUserDir() //throw FileError
         return "/root";
     else
         return "/home/" + loginUser;
+
+    //safer? sudo --user $userName sh -c 'echo $HOME'
 }
 }
 

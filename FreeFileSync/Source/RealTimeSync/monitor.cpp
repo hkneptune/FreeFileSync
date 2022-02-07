@@ -18,7 +18,7 @@ using namespace zen;
 
 namespace
 {
-const std::chrono::seconds FOLDER_EXISTENCE_CHECK_INTERVAL(1);
+constexpr std::chrono::seconds FOLDER_EXISTENCE_CHECK_INTERVAL(1);
 
 
 //wait until all directories become available (again) + logs in network share

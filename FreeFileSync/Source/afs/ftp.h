@@ -29,6 +29,7 @@ struct FtpSessionId
     Zstring password;
     bool useTls = false;
 };
+const int DEFAULT_PORT_FTP = 21; //TLS enabled? => same for explicit FTP, but *implicit* FTP uses port 990
 
 struct FtpLogin : FtpSessionId
 {

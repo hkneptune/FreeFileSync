@@ -68,8 +68,8 @@ XmlDoc loadXml(const Zstring& filePath) //throw FileError
         throw FileError(
             replaceCpy(replaceCpy(replaceCpy(_("Error parsing file %x, row %y, column %z."),
                                              L"%x", fmtPath(filePath)),
-                                  L"%y", numberTo<std::wstring>(e.row + 1)),
-                       L"%z", numberTo<std::wstring>(e.col + 1)));
+                                  L"%y", formatNumber(e.row + 1)),
+                       L"%z", formatNumber(e.col + 1)));
     }
 }
 }

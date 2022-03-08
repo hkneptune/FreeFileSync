@@ -24,45 +24,8 @@ using namespace fff;
 using AFS = AbstractFileSystem;
 
 
-namespace fff
-{
-std::weak_ordering operator<=>(const SshSessionId& lhs, const SshSessionId& rhs)
-{
-    //exactly the type of case insensitive comparison we need for server names!
-    if (const std::weak_ordering cmp = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
-        std::is_neq(cmp))
-        return cmp;
-
-    if (const std::strong_ordering cmp = std::tie(lhs.port, lhs.username, lhs.authType, lhs.allowZlib) <=> //username: case sensitive!
-                                         std::tie(rhs.port, rhs.username, rhs.authType, rhs.allowZlib);
-        std::is_neq(cmp))
-        return cmp;
-
-    switch (lhs.authType)
-    {
-        case SftpAuthType::password:
-            return lhs.password <=> rhs.password; //case sensitive!
-
-        case SftpAuthType::keyFile:
-            if (const std::strong_ordering cmp = lhs.password <=> rhs.password; //case sensitive!
-                std::is_neq(cmp))
-                return cmp;
-
-            return lhs.privateKeyFilePath <=> rhs.privateKeyFilePath; //case sensitive!
-
-        case SftpAuthType::agent:
-            return std::weak_ordering::equivalent;
-    }
-    assert(false);
-    return std::weak_ordering::equivalent;
-}
-}
-
-
 namespace
 {
-Zstring concatenateSftpFolderPathPhrase(const SftpLogin& login, const AfsPath& afsPath); //noexcept
-
 /*
 SFTP specification version 3 (implemented by libssh2): https://filezilla-project.org/specs/draft-ietf-secsh-filexfer-02.txt
 
@@ -136,6 +99,56 @@ SFTP_OPTIMAL_BLOCK_SIZE_READ:              SFTP_OPTIMAL_BLOCK_SIZE_WRITE:
     DSL maximum download speed: 5,96 MB/s      DSL maximum upload speed: 1220 KB/s
 
 => libssh2_sftp_read/libssh2_sftp_write may take quite long for 16x and larger => use smallest multiple that fills bandwidth!            */
+}
+
+
+namespace fff
+{
+inline
+int getEffectivePort(int portOption)
+{
+    if (portOption > 0)
+        return portOption;
+    return DEFAULT_PORT_SFTP;
+}
+
+
+std::weak_ordering operator<=>(const SshSessionId& lhs, const SshSessionId& rhs)
+{
+    //exactly the type of case insensitive comparison we need for server names!
+    if (const std::weak_ordering cmp = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
+        std::is_neq(cmp))
+        return cmp;
+
+    const int portLhs = getEffectivePort(lhs.port);
+    const int portRhs = getEffectivePort(rhs.port);
+
+    if (const std::strong_ordering cmp = std::tie(portLhs, lhs.username, lhs.authType, lhs.allowZlib) <=> //username: case sensitive!
+                                         std::tie(portRhs, rhs.username, rhs.authType, rhs.allowZlib);
+        std::is_neq(cmp))
+        return cmp;
+
+    switch (lhs.authType)
+    {
+        case SftpAuthType::password:
+            return lhs.password <=> rhs.password; //case sensitive!
+
+        case SftpAuthType::keyFile:
+            return std::tie(lhs.password, lhs.privateKeyFilePath) <=> //case sensitive!
+                   std::tie(rhs.password, rhs.privateKeyFilePath);    //
+
+        case SftpAuthType::agent:
+            return std::weak_ordering::equivalent;
+    }
+    assert(false);
+    return std::weak_ordering::equivalent;
+}
+}
+
+
+namespace
+{
+Zstring concatenateSftpFolderPathPhrase(const SftpLogin& login, const AfsPath& afsPath); //noexcept
 
 
 std::string getLibssh2Path(const AfsPath& afsPath)
@@ -147,13 +160,20 @@ std::string getLibssh2Path(const AfsPath& afsPath)
 std::wstring getSftpDisplayPath(const SshSessionId& sessionId, const AfsPath& afsPath)
 {
     Zstring displayPath = Zstring(sftpPrefix) + Zstr("//");
+
     if (!sessionId.username.empty()) //show username! consider AFS::compareDeviceSameAfsType()
         displayPath += sessionId.username + Zstr('@');
+
     displayPath += sessionId.server;
 
-    const Zstring relPath = getServerRelPath(afsPath);
+    if (const int port = getEffectivePort(sessionId.port);
+        port != DEFAULT_PORT_SFTP)
+        displayPath += Zstr(':') + numberTo<Zstring>(port);
+
+    const Zstring& relPath = getServerRelPath(afsPath);
     if (relPath != Zstr("/"))
         displayPath += relPath;
+
     return utfTo<std::wstring>(displayPath);
 }
 
@@ -183,9 +203,7 @@ public:
     {
         ZEN_ON_SCOPE_FAIL(cleanup()); //destructor call would lead to member double clean-up!!!
 
-        Zstring serviceName = Zstr("ssh"); //SFTP default port: 22, see %WINDIR%\system32\drivers\etc\services
-        if (sessionId_.port > 0)
-            serviceName = numberTo<Zstring>(sessionId_.port);
+        const Zstring& serviceName = numberTo<Zstring>(getEffectivePort(sessionId_.port));
 
         socket_ = std::make_unique<Socket>(sessionId_.server, serviceName); //throw SysError
 
@@ -554,7 +572,7 @@ public:
         {
             if (sshSession.sftpChannels_.empty())
                 return msg;
-            return msg + L' ' + replaceCpy(_("Failed to open SFTP channel number %x."), L"%x", numberTo<std::wstring>(sshSession.sftpChannels_.size() + 1));
+            return msg + L' ' + replaceCpy(_("Failed to open SFTP channel number %x."), L"%x", formatNumber(sshSession.sftpChannels_.size() + 1));
         };
 
         std::optional<SysError>      firstSysError;
@@ -1512,11 +1530,13 @@ private:
             std::is_neq(cmp))
             return cmp;
 
-        //port does NOT create a *different* data source!!! -> same thing for password!
+        //port DOES create a *different* data source! https://freefilesync.org/forum/viewtopic.php?t=9047
+    const int portLhs = getEffectivePort(lhs.port);
+    const int portRhs = getEffectivePort(rhs.port);
 
         //consider username: different users may have different views and folder access rights!
-
-        return lhs.username <=> rhs.username; //case sensitive!
+        return std::tie(portLhs, lhs.username) <=> //username: case sensitive!
+               std::tie(portRhs, rhs.username); 
     }
 
     //----------------------------------------------------------------------------------------------------------------
@@ -1820,9 +1840,17 @@ private:
 //expects "clean" login data
 Zstring concatenateSftpFolderPathPhrase(const SftpLogin& login, const AfsPath& afsPath) //noexcept
 {
+    Zstring username;
+    if (!login.username.empty())
+        username = encodeFtpUsername(login.username) + Zstr("@");
+
     Zstring port;
     if (login.port > 0)
         port = Zstr(':') + numberTo<Zstring>(login.port);
+
+    Zstring relPath = getServerRelPath(afsPath);
+    if (relPath == Zstr("/"))
+        relPath.clear();
 
     const SftpLogin loginDefault;
 
@@ -1854,7 +1882,7 @@ Zstring concatenateSftpFolderPathPhrase(const SftpLogin& login, const AfsPath& a
         if (!login.password.empty()) //password always last => visually truncated by folder input field
             options += Zstr("|pass64=") + encodePasswordBase64(login.password);
 
-    return Zstring(sftpPrefix) + Zstr("//") + encodeFtpUsername(login.username) + Zstr("@") + login.server + port + getServerRelPath(afsPath) + options;
+    return Zstring(sftpPrefix) + Zstr("//") + username + login.server + port + relPath + options;
 }
 }
 
@@ -1934,7 +1962,7 @@ int fff::getServerMaxChannelsPerConnection(const SftpLogin& login) //throw FileE
             if (std::chrono::steady_clock::now() > timeoutTime)
                 throw SysError(_P("Operation timed out after 1 second.", "Operation timed out after %x seconds.",
                                   std::chrono::seconds(SFTP_CHANNEL_LIMIT_DETECTION_TIME_OUT).count()) + L' ' +
-                               replaceCpy(_("Failed to open SFTP channel number %x."), L"%x", numberTo<std::wstring>(exSession->getSftpChannelCount() + 1)));
+                               replaceCpy(_("Failed to open SFTP channel number %x."), L"%x", formatNumber(exSession->getSftpChannelCount() + 1)));
         }
     }
     catch (const SysError& e)
@@ -1952,10 +1980,10 @@ bool fff::acceptsItemPathPhraseSftp(const Zstring& itemPathPhrase) //noexcept
 }
 
 
-//syntax: sftp://[<user>[:<password>]@]<server>[:port]/<relative-path>[|option_name=value]
-//
-//   e.g. sftp://user001:secretpassword@private.example.com:222/mydirectory/
-//        sftp://user001@private.example.com/mydirectory|con=2|cpc=10|keyfile=%AppData%\id_rsa|pass64=c2VjcmV0cGFzc3dvcmQ
+/* syntax: sftp://[<user>[:<password>]@]<server>[:port]/<relative-path>[|option_name=value]
+
+   e.g. sftp://user001:secretpassword@private.example.com:222/mydirectory/
+        sftp://user001@private.example.com/mydirectory|con=2|cpc=10|keyfile=%AppData%\id_rsa|pass64=c2VjcmV0cGFzc3dvcmQ          */
 AbstractPath fff::createItemPathSftp(const Zstring& itemPathPhrase) //noexcept
 {
     Zstring pathPhrase = expandMacros(itemPathPhrase); //expand before trimming!
@@ -1969,8 +1997,8 @@ AbstractPath fff::createItemPathSftp(const Zstring& itemPathPhrase) //noexcept
     const Zstring fullPathOpt =  afterFirst(pathPhrase, Zstr('@'), IfNotFoundReturn::all);
 
     SftpLogin login;
-    login.username = decodeFtpUsername(beforeFirst(credentials, Zstr(':'), IfNotFoundReturn::all)); //support standard FTP syntax, even though ':'
-    login.password =                    afterFirst(credentials, Zstr(':'), IfNotFoundReturn::none); //is not used by our concatenateSftpFolderPathPhrase()!
+    login.username = decodeFtpUsername(beforeFirst(credentials, Zstr(':'), IfNotFoundReturn::all)); //support standard FTP syntax, even though
+    login.password =                    afterFirst(credentials, Zstr(':'), IfNotFoundReturn::none); //concatenateSftpFolderPathPhrase() uses "pass64" instead
 
     const Zstring fullPath = beforeFirst(fullPathOpt, Zstr('|'), IfNotFoundReturn::all);
     const Zstring options  =  afterFirst(fullPathOpt, Zstr('|'), IfNotFoundReturn::none);
@@ -1985,27 +2013,24 @@ AbstractPath fff::createItemPathSftp(const Zstring& itemPathPhrase) //noexcept
 
     assert(login.allowZlib == false);
 
-    if (!options.empty())
-    {
-        for (const Zstring& optPhrase : split(options, Zstr("|"), SplitOnEmpty::skip))
-            if (startsWith(optPhrase, Zstr("timeout=")))
-                login.timeoutSec = stringTo<int>(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
-            else if (startsWith(optPhrase, Zstr("chan=")))
-                login.traverserChannelsPerConnection = stringTo<int>(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
-            else if (startsWith(optPhrase, Zstr("keyfile=")))
-            {
-                login.authType = SftpAuthType::keyFile;
-                login.privateKeyFilePath = afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none);
-            }
-            else if (optPhrase == Zstr("agent"))
-                login.authType = SftpAuthType::agent;
-            else if (startsWith(optPhrase, Zstr("pass64=")))
-                login.password = decodePasswordBase64(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
-            else if (optPhrase == Zstr("zlib"))
-                login.allowZlib = true;
-            else
-                assert(false);
-    } //fix "-Wdangling-else"
+    for (const Zstring& optPhrase : split(options, Zstr("|"), SplitOnEmpty::skip))
+        if (startsWith(optPhrase, Zstr("timeout=")))
+            login.timeoutSec = stringTo<int>(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
+        else if (startsWith(optPhrase, Zstr("chan=")))
+            login.traverserChannelsPerConnection = stringTo<int>(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
+        else if (startsWith(optPhrase, Zstr("keyfile=")))
+        {
+            login.authType = SftpAuthType::keyFile;
+            login.privateKeyFilePath = afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none);
+        }
+        else if (optPhrase == Zstr("agent"))
+            login.authType = SftpAuthType::agent;
+        else if (startsWith(optPhrase, Zstr("pass64=")))
+            login.password = decodePasswordBase64(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
+        else if (optPhrase == Zstr("zlib"))
+            login.allowZlib = true;
+        else
+            assert(false);
 
     return AbstractPath(makeSharedRef<SftpFileSystem>(login), serverRelPath);
 }

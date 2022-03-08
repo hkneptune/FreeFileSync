@@ -134,8 +134,8 @@ AFS::FileCopyResult AFS::copyFileAsStream(const AfsPath& afsSource, const Stream
     if (totalBytesRead != makeSigned(attrSourceNew.fileSize))
         throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(getDisplayPath(afsSource))),
                         replaceCpy(replaceCpy(_("Unexpected size of data stream.\nExpected: %x bytes\nActual: %y bytes"),
-                                              L"%x", numberTo<std::wstring>(attrSourceNew.fileSize)),
-                                   L"%y", numberTo<std::wstring>(totalBytesRead)) + L" [notifyUnbufferedRead]");
+                                              L"%x", formatNumber(attrSourceNew.fileSize)),
+                                   L"%y", formatNumber(totalBytesRead)) + L" [notifyUnbufferedRead]");
 
     const FinalizeResult finResult = streamOut->finalize(); //throw FileError, X
 
@@ -146,8 +146,8 @@ AFS::FileCopyResult AFS::copyFileAsStream(const AfsPath& afsSource, const Stream
     if (totalBytesWritten != totalBytesRead)
         throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getDisplayPath(apTarget))),
                         replaceCpy(replaceCpy(_("Unexpected size of data stream.\nExpected: %x bytes\nActual: %y bytes"),
-                                              L"%x", numberTo<std::wstring>(totalBytesRead)),
-                                   L"%y", numberTo<std::wstring>(totalBytesWritten)) + L" [notifyUnbufferedWrite]");
+                                              L"%x", formatNumber(totalBytesRead)),
+                                   L"%y", formatNumber(totalBytesWritten)) + L" [notifyUnbufferedWrite]");
     FileCopyResult cpResult;
     cpResult.fileSize        = attrSourceNew.fileSize;
     cpResult.modTime         = attrSourceNew.modTime;

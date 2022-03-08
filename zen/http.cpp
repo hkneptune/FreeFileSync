@@ -12,7 +12,7 @@
 
 using namespace zen;
 
-constexpr std::chrono::seconds HTTP_ACCESS_TIME_OUT(20);
+const int HTTP_ACCESS_TIME_OUT_SEC = 20;
 
 
 
@@ -102,7 +102,7 @@ public:
                     }
                 };
 
-                HttpSession httpSession(server, useTls, caCertFilePath, HTTP_ACCESS_TIME_OUT); //throw SysError
+                HttpSession httpSession(server, useTls, caCertFilePath); //throw SysError
 
                 auto writeResponse = [&](std::span<const char> buf)
                 {
@@ -112,11 +112,12 @@ public:
                     return asyncStreamOut->write(buf.data(), buf.size()); //throw ThreadStopRequest
                 };
 
-                httpSession.perform(serverRelPath, //throw SysError, ThreadStopRequest
+                httpSession.perform(serverRelPath,
                                     curlHeaders, extraOptions,
                                     writeResponse /*throw ThreadStopRequest*/,
                                     nullptr /*readRequest*/,
-                                    onHeaderData /*throw SysError*/);
+                                    onHeaderData /*throw SysError*/,
+                                    HTTP_ACCESS_TIME_OUT_SEC); //throw SysError, ThreadStopRequest
 
                 if (!headerReceived)
                     throw SysError(L"HTTP response is missing header.");

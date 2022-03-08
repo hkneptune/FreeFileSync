@@ -150,7 +150,7 @@ namespace
 class GridDataMessages : public GridData
 {
 public:
-    GridDataMessages(const SharedRef<const ErrorLog>& log) : msgView_(log) {}
+    explicit GridDataMessages(const SharedRef<const ErrorLog>& log) : msgView_(log) {}
 
     MessageView& getDataView() { return msgView_; }
 

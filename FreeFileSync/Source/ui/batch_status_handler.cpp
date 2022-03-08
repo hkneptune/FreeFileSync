@@ -37,7 +37,7 @@ BatchStatusHandler::BatchStatusHandler(bool showProgress,
     soundFileSyncComplete_(soundFileSyncComplete),
     soundFileAlertPending_(soundFileAlertPending),
     progressDlg_(SyncProgressDialog::create(progressDlgSize, dlgMaximize, [this] { userRequestAbort(); }, *this, nullptr /*parentWindow*/, showProgress, autoCloseDialog,
-{jobName}, startTime, ignoreErrors, autoRetryCount, [&]
+{jobName}, std::chrono::system_clock::to_time_t(startTime), ignoreErrors, autoRetryCount, [&]
 {
     switch (postSyncAction)
     {
@@ -70,9 +70,8 @@ BatchStatusHandler::Result BatchStatusHandler::reportResults(const Zstring& post
                                                              const std::set<AbstractPath>& logFilePathsToKeep,
                                                              const std::string& emailNotifyAddress, ResultsNotification emailNotifyCondition) //noexcept!!
 {
-    const auto totalTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime_);
-
-    progressDlg_->timerSetStatus(false /*active*/); //keep correct summary window stats considering count down timer, system sleep
+    //keep correct summary window stats considering count down timer, system sleep
+    const std::chrono::milliseconds totalTime = progressDlg_->pauseAndGetTotalTime(); 
 
     //determine post-sync status irrespective of further errors during tear-down
     const SyncResult syncResult = [&]
@@ -324,7 +323,7 @@ ProcessCallback::Response BatchStatusHandler::reportError(const ErrorInfo& error
         errorLog_.logMsg(errorInfo.msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO);
         delayAndCountDown(errorInfo.failTime + autoRetryDelay_,
                           [&, statusPrefix  = _("Automatic retry") +
-                                              (errorInfo.retryNumber == 0 ? L"" : L' ' + numberTo<std::wstring>(errorInfo.retryNumber + 1)) + L" | ",
+                                              (errorInfo.retryNumber == 0 ? L"" : L' ' + formatNumber(errorInfo.retryNumber + 1)) + L" | ",
                               statusPostfix = L" | " + _("Error") + L": " + replaceCpy(errorInfo.msg, L'\n', L' ')](const std::wstring& timeRemMsg)
         { this->updateStatus(statusPrefix + timeRemMsg + statusPostfix); }); //throw AbortProcess
         return ProcessCallback::retry;

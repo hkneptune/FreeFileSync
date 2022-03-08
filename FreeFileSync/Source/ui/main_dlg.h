@@ -309,6 +309,7 @@ private:
 
     //the prime data structure of this tool *bling*:
     FolderComparison folderCmp_; //optional!: sync button not available if empty
+    std::shared_ptr<const zen::ErrorLog> errorLogCmp_;
 
     //folder pairs:
     std::unique_ptr<FolderPairFirst> firstFolderPair_; //always bound!!!

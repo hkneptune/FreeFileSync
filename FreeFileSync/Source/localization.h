@@ -26,7 +26,7 @@ struct TranslationInfo
 };
 const std::vector<TranslationInfo>& getAvailableTranslations();
 
-wxLanguage getSystemLanguage();
+wxLanguage getDefaultLanguage();
 wxLanguage getLanguage();
 wxLayoutDirection getLayoutDirection();
 

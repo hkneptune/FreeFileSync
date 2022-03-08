@@ -113,6 +113,17 @@ bool acceptDialogFileDrop(const std::vector<Zstring>& shellItemPaths)
 }
 
 
+
+XmlGuiConfig getDefaultGuiConfig(const FilterConfig& defaultFilter)
+{
+    XmlGuiConfig defaultCfg;
+
+    //set default file filter: this is only ever relevant when creating new configurations!
+    //a default XmlGuiConfig does not need these user-specific exclusions!
+    defaultCfg.mainCfg.globalFilter = defaultFilter;
+
+    return defaultCfg;
+}
 }
 
 //------------------------------------------------------------------
@@ -373,11 +384,7 @@ void MainDialog::create(const Zstring& globalConfigFilePath)
         //else: not-existing/access error? => user may click on [Last session] later
     }
 
-    XmlGuiConfig guiCfg; //contains default values
-
-    //set default file filter: this is only ever relevant when creating new configurations!
-    //a default XmlGuiConfig does not need these user-specific exclusions!
-    guiCfg.mainCfg.globalFilter = globalSettings.defaultFilter;
+    XmlGuiConfig guiCfg = getDefaultGuiConfig(globalSettings.defaultFilter);
 
     if (!cfgFilePaths.empty())
         try
@@ -469,8 +476,9 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     m_bpButtonSyncContext  ->SetBitmapLabel(mirrorIfRtl(loadImage("button_arrow_right")));
     m_bpButtonViewFilterContext->SetBitmapLabel(mirrorIfRtl(loadImage("button_arrow_right")));
 
-    m_bpButtonNew        ->SetBitmapLabel(loadImage("cfg_new"));
+    //m_bpButtonNew      ->set dynamically
     m_bpButtonOpen       ->SetBitmapLabel(loadImage("cfg_load"));
+    //m_bpButtonSave     ->set dynamically
     m_bpButtonSaveAs     ->SetBitmapLabel(generateSaveAsImage("start_sync"));
     m_bpButtonSaveAsBatch->SetBitmapLabel(generateSaveAsImage("cfg_batch"));
 
@@ -1449,7 +1457,7 @@ void MainDialog::copyToAlternateFolder(const std::vector<FileSystemObject*>& sel
     catch (AbortProcess&) {}
 
     const StatusHandlerTemporaryPanel::Result r = statusHandler.reportResults(); //noexcept
-    setLastOperationLog(r.summary, r.errorLog);
+    setLastOperationLog(r.summary, r.errorLog.ptr());
 
     //updateGui(); -> not needed
 }
@@ -1493,7 +1501,7 @@ void MainDialog::deleteSelectedFiles(const std::vector<FileSystemObject*>& selec
     catch (AbortProcess&) {}
 
     const StatusHandlerTemporaryPanel::Result r = statusHandler.reportResults(); //noexcept
-    setLastOperationLog(r.summary, r.errorLog);
+    setLastOperationLog(r.summary, r.errorLog.ptr());
 
     //remove rows that are empty: just a beautification, invalid rows shouldn't cause issues
     filegrid::getDataView(*m_gridMainC).removeInvalidRows();
@@ -1733,7 +1741,7 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
                 catch (AbortProcess&) {}
 
                 const StatusHandlerTemporaryPanel::Result r = statusHandler.reportResults(); //noexcept
-                setLastOperationLog(r.summary, r.errorLog);
+                setLastOperationLog(r.summary, r.errorLog.ptr());
 
                 if (r.summary.syncResult == SyncResult::aborted)
                     return;
@@ -2976,13 +2984,7 @@ std::vector<std::wstring> MainDialog::getJobNames() const
 
 void MainDialog::updateUnsavedCfgStatus()
 {
-    const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalNativePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
-
-    const bool haveUnsavedCfg = lastSavedCfg_ != getConfig();
-
-    //update save config button
-    const bool allowSave = haveUnsavedCfg ||
-                           activeConfigFiles_.size() > 1;
+    const XmlGuiConfig guiCfg = getConfig();
 
     auto makeBrightGrey = [](wxImage img)
     {
@@ -2990,6 +2992,19 @@ void MainDialog::updateUnsavedCfgStatus()
         brighten(img, 80);
         return img;
     };
+
+    //update new config button
+    const bool allowNew = guiCfg != getDefaultGuiConfig(globalCfg_.defaultFilter);
+
+    setImage(*m_bpButtonNew, allowNew ? loadImage("cfg_new") : makeBrightGrey(loadImage("cfg_new")));
+    m_bpButtonNew->Enable(allowNew);
+    m_menuItemNew->Enable(allowNew);
+
+    //update save config button
+    const bool haveUnsavedCfg = lastSavedCfg_ != guiCfg;
+
+    const bool allowSave = haveUnsavedCfg ||
+                           activeConfigFiles_.size() > 1;
 
     setImage(*m_bpButtonSave, allowSave ? loadImage("cfg_save") : makeBrightGrey(loadImage("cfg_save")));
     m_bpButtonSave->Enable(allowSave);
@@ -2999,6 +3014,7 @@ void MainDialog::updateUnsavedCfgStatus()
     wxString title;
     if (haveUnsavedCfg)
         title += L'*';
+    const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalNativePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
 
     if (!activeCfgFilePath.empty())
         title += utfTo<wxString>(activeCfgFilePath);
@@ -3313,11 +3329,8 @@ void MainDialog::onConfigNew(wxCommandEvent& event)
 
 bool MainDialog::loadConfiguration(const std::vector<Zstring>& filePaths, bool ignoreBrokenConfig) //"false": error/cancel
 {
-    XmlGuiConfig newGuiCfg; //default values
+    XmlGuiConfig newGuiCfg = getDefaultGuiConfig(globalCfg_.defaultFilter);
     std::wstring warningMsg;
-    //set default file filter: this is only ever relevant when creating new configurations!
-    //a default XmlGuiConfig does not need these user-specific exclusions!
-    newGuiCfg.mainCfg.globalFilter = globalCfg_.defaultFilter;
 
     if (!filePaths.empty()) //empty cfg file list means "use default"
         try
@@ -3847,79 +3860,80 @@ void MainDialog::showConfigDialog(SyncConfigPanel panelToShow, int localPairInde
                           globalCfg_.folderHistoryMax,
                           globalCfg_.sftpKeyFileLastSelected,
                           globalCfg_.emailHistory,   globalCfg_.emailHistoryMax,
-                          globalCfg_.commandHistory, globalCfg_.commandHistoryMax) != ConfirmationButton::accept)
-        return;
-
-    assert(localCfgs.size() == localPairCfgOld.size());
-
-    currentCfg_.mainCfg.cmpCfg       = globalPairCfg.cmpCfg;
-    currentCfg_.mainCfg.syncCfg      = globalPairCfg.syncCfg;
-    currentCfg_.mainCfg.globalFilter = globalPairCfg.filter;
-
-    currentCfg_.mainCfg.deviceParallelOps      = globalPairCfg.miscCfg.deviceParallelOps;
-    currentCfg_.mainCfg.ignoreErrors           = globalPairCfg.miscCfg.ignoreErrors;
-    currentCfg_.mainCfg.autoRetryCount         = globalPairCfg.miscCfg.autoRetryCount;
-    currentCfg_.mainCfg.autoRetryDelay         = globalPairCfg.miscCfg.autoRetryDelay;
-    currentCfg_.mainCfg.postSyncCommand        = globalPairCfg.miscCfg.postSyncCommand;
-    currentCfg_.mainCfg.postSyncCondition      = globalPairCfg.miscCfg.postSyncCondition;
-    currentCfg_.mainCfg.altLogFolderPathPhrase = globalPairCfg.miscCfg.altLogFolderPathPhrase;
-    currentCfg_.mainCfg.emailNotifyAddress     = globalPairCfg.miscCfg.emailNotifyAddress;
-    currentCfg_.mainCfg.emailNotifyCondition   = globalPairCfg.miscCfg.emailNotifyCondition;
-
-    firstFolderPair_->setValues(localCfgs[0]);
-
-    for (size_t i = 1; i < localCfgs.size(); ++i)
-        additionalFolderPairs_[i - 1]->setValues(localCfgs[i]);
-
-    //------------------------------------------------------------------------------------
-
-    const bool cmpConfigChanged = globalPairCfg.cmpCfg != globalPairCfgOld.cmpCfg || [&]
+                          globalCfg_.commandHistory, globalCfg_.commandHistoryMax) == ConfirmationButton::accept)
     {
-        for (size_t i = 0; i < localCfgs.size(); ++i)
-            if (localCfgs[i].localCmpCfg != localPairCfgOld[i].localCmpCfg)
-                return true;
-        return false;
-    }();
+        assert(localCfgs.size() == localPairCfgOld.size());
 
-    //[!] don't redetermine sync directions if only options for deletion handling or versioning are changed!!!
-    const bool syncDirectionsChanged = globalPairCfg.syncCfg.directionCfg != globalPairCfgOld.syncCfg.directionCfg || [&]
-    {
-        for (size_t i = 0; i < localCfgs.size(); ++i)
-            if (static_cast<bool>(localCfgs[i].localSyncCfg) != static_cast<bool>(localPairCfgOld[i].localSyncCfg) ||
-                (localCfgs[i].localSyncCfg && localCfgs[i].localSyncCfg->directionCfg != localPairCfgOld[i].localSyncCfg->directionCfg))
-                return true;
-        return false;
-    }();
+        currentCfg_.mainCfg.cmpCfg       = globalPairCfg.cmpCfg;
+        currentCfg_.mainCfg.syncCfg      = globalPairCfg.syncCfg;
+        currentCfg_.mainCfg.globalFilter = globalPairCfg.filter;
 
-    const bool filterConfigChanged = globalPairCfg.filter != globalPairCfgOld.filter || [&]
-    {
-        for (size_t i = 0; i < localCfgs.size(); ++i)
-            if (localCfgs[i].localFilter != localPairCfgOld[i].localFilter)
-                return true;
-        return false;
-    }();
+        currentCfg_.mainCfg.deviceParallelOps      = globalPairCfg.miscCfg.deviceParallelOps;
+        currentCfg_.mainCfg.ignoreErrors           = globalPairCfg.miscCfg.ignoreErrors;
+        currentCfg_.mainCfg.autoRetryCount         = globalPairCfg.miscCfg.autoRetryCount;
+        currentCfg_.mainCfg.autoRetryDelay         = globalPairCfg.miscCfg.autoRetryDelay;
+        currentCfg_.mainCfg.postSyncCommand        = globalPairCfg.miscCfg.postSyncCommand;
+        currentCfg_.mainCfg.postSyncCondition      = globalPairCfg.miscCfg.postSyncCondition;
+        currentCfg_.mainCfg.altLogFolderPathPhrase = globalPairCfg.miscCfg.altLogFolderPathPhrase;
+        currentCfg_.mainCfg.emailNotifyAddress     = globalPairCfg.miscCfg.emailNotifyAddress;
+        currentCfg_.mainCfg.emailNotifyCondition   = globalPairCfg.miscCfg.emailNotifyCondition;
 
-    //const bool miscConfigChanged = globalPairCfg.miscCfg.deviceParallelOps      != globalPairCfgOld.miscCfg.deviceParallelOps   ||
-    //                               globalPairCfg.miscCfg.ignoreErrors           != globalPairCfgOld.miscCfg.ignoreErrors        ||
-    //                               globalPairCfg.miscCfg.autoRetryCount         != globalPairCfgOld.miscCfg.autoRetryCount      ||
-    //                               globalPairCfg.miscCfg.autoRetryDelay         != globalPairCfgOld.miscCfg.autoRetryDelay      ||
-    //                               globalPairCfg.miscCfg.postSyncCommand        != globalPairCfgOld.miscCfg.postSyncCommand     ||
-    //                               globalPairCfg.miscCfg.postSyncCondition      != globalPairCfgOld.miscCfg.postSyncCondition   ||
-    //                               globalPairCfg.miscCfg.altLogFolderPathPhrase != globalPairCfgOld.miscCfg.altLogFolderPathPhrase ||
-    //                               globalPairCfg.miscCfg.emailNotifyAddress     != globalPairCfgOld.miscCfg.emailNotifyAddress  ||
-    //                               globalPairCfg.miscCfg.emailNotifyCondition   != globalPairCfgOld.miscCfg.emailNotifyCondition;
+        firstFolderPair_->setValues(localCfgs[0]);
 
-    if (cmpConfigChanged)
-        applyCompareConfig(globalPairCfg.cmpCfg.compareVar != globalPairCfgOld.cmpCfg.compareVar /*setDefaultViewType*/);
+        for (size_t i = 1; i < localCfgs.size(); ++i)
+            additionalFolderPairs_[i - 1]->setValues(localCfgs[i]);
 
-    if (syncDirectionsChanged)
-        applySyncDirections();
+        //------------------------------------------------------------------------------------
 
-    if (filterConfigChanged)
-    {
-        updateGlobalFilterButton(); //refresh global filter icon
-        applyFilterConfig(); //re-apply filter
+        const bool cmpConfigChanged = globalPairCfg.cmpCfg != globalPairCfgOld.cmpCfg || [&]
+        {
+            for (size_t i = 0; i < localCfgs.size(); ++i)
+                if (localCfgs[i].localCmpCfg != localPairCfgOld[i].localCmpCfg)
+                    return true;
+            return false;
+        }();
+
+        //[!] don't redetermine sync directions if only options for deletion handling or versioning are changed!!!
+        const bool syncDirectionsChanged = globalPairCfg.syncCfg.directionCfg != globalPairCfgOld.syncCfg.directionCfg || [&]
+        {
+            for (size_t i = 0; i < localCfgs.size(); ++i)
+                if (static_cast<bool>(localCfgs[i].localSyncCfg) != static_cast<bool>(localPairCfgOld[i].localSyncCfg) ||
+                    (localCfgs[i].localSyncCfg && localCfgs[i].localSyncCfg->directionCfg != localPairCfgOld[i].localSyncCfg->directionCfg))
+                    return true;
+            return false;
+        }();
+
+        const bool filterConfigChanged = globalPairCfg.filter != globalPairCfgOld.filter || [&]
+        {
+            for (size_t i = 0; i < localCfgs.size(); ++i)
+                if (localCfgs[i].localFilter != localPairCfgOld[i].localFilter)
+                    return true;
+            return false;
+        }();
+
+        //const bool miscConfigChanged = globalPairCfg.miscCfg.deviceParallelOps      != globalPairCfgOld.miscCfg.deviceParallelOps   ||
+        //                               globalPairCfg.miscCfg.ignoreErrors           != globalPairCfgOld.miscCfg.ignoreErrors        ||
+        //                               globalPairCfg.miscCfg.autoRetryCount         != globalPairCfgOld.miscCfg.autoRetryCount      ||
+        //                               globalPairCfg.miscCfg.autoRetryDelay         != globalPairCfgOld.miscCfg.autoRetryDelay      ||
+        //                               globalPairCfg.miscCfg.postSyncCommand        != globalPairCfgOld.miscCfg.postSyncCommand     ||
+        //                               globalPairCfg.miscCfg.postSyncCondition      != globalPairCfgOld.miscCfg.postSyncCondition   ||
+        //                               globalPairCfg.miscCfg.altLogFolderPathPhrase != globalPairCfgOld.miscCfg.altLogFolderPathPhrase ||
+        //                               globalPairCfg.miscCfg.emailNotifyAddress     != globalPairCfgOld.miscCfg.emailNotifyAddress  ||
+        //                               globalPairCfg.miscCfg.emailNotifyCondition   != globalPairCfgOld.miscCfg.emailNotifyCondition;
+
+        if (cmpConfigChanged)
+            applyCompareConfig(globalPairCfg.cmpCfg.compareVar != globalPairCfgOld.cmpCfg.compareVar /*setDefaultViewType*/);
+
+        if (syncDirectionsChanged)
+            applySyncDirections();
+
+        if (filterConfigChanged)
+        {
+            updateGlobalFilterButton(); //refresh global filter icon
+            applyFilterConfig(); //re-apply filter
+        }
     }
+    //else: possible but obscure: default filter changed => impact on "New config" enabled/disabled!
 
     updateUnsavedCfgStatus(); //also included by updateGui();
 }
@@ -4080,12 +4094,11 @@ void MainDialog::onCompare(wxCommandEvent& event)
     clearGrid(); //avoid memory peak by clearing old data first
 
     const auto& guiCfg = getConfig();
-    const std::chrono::system_clock::time_point startTime = std::chrono::system_clock::now();
 
     const std::vector<FolderPairCfg>& fpCfgList = extractCompareCfg(guiCfg.mainCfg);
 
     //handle status display and error messages
-    StatusHandlerTemporaryPanel statusHandler(*this, startTime,
+    StatusHandlerTemporaryPanel statusHandler(*this, std::chrono::system_clock::now(),
                                               guiCfg.mainCfg.ignoreErrors,
                                               guiCfg.mainCfg.autoRetryCount,
                                               guiCfg.mainCfg.autoRetryDelay,
@@ -4108,9 +4121,10 @@ void MainDialog::onCompare(wxCommandEvent& event)
     catch (AbortProcess&) {}
 
     const StatusHandlerTemporaryPanel::Result r = statusHandler.reportResults(); //noexcept
+    errorLogCmp_ = r.errorLog.ptr();
     //---------------------------------------------------------------------------
 
-    setLastOperationLog(r.summary, r.errorLog);
+    setLastOperationLog(r.summary, r.errorLog.ptr());
 
     if (r.summary.syncResult == SyncResult::aborted)
         return updateGui(); //refresh grid in ANY case! (also on abort)
@@ -4159,7 +4173,7 @@ void MainDialog::onCompare(wxCommandEvent& event)
             st.deleteCount() == 0)
         {
             flashStatusInformation(_("No files to synchronize"));
-            updateConfigLastRunStats(std::chrono::system_clock::to_time_t(startTime), r.summary.syncResult, getNullPath() /*logFilePath*/);
+            updateConfigLastRunStats(std::chrono::system_clock::to_time_t(r.summary.startTime), r.summary.syncResult, getNullPath() /*logFilePath*/);
         }
     }
 }
@@ -4219,6 +4233,9 @@ void MainDialog::clearGrid(ptrdiff_t pos)
         else
             folderCmp_.erase(folderCmp_.begin() + pos);
     }
+
+    if (folderCmp_.empty())
+        errorLogCmp_.reset();
 
     filegrid::setData(*m_gridMainC,    folderCmp_);
     treegrid::setData(*m_gridOverview, folderCmp_);
@@ -4324,6 +4341,9 @@ void MainDialog::onStartSync(wxCommandEvent& event)
         ZEN_ON_SCOPE_EXIT(enableGuiElements());
         //run this->enableGuiElements() BEFORE "finalRequest" buf AFTER StatusHandlerFloatingDialog::reportResults()
 
+        std::shared_ptr<const ErrorLog> errorLogStart;
+        errorLogStart.swap(errorLogCmp_); //"consume" comparison's error log on first sync
+
         //class handling status updates and error messages
         StatusHandlerFloatingDialog statusHandler(this, getJobNames(), syncStartTime,
                                                   guiCfg.mainCfg.ignoreErrors,
@@ -4333,7 +4353,8 @@ void MainDialog::onStartSync(wxCommandEvent& event)
                                                   globalCfg_.soundFileAlertPending,
                                                   globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.dlgSize,
                                                   globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.isMaximized,
-                                                  globalCfg_.progressDlgAutoClose);
+                                                  globalCfg_.progressDlgAutoClose,
+                                                  errorLogStart.get());
         try
         {
             //PERF_START;
@@ -4388,7 +4409,7 @@ void MainDialog::onStartSync(wxCommandEvent& event)
         globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.isMaximized = r.dlgIsMaximized;
 
         //update last sync stats for the selected cfg files
-        updateConfigLastRunStats(std::chrono::system_clock::to_time_t(syncStartTime), r.summary.syncResult, r.logFilePath);
+        updateConfigLastRunStats(std::chrono::system_clock::to_time_t(r.summary.startTime), r.summary.syncResult, r.logFilePath);
 
         //remove empty rows: just a beautification, invalid rows shouldn't cause issues
         filegrid::getDataView(*m_gridMainC).removeInvalidRows();
@@ -4568,7 +4589,7 @@ void MainDialog::startSyncForSelecction(const std::vector<FileSystemObject*>& se
 
         const StatusHandlerTemporaryPanel::Result r = statusHandler.reportResults(); //noexcept
 
-        setLastOperationLog(r.summary, r.errorLog);
+        setLastOperationLog(r.summary, r.errorLog.ptr());
     } //run updateGui() *after* reverting our temporary exclusions
 
     //remove empty rows: just a beautification, invalid rows shouldn't cause issues
@@ -4832,7 +4853,7 @@ void MainDialog::swapSides()
         catch (AbortProcess&) {}
 
         const StatusHandlerTemporaryPanel::Result r = statusHandler.reportResults(); //noexcept
-        setLastOperationLog(r.summary, r.errorLog);
+        setLastOperationLog(r.summary, r.errorLog.ptr());
     }
 
     updateGui(); //e.g. unsaved changes
@@ -5083,7 +5104,7 @@ void MainDialog::applySyncDirections()
         catch (AbortProcess&) {}
 
         const StatusHandlerTemporaryPanel::Result r = statusHandler.reportResults(); //noexcept
-        setLastOperationLog(r.summary, r.errorLog);
+        setLastOperationLog(r.summary, r.errorLog.ptr());
     }
 
     updateGui(); //e.g. unsaved changes

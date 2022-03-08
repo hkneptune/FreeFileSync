@@ -541,8 +541,8 @@ private:
             //check for invalid number of plural forms
             if (pluralInfo.getCount() != translation.size())
                 throw ParsingError({replaceCpy(replaceCpy<std::wstring>(L"Invalid number of plural forms; actual: %x, expected: %y",
-                                                                        L"%x", numberTo<std::wstring>(translation.size())),
-                                               L"%y", numberTo<std::wstring>(pluralInfo.getCount())), scn_.posRow(), scn_.posCol()});
+                                                                        L"%x", formatNumber(translation.size())),
+                                               L"%y", formatNumber(pluralInfo.getCount())), scn_.posRow(), scn_.posCol()});
 
             //check for duplicate plural form translations (catch copy & paste errors for single-number form translations)
             for (auto it = translation.begin(); it != translation.end(); ++it)
@@ -551,7 +551,7 @@ private:
                     auto it2 = std::find(it + 1, translation.end(), *it);
                     if (it2 != translation.end())
                         throw ParsingError({replaceCpy<std::wstring>(L"Duplicate plural form translation at index position %x",
-                                                                     L"%x", numberTo<std::wstring>(it2 - translation.begin())), scn_.posRow(), scn_.posCol()});
+                                                                     L"%x", formatNumber(it2 - translation.begin())), scn_.posRow(), scn_.posCol()});
                 }
 
             for (size_t pos = 0; pos < translation.size(); ++pos)
@@ -565,14 +565,14 @@ private:
                         if (!contains(translation[pos], "%x") &&
                             !contains(translation[pos], numberTo<std::string>(firstNumber)))
                             throw ParsingError({replaceCpy<std::wstring>(replaceCpy<std::wstring>(L"Plural form translation at index position %y needs to use the decimal number %z or the %x placeholder",
-                                                                                                  L"%y", numberTo<std::wstring>(pos)), L"%z", numberTo<std::wstring>(firstNumber)), scn_.posRow(), scn_.posCol()});
+                                                                                                  L"%y", formatNumber(pos)), L"%z", formatNumber(firstNumber)), scn_.posRow(), scn_.posCol()});
                     }
                 }
                 else
                 {
                     //ensure the placeholder is used when needed
                     if (!contains(translation[pos], "%x"))
-                        throw ParsingError({replaceCpy<std::wstring>(L"Plural form at index position %y is missing the %x placeholder", L"%y", numberTo<std::wstring>(pos)), scn_.posRow(), scn_.posCol()});
+                        throw ParsingError({replaceCpy<std::wstring>(L"Plural form at index position %y is missing the %x placeholder", L"%y", formatNumber(pos)), scn_.posRow(), scn_.posCol()});
                 }
 
             auto checkSecondaryPlaceholder = [&](const std::string& placeholder)

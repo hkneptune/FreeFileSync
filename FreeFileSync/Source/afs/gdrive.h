@@ -20,19 +20,21 @@ void gdriveTeardown();
 
 //-------------------------------------------------------
 
-std::string /*account email*/ gdriveAddUser(const std::function<void()>& updateGui /*throw X*/); //throw FileError, X
-void                          gdriveRemoveUser(const std::string& accountEmail);                 //throw FileError
+std::string /*account email*/ gdriveAddUser(const std::function<void()>& updateGui /*throw X*/, int timeoutSec); //throw FileError, X
+void                          gdriveRemoveUser(const std::string& accountEmail, int timeoutSec);                 //throw FileError
 
 std::vector<std::string /*account email*/> gdriveListAccounts(); //throw FileError
-std::vector<Zstring /*sharedDriveName*/> gdriveListSharedDrives(const std::string& accountEmail); //throw FileError
+std::vector<Zstring /*sharedDriveName*/> gdriveListSharedDrives(const std::string& accountEmail, int timeoutSec); //throw FileError
 
 struct GdriveLogin
 {
     std::string email;
     Zstring sharedDriveName; //empty for "My Drive"
+    int timeoutSec = 15; //Gdrive can "hang" for 20 seconds when "scanning for viruses": https://freefilesync.org/forum/viewtopic.php?t=9116
 };
-AfsDevice   condenseToGdriveDevice(const GdriveLogin& login); //noexcept; potentially messy user input
-GdriveLogin extractGdriveLogin(const AfsDevice& afsDevice);   //noexcept
+
+AfsDevice condenseToGdriveDevice(const GdriveLogin& login); //noexcept; potentially messy user input
+GdriveLogin extractGdriveLogin(const AfsDevice& afsDevice); //noexcept
 
 //return empty, if not a Google Drive path
 Zstring getGoogleDriveFolderUrl(const AbstractPath& folderPath); //throw FileError

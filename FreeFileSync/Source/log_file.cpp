@@ -98,7 +98,7 @@ std::string generateLogHeaderTxt(const ProcessSummary& s, const ErrorLog& log, i
 }
 
 
-std::string generateLogFooterTxt(const std::wstring& logFilePath, int logItemsTotal, int logPreviewItemsMax) //throw FileError
+std::string generateLogFooterTxt(const std::wstring& logFilePath /*optional*/, int logItemsTotal, int logPreviewItemsMax) //throw FileError
 {
     const ComputerModel cm = getComputerModel(); //throw FileError
 
@@ -107,14 +107,16 @@ std::string generateLogFooterTxt(const std::wstring& logFilePath, int logItemsTo
         output += "  [...]  " + utfTo<std::string>(replaceCpy(_P("Showing %y of 1 item", "Showing %y of %x items", logItemsTotal), //%x used as plural form placeholder!
                                                               L"%y", formatNumber(logPreviewItemsMax))) + '\n';
 
-    return output += '\n' + std::string(SEPARATION_LINE_LEN, '_') + '\n' +
+    output += '\n' + std::string(SEPARATION_LINE_LEN, '_') + '\n' +
 
-                     utfTo<std::string>(getOsDescription() + /*throw FileError*/ +
-                                        L" - " + utfTo<std::wstring>(getUserDescription()) /*throw FileError*/ +
-                                        (!cm.model .empty() ? L" - " + cm.model  : L"") +
-                                        (!cm.vendor.empty() ? L" - " + cm.vendor : L"") + L'\n' +
+              utfTo<std::string>(getOsDescription() + /*throw FileError*/ +
+                                 L" - " + utfTo<std::wstring>(getUserDescription()) /*throw FileError*/ +
+                                 (!cm.model .empty() ? L" - " + cm.model  : L"") +
+                                 (!cm.vendor.empty() ? L" - " + cm.vendor : L"")) + '\n';
+    if (!logFilePath.empty())
+        output += utfTo<std::string>(_("Log file:") + L' ' + logFilePath) + '\n';
 
-                                        _("Log file:") + L' ' + logFilePath) + '\n';
+    return output;
 }
 
 
@@ -327,7 +329,7 @@ std::string generateLogHeaderHtml(const ProcessSummary& s, const ErrorLog& log, 
 }
 
 
-std::string generateLogFooterHtml(const std::wstring& logFilePath, int logItemsTotal, int logPreviewItemsMax) //throw FileError
+std::string generateLogFooterHtml(const std::wstring& logFilePath /*optional*/, int logItemsTotal, int logPreviewItemsMax) //throw FileError
 {
     const std::string osImage = "os-linux.png";
     const ComputerModel cm = getComputerModel(); //throw FileError
@@ -340,7 +342,7 @@ std::string generateLogFooterHtml(const std::wstring& logFilePath, int logItemsT
                   htmlTxt(replaceCpy(_P("Showing %y of 1 item", "Showing %y of %x items", logItemsTotal), //%x used as plural form placeholder!
                           L"%y", formatNumber(logPreviewItemsMax))) + "</div>\n";
 
-    return output += R"(	<br>
+    output += R"(	<br>
 
     <div style="border-bottom:1px solid #AAA; margin:5px 0;"></div>
     <div style="font-size:small;">
@@ -349,14 +351,20 @@ std::string generateLogFooterHtml(const std::wstring& logFilePath, int logItemsT
             " &ndash; " + htmlTxt(getUserDescription()) /*throw FileError*/ + 
             (!cm.model .empty() ? " &ndash; " + htmlTxt(cm.model ) : "") +
             (!cm.vendor.empty() ? " &ndash; " + htmlTxt(cm.vendor) : "") + R"(</span>
-    </div>
+    </div>)";
+
+    if (!logFilePath.empty())
+        output += R"(
     <div style="font-size:small;">
         <img src="https://freefilesync.org/images/log/log.png" width="24" height="24" alt=")" + htmlTxt(_("Log file:")) + R"(" style="vertical-align:middle;">
         <span style="font-family: Consolas,'Courier New',Courier,monospace; vertical-align:middle;">)" + htmlTxt(logFilePath) + R"(</span>
-    </div>
+    </div>)";
+
+    output += R"(
 </body>
 </html>
 )";
+    return output;
 }
 
 //-> Astyle fucks up! => no INDENT-ON
@@ -365,7 +373,6 @@ std::string generateLogFooterHtml(const std::wstring& logFilePath, int logItemsT
 void streamToLogFile(const ProcessSummary& summary, //throw FileError
                      const ErrorLog& log,
                      AFS::OutputStream& streamOut,
-                     const AbstractPath& logFilePath,
                      LogFileFormat logFormat)
 {
     const int logItemsTotal = log.end() - log.begin();
@@ -387,8 +394,9 @@ void streamToLogFile(const ProcessSummary& summary, //throw FileError
     }
 
     buffer += logFormat == LogFileFormat::html ? 
-              generateLogFooterHtml(AFS::getDisplayPath(logFilePath), logItemsTotal, logPreviewItemsMax) : //throw FileError
-              generateLogFooterTxt (AFS::getDisplayPath(logFilePath), logItemsTotal, logPreviewItemsMax);  //throw FileError
+              generateLogFooterHtml(std::wstring() /*logFilePath*/, logItemsTotal, logPreviewItemsMax) : //throw FileError
+              generateLogFooterTxt (std::wstring() /*logFilePath*/, logItemsTotal, logPreviewItemsMax);  //throw FileError
+    //=> log file path is irrelevant, except when sending email!
 
     //don't forget to flush:
     streamOut.write(&buffer[0], buffer.size()); //throw FileError, X
@@ -424,8 +432,8 @@ void saveNewLogFile(const AbstractPath& logFilePath, //throw FileError, X
 
     //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
     std::unique_ptr<AFS::OutputStream> logFileStream = AFS::getOutputStream(logFilePath, std::nullopt /*streamSize*/, std::nullopt /*modTime*/, notifyUnbufferedIO); //throw FileError
-    streamToLogFile(summary, log, *logFileStream, logFilePath, logFormat); //throw FileError, X
-    logFileStream->finalize();                     //throw FileError, X
+    streamToLogFile(summary, log, *logFileStream, logFormat); //throw FileError, X
+    logFileStream->finalize();                                //throw FileError, X
 }
 
 

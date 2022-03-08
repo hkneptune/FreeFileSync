@@ -426,8 +426,9 @@ public:
         else
             layoutDir_ = wxLayout_LeftToRight;
 
-        //use sys-lang to preserve sub-language-specific rules (e.g. German Swiss number punctuation)
-        //beneficial even for Arabic locale: support user-specific date settings (instead of Hijri calendar year 1441 = Gregorian 2019)
+        /* use wxLANGUAGE_DEFAULT to preserve sub-language-specific rules (e.g. number and date format)
+            - beneficial even for Arabic locale: use user-specific date settings instead of Hijri calendar year 1441 (= Gregorian 2019)
+            - note when testing: format_unit.cpp::formatNumber() always uses LOCALE_NAME_USER_DEFAULT => test date format instead */
         if (!locale_)
         {
             //wxWidgets shows a modal dialog on error during wxLocale::Init() -> at least we can shut it up!
@@ -435,33 +436,40 @@ public:
             ZEN_ON_SCOPE_EXIT(delete wxLog::SetActiveTarget(oldLogTarget));
 
             //locale_.reset(); //avoid global locale lifetime overlap! wxWidgets cannot handle this and will crash!
-            locale_ = std::make_unique<wxLocale>(sysLng_, wxLOCALE_DONT_LOAD_DEFAULT /*we're not using wxwin.mo*/);
+            locale_ = std::make_unique<wxLocale>(wxLANGUAGE_DEFAULT, wxLOCALE_DONT_LOAD_DEFAULT /*we're not using wxwin.mo*/);
+            //wxLANGUAGE_DEFAULT => internally calls std::setlocale(LC_ALL, "" /*== user-preferred locale*/) on Windows/Linux (but not macOS)
+            /*  => exactly what's needed on Windows/Linux
+            
+                but not needed on macOS; even detrimental:
+                - breaks wxWidgets file drag and drop! https://freefilesync.org/forum/viewtopic.php?t=8215
+                - even wxWidgets knows: "under macOS C locale must not be changed, as doing this exposes bugs in the system"
+                    https://docs.wxwidgets.org/trunk/classwx_u_i_locale.html
+
+            reproduce: - std::setlocale(LC_ALL, "");
+                       - double-click the app (*)
+                       - drag and drop folder named "アアアア"
+                       - wxFileDropTarget::OnDropFiles() called with empty file array!
+
+            *) CAVEAT: context matters! this yields a different user-preferred locale than running Contents/MacOS/FreeFileSync_main!!!
+            e.g. 1. locale after wxLocale creation is "en_US"
+                 2. call std::setlocale(LC_ALL, ""):
+                   a) app was double-clicked:                 locale is "C"            => drag/drop FAILS!
+                   b) run Contents/MacOS/FreeFileSync_main:   locale is "en_US.UTF-8"  => drag/drop works!                        */
             assert(locale_->IsOk());
 
             //const char* currentLocale = std::setlocale(LC_ALL, nullptr);
-
-            //call std::setlocale()?
-            //Linux: wxWidgets overwrites the default locale "C" with a locale matching sysLng_, e.g. "en_US.UTF-8"
-            //       which may be *different* from actual user-preferred locale as set up in "Region & Language/Formats"! => fix:
-
-            //Windows: apparently needed: https://freefilesync.org/forum/viewtopic.php?t=8455
-            [[maybe_unused]] const char* newLocale = std::setlocale(LC_ALL, "" /*== user-preferred locale*/);
-            assert(newLocale);
-
         }
     }
 
     void tearDown() { locale_.reset(); lng_ = wxLANGUAGE_UNKNOWN; layoutDir_ = wxLayout_Default; }
 
-    wxLanguage getSysLanguage() const { return sysLng_; }
-    wxLanguage getLanguage   () const { return lng_; }
+    wxLanguage getLanguage       () const { return lng_; }
     wxLayoutDirection getLayoutDirection() const { return layoutDir_; }
 
 private:
     wxWidgetsLocale() {}
     ~wxWidgetsLocale() { assert(!locale_); }
 
-    const wxLanguage sysLng_ = static_cast<wxLanguage>(wxLocale::GetSystemLanguage());
     wxLanguage lng_ = wxLANGUAGE_UNKNOWN;
     wxLayoutDirection layoutDir_ = wxLayout_Default;
     std::unique_ptr<wxLocale> locale_;
@@ -483,7 +491,7 @@ void fff::localizationInit(const Zstring& zipPath) //throw FileError
 {
     assert(globalTranslations.empty());
     globalTranslations = loadTranslations(zipPath); //throw FileError
-    setLanguage(getSystemLanguage()); //throw FileError
+    setLanguage(getDefaultLanguage()); //throw FileError
 }
 
 
@@ -528,8 +536,8 @@ void fff::setLanguage(wxLanguage lng) //throw FileError
         {
             throw FileError(replaceCpy(replaceCpy(replaceCpy(_("Error parsing file %x, row %y, column %z."),
                                                              L"%x", fmtPath(lngFileName)),
-                                                  L"%y", numberTo<std::wstring>(e.row + 1)),
-                                       L"%z", numberTo<std::wstring>(e.col + 1))
+                                                  L"%y", formatNumber(e.row + 1)),
+                                       L"%z", formatNumber(e.col + 1))
                             + L"\n\n" + e.msg);
         }
         catch (plural::ParsingError&)
@@ -555,10 +563,12 @@ void fff::setLanguage(wxLanguage lng) //throw FileError
 }
 
 
-wxLanguage fff::getSystemLanguage()
+wxLanguage fff::getDefaultLanguage()
 {
-    static const wxLanguage sysLng = mapLanguageDialect(wxWidgetsLocale::getInstance().getSysLanguage());
-    return sysLng;
+    static const wxLanguage defaultLng = static_cast<wxLanguage>(wxLocale::GetSystemLanguage()); 
+    //uses GetUserDefaultUILanguage(): https://github.com/wxWidgets/wxWidgets/commit/9600c29ff2ca13ef66b76eabadaac5ec8654b792
+
+    return defaultLng;
 }
 
 

@@ -1,3 +1,14 @@
+FreeFileSync 11.18 [2022-03-07]
+-------------------------------
+Add comparison time to sync log when using GUI
+Added user-configurable timeout for Google Drive
+Consider port when comparing (S)FTP paths for equality
+Fixed SFTP key file login error on OpenSSH_8.8p1
+Add error details for NSFileReadUnknownError (macOS)
+Disable new config button when already at default
+Use user language instead of region locale during installation
+
+
 FreeFileSync 11.17 [2022-02-04]
 -------------------------------
 Show per-file progress in percent when copying large files

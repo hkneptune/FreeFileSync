@@ -44,7 +44,7 @@ struct CurlOption
 class HttpSession
 {
 public:
-    HttpSession(const Zstring& server, bool useTls, const Zstring& caCertFilePath /*optional*/, std::chrono::seconds timeOut); //throw SysError
+    HttpSession(const Zstring& server, bool useTls, const Zstring& caCertFilePath /*optional*/); //throw SysError
     ~HttpSession();
 
     struct Result
@@ -56,7 +56,8 @@ public:
                    const std::vector<std::string>& extraHeaders, const std::vector<CurlOption>& extraOptions,
                    const std::function<void  (std::span<const char> buf)>& writeResponse /*throw X*/,  //
                    const std::function<size_t(std::span<      char> buf)>& readRequest   /*throw X*/,  //optional
-                   const std::function<void  (const std::string_view& header)>& receiveHeader /*throw X*/); //throw SysError, X
+                   const std::function<void  (const std::string_view& header)>& receiveHeader /*throw X*/,
+                   int timeoutSec); //throw SysError, X
 
     std::chrono::steady_clock::time_point getLastUseTime() const { return lastSuccessfulUseTime_; }
 
@@ -66,7 +67,6 @@ private:
 
     const std::string serverPrefix_;
     const std::string caCertFilePath_; //optional
-    const std::chrono::seconds timeOutSec_;
     CURL* easyHandle_ = nullptr;
     std::chrono::steady_clock::time_point lastSuccessfulUseTime_ = std::chrono::steady_clock::now();
 };

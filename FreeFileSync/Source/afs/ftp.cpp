@@ -17,28 +17,9 @@
     #include <glib.h>
     #include <fcntl.h>
 
-warn_static("remove after test (including openssl-headers set for ftp.cpp")
-//#include <openssl/ssl.h> //SSL_OP_IGNORE_UNEXPECTED_EOF
-
-
 using namespace zen;
 using namespace fff;
 using AFS = AbstractFileSystem;
-
-
-namespace fff
-{
-std::weak_ordering operator<=>(const FtpSessionId& lhs, const FtpSessionId& rhs)
-{
-    //exactly the type of case insensitive comparison we need for server names!
-    if (const std::weak_ordering cmp = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
-        std::is_neq(cmp))
-        return cmp;
-
-    return std::tie(lhs.port, lhs.username, lhs.password, lhs.useTls) <=> //username, password: case sensitive!
-           std::tie(rhs.port, rhs.username, rhs.password, rhs.useTls);
-}
-}
 
 
 namespace
@@ -61,6 +42,36 @@ enum class ServerEncoding
 };
 
 
+inline
+int getEffectivePort(int portOption)
+{
+    if (portOption > 0)
+        return portOption;
+    return DEFAULT_PORT_FTP; 
+}
+}
+
+
+namespace fff
+{
+std::weak_ordering operator<=>(const FtpSessionId& lhs, const FtpSessionId& rhs)
+{
+    //exactly the type of case insensitive comparison we need for server names!
+    if (const std::weak_ordering cmp = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
+        std::is_neq(cmp))
+        return cmp;
+
+    const int portLhs = getEffectivePort(lhs.port);
+    const int portRhs = getEffectivePort(rhs.port);
+
+    return std::tie(portLhs, lhs.username, lhs.password, lhs.useTls) <=> //username, password: case sensitive!
+           std::tie(portRhs, rhs.username, rhs.password, rhs.useTls);
+}
+}
+
+
+namespace
+{
 Zstring concatenateFtpFolderPathPhrase(const FtpLogin& login, const AfsPath& afsPath); //noexcept
 
 
@@ -143,13 +154,20 @@ std::string utfToServerEncoding(const Zstring& str, ServerEncoding enc) //throw 
 std::wstring getCurlDisplayPath(const FtpSessionId& sessionId, const AfsPath& afsPath)
 {
     Zstring displayPath = Zstring(ftpPrefix) + Zstr("//");
+
     if (!sessionId.username.empty()) //show username! consider AFS::compareDeviceSameAfsType()
         displayPath += sessionId.username + Zstr('@');
+    
     displayPath += sessionId.server;
 
-    const Zstring relPath = getServerRelPath(afsPath);
+    if (const int port = getEffectivePort(sessionId.port);
+        port != DEFAULT_PORT_FTP)
+        displayPath += Zstr(':') + numberTo<Zstring>(port);
+
+    const Zstring& relPath = getServerRelPath(afsPath);
     if (relPath != Zstr("/"))
         displayPath += relPath;
+
     return utfTo<std::wstring>(displayPath);
 }
 
@@ -280,12 +298,15 @@ public:
             ::curl_easy_cleanup(easyHandle_);
     }
 
+    //set *before* calling any of the subsequent functions; see FtpSessionManager::access()
+    void setContextTimeout(const std::weak_ptr<int>& timeoutSec) { timeoutSec_ = timeoutSec; }
+
     //returns server response (header data)
     std::string perform(const AfsPath& afsPath, bool isDir, curl_ftpmethod pathMethod,
-                        const std::vector<CurlOption>& extraOptions, bool requiresUtf8, int timeoutSec) //throw SysError
+                        const std::vector<CurlOption>& extraOptions, bool requiresUtf8) //throw SysError
     {
         if (requiresUtf8) //avoid endless recursion
-            ensureUtf8(timeoutSec); //throw SysError
+            ensureUtf8(); //throw SysError
 
         if (!easyHandle_)
         {
@@ -313,7 +334,7 @@ public:
         options.emplace_back(CURLOPT_HEADERFUNCTION, onHeaderReceived);
 
         //lifetime: keep alive until after curl_easy_setopt() below
-        const std::string curlPath = getCurlUrlPath(afsPath, isDir, timeoutSec); //throw SysError
+        const std::string curlPath = getCurlUrlPath(afsPath, isDir); //throw SysError
         options.emplace_back(CURLOPT_URL, curlPath.c_str());
 
         assert(pathMethod != CURLFTPMETHOD_MULTICWD); //too slow!
@@ -331,24 +352,28 @@ public:
             options.emplace_back(CURLOPT_PASSWORD, password.c_str());
         }
 
-        if (sessionId_.port > 0)
-            options.emplace_back(CURLOPT_PORT, static_cast<long>(sessionId_.port));
+            options.emplace_back(CURLOPT_PORT, getEffectivePort(sessionId_.port));
 
         options.emplace_back(CURLOPT_NOSIGNAL, 1); //thread-safety: https://curl.haxx.se/libcurl/c/threadsafe.html
 
-        options.emplace_back(CURLOPT_CONNECTTIMEOUT, timeoutSec);
+        const std::shared_ptr<int> timeoutSec = timeoutSec_.lock();
+        assert(timeoutSec);
+        if (!timeoutSec)
+            throw std::runtime_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] FtpSession: Timeout duration was not set.");
+
+        options.emplace_back(CURLOPT_CONNECTTIMEOUT, *timeoutSec);
 
         //CURLOPT_TIMEOUT: "Since this puts a hard limit for how long time a request is allowed to take, it has limited use in dynamic use cases with varying transfer times."
-        options.emplace_back(CURLOPT_LOW_SPEED_TIME, timeoutSec);
+        options.emplace_back(CURLOPT_LOW_SPEED_TIME, *timeoutSec);
         options.emplace_back(CURLOPT_LOW_SPEED_LIMIT, 1); //[bytes], can't use "0" which means "inactive", so use some low number
 
         //unlike CURLOPT_TIMEOUT, this one is NOT a limit on the total transfer time
-        options.emplace_back(CURLOPT_FTP_RESPONSE_TIMEOUT, timeoutSec); //== alias of CURLOPT_SERVER_RESPONSE_TIMEOUT
+        options.emplace_back(CURLOPT_FTP_RESPONSE_TIMEOUT, *timeoutSec); //== alias of CURLOPT_SERVER_RESPONSE_TIMEOUT
 
         //CURLOPT_ACCEPTTIMEOUT_MS? => only relevant for "active" FTP connections
 
         //long-running file uploads require us to send keep-alives for the TCP control connection: https://freefilesync.org/forum/viewtopic.php?t=6928
-        options.emplace_back(CURLOPT_TCP_KEEPALIVE, 1);
+        options.emplace_back(CURLOPT_TCP_KEEPALIVE, 1); //=> CURLOPT_TCP_KEEPIDLE (=delay) and CURLOPT_TCP_KEEPINTVL both default to 60 sec
 
 
         std::optional<SysError> callbackException;
@@ -458,19 +483,6 @@ public:
         {
             options.emplace_back(CURLOPT_USE_SSL,    CURLUSESSL_ALL); //require SSL for both control and data
             options.emplace_back(CURLOPT_FTPSSLAUTH, CURLFTPAUTH_TLS); //try TLS first, then SSL (currently: CURLFTPAUTH_DEFAULT == CURLFTPAUTH_SSL)
-
-
-            warn_static("remove after test")
-#if 0
-            using SslContextCbType =     CURLcode (*)(CURL* curl, SSL_CTX* ssl_ctx, void* userptr); //needed for cdecl function pointer cast
-            SslContextCbType onSslContextWrapper = [](CURL* curl, SSL_CTX* ssl_ctx, void* userptr)
-            {
-                assert((::SSL_CTX_get_options(ssl_ctx) & SSL_OP_IGNORE_UNEXPECTED_EOF) == 0);
-                ::SSL_CTX_set_options(ssl_ctx, SSL_OP_IGNORE_UNEXPECTED_EOF); //does not set, but *adds* options; no-fail
-                return CURLE_OK;
-            };
-            options.emplace_back(CURLOPT_SSL_CTX_FUNCTION, onSslContextWrapper);
-#endif
         }
 
         //let's not hold our breath until Curl adds a reasonable PASV handling => patch libcurl accordingly!
@@ -519,7 +531,7 @@ public:
     }
 
     //returns server response (header data)
-    std::string runSingleFtpCommand(const std::string& ftpCmd, bool requiresUtf8, int timeoutSec) //throw SysError
+    std::string runSingleFtpCommand(const std::string& ftpCmd, bool requiresUtf8) //throw SysError
     {
         curl_slist* quote = nullptr;
         ZEN_ON_SCOPE_EXIT(::curl_slist_free_all(quote));
@@ -529,10 +541,10 @@ public:
         {
             {CURLOPT_NOBODY, 1L},
             {CURLOPT_QUOTE, quote},
-        }, requiresUtf8, timeoutSec); //throw SysError
+        }, requiresUtf8); //throw SysError
     }
 
-    void testConnection(int timeoutSec) //throw SysError
+    void testConnection() //throw SysError
     {
         /*  https://en.wikipedia.org/wiki/List_of_FTP_commands
             FEAT: are there servers that don't support this command? fuck, yes: "550 FEAT: Operation not permitted" => buggy server not granting access, despite support!
@@ -544,7 +556,7 @@ public:
             ... and it tells! FUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU https://freefilesync.org/forum/viewtopic.php?t=8041             */
 
         //=> * to the rescue: as long as we get an FTP response - *any* FTP response (including 550) - the connection itself is fine!
-        const std::string& featBuf = runSingleFtpCommand("*FEAT", false /*requiresUtf8*/, timeoutSec); //throw SysError
+        const std::string& featBuf = runSingleFtpCommand("*FEAT", false /*requiresUtf8*/); //throw SysError
 
         for (const std::string& line : splitFtpResponse(featBuf))
             if (startsWith(line, "211-") ||
@@ -557,7 +569,7 @@ public:
         throw SysError(L"Unexpected FTP response. (" + utfTo<std::wstring>(featBuf) + L')');
     }
 
-    AfsPath getHomePath(int timeoutSec) //throw SysError
+    AfsPath getHomePath() //throw SysError
     {
         if (!homePathCached_)
             homePathCached_ = [&]
@@ -578,7 +590,7 @@ public:
                 easyHandle_ = nullptr;
             }
 
-            const std::string& pwdBuf = runSingleFtpCommand("PWD", true /*requiresUtf8*/, timeoutSec); //throw SysError
+            const std::string& pwdBuf = runSingleFtpCommand("PWD", true /*requiresUtf8*/); //throw SysError
 
             for (const std::string& line : splitFtpResponse(pwdBuf))
                 if (startsWith(line, "257 "))
@@ -597,7 +609,7 @@ public:
                                 else
                                 {
                                     const std::string homePathRaw = replaceCpy(std::string{itBegin, it}, "\"\"", '"');
-                                    const ServerEncoding enc = getServerEncoding(timeoutSec); //throw SysError
+                                    const ServerEncoding enc = getServerEncoding(); //throw SysError
                                     const Zstring homePathUtf = serverToUtfEncoding(homePathRaw, enc); //throw SysError
                                     return sanitizeDeviceRelativePath(homePathUtf);
                                 }
@@ -609,13 +621,13 @@ public:
         return *homePathCached_;
     }
 
-    void ensureBinaryMode(int timeoutSec) //throw SysError
+    void ensureBinaryMode() //throw SysError
     {
         if (std::optional<curl_socket_t> currentSocket = getActiveSocket()) //throw SysError
             if (*currentSocket == binaryEnabledSocket_)
                 return;
 
-        runSingleFtpCommand("TYPE I", false /*requiresUtf8*/, timeoutSec); //throw SysError
+        runSingleFtpCommand("TYPE I", false /*requiresUtf8*/); //throw SysError
 
         //make sure our binary-enabled session is still there (== libcurl behaves as we expect)
         std::optional<curl_socket_t> currentSocket = getActiveSocket(); //throw SysError
@@ -629,26 +641,26 @@ public:
     }
 
     //------------------------------------------------------------------------------------------------------------
-    bool supportsMlsd(int timeoutSec) { return getFeatureSupport(&Features::mlsd, timeoutSec); } //
-    bool supportsMfmt(int timeoutSec) { return getFeatureSupport(&Features::mfmt, timeoutSec); } //throw SysError
-    bool supportsClnt(int timeoutSec) { return getFeatureSupport(&Features::clnt, timeoutSec); } //
-    bool supportsUtf8(int timeoutSec) { return getFeatureSupport(&Features::utf8, timeoutSec); } //
+    bool supportsMlsd() { return getFeatureSupport(&Features::mlsd); } //
+    bool supportsMfmt() { return getFeatureSupport(&Features::mfmt); } //throw SysError
+    bool supportsClnt() { return getFeatureSupport(&Features::clnt); } //
+    bool supportsUtf8() { return getFeatureSupport(&Features::utf8); } //
 
-    ServerEncoding getServerEncoding(int timeoutSec) { return supportsUtf8(timeoutSec) ? ServerEncoding::utf8 : ServerEncoding::ansi; } //throw SysError
+    ServerEncoding getServerEncoding() { return supportsUtf8() ? ServerEncoding::utf8 : ServerEncoding::ansi; } //throw SysError
 
     bool isHealthy() const
     {
         return std::chrono::steady_clock::now() - lastSuccessfulUseTime_ <= FTP_SESSION_MAX_IDLE_TIME;
     }
 
-    std::string getServerPathInternal(const AfsPath& afsPath, int timeoutSec) //throw SysError
+    std::string getServerPathInternal(const AfsPath& afsPath) //throw SysError
     {
         const Zstring serverPath = getServerRelPath(afsPath);
 
         if (afsPath.value.empty()) //endless recursion caveat!! getServerEncoding() transitively depends on getServerPathInternal()
             return utfTo<std::string>(serverPath);
 
-        const ServerEncoding encoding = getServerEncoding(timeoutSec); //throw SysError
+        const ServerEncoding encoding = getServerEncoding(); //throw SysError
 
         return utfToServerEncoding(serverPath, encoding); //throw SysError
     }
@@ -657,11 +669,11 @@ private:
     FtpSession           (const FtpSession&) = delete;
     FtpSession& operator=(const FtpSession&) = delete;
 
-    std::string getCurlUrlPath(const AfsPath& afsPath /*optional*/, bool isDir, int timeoutSec) //throw SysError
+    std::string getCurlUrlPath(const AfsPath& afsPath /*optional*/, bool isDir) //throw SysError
     {
         std::string curlRelPath; //libcurl expects encoded paths (except for '/' char!!!) => bug: https://github.com/curl/curl/pull/4423
 
-        for (const std::string& comp : split(getServerPathInternal(afsPath, timeoutSec), '/', SplitOnEmpty::skip)) //throw SysError
+        for (const std::string& comp : split(getServerPathInternal(afsPath), '/', SplitOnEmpty::skip)) //throw SysError
         {
             char* compFmt = ::curl_easy_escape(easyHandle_, comp.c_str(), static_cast<int>(comp.size()));
             if (!compFmt)
@@ -685,14 +697,14 @@ private:
         return path;
     }
 
-    void ensureUtf8(int timeoutSec) //throw SysError
+    void ensureUtf8() //throw SysError
     {
         //"OPTS UTF8 ON" needs to be activated each time libcurl internally creates a new session
         //hopyfully libcurl will offer a better solution: https://github.com/curl/curl/issues/1457
 
         //Some RFC-2640-non-compliant servers require UTF8 to be explicitly enabled: https://wiki.filezilla-project.org/Character_Encoding#Conflicting_specification
         //e.g. this one (Microsoft FTP Service): https://freefilesync.org/forum/viewtopic.php?t=4303
-        if (supportsUtf8(timeoutSec)) //throw SysError
+        if (supportsUtf8()) //throw SysError
         {
             //[!] supportsUtf8() is buffered! => FTP session might not yet exist (or was closed by libcurl after a failure)
             if (std::optional<curl_socket_t> currentSocket = getActiveSocket()) //throw SysError
@@ -700,13 +712,13 @@ private:
                     return;
 
             //some servers even require "CLNT" before accepting "OPTS UTF8 ON": https://social.msdn.microsoft.com/Forums/en-US/d602574f-8a69-4d69-b337-52b6081902cf/problem-with-ftpwebrequestopts-utf8-on-501-please-clnt-first
-            if (supportsClnt(timeoutSec)) //throw SysError
-                runSingleFtpCommand("CLNT FreeFileSync", false /*requiresUtf8*/, timeoutSec); //throw SysError
+            if (supportsClnt()) //throw SysError
+                runSingleFtpCommand("CLNT FreeFileSync", false /*requiresUtf8*/); //throw SysError
 
             //"prefix the command with an asterisk to make libcurl continue even if the command fails"
             //-> ignore if server does not know this legacy command (but report all *other* issues; else getActiveSocket() below won't return value and hide real error!)
             //"If an RFC 2640 compliant client sends OPTS UTF-8 ON, it has to use UTF-8 regardless whether OPTS UTF-8 ON succeeds or not. "
-            runSingleFtpCommand("*OPTS UTF8 ON", false /*requiresUtf8*/, timeoutSec); //throw SysError
+            runSingleFtpCommand("*OPTS UTF8 ON", false /*requiresUtf8*/); //throw SysError
 
             //make sure our unicode-enabled session is still there (== libcurl behaves as we expect)
             std::optional<curl_socket_t> currentSocket = getActiveSocket(); //throw SysError
@@ -740,7 +752,7 @@ private:
     };
     using FeatureList = std::map<Zstring /*server name*/, std::optional<Features>, LessAsciiNoCase>;
 
-    bool getFeatureSupport(bool Features::* status, int timeoutSec) //throw SysError
+    bool getFeatureSupport(bool Features::* status) //throw SysError
     {
         if (!featureCache_)
         {
@@ -756,7 +768,7 @@ private:
             if (!featureCache_)
             {
                 //*: ignore error if server does not support/allow FEAT
-                featureCache_ = parseFeatResponse(runSingleFtpCommand("*FEAT", false /*requiresUtf8*/, timeoutSec)); //throw SysError
+                featureCache_ = parseFeatResponse(runSingleFtpCommand("*FEAT", false /*requiresUtf8*/)); //throw SysError
                 //used by ensureUtf8()! => requiresUtf8 = false!!!
 
                 sf->access([&](FeatureList& feat) { feat[sessionId_.server] = featureCache_; });
@@ -822,6 +834,7 @@ private:
 
     const std::shared_ptr<UniCounterCookie> libsshCurlUnifiedInitCookie_;
     std::chrono::steady_clock::time_point lastSuccessfulUseTime_;
+    std::weak_ptr<int> timeoutSec_;
 };
 
 //================================================================================================================
@@ -857,6 +870,9 @@ public:
         //create new FTP session outside the lock: 1. don't block other threads 2. non-atomic regarding "sessionStore"! => one session too many is not a problem!
         if (!ftpSession)
             ftpSession = std::make_unique<FtpSession>(login); //throw SysError
+
+        const std::shared_ptr<int> timeoutSec = std::make_shared<int>(login.timeoutSec); //context option: valid only for duration of this call!
+        ftpSession->setContextTimeout(timeoutSec);
 
         ZEN_ON_SCOPE_EXIT(
             if (ftpSession->isHealthy()) //thread that created the "!isHealthy()" session is responsible for clean up (avoid hitting server connection limits!)
@@ -971,10 +987,10 @@ FtpItem getFtpSymlinkInfo(const FtpLogin& login, const AfsPath& linkPath) //thro
 
                  -> can't replace SIZE + MDTM with MLSD which doesn't follow symlinks! */
 
-            session.ensureBinaryMode(login.timeoutSec); //throw SysError
+            session.ensureBinaryMode(); //throw SysError
             //...or some server return ASCII size or fail with '550 SIZE not allowed in ASCII mode: https://freefilesync.org/forum/viewtopic.php?t=7669&start=30#p27742
-            const std::string sizeBuf = session.runSingleFtpCommand("*SIZE " + session.getServerPathInternal(linkPath, login.timeoutSec),
-                                                                    true /*requiresUtf8*/, login.timeoutSec); //throw SysError
+            const std::string sizeBuf = session.runSingleFtpCommand("*SIZE " + session.getServerPathInternal(linkPath),
+                                                                    true /*requiresUtf8*/); //throw SysError
             //alternative: use libcurl + CURLINFO_CONTENT_LENGTH_DOWNLOAD_T? => nah, suprise (motherfucker)! libcurl adds needless "REST 0" command!
             for (const std::string& line : splitFtpResponse(sizeBuf))
                 if (startsWith(line, "213 ")) // 213<space>[rubbish]<file size>        according to libcurl
@@ -984,8 +1000,8 @@ FtpItem getFtpSymlinkInfo(const FtpLogin& login, const AfsPath& linkPath) //thro
                         auto it = std::find_if(line.rbegin(), line.rend(), [](const char c) { return !isDigit(c); });
                         output.fileSize = stringTo<uint64_t>(makeStringView(it.base(), line.end()));
 
-                        mdtmBuf = session.runSingleFtpCommand("MDTM " + session.getServerPathInternal(linkPath, login.timeoutSec),
-                                                              true /*requiresUtf8*/, login.timeoutSec); //throw SysError
+                        mdtmBuf = session.runSingleFtpCommand("MDTM " + session.getServerPathInternal(linkPath),
+                                                              true /*requiresUtf8*/); //throw SysError
                         return;
                     }
                     break;
@@ -1056,7 +1072,7 @@ public:
                 };
                 curl_ftpmethod pathMethod = CURLFTPMETHOD_SINGLECWD;
 
-                if (session.supportsMlsd(login.timeoutSec)) //throw SysError
+                if (session.supportsMlsd()) //throw SysError
                 {
                     options.emplace_back(CURLOPT_CUSTOMREQUEST, "MLSD");
 
@@ -1084,10 +1100,10 @@ public:
                 //else: use "LIST" + CURLFTPMETHOD_SINGLECWD
                 //caveat: let's better not use LIST parameters: https://cr.yp.to/ftp/list.html
 
-                session.perform(afsDirPath, true /*isDir*/, pathMethod, options, true /*requiresUtf8*/, login.timeoutSec); //throw SysError
+                session.perform(afsDirPath, true /*isDir*/, pathMethod, options, true /*requiresUtf8*/); //throw SysError
 
-                const ServerEncoding encoding = session.getServerEncoding(login.timeoutSec); //throw SysError
-                if (session.supportsMlsd(login.timeoutSec)) //throw SysError
+                const ServerEncoding encoding = session.getServerEncoding(); //throw SysError
+                if (session.supportsMlsd()) //throw SysError
                     output = parseMlsd(rawListing, encoding); //throw SysError
                 else
                     output = parseUnknown(rawListing, encoding); //throw SysError
@@ -1661,7 +1677,7 @@ void ftpFileDownload(const FtpLogin& login, const AfsPath& afsFilePath, //throw 
                 {CURLOPT_WRITEDATA, &onBytesReceived},
                 {CURLOPT_WRITEFUNCTION, onBytesReceivedWrapper},
                 {CURLOPT_IGNORE_CONTENT_LENGTH, 1L}, //skip FTP "SIZE" command before download (=> download until actual EOF if file size changes)
-            }, true /*requiresUtf8*/, login.timeoutSec); //throw SysError
+            }, true /*requiresUtf8*/); //throw SysError
         });
     }
     catch (const SysError& e)
@@ -1730,7 +1746,7 @@ void ftpFileUpload(const FtpLogin& login, const AfsPath& afsFilePath, //throw Fi
 
                 //{CURLOPT_PREQUOTE,  quote},
                 //{CURLOPT_POSTQUOTE, quote},
-            }, true /*requiresUtf8*/, login.timeoutSec); //throw SysError
+            }, true /*requiresUtf8*/); //throw SysError
         });
     }
     catch (const SysError& e)
@@ -1908,11 +1924,11 @@ private:
 
                 accessFtpSession(login_, [&](FtpSession& session) //throw SysError
                 {
-                    if (!session.supportsMfmt(login_.timeoutSec)) //throw SysError
+                    if (!session.supportsMfmt()) //throw SysError
                         throw SysError(L"Server does not support the MFMT command.");
 
-                    session.runSingleFtpCommand("MFMT " + isoTime + ' ' + session.getServerPathInternal(afsPath_, login_.timeoutSec),
-                                                true /*requiresUtf8*/, login_.timeoutSec); //throw SysError
+                    session.runSingleFtpCommand("MFMT " + isoTime + ' ' + session.getServerPathInternal(afsPath_),
+                                                true /*requiresUtf8*/); //throw SysError
                     //not relevant for OutputStreamFtp, but: does MFMT follow symlinks? for Linux FTP server (using utime) it does
                 });
             }
@@ -1959,14 +1975,16 @@ private:
             std::is_neq(cmp))
             return cmp;
 
-        //port does NOT create a *different* data source!!! -> same thing for password!
-
-        //username: usually *does* create different folder view for FTP
-        return lhs.username <=> rhs.username; //case sensitive!
+        //port DOES create a *different* data source! https://freefilesync.org/forum/viewtopic.php?t=9047
+    const int portLhs = getEffectivePort(lhs.port);
+    const int portRhs = getEffectivePort(rhs.port);
+        
+        //username: usually creates different folder view for FTP
+        return std::tie(portLhs, lhs.username) <=> //username: case sensitive!
+               std::tie(portRhs, rhs.username); 
     }
 
     //----------------------------------------------------------------------------------------------------------------
-
     ItemType getItemType(const AfsPath& afsPath) const override //throw FileError
     {
         //don't use MLST: broken for Pure-FTPd: https://freefilesync.org/forum/viewtopic.php?t=4287
@@ -1977,7 +1995,7 @@ private:
             {
                 accessFtpSession(login_, [&](FtpSession& session) //throw SysError
                 {
-                    session.testConnection(login_.timeoutSec); //throw SysError
+                    session.testConnection(); //throw SysError
                 });
                 return ItemType::folder;
             }
@@ -2036,8 +2054,8 @@ private:
         {
             accessFtpSession(login_, [&](FtpSession& session) //throw SysError
             {
-                session.runSingleFtpCommand("MKD " + session.getServerPathInternal(afsPath, login_.timeoutSec),
-                                            true /*requiresUtf8*/, login_.timeoutSec); //throw SysError
+                session.runSingleFtpCommand("MKD " + session.getServerPathInternal(afsPath),
+                                            true /*requiresUtf8*/); //throw SysError
             });
         }
         catch (const SysError& e)
@@ -2052,8 +2070,8 @@ private:
         {
             accessFtpSession(login_, [&](FtpSession& session) //throw SysError
             {
-                session.runSingleFtpCommand("DELE " + session.getServerPathInternal(afsPath, login_.timeoutSec),
-                                            true /*requiresUtf8*/, login_.timeoutSec); //throw SysError
+                session.runSingleFtpCommand("DELE " + session.getServerPathInternal(afsPath),
+                                            true /*requiresUtf8*/); //throw SysError
             });
         }
         catch (const SysError& e)
@@ -2079,8 +2097,8 @@ private:
             {
                 try
                 {
-                    session.runSingleFtpCommand("RMD " + session.getServerPathInternal(afsPath, login_.timeoutSec),
-                                                true /*requiresUtf8*/, login_.timeoutSec); //throw SysError
+                    session.runSingleFtpCommand("RMD " + session.getServerPathInternal(afsPath),
+                                                true /*requiresUtf8*/); //throw SysError
                 }
                 catch (const SysError& e) { delError = e; }
             });
@@ -2205,14 +2223,14 @@ private:
             {
                 curl_slist* quote = nullptr;
                 ZEN_ON_SCOPE_EXIT(::curl_slist_free_all(quote));
-                quote = ::curl_slist_append(quote, ("RNFR " + session.getServerPathInternal(pathFrom,       login_.timeoutSec)).c_str()); //throw SysError
-                quote = ::curl_slist_append(quote, ("RNTO " + session.getServerPathInternal(pathTo.afsPath, login_.timeoutSec)).c_str()); //
+                quote = ::curl_slist_append(quote, ("RNFR " + session.getServerPathInternal(pathFrom      )).c_str()); //throw SysError
+                quote = ::curl_slist_append(quote, ("RNTO " + session.getServerPathInternal(pathTo.afsPath)).c_str()); //
 
                 session.perform(AfsPath(), true /*isDir*/, CURLFTPMETHOD_NOCWD, //avoid needless CWDs
                 {
                     {CURLOPT_NOBODY, 1L},
                     {CURLOPT_QUOTE, quote},
-                }, true /*requiresUtf8*/, login_.timeoutSec); //throw SysError
+                }, true /*requiresUtf8*/); //throw SysError
             });
         }
         catch (const SysError& e)
@@ -2259,9 +2277,17 @@ private:
 //expects "clean" login data
 Zstring concatenateFtpFolderPathPhrase(const FtpLogin& login, const AfsPath& afsPath) //noexcept
 {
+    Zstring username;
+    if (!login.username.empty())
+        username = encodeFtpUsername(login.username) + Zstr("@");
+
     Zstring port;
     if (login.port > 0)
         port = Zstr(':') + numberTo<Zstring>(login.port);
+
+    Zstring relPath = getServerRelPath(afsPath);
+    if (relPath == Zstr("/"))
+        relPath.clear();
 
     Zstring options;
     if (login.timeoutSec != FtpLogin().timeoutSec)
@@ -2273,11 +2299,7 @@ Zstring concatenateFtpFolderPathPhrase(const FtpLogin& login, const AfsPath& afs
     if (!login.password.empty()) //password always last => visually truncated by folder input field
         options += Zstr("|pass64=") + encodePasswordBase64(login.password);
 
-    Zstring username;
-    if (!login.username.empty())
-        username = encodeFtpUsername(login.username) + Zstr("@");
-
-    return Zstring(ftpPrefix) + Zstr("//") + username + login.server + port + getServerRelPath(afsPath) + options;
+    return Zstring(ftpPrefix) + Zstr("//") + username + login.server + port + relPath + options;
 }
 }
 
@@ -2304,7 +2326,7 @@ AfsPath fff::getFtpHomePath(const FtpLogin& login) //throw FileError
 
         accessFtpSession(login, [&](FtpSession& session) //throw SysError
         {
-            homePath = session.getHomePath(login.timeoutSec); //throw SysError
+            homePath = session.getHomePath(); //throw SysError
         });
         return homePath;
     }
@@ -2351,10 +2373,10 @@ bool fff::acceptsItemPathPhraseFtp(const Zstring& itemPathPhrase) //noexcept
 }
 
 
-//syntax: ftp://[<user>[:<password>]@]<server>[:port]/<relative-path>[|option_name=value]
-//
-//   e.g. ftp://user001:secretpassword@private.example.com:222/mydirectory/
-//        ftp://user001@private.example.com/mydirectory|pass64=c2VjcmV0cGFzc3dvcmQ
+/* syntax: ftp://[<user>[:<password>]@]<server>[:port]/<relative-path>[|option_name=value]
+
+   e.g. ftp://user001:secretpassword@private.example.com:222/mydirectory/
+        ftp://user001@private.example.com/mydirectory|pass64=c2VjcmV0cGFzc3dvcmQ       */
 AbstractPath fff::createItemPathFtp(const Zstring& itemPathPhrase) //noexcept
 {
     Zstring pathPhrase = expandMacros(itemPathPhrase); //expand before trimming!
@@ -2368,8 +2390,8 @@ AbstractPath fff::createItemPathFtp(const Zstring& itemPathPhrase) //noexcept
     const Zstring fullPathOpt =  afterFirst(pathPhrase, Zstr('@'), IfNotFoundReturn::all);
 
     FtpLogin login;
-    login.username = decodeFtpUsername(beforeFirst(credentials, Zstr(':'), IfNotFoundReturn::all)); //support standard FTP syntax, even though ':'
-    login.password =                    afterFirst(credentials, Zstr(':'), IfNotFoundReturn::none); //is not used by concatenateFtpFolderPathPhrase()!
+    login.username = decodeFtpUsername(beforeFirst(credentials, Zstr(':'), IfNotFoundReturn::all)); //support standard FTP syntax, even though 
+    login.password =                    afterFirst(credentials, Zstr(':'), IfNotFoundReturn::none); //concatenateFtpFolderPathPhrase() uses "pass64" instead
 
     const Zstring fullPath = beforeFirst(fullPathOpt, Zstr('|'), IfNotFoundReturn::all);
     const Zstring options  =  afterFirst(fullPathOpt, Zstr('|'), IfNotFoundReturn::none);
@@ -2382,18 +2404,15 @@ AbstractPath fff::createItemPathFtp(const Zstring& itemPathPhrase) //noexcept
     const Zstring port =  afterLast(serverPort, Zstr(':'), IfNotFoundReturn::none);
     login.port = stringTo<int>(port); //0 if empty
 
-    if (!options.empty())
-    {
-        for (const Zstring& optPhrase : split(options, Zstr("|"), SplitOnEmpty::skip))
-            if (startsWith(optPhrase, Zstr("timeout=")))
-                login.timeoutSec = stringTo<int>(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
-            else if (optPhrase == Zstr("ssl"))
-                login.useTls = true;
-            else if (startsWith(optPhrase, Zstr("pass64=")))
-                login.password = decodePasswordBase64(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
-            else
-                assert(false);
-    } //fix "-Wdangling-else"
+    for (const Zstring& optPhrase : split(options, Zstr("|"), SplitOnEmpty::skip))
+        if (startsWith(optPhrase, Zstr("timeout=")))
+            login.timeoutSec = stringTo<int>(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
+        else if (optPhrase == Zstr("ssl"))
+            login.useTls = true;
+        else if (startsWith(optPhrase, Zstr("pass64=")))
+            login.password = decodePasswordBase64(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
+        else
+            assert(false);
 
     return AbstractPath(makeSharedRef<FtpFileSystem>(login), serverRelPath);
 }

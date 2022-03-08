@@ -151,7 +151,7 @@ struct XmlGlobalSettings
 
     //---------------------------------------------------------------------
     //Shared (GUI/BATCH) settings
-    wxLanguage programLanguage = getSystemLanguage();
+    wxLanguage programLanguage = getDefaultLanguage();
     bool failSafeFileCopy = true;
     bool copyLockedFiles  = false; //safer default: avoid copies of partially written files
     bool copyFilePermissions = false;

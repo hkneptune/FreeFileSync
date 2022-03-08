@@ -47,10 +47,9 @@ void zen::libcurlTearDown()
 }
 
 
-HttpSession::HttpSession(const Zstring& server, bool useTls, const Zstring& caCertFilePath, std::chrono::seconds timeOut) : //throw SysError
+HttpSession::HttpSession(const Zstring& server, bool useTls, const Zstring& caCertFilePath) : //throw SysError
     serverPrefix_((useTls ? "https://" : "http://") + utfTo<std::string>(server)),
-    caCertFilePath_(utfTo<std::string>(caCertFilePath)),
-    timeOutSec_(timeOut) {}
+    caCertFilePath_(utfTo<std::string>(caCertFilePath)) {}
 
 
 HttpSession::~HttpSession()
@@ -64,7 +63,8 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
                                          const std::vector<std::string>& extraHeaders, const std::vector<CurlOption>& extraOptions,
                                          const std::function<void  (std::span<const char> buf)>& writeResponse /*throw X*/, //
                                          const std::function<size_t(std::span<      char> buf)>& readRequest   /*throw X*/, //optional
-                                         const std::function<void  (const std::string_view& header)>& receiveHeader /*throw X*/) //throw SysError, X
+                                         const std::function<void  (const std::string_view& header)>& receiveHeader /*throw X*/,
+                                         int timeoutSec) //throw SysError, X
 {
     if (!easyHandle_)
     {
@@ -92,10 +92,10 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
 
     options.emplace_back(CURLOPT_NOSIGNAL, 1); //thread-safety: https://curl.haxx.se/libcurl/c/threadsafe.html
 
-    options.emplace_back(CURLOPT_CONNECTTIMEOUT, timeOutSec_.count());
+    options.emplace_back(CURLOPT_CONNECTTIMEOUT, timeoutSec);
 
     //CURLOPT_TIMEOUT: "Since this puts a hard limit for how long time a request is allowed to take, it has limited use in dynamic use cases with varying transfer times."
-    options.emplace_back(CURLOPT_LOW_SPEED_TIME, timeOutSec_.count());
+    options.emplace_back(CURLOPT_LOW_SPEED_TIME, timeoutSec);
     options.emplace_back(CURLOPT_LOW_SPEED_LIMIT, 1); //[bytes], can't use "0" which means "inactive", so use some low number
 
 
@@ -343,7 +343,7 @@ std::wstring zen::formatCurlStatusCode(CURLcode sc)
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_SSL_CIPHER);
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_PEER_FAILED_VERIFICATION);
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_BAD_CONTENT_ENCODING);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_LDAP_INVALID_URL);
+            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_OBSOLETE62);
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_FILESIZE_EXCEEDED);
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_USE_SSL_FAILED);
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_SEND_FAIL_REWIND);
@@ -357,7 +357,7 @@ std::wstring zen::formatCurlStatusCode(CURLcode sc)
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_REMOTE_FILE_EXISTS);
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_TFTP_NOSUCHUSER);
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_CONV_FAILED);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_CONV_REQD);
+            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_OBSOLETE76);
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_SSL_CACERT_BADFILE);
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_REMOTE_FILE_NOT_FOUND);
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_SSH);

@@ -38,6 +38,9 @@ struct SshSessionId
     Zstring privateKeyFilePath; //authType == keyFile: use PEM-encoded private key (protected by password) for authentication
     bool allowZlib = false;
 };
+const int DEFAULT_PORT_SFTP = 22;
+        //SFTP default port: 22, see %WINDIR%\system32\drivers\etc\services
+        //=> we could use the "ssh" alias, but let's be explicit
 
 struct SftpLogin : SshSessionId
 {

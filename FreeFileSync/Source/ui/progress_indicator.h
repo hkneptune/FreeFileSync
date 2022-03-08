@@ -38,6 +38,7 @@ public:
 
     void timerSetStatus(bool active); //start/stop all internal timers!
     bool timerIsRunning() const;
+    std::chrono::milliseconds pauseAndGetTotalTime();
 
 private:
     class Impl;
@@ -64,11 +65,16 @@ struct SyncProgressDialog
                                       bool showProgress,
                                       bool autoCloseDialog,
                                       const std::vector<std::wstring>& jobNames,
-                                      const std::chrono::system_clock::time_point& syncStartTime,
+                                      time_t syncStartTime,
                                       bool ignoreErrors,
                                       size_t autoRetryCount,
                                       PostSyncAction2 postSyncAction);
-    struct Result { bool autoCloseDialog; wxSize dlgSize; bool dlgIsMaximized; };
+    struct Result 
+    {
+        bool autoCloseDialog; 
+        wxSize dlgSize; 
+        bool dlgIsMaximized;
+    };
     virtual Result destroy(bool autoClose, bool restoreParentFrame, SyncResult syncResult, const zen::SharedRef<const zen::ErrorLog>& log) = 0;
     //---------------------------------------------------------------------------
 
@@ -86,6 +92,7 @@ struct SyncProgressDialog
 
     virtual void timerSetStatus(bool active) = 0; //start/stop all internal timers!
     virtual bool timerIsRunning() const = 0;
+    virtual std::chrono::milliseconds pauseAndGetTotalTime() = 0;
 
 protected:
     ~SyncProgressDialog() {}

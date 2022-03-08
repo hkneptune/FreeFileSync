@@ -153,6 +153,12 @@ public:
     }
     bool timerIsRunning() const { return !stopWatch_.isPaused(); }
 
+    std::chrono::milliseconds pauseAndGetTotalTime() 
+    {
+        stopWatch_.pause(); 
+        return std::chrono::duration_cast<std::chrono::milliseconds>(stopWatch_.elapsed()); 
+    }
+
 private:
     //void onToggleIgnoreErrors(wxCommandEvent& event) override { updateStaticGui(); }
 
@@ -244,6 +250,8 @@ void CompareProgressPanel::Impl::init(const Statistics& syncStat, bool ignoreErr
 
 void CompareProgressPanel::Impl::teardown()
 {
+assert(stopWatch_.isPaused()); //why wasn't pauseAndGetTotalTime() called?
+
     syncStat_ = nullptr;
     parentWindow_.SetTitle(parentTitleBackup_);
     taskbar_.reset();
@@ -401,14 +409,14 @@ void CompareProgressPanel::Impl::updateProgressGui()
 CompareProgressPanel::CompareProgressPanel(wxFrame& parentWindow) : pimpl_(new Impl(parentWindow)) {} //owned by parentWindow
 wxWindow* CompareProgressPanel::getAsWindow() { return pimpl_; }
 void CompareProgressPanel::init(const Statistics& syncStat, bool ignoreErrors, size_t autoRetryCount) { pimpl_->init(syncStat, ignoreErrors, autoRetryCount); }
-void CompareProgressPanel::teardown()     { pimpl_->teardown(); }
-void CompareProgressPanel::initNewPhase() { pimpl_->initNewPhase(); }
-void CompareProgressPanel::updateGui()    { pimpl_->updateProgressGui(); }
+void CompareProgressPanel::teardown()    { pimpl_->teardown(); }
+void CompareProgressPanel::initNewPhase(){ pimpl_->initNewPhase(); }
+void CompareProgressPanel::updateGui()   { pimpl_->updateProgressGui(); }
 bool CompareProgressPanel::getOptionIgnoreErrors() const { return pimpl_->getOptionIgnoreErrors(); }
 void CompareProgressPanel::setOptionIgnoreErrors(bool ignoreErrors) { pimpl_->setOptionIgnoreErrors(ignoreErrors); }
 void CompareProgressPanel::timerSetStatus(bool active) { pimpl_->timerSetStatus(active); }
 bool CompareProgressPanel::timerIsRunning() const { return pimpl_->timerIsRunning(); }
-
+std::chrono::milliseconds CompareProgressPanel::pauseAndGetTotalTime() { return pimpl_->pauseAndGetTotalTime(); }
 //########################################################################################
 
 namespace
@@ -647,7 +655,7 @@ public:
                            bool showProgress,
                            bool autoCloseDialog,
                            const std::vector<std::wstring>& jobNames,
-                           const std::chrono::system_clock::time_point& syncStartTime,
+                           time_t syncStartTime,
                            bool ignoreErrors,
                            size_t autoRetryCount,
                            PostSyncAction2 postSyncAction);
@@ -674,9 +682,12 @@ public:
             stopWatch_.pause();
     }
 
-    bool timerIsRunning() const override
+    bool timerIsRunning() const override { return !stopWatch_.isPaused(); }
+
+    std::chrono::milliseconds pauseAndGetTotalTime() override 
     {
-        return !stopWatch_.isPaused();
+        stopWatch_.pause(); 
+        return std::chrono::duration_cast<std::chrono::milliseconds>(stopWatch_.elapsed()); 
     }
 
 private:
@@ -700,7 +711,7 @@ private:
 
     SyncProgressPanelGenerated& pnl_; //wxPanel containing the GUI controls of *this
 
-    const std::chrono::system_clock::time_point& syncStartTime_;
+    const TimeComp syncStartTime_;
     const wxString jobName_;
     StopWatch stopWatch_;
 
@@ -751,13 +762,13 @@ SyncProgressDialogImpl<TopLevelDialog>::SyncProgressDialogImpl(long style, //wxF
                                                                bool showProgress,
                                                                bool autoCloseDialog,
                                                                const std::vector<std::wstring>& jobNames,
-                                                               const std::chrono::system_clock::time_point& syncStartTime,
+                                                               time_t syncStartTime,
                                                                bool ignoreErrors,
                                                                size_t autoRetryCount,
                                                                PostSyncAction2 postSyncAction) :
     TopLevelDialog(parentFrame, wxID_ANY, wxString(), wxDefaultPosition, wxDefaultSize, style), //title is overwritten anyway in setExternalStatus()
     pnl_(*new SyncProgressPanelGenerated(this)), //ownership passed to "this"
-    syncStartTime_(syncStartTime),
+    syncStartTime_(getLocalTime(syncStartTime)), //empty string on failure
     jobName_([&]
 {
     std::wstring tmp;
@@ -811,8 +822,6 @@ dlgSizeBuf_(dlgSize)
     //pnl.m_animCtrlSyncing->Play();
 
     //this->EnableCloseButton(false); //this is NOT honored on OS X or with ALT+F4 on Windows! -> why disable button at all??
-
-    stopWatch_.restart(); //measure total time
 
     try //try to get access to Windows 7/Ubuntu taskbar
     {
@@ -1024,9 +1033,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::setExternalStatus(const wxString& s
     if (!jobName_.empty())
         title += L" | " + jobName_;
 
-    const TimeComp tc = getLocalTime(std::chrono::system_clock::to_time_t(syncStartTime_)); //returns empty string on failure
-
-    const Zchar* format = [&]
+    const Zchar* format = [&tc = syncStartTime_]
     {
         if (const TimeComp& tcNow = getLocalTime();
             tc.day   == tcNow.day &&
@@ -1035,7 +1042,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::setExternalStatus(const wxString& s
             return formatTimeTag;
         return formatDateTimeTag;
     }();
-    title += L" | " + utfTo<std::wstring>(formatTime(format, tc));
+    title += L" | " + utfTo<std::wstring>(formatTime(format, syncStartTime_));
 
     //---------------------------------------------------------------------------
 
@@ -1338,13 +1345,12 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult syncResult, 
         pnl_.m_staticTextTimeRemaining ->Hide();
     }
 
-    //generally not interesting anymore (e.g. items > 0 dur to skipped errors)
+    //generally not interesting anymore (e.g. items > 0 due to skipped errors)
     pnl_.m_staticTextTimeRemaining->Hide();
 
     const int64_t totalTimeSec = std::chrono::duration_cast<std::chrono::seconds>(stopWatch_.elapsed()).count();
     setText(*pnl_.m_staticTextTimeElapsed, wxTimeSpan::Seconds(totalTimeSec).Format(L"%H:%M:%S"));
     //totalTimeSec < 3600 ? wxTimeSpan::Seconds(totalTimeSec).Format(L"%M:%S") -> let's use full precision for max. clarity: https://freefilesync.org/forum/viewtopic.php?t=6308
-    //maybe also should rename to "Total time"!?
 
     resumeFromSystray(false /*userRequested*/); //if in tray mode...
 
@@ -1478,6 +1484,8 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult syncResult, 
 template <class TopLevelDialog>
 auto SyncProgressDialogImpl<TopLevelDialog>::destroy(bool autoClose, bool restoreParentFrame, SyncResult syncResult, const SharedRef<const ErrorLog>& log) -> Result
 {
+    assert(stopWatch_.isPaused()); //why wasn't pauseAndGetTotalTime() called?
+
     if (autoClose)
     {
         assert(syncStat_);
@@ -1655,7 +1663,7 @@ SyncProgressDialog* SyncProgressDialog::create(wxSize dlgSize, bool dlgMaximize,
                                                bool showProgress,
                                                bool autoCloseDialog,
                                                const std::vector<std::wstring>& jobNames,
-                                               const std::chrono::system_clock::time_point& syncStartTime,
+                                               time_t syncStartTime,
                                                bool ignoreErrors,
                                                size_t autoRetryCount,
                                                PostSyncAction2 postSyncAction)

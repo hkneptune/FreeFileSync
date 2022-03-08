@@ -143,7 +143,7 @@ StatusHandlerTemporaryPanel::~StatusHandlerTemporaryPanel()
 
 StatusHandlerTemporaryPanel::Result StatusHandlerTemporaryPanel::reportResults() //noexcept!!
 {
-    const auto totalTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime_);
+    const std::chrono::milliseconds totalTime = mainDlg_.compareStatus_->pauseAndGetTotalTime();
 
     //determine post-sync status irrespective of further errors during tear-down
     const SyncResult syncResult = [&]
@@ -171,7 +171,7 @@ StatusHandlerTemporaryPanel::Result StatusHandlerTemporaryPanel::reportResults()
         totalTime
     };
 
-    auto errorLogFinal = std::make_shared<const ErrorLog>(std::move(errorLog_));
+    auto errorLogFinal = makeSharedRef<const ErrorLog>(std::move(errorLog_));
     errorLog_ = ErrorLog(); //see check in ~StatusHandlerTemporaryPanel()
 
     return {summary, errorLogFinal};
@@ -238,7 +238,7 @@ ProcessCallback::Response StatusHandlerTemporaryPanel::reportError(const ErrorIn
         errorLog_.logMsg(errorInfo.msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO);
         delayAndCountDown(errorInfo.failTime + autoRetryDelay_,
                           [&, statusPrefix  = _("Automatic retry") +
-                                              (errorInfo.retryNumber == 0 ? L"" : L' ' + numberTo<std::wstring>(errorInfo.retryNumber + 1)) + L" | ",
+                                              (errorInfo.retryNumber == 0 ? L"" : L' ' + formatNumber(errorInfo.retryNumber + 1)) + L" | ",
                               statusPostfix = L" | " + _("Error") + L": " + replaceCpy(errorInfo.msg, L'\n', L' ')](const std::wstring& timeRemMsg)
         { this->updateStatus(statusPrefix + timeRemMsg + statusPostfix); }); //throw AbortProcess
         return ProcessCallback::retry;
@@ -351,7 +351,8 @@ StatusHandlerFloatingDialog::StatusHandlerFloatingDialog(wxFrame* parentDlg,
                                                          const Zstring& soundFileSyncComplete,
                                                          const Zstring& soundFileAlertPending,
                                                          const wxSize& progressDlgSize, bool dlgMaximize,
-                                                         bool autoCloseDialog) :
+                                                         bool autoCloseDialog,
+    const ErrorLog* errorLogStart) :
     jobNames_(jobNames),
     startTime_(startTime),
     autoRetryCount_(autoRetryCount),
@@ -359,7 +360,11 @@ StatusHandlerFloatingDialog::StatusHandlerFloatingDialog(wxFrame* parentDlg,
     soundFileSyncComplete_(soundFileSyncComplete),
     soundFileAlertPending_(soundFileAlertPending),
     progressDlg_(SyncProgressDialog::create(progressDlgSize, dlgMaximize, [this] { userRequestAbort(); }, *this, parentDlg, true /*showProgress*/, autoCloseDialog,
-jobNames, startTime, ignoreErrors, autoRetryCount, PostSyncAction2::none)) {}
+jobNames, std::chrono::system_clock::to_time_t(startTime), ignoreErrors, autoRetryCount, PostSyncAction2::none)) 
+{
+    if (errorLogStart)
+        errorLog_ = *errorLogStart;
+}
 
 
 StatusHandlerFloatingDialog::~StatusHandlerFloatingDialog()
@@ -374,9 +379,8 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(c
                                                                                const std::set<AbstractPath>& logFilePathsToKeep,
                                                                                const std::string& emailNotifyAddress, ResultsNotification emailNotifyCondition)
 {
-    const auto totalTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime_);
-
-    progressDlg_->timerSetStatus(false /*active*/); //keep correct summary window stats considering count down timer, system sleep
+    //keep correct summary window stats considering count down timer, system sleep
+    const std::chrono::milliseconds totalTime = progressDlg_->pauseAndGetTotalTime(); 
 
     //determine post-sync status irrespective of further errors during tear-down
     const SyncResult syncResult = [&]
@@ -602,7 +606,7 @@ ProcessCallback::Response StatusHandlerFloatingDialog::reportError(const ErrorIn
         errorLog_.logMsg(errorInfo.msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO);
         delayAndCountDown(errorInfo.failTime + autoRetryDelay_,
                           [&, statusPrefix  = _("Automatic retry") +
-                                              (errorInfo.retryNumber == 0 ? L"" : L' ' + numberTo<std::wstring>(errorInfo.retryNumber + 1)) + L" | ",
+                                              (errorInfo.retryNumber == 0 ? L"" : L' ' + formatNumber(errorInfo.retryNumber + 1)) + L" | ",
                               statusPostfix = L" | " + _("Error") + L": " + replaceCpy(errorInfo.msg, L'\n', L' ')](const std::wstring& timeRemMsg)
         { this->updateStatus(statusPrefix + timeRemMsg + statusPostfix); }); //throw AbortProcess
         return ProcessCallback::retry;

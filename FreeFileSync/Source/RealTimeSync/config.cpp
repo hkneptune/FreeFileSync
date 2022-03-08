@@ -176,7 +176,7 @@ wxLanguage rts::getProgramLanguage() //throw FileError
     catch (FileError&)
     {
         if (!itemStillExists(filePath)) //throw FileError
-            return fff::getSystemLanguage();
+            return fff::getDefaultLanguage();
         throw;
     }
 

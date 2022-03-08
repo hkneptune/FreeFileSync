@@ -41,7 +41,7 @@ public:
     struct Result
     {
         ProcessSummary summary;
-        std::shared_ptr<const zen::ErrorLog> errorLog;
+        zen::SharedRef<const zen::ErrorLog> errorLog;
     };
     Result reportResults(); //noexcept!!
 
@@ -56,7 +56,6 @@ private:
     const size_t autoRetryCount_;
     const std::chrono::seconds autoRetryDelay_;
     const Zstring soundFileAlertPending_;
-
     const std::chrono::system_clock::time_point startTime_;
     const std::chrono::steady_clock::time_point startTimeSteady_ = std::chrono::steady_clock::now();
 };
@@ -75,7 +74,8 @@ public:
                                 const Zstring& soundFileSyncComplete,
                                 const Zstring& soundFileAlertPending,
                                 const wxSize& progressDlgSize, bool dlgMaximize,
-                                bool autoCloseDialog); //noexcept!
+                                bool autoCloseDialog, 
+        const zen::ErrorLog* errorLogStart /*optional*/); //noexcept!
     ~StatusHandlerFloatingDialog();
 
     void     initNewPhase    (int itemsTotal, int64_t bytesTotal, ProcessPhase phaseID) override; //
@@ -114,7 +114,6 @@ private:
     const std::chrono::seconds autoRetryDelay_;
     const Zstring soundFileSyncComplete_;
     const Zstring soundFileAlertPending_;
-
     SyncProgressDialog* progressDlg_; //managed to have the same lifetime as this handler!
     zen::ErrorLog errorLog_;
 };

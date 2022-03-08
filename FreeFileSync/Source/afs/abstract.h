@@ -478,8 +478,8 @@ AbstractFileSystem::FinalizeResult AbstractFileSystem::OutputStream::finalize() 
     if (bytesExpected_ && *bytesExpected_ != bytesWrittenTotal_)
         throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getDisplayPath(filePath_))), //instead we should report the source file, but don't have it here...
                         replaceCpy(replaceCpy(_("Unexpected size of data stream.\nExpected: %x bytes\nActual: %y bytes"),
-                                              L"%x", numberTo<std::wstring>(*bytesExpected_)),
-                                   L"%y", numberTo<std::wstring>(bytesWrittenTotal_)));
+                                              L"%x", formatNumber(*bytesExpected_)),
+                                   L"%y", formatNumber(bytesWrittenTotal_)));
 
     const FinalizeResult result = outStream_->finalize(); //throw FileError, X
     finalizeSucceeded_ = true;

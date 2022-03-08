@@ -213,7 +213,7 @@ private:
             const ThreadStatus* ts = getThreadStatus(); //call while holding "lockCurrentStatus_" lock!!
             return ts ? ts->taskIdx : static_cast<size_t>(-2);
         }();
-        return totalThreadCount_ > 1 ? L'[' + zen::numberTo<std::wstring>(taskIdx + 1) + L"] " : L"";
+        return totalThreadCount_ > 1 ? L'[' + zen::formatNumber(taskIdx + 1) + L"] " : L"";
     }
 #endif
 

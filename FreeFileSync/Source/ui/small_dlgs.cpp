@@ -325,6 +325,7 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, Zstrin
         }
 
         m_textCtrlServerPath->ChangeValue(utfTo<wxString>(FILE_NAME_SEPARATOR + folderPath.afsPath.value));
+        m_spinCtrlTimeout->SetValue(login.timeoutSec);
     }
     else if (acceptsItemPathPhraseSftp(folderPathPhrase))
     {
@@ -386,11 +387,11 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, Zstrin
 
 void CloudSetupDlg::onGdriveUserAdd(wxCommandEvent& event)
 {
-    guiQueue_.processAsync([]() -> std::variant<std::string /*email*/, FileError>
+    guiQueue_.processAsync([timeoutSec = extractGdriveLogin(getFolderPath().afsDevice).timeoutSec]() -> std::variant<std::string /*email*/, FileError>
     {
         try
         {
-            return gdriveAddUser(nullptr /*updateGui*/); //throw FileError
+            return gdriveAddUser(nullptr /*updateGui*/, timeoutSec); //throw FileError
         }
         catch (const FileError& e) { return e; }
     },
@@ -429,7 +430,7 @@ void CloudSetupDlg::onGdriveUserRemove(wxCommandEvent& event)
                                        _("&Disconnect")) != ConfirmationButton::accept)
                 return;
 
-            gdriveRemoveUser(loginEmail); //throw FileError
+            gdriveRemoveUser(loginEmail, extractGdriveLogin(getFolderPath().afsDevice).timeoutSec); //throw FileError
             m_listBoxGdriveUsers->Delete(selPos);
             updateGui(); //disable remove user button
             m_listBoxGdriveDrives->Clear();
@@ -459,11 +460,12 @@ void CloudSetupDlg::gdriveUpdateDrivesAndSelect(const std::string& accountEmail,
     m_listBoxGdriveDrives->Clear();
     m_listBoxGdriveDrives->Append(txtLoading_);
 
-    guiQueue_.processAsync([accountEmail]() -> std::variant<std::vector<Zstring /*sharedDriveName*/>, FileError>
+    guiQueue_.processAsync([accountEmail, timeoutSec = extractGdriveLogin(getFolderPath().afsDevice).timeoutSec]() ->
+                           std::variant<std::vector<Zstring /*sharedDriveName*/>, FileError>
     {
         try
         {
-            return gdriveListSharedDrives(accountEmail); //throw FileError
+            return gdriveListSharedDrives(accountEmail, timeoutSec); //throw FileError
         }
         catch (const FileError& e) { return e; }
     },
@@ -590,8 +592,6 @@ void CloudSetupDlg::updateGui()
         m_textCtrlPasswordHidden ->Show(!m_checkBoxShowPassword->GetValue());
     }
 
-    bSizerAccessTimeout->Show(type_ == CloudType::ftp || type_ == CloudType::sftp);
-
     switch (type_)
     {
         case CloudType::gdrive:
@@ -603,7 +603,9 @@ void CloudSetupDlg::updateGui()
             m_radioBtnKeyfile ->SetValue(false);
             m_radioBtnAgent   ->SetValue(false);
 
-            switch (sftpAuthType_) //*not* owned by GUI controls
+    m_textCtrlPort->SetHint(numberTo<wxString>(DEFAULT_PORT_SFTP));
+
+    switch (sftpAuthType_) //*not* owned by GUI controls
             {
                 case SftpAuthType::password:
                     m_radioBtnPassword->SetValue(true);
@@ -620,7 +622,8 @@ void CloudSetupDlg::updateGui()
             break;
 
         case CloudType::ftp:
-            m_staticTextPassword->SetLabelText(_("Password:"));
+    m_textCtrlPort->SetHint(numberTo<wxString>(DEFAULT_PORT_FTP));
+        m_staticTextPassword->SetLabelText(_("Password:"));
             break;
     }
 
@@ -659,6 +662,7 @@ AbstractPath CloudSetupDlg::getFolderPath() const
                         login.sharedDriveName = utfTo<Zstring>(sharedDriveName);
                 }
             }
+            login.timeoutSec = m_spinCtrlTimeout->GetValue();
             return AbstractPath(condenseToGdriveDevice(login), serverRelPath); //noexcept
         }
 
@@ -1720,6 +1724,13 @@ void ActivationDlg::onActivateOnline(wxCommandEvent& event)
 void ActivationDlg::onActivateOffline(wxCommandEvent& event)
 {
     manualActivationKeyOut_ = m_textCtrlOfflineActivationKey->GetValue();
+    if (trimCpy(manualActivationKeyOut_).empty()) //alternative: disable button? => user thinks option is not available!
+    {
+        showNotificationDialog(this, DialogInfoType::info, PopupDialogCfg().setMainInstructions(_("Please enter a key for offline activation.")));
+        m_textCtrlOfflineActivationKey->SetFocus(); 
+        return;
+    }
+
     EndModal(static_cast<int>(ActivationDlgButton::activateOffline));
 }
 }

@@ -72,7 +72,6 @@ namespace
 //Google Drive REST API Reference: https://developers.google.com/drive/api/v3/reference
 const Zchar* GOOGLE_REST_API_SERVER = Zstr("www.googleapis.com");
 
-constexpr std::chrono::seconds HTTP_SESSION_ACCESS_TIME_OUT(15);
 constexpr std::chrono::seconds HTTP_SESSION_MAX_IDLE_TIME  (20);
 constexpr std::chrono::seconds HTTP_SESSION_CLEANUP_INTERVAL(4);
 constexpr std::chrono::seconds GDRIVE_SYNC_INTERVAL         (5);
@@ -106,28 +105,23 @@ std::weak_ordering operator<=>(const HttpSessionId& lhs, const HttpSessionId& rh
 }
 
 
-//expects "clean" input data
-Zstring concatenateGdriveFolderPathPhrase(const GdrivePath& gdrivePath) //noexcept
-{
-    Zstring pathPhrase = Zstring(gdrivePrefix) + FILE_NAME_SEPARATOR + utfTo<Zstring>(gdrivePath.gdriveLogin.email);
-
-    if (!gdrivePath.gdriveLogin.sharedDriveName.empty())
-        pathPhrase += Zstr(':') + gdrivePath.gdriveLogin.sharedDriveName;
-
-    if (!gdrivePath.itemPath.value.empty())
-        pathPhrase += FILE_NAME_SEPARATOR + gdrivePath.itemPath.value;
-
-    if (endsWith(pathPhrase, Zstr(' '))) //path phrase concept must survive trimming!
-        pathPhrase += FILE_NAME_SEPARATOR;
-
-    return pathPhrase;
-}
+Zstring concatenateGdriveFolderPathPhrase(const GdrivePath& gdrivePath); //noexcept
 
 
 //e.g.: gdrive:/john@gmail.com:SharedDrive/folder/file.txt
 std::wstring getGdriveDisplayPath(const GdrivePath& gdrivePath)
 {
-    return utfTo<std::wstring>(concatenateGdriveFolderPathPhrase(gdrivePath)); //noexcept
+    Zstring displayPath = Zstring(gdrivePrefix) + FILE_NAME_SEPARATOR;
+
+    displayPath += utfTo<Zstring>(gdrivePath.gdriveLogin.email);
+
+    if (!gdrivePath.gdriveLogin.sharedDriveName.empty())
+        displayPath += Zstr(':') + gdrivePath.gdriveLogin.sharedDriveName;
+
+    if (!gdrivePath.itemPath.value.empty())
+        displayPath += FILE_NAME_SEPARATOR + gdrivePath.itemPath.value;
+
+    return utfTo<std::wstring>(displayPath);
 }
 
 
@@ -232,7 +226,7 @@ private:
     struct HttpInitSession
     {
         HttpInitSession(std::shared_ptr<UniCounterCookie> cook, const Zstring& server, const Zstring& caCertFilePath) :
-            cookie(std::move(cook)), session(server, true /*useTls*/, caCertFilePath, HTTP_SESSION_ACCESS_TIME_OUT) {}
+            cookie(std::move(cook)), session(server, true /*useTls*/, caCertFilePath) {}
 
         std::shared_ptr<UniCounterCookie> cookie;
         HttpSession session; //life time must be subset of UniCounterCookie
@@ -305,36 +299,57 @@ private:
 constinit Global<HttpSessionManager> globalHttpSessionManager; //caveat: life time must be subset of static UniInitializer!
 //--------------------------------------------------------------------------------------
 
+struct GdriveAccess
+{
+    std::string token;
+    int timeoutSec = 0;
+};
 
 //===========================================================================================================================
 
-//try to get a grip on this crazy REST API: - parameters are passed via query string, header, or body, using GET, POST, PUT, PATCH, DELETE, ... it's a dice roll
-HttpSession::Result gdriveHttpsRequest(const std::string& serverRelPath, //throw SysError, X
+HttpSession::Result googleHttpsRequest(const Zstring& serverName, const std::string& serverRelPath, //throw SysError, X
                                        const std::vector<std::string>& extraHeaders,
-                                       const std::vector<CurlOption>& extraOptions,
+                                       std::vector<CurlOption> extraOptions,
                                        const std::function<void  (std::span<const char> buf)>& writeResponse /*throw X*/, //optional
                                        const std::function<size_t(std::span<      char> buf)>& readRequest   /*throw X*/, //optional; returning 0 signals EOF
-                                       const std::function<void  (const std::string_view& header)>&          receiveHeader /*throw X*/) //optional
+                                       const std::function<void  (const std::string_view& header)>& receiveHeader /*throw X*/, //optional
+                                       int timeoutSec)
 {
+    //https://developers.google.com/drive/api/v3/performance
+    //"In order to receive a gzip-encoded response you must do two things: Set an Accept-Encoding header, ["gzip" automatically set by HttpSession]
+    extraOptions.emplace_back(CURLOPT_USERAGENT, "FreeFileSync (gzip)"); //and modify your user agent to contain the string gzip."
+
     const std::shared_ptr<HttpSessionManager> mgr = globalHttpSessionManager.get();
     if (!mgr)
-        throw SysError(formatSystemError("gdriveHttpsRequest", L"", L"Function call not allowed during init/shutdown."));
+        throw SysError(formatSystemError("googleHttpsRequest", L"", L"Function call not allowed during init/shutdown."));
 
     HttpSession::Result httpResult;
 
-    mgr->access(HttpSessionId(GOOGLE_REST_API_SERVER), [&](HttpSession& session) //throw SysError
+    mgr->access(HttpSessionId(serverName), [&](HttpSession& session) //throw SysError
     {
-        std::vector<CurlOption> options =
-        {
-            //https://developers.google.com/drive/api/v3/performance
-            //"In order to receive a gzip-encoded response you must do two things: Set an Accept-Encoding header, ["gzip" automatically set by HttpSession]
-            {CURLOPT_USERAGENT, "FreeFileSync (gzip)"}, //and modify your user agent to contain the string gzip."
-        };
-        append(options, extraOptions);
-
-        httpResult = session.perform(serverRelPath, extraHeaders, options, writeResponse, readRequest, receiveHeader); //throw SysError, X
+        httpResult = session.perform(serverRelPath, extraHeaders, extraOptions, writeResponse, readRequest, receiveHeader, timeoutSec); //throw SysError, X
     });
     return httpResult;
+}
+
+
+//try to get a grip on this crazy REST API: - parameters are passed via query string, header, or body, using GET, POST, PUT, PATCH, DELETE, ... it's a dice roll
+HttpSession::Result gdriveHttpsRequest(const std::string& serverRelPath, //throw SysError, X
+                                       std::vector<std::string> extraHeaders,
+                                       const std::vector<CurlOption>& extraOptions,
+                                       const std::function<void  (std::span<const char> buf)>& writeResponse /*throw X*/, //optional
+                                       const std::function<size_t(std::span<      char> buf)>& readRequest   /*throw X*/, //optional; returning 0 signals EOF
+                                       const std::function<void  (const std::string_view& header)>& receiveHeader /*throw X*/, //optional
+                                       const GdriveAccess& access)
+{
+    extraHeaders.push_back("Authorization: Bearer " + access.token);
+
+    return googleHttpsRequest(GOOGLE_REST_API_SERVER, serverRelPath,
+                              extraHeaders,
+                              extraOptions,
+                              writeResponse /*throw X*/,
+                              readRequest   /*throw X*/,
+                              receiveHeader /*throw X*/, access.timeoutSec); //throw SysError, X
 }
 
 //========================================================================================================
@@ -344,7 +359,7 @@ struct GdriveUser
     std::wstring displayName;
     std::string email;
 };
-GdriveUser getGdriveUser(const std::string& accessToken) //throw SysError
+GdriveUser getGdriveUser(const GdriveAccess& access) //throw SysError
 {
     //https://developers.google.com/drive/api/v3/reference/about
     const std::string& queryParams = xWwwFormUrlEncode(
@@ -352,8 +367,8 @@ GdriveUser getGdriveUser(const std::string& accessToken) //throw SysError
         {"fields", "user/displayName,user/emailAddress"},
     });
     std::string response;
-    gdriveHttpsRequest("/drive/v3/about?" + queryParams, {"Authorization: Bearer " + accessToken}, {} /*extraOptions*/, //throw SysError
-    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/);
+    gdriveHttpsRequest("/drive/v3/about?" + queryParams, {} /*extraHeaders*/, {} /*extraOptions*/,
+    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/, access); //throw SysError
 
     JsonValue jresponse;
     try { jresponse = parseJson(response); }
@@ -391,7 +406,7 @@ struct GdriveAccessInfo
     GdriveUser userInfo;
 };
 
-GdriveAccessInfo gdriveExchangeAuthCode(const GdriveAuthCode& authCode) //throw SysError
+GdriveAccessInfo gdriveExchangeAuthCode(const GdriveAuthCode& authCode, int timeoutSec) //throw SysError
 {
     //https://developers.google.com/identity/protocols/OAuth2InstalledApp#exchange-authorization-code
     const std::string postBuf = xWwwFormUrlEncode(
@@ -404,8 +419,9 @@ GdriveAccessInfo gdriveExchangeAuthCode(const GdriveAuthCode& authCode) //throw 
         {"code_verifier", authCode.codeChallenge},
     });
     std::string response;
-    gdriveHttpsRequest("/oauth2/v4/token", {} /*extraHeaders*/, {{CURLOPT_POSTFIELDS, postBuf.c_str()}}, //throw SysError
-    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/);
+    googleHttpsRequest(Zstr("oauth2.googleapis.com"), "/token", {} /*extraHeaders*/, {{CURLOPT_POSTFIELDS, postBuf.c_str()}},
+    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); },
+    nullptr /*readRequest*/, nullptr /*receiveHeader*/, timeoutSec); //throw SysError
 
     JsonValue jresponse;
     try { jresponse = parseJson(response); }
@@ -417,7 +433,7 @@ GdriveAccessInfo gdriveExchangeAuthCode(const GdriveAuthCode& authCode) //throw 
     if (!accessToken || !refreshToken || !expiresIn)
         throw SysError(formatGdriveErrorRaw(response));
 
-    const GdriveUser userInfo = getGdriveUser(*accessToken); //throw SysError
+    const GdriveUser userInfo = getGdriveUser({*accessToken, timeoutSec}); //throw SysError
 
     return {{*accessToken, std::time(nullptr) + stringTo<time_t>(*expiresIn)}, *refreshToken, userInfo};
 }
@@ -425,7 +441,7 @@ GdriveAccessInfo gdriveExchangeAuthCode(const GdriveAuthCode& authCode) //throw 
 
 //Astyle fucks up because of the raw string literal!
 //*INDENT-OFF*
-GdriveAccessInfo gdriveAuthorizeAccess(const std::string& gdriveLoginHint, const std::function<void()>& updateGui /*throw X*/) //throw SysError, X
+GdriveAccessInfo gdriveAuthorizeAccess(const std::string& gdriveLoginHint, const std::function<void()>& updateGui /*throw X*/, int timeoutSec) //throw SysError, X
 {
     //spin up a web server to wait for the HTTP GET after Google authentication
     ::addrinfo hints = {};
@@ -623,7 +639,7 @@ GdriveAccessInfo gdriveAuthorizeAccess(const std::string& gdriveLoginHint, const
 
                 //do as many login-related tasks as possible while we have the browser as an error output device!
                 //see AFS::connectNetworkFolder() => errors will be lost after time out in dir_exist_async.h!
-                authResult = gdriveExchangeAuthCode({code, redirectUrl, codeChallenge}); //throw SysError
+                authResult = gdriveExchangeAuthCode({code, redirectUrl, codeChallenge}, timeoutSec); //throw SysError
                 replace(htmlMsg, "TITLE_PLACEHOLDER",   utfTo<std::string>(_("Authentication completed.")));
                 replace(htmlMsg, "MESSAGE_PLACEHOLDER", utfTo<std::string>(_("You may close this page now and continue with FreeFileSync.")));
             }
@@ -656,7 +672,7 @@ GdriveAccessInfo gdriveAuthorizeAccess(const std::string& gdriveLoginHint, const
 //*INDENT-ON*
 
 
-GdriveAccessToken gdriveRefreshAccess(const std::string& refreshToken) //throw SysError
+GdriveAccessToken gdriveRefreshAccess(const std::string& refreshToken, int timeoutSec) //throw SysError
 {
     //https://developers.google.com/identity/protocols/OAuth2InstalledApp#offline
     const std::string postBuf = xWwwFormUrlEncode(
@@ -667,8 +683,9 @@ GdriveAccessToken gdriveRefreshAccess(const std::string& refreshToken) //throw S
         {"grant_type",    "refresh_token"},
     });
     std::string response;
-    gdriveHttpsRequest("/oauth2/v4/token", {} /*extraHeaders*/, {{CURLOPT_POSTFIELDS, postBuf.c_str()}}, //throw SysError
-    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/);
+    googleHttpsRequest(Zstr("oauth2.googleapis.com"), "/token", {} /*extraHeaders*/, {{CURLOPT_POSTFIELDS, postBuf.c_str()}},
+    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); },
+    nullptr /*readRequest*/, nullptr /*receiveHeader*/, timeoutSec); //throw SysError
 
     JsonValue jresponse;
     try { jresponse = parseJson(response); }
@@ -683,33 +700,27 @@ GdriveAccessToken gdriveRefreshAccess(const std::string& refreshToken) //throw S
 }
 
 
-void gdriveRevokeAccess(const std::string& accessToken) //throw SysError
+void gdriveRevokeAccess(const GdriveAccess& access) //throw SysError
 {
     //https://developers.google.com/identity/protocols/OAuth2InstalledApp#tokenrevoke
-    const std::shared_ptr<HttpSessionManager> mgr = globalHttpSessionManager.get();
-    if (!mgr)
-        throw SysError(formatSystemError("gdriveRevokeAccess", L"", L"Function call not allowed during init/shutdown."));
-
-    HttpSession::Result httpResult;
     std::string response;
-
-    mgr->access(HttpSessionId(Zstr("accounts.google.com")), [&](HttpSession& session) //throw SysError
-    {
-        httpResult = session.perform("/o/oauth2/revoke?token=" + accessToken, {"Content-Type: application/x-www-form-urlencoded"}, {} /*extraOptions*/,
-        [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/); //throw SysError
-    });
+    const HttpSession::Result httpResult = googleHttpsRequest(Zstr("oauth2.googleapis.com"), "/revoke?token=" + access.token,
+    {"Content-Type: application/x-www-form-urlencoded"}, {{ CURLOPT_POSTFIELDS, ""}},
+    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); },
+    nullptr /*readRequest*/, nullptr /*receiveHeader*/, access.timeoutSec); //throw SysError
 
     if (httpResult.statusCode != 200)
         throw SysError(formatGdriveErrorRaw(response));
 }
 
 
-int64_t gdriveGetMyDriveFreeSpace(const std::string& accessToken) //throw SysError; returns < 0 if not available
+int64_t gdriveGetMyDriveFreeSpace(const GdriveAccess& access) //throw SysError; returns < 0 if not available
 {
     //https://developers.google.com/drive/api/v3/reference/about
     std::string response;
-    gdriveHttpsRequest("/drive/v3/about?fields=storageQuota", {"Authorization: Bearer " + accessToken}, {} /*extraOptions*/, //throw SysError
-    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/);
+    gdriveHttpsRequest("/drive/v3/about?fields=storageQuota", {} /*extraHeaders*/, {} /*extraOptions*/,
+    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); },
+    nullptr /*readRequest*/, nullptr /*receiveHeader*/, access); //throw SysError
 
     JsonValue jresponse;
     try { jresponse = parseJson(response); }
@@ -740,7 +751,7 @@ struct DriveDetails
     std::string driveId;
     Zstring driveName;
 };
-std::vector<DriveDetails> getSharedDrives(const std::string& accessToken) //throw SysError
+std::vector<DriveDetails> getSharedDrives(const GdriveAccess& access) //throw SysError
 {
     //https://developers.google.com/drive/api/v3/reference/drives/list
     std::vector<DriveDetails> sharedDrives;
@@ -757,8 +768,9 @@ std::vector<DriveDetails> getSharedDrives(const std::string& accessToken) //thro
                 queryParams += '&' + xWwwFormUrlEncode({{"pageToken", *nextPageToken}});
 
             std::string response;
-            gdriveHttpsRequest("/drive/v3/drives?" + queryParams, {"Authorization: Bearer " + accessToken}, {} /*extraOptions*/, //throw SysError
-            [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/);
+            gdriveHttpsRequest("/drive/v3/drives?" + queryParams, {} /*extraHeaders*/, {} /*extraOptions*/,
+            [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); },
+            nullptr /*readRequest*/, nullptr /*receiveHeader*/, access); //throw SysError
 
             JsonValue jresponse;
             try { jresponse = parseJson(response); }
@@ -871,7 +883,7 @@ GdriveItemDetails extractItemDetails(const JsonValue& jvalue) //throw SysError
 }
 
 
-GdriveItemDetails getItemDetails(const std::string& itemId, const std::string& accessToken) //throw SysError
+GdriveItemDetails getItemDetails(const std::string& itemId, const GdriveAccess& access) //throw SysError
 {
     //https://developers.google.com/drive/api/v3/reference/files/get
     const std::string& queryParams = xWwwFormUrlEncode(
@@ -880,8 +892,9 @@ GdriveItemDetails getItemDetails(const std::string& itemId, const std::string& a
         {"supportsAllDrives", "true"},
     });
     std::string response;
-    gdriveHttpsRequest("/drive/v3/files/" + itemId + '?' + queryParams, {"Authorization: Bearer " + accessToken}, {} /*extraOptions*/, //throw SysError
-    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/);
+    gdriveHttpsRequest("/drive/v3/files/" + itemId + '?' + queryParams, {} /*extraHeaders*/, {} /*extraOptions*/,
+    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); },
+    nullptr /*readRequest*/, nullptr /*receiveHeader*/, access); //throw SysError
     try
     {
         const JsonValue jvalue = parseJson(response); //throw JsonParsingError
@@ -904,7 +917,7 @@ struct GdriveItem
     std::string itemId;
     GdriveItemDetails details;
 };
-std::vector<GdriveItem> readFolderContent(const std::string& folderId, const std::string& accessToken) //throw SysError
+std::vector<GdriveItem> readFolderContent(const std::string& folderId, const GdriveAccess& access) //throw SysError
 {
     //https://developers.google.com/drive/api/v3/reference/files/list
     std::vector<GdriveItem> childItems;
@@ -926,8 +939,9 @@ std::vector<GdriveItem> readFolderContent(const std::string& folderId, const std
                 queryParams += '&' + xWwwFormUrlEncode({{"pageToken", *nextPageToken}});
 
             std::string response;
-            gdriveHttpsRequest("/drive/v3/files?" + queryParams, {"Authorization: Bearer " + accessToken}, {} /*extraOptions*/, //throw SysError
-            [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/);
+            gdriveHttpsRequest("/drive/v3/files?" + queryParams, {} /*extraHeaders*/, {} /*extraOptions*/,
+            [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); },
+            nullptr /*readRequest*/, nullptr /*receiveHeader*/, access); //throw SysError
 
             JsonValue jresponse;
             try { jresponse = parseJson(response); }
@@ -973,7 +987,7 @@ struct ChangesDelta
     std::vector<FileChange> fileChanges;
     std::vector<DriveChange> driveChanges;
 };
-ChangesDelta getChangesDelta(const std::string& sharedDriveId /*empty for "My Drive"*/, const std::string& startPageToken, const std::string& accessToken) //throw SysError
+ChangesDelta getChangesDelta(const std::string& sharedDriveId /*empty for "My Drive"*/, const std::string& startPageToken, const GdriveAccess& access) //throw SysError
 {
     //https://developers.google.com/drive/api/v3/reference/changes/list
     ChangesDelta delta;
@@ -996,8 +1010,9 @@ ChangesDelta getChangesDelta(const std::string& sharedDriveId /*empty for "My Dr
             queryParams += '&' + xWwwFormUrlEncode({{"driveId", sharedDriveId}}); //only allowed for shared drives!
 
         std::string response;
-        gdriveHttpsRequest("/drive/v3/changes?" + queryParams, {"Authorization: Bearer " + accessToken}, {} /*extraOptions*/, //throw SysError
-        [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/);
+        gdriveHttpsRequest("/drive/v3/changes?" + queryParams, {} /*extraHeaders*/, {} /*extraOptions*/,
+        [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); },
+        nullptr /*readRequest*/, nullptr /*receiveHeader*/, access); //throw SysError
 
         JsonValue jresponse;
         try { jresponse = parseJson(response); }
@@ -1078,7 +1093,7 @@ ChangesDelta getChangesDelta(const std::string& sharedDriveId /*empty for "My Dr
 }
 
 
-std::string /*startPageToken*/ getChangesCurrentToken(const std::string& sharedDriveId /*empty for "My Drive"*/, const std::string& accessToken) //throw SysError
+std::string /*startPageToken*/ getChangesCurrentToken(const std::string& sharedDriveId /*empty for "My Drive"*/, const GdriveAccess& access) //throw SysError
 {
     //https://developers.google.com/drive/api/v3/reference/changes/getStartPageToken
     std::string queryParams = xWwwFormUrlEncode(
@@ -1089,8 +1104,9 @@ std::string /*startPageToken*/ getChangesCurrentToken(const std::string& sharedD
         queryParams += '&' + xWwwFormUrlEncode({{"driveId", sharedDriveId}}); //only allowed for shared drives!
 
     std::string response;
-    gdriveHttpsRequest("/drive/v3/changes/startPageToken?" + queryParams, {"Authorization: Bearer " + accessToken}, {} /*extraOptions*/, //throw SysError
-    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/);
+    gdriveHttpsRequest("/drive/v3/changes/startPageToken?" + queryParams, {} /*extraHeaders*/, {} /*extraOptions*/,
+    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); },
+    nullptr /*readRequest*/, nullptr /*receiveHeader*/, access); //throw SysError
 
     JsonValue jresponse;
     try { jresponse = parseJson(response); }
@@ -1106,7 +1122,7 @@ std::string /*startPageToken*/ getChangesCurrentToken(const std::string& sharedD
 
 //- if item is a folder: deletes recursively!!!
 //- even deletes a hardlink with multiple parents => use gdriveUnlinkParent() first
-void gdriveDeleteItem(const std::string& itemId, const std::string& accessToken) //throw SysError
+void gdriveDeleteItem(const std::string& itemId, const GdriveAccess& access) //throw SysError
 {
     //https://developers.google.com/drive/api/v3/reference/files/delete
     const std::string& queryParams = xWwwFormUrlEncode(
@@ -1114,8 +1130,9 @@ void gdriveDeleteItem(const std::string& itemId, const std::string& accessToken)
         {"supportsAllDrives", "true"},
     });
     std::string response;
-    const HttpSession::Result httpResult = gdriveHttpsRequest("/drive/v3/files/" + itemId + '?' + queryParams, {"Authorization: Bearer " + accessToken}, //throw SysError
-    {{CURLOPT_CUSTOMREQUEST, "DELETE"}}, [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/);
+    const HttpSession::Result httpResult = gdriveHttpsRequest("/drive/v3/files/" + itemId + '?' + queryParams,
+    {} /*extraHeaders*/, {{CURLOPT_CUSTOMREQUEST, "DELETE"}}, [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); },
+    nullptr /*readRequest*/, nullptr /*receiveHeader*/, access); //throw SysError
 
     if (response.empty() && httpResult.statusCode == 204)
         return; //"If successful, this method returns an empty response body"
@@ -1125,7 +1142,7 @@ void gdriveDeleteItem(const std::string& itemId, const std::string& accessToken)
 
 
 //item is NOT deleted when last parent is removed: it is just not accessible via the "My Drive" hierarchy but still adds to quota! => use for hard links only!
-void gdriveUnlinkParent(const std::string& itemId, const std::string& parentId, const std::string& accessToken) //throw SysError
+void gdriveUnlinkParent(const std::string& itemId, const std::string& parentId, const GdriveAccess& access) //throw SysError
 {
     //https://developers.google.com/drive/api/v3/reference/files/update
     const std::string& queryParams = xWwwFormUrlEncode(
@@ -1135,10 +1152,9 @@ void gdriveUnlinkParent(const std::string& itemId, const std::string& parentId, 
         {"fields", "id,parents"}, //for test if operation was successful
     });
     std::string response;
-    const HttpSession::Result httpResult = gdriveHttpsRequest("/drive/v3/files/" + itemId + '?' + queryParams, //throw SysError
-    {"Authorization: Bearer " + accessToken, "Content-Type: application/json; charset=UTF-8"},
-    {{CURLOPT_CUSTOMREQUEST, "PATCH"}, { CURLOPT_POSTFIELDS, "{}"}},
-    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/);
+    const HttpSession::Result httpResult = gdriveHttpsRequest("/drive/v3/files/" + itemId + '?' + queryParams,
+    {"Content-Type: application/json; charset=UTF-8"}, {{CURLOPT_CUSTOMREQUEST, "PATCH"}, { CURLOPT_POSTFIELDS, "{}"}},
+    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/, access); //throw SysError
 
     if (response.empty() && httpResult.statusCode == 204)
         return; //removing last parent of item not owned by us returns "204 No Content" (instead of 200 + file body)
@@ -1162,7 +1178,7 @@ void gdriveUnlinkParent(const std::string& itemId, const std::string& parentId, 
 
 //- if item is a folder: trashes recursively!!!
 //- a hardlink with multiple parents will NOT be accessible anymore via any of its path aliases!
-void gdriveMoveToTrash(const std::string& itemId, const std::string& accessToken) //throw SysError
+void gdriveMoveToTrash(const std::string& itemId, const GdriveAccess& access) //throw SysError
 {
     //https://developers.google.com/drive/api/v3/reference/files/update
     const std::string& queryParams = xWwwFormUrlEncode(
@@ -1173,9 +1189,9 @@ void gdriveMoveToTrash(const std::string& itemId, const std::string& accessToken
     const std::string postBuf = R"({ "trashed": true })";
 
     std::string response;
-    gdriveHttpsRequest("/drive/v3/files/" + itemId + '?' + queryParams, {"Authorization: Bearer " + accessToken, "Content-Type: application/json; charset=UTF-8"}, //throw SysError
-    {{CURLOPT_CUSTOMREQUEST, "PATCH"}, {CURLOPT_POSTFIELDS, postBuf.c_str()}},
-    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/);
+    gdriveHttpsRequest("/drive/v3/files/" + itemId + '?' + queryParams,
+    {"Content-Type: application/json; charset=UTF-8"}, {{CURLOPT_CUSTOMREQUEST, "PATCH"}, {CURLOPT_POSTFIELDS, postBuf.c_str()}},
+    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/, access); //throw SysError
 
     JsonValue jresponse;
     try { jresponse = parseJson(response); /*throw JsonParsingError*/ }
@@ -1188,7 +1204,7 @@ void gdriveMoveToTrash(const std::string& itemId, const std::string& accessToken
 
 
 //folder name already existing? will (happily) create duplicate => caller must check!
-std::string /*folderId*/ gdriveCreateFolderPlain(const Zstring& folderName, const std::string& parentId, const std::string& accessToken) //throw SysError
+std::string /*folderId*/ gdriveCreateFolderPlain(const Zstring& folderName, const std::string& parentId, const GdriveAccess& access) //throw SysError
 {
     //https://developers.google.com/drive/api/v3/folder#creating_a_folder
     const std::string& queryParams = xWwwFormUrlEncode(
@@ -1203,9 +1219,9 @@ std::string /*folderId*/ gdriveCreateFolderPlain(const Zstring& folderName, cons
     const std::string& postBuf = serializeJson(postParams, "" /*lineBreak*/, "" /*indent*/);
 
     std::string response;
-    gdriveHttpsRequest("/drive/v3/files?" + queryParams, {"Authorization: Bearer " + accessToken, "Content-Type: application/json; charset=UTF-8"},
-    {{CURLOPT_POSTFIELDS, postBuf.c_str()}},
-    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/); //throw SysError
+    gdriveHttpsRequest("/drive/v3/files?" + queryParams,
+    {"Content-Type: application/json; charset=UTF-8"}, {{CURLOPT_POSTFIELDS, postBuf.c_str()}},
+    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/, access); //throw SysError
 
     JsonValue jresponse;
     try { jresponse = parseJson(response); }
@@ -1219,7 +1235,7 @@ std::string /*folderId*/ gdriveCreateFolderPlain(const Zstring& folderName, cons
 
 
 //shortcut name already existing? will (happily) create duplicate => caller must check!
-std::string /*shortcutId*/ gdriveCreateShortcutPlain(const Zstring& shortcutName, const std::string& parentId, const std::string& targetId, const std::string& accessToken) //throw SysError
+std::string /*shortcutId*/ gdriveCreateShortcutPlain(const Zstring& shortcutName, const std::string& parentId,  const std::string& targetId, const GdriveAccess& access) //throw SysError
 {
     /* https://developers.google.com/drive/api/v3/shortcuts
        - targetMimeType is determined automatically (ignored if passed)
@@ -1240,9 +1256,9 @@ std::string /*shortcutId*/ gdriveCreateShortcutPlain(const Zstring& shortcutName
     const std::string& postBuf = serializeJson(postParams, "" /*lineBreak*/, "" /*indent*/);
 
     std::string response;
-    gdriveHttpsRequest("/drive/v3/files?" + queryParams, {"Authorization: Bearer " + accessToken, "Content-Type: application/json; charset=UTF-8"},
-    {{CURLOPT_POSTFIELDS, postBuf.c_str()}},
-    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/); //throw SysError
+    gdriveHttpsRequest("/drive/v3/files?" + queryParams, {"Content-Type: application/json; charset=UTF-8"},
+    {{CURLOPT_POSTFIELDS, postBuf.c_str()}}, [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); },
+    nullptr /*readRequest*/, nullptr /*receiveHeader*/, access); //throw SysError
 
     JsonValue jresponse;
     try { jresponse = parseJson(response); }
@@ -1257,7 +1273,7 @@ std::string /*shortcutId*/ gdriveCreateShortcutPlain(const Zstring& shortcutName
 
 //target name already existing? will (happily) create duplicate items => caller must check!
 //can copy files + shortcuts (but fails for folders) + Google-specific file types (.gdoc, .gsheet, .gslides)
-std::string /*fileId*/ gdriveCopyFile(const std::string& fileId, const std::string& parentIdTo, const Zstring& newName, time_t newModTime, const std::string& accessToken) //throw SysError
+std::string /*fileId*/ gdriveCopyFile(const std::string& fileId, const std::string& parentIdTo, const Zstring& newName, time_t newModTime, const GdriveAccess& access) //throw SysError
 {
     //https://developers.google.com/drive/api/v3/reference/files/copy
     const std::string queryParams = xWwwFormUrlEncode(
@@ -1280,9 +1296,10 @@ std::string /*fileId*/ gdriveCopyFile(const std::string& fileId, const std::stri
     const std::string& postBuf = serializeJson(postParams, "" /*lineBreak*/, "" /*indent*/);
 
     std::string response;
-    gdriveHttpsRequest("/drive/v3/files/" + fileId + "/copy?" + queryParams, //throw SysError
-    {"Authorization: Bearer " + accessToken, "Content-Type: application/json; charset=UTF-8"}, {{CURLOPT_POSTFIELDS, postBuf.c_str()}},
-    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/);
+    gdriveHttpsRequest("/drive/v3/files/" + fileId + "/copy?" + queryParams,
+    {"Content-Type: application/json; charset=UTF-8"}, {{CURLOPT_POSTFIELDS, postBuf.c_str()}},
+    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); },
+    nullptr /*readRequest*/, nullptr /*receiveHeader*/, access); //throw SysError
 
     JsonValue jresponse;
     try { jresponse = parseJson(response); /*throw JsonParsingError*/ }
@@ -1299,7 +1316,7 @@ std::string /*fileId*/ gdriveCopyFile(const std::string& fileId, const std::stri
 
 //target name already existing? will (happily) create duplicate items => caller must check!
 void gdriveMoveAndRenameItem(const std::string& itemId, const std::string& parentIdFrom, const std::string& parentIdTo,
-                             const Zstring& newName, time_t newModTime, const std::string& accessToken) //throw SysError
+                             const Zstring& newName, time_t newModTime, const GdriveAccess& access) //throw SysError
 {
     //https://developers.google.com/drive/api/v3/folder#moving_files_between_folders
     std::string queryParams = xWwwFormUrlEncode(
@@ -1328,10 +1345,10 @@ void gdriveMoveAndRenameItem(const std::string& itemId, const std::string& paren
     const std::string& postBuf = serializeJson(postParams, "" /*lineBreak*/, "" /*indent*/);
 
     std::string response;
-    gdriveHttpsRequest("/drive/v3/files/" + itemId + '?' + queryParams, //throw SysError
-    {"Authorization: Bearer " + accessToken, "Content-Type: application/json; charset=UTF-8"},
-    {{CURLOPT_CUSTOMREQUEST, "PATCH"}, {CURLOPT_POSTFIELDS, postBuf.c_str()}},
-    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/);
+    gdriveHttpsRequest("/drive/v3/files/" + itemId + '?' + queryParams,
+    {"Content-Type: application/json; charset=UTF-8"}, {{CURLOPT_CUSTOMREQUEST, "PATCH"}, {CURLOPT_POSTFIELDS, postBuf.c_str()}},
+    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); },
+    nullptr /*readRequest*/, nullptr /*receiveHeader*/, access); //throw SysError
 
     JsonValue jresponse;
     try { jresponse = parseJson(response); /*throw JsonParsingError*/ }
@@ -1350,7 +1367,7 @@ void gdriveMoveAndRenameItem(const std::string& itemId, const std::string& paren
 
 
 #if 0
-void setModTime(const std::string& itemId, time_t modTime, const std::string& accessToken) //throw SysError
+void setModTime(const std::string& itemId, time_t modTime, const GdriveAccess& access) //throw SysError
 {
     //https://developers.google.com/drive/api/v3/reference/files/update
     //RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
@@ -1366,9 +1383,10 @@ void setModTime(const std::string& itemId, time_t modTime, const std::string& ac
     const std::string postBuf = R"({ "modifiedTime": ")" + modTimeRfc + "\" }";
 
     std::string response;
-    gdriveHttpsRequest("/drive/v3/files/" + itemId + '?' + queryParams, {"Authorization: Bearer " + accessToken, "Content-Type: application/json; charset=UTF-8"}, //throw SysError
-    {{CURLOPT_CUSTOMREQUEST, "PATCH"}, {CURLOPT_POSTFIELDS, postBuf.c_str()}},
-    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/);
+    gdriveHttpsRequest("/drive/v3/files/" + itemId + '?' + queryParams,
+    {"Content-Type: application/json; charset=UTF-8"}, {{CURLOPT_CUSTOMREQUEST, "PATCH"}, {CURLOPT_POSTFIELDS, postBuf.c_str()}},
+    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); },
+    nullptr /*readRequest*/, nullptr /*receiveHeader*/, access); //throw SysError
 
     JsonValue jresponse;
     try { jresponse = parseJson(response); /*throw JsonParsingError*/ }
@@ -1383,7 +1401,7 @@ void setModTime(const std::string& itemId, time_t modTime, const std::string& ac
 
 DEFINE_NEW_SYS_ERROR(SysErrorAbusiveFile)
 void gdriveDownloadFileImpl(const std::string& fileId, const std::function<void(const void* buffer, size_t bytesToWrite)>& writeBlock /*throw X*/, //throw SysError, SysErrorAbusiveFile, X
-                            bool acknowledgeAbuse, const std::string& accessToken)
+                            bool acknowledgeAbuse, const GdriveAccess& access)
 {
     //https://developers.google.com/drive/api/v3/manage-downloads
     //doesn't work for Google-specific file types (.gdoc, .gsheet, .gslides)
@@ -1401,9 +1419,8 @@ void gdriveDownloadFileImpl(const std::string& fileId, const std::function<void(
     std::string responseHead; //save front part of the response in case we get an error
     bool headFlushed = false;
 
-    const HttpSession::Result httpResult = gdriveHttpsRequest("/drive/v3/files/" + fileId + '?' + queryParams, //throw SysError, X
-    {"Authorization: Bearer " + accessToken}, {} /*extraOptions*/,
-    [&](std::span<const char> buf)
+    const HttpSession::Result httpResult = gdriveHttpsRequest("/drive/v3/files/" + fileId + '?' + queryParams, {} /*extraHeaders*/, {} /*extraOptions*/,
+                                                              [&](std::span<const char> buf)
     {
         if (responseHead.size() < 10000) //don't access writeBlock() in case of error! (=> support acknowledgeAbuse retry handling)
             responseHead.append(buf.data(), buf.size());
@@ -1417,7 +1434,7 @@ void gdriveDownloadFileImpl(const std::string& fileId, const std::function<void(
 
             writeBlock(buf.data(), buf.size()); //throw X
         }
-    }, nullptr /*readRequest*/, nullptr /*receiveHeader*/);
+    }, nullptr /*readRequest*/, nullptr /*receiveHeader*/, access); //throw SysError, X
 
     if (httpResult.statusCode / 100 != 2)
     {
@@ -1440,15 +1457,15 @@ void gdriveDownloadFileImpl(const std::string& fileId, const std::function<void(
 
 
 void gdriveDownloadFile(const std::string& fileId, const std::function<void(const void* buffer, size_t bytesToWrite)>& writeBlock /*throw X*/, //throw SysError, X
-                        const std::string& accessToken)
+                        const GdriveAccess& access)
 {
     try
     {
-        gdriveDownloadFileImpl(fileId, writeBlock /*throw X*/, false /*acknowledgeAbuse*/, accessToken); //throw SysError, SysErrorAbusiveFile, X
+        gdriveDownloadFileImpl(fileId, writeBlock /*throw X*/, false /*acknowledgeAbuse*/, access); //throw SysError, SysErrorAbusiveFile, X
     }
     catch (SysErrorAbusiveFile&)
     {
-        gdriveDownloadFileImpl(fileId, writeBlock /*throw X*/, true /*acknowledgeAbuse*/, accessToken); //throw SysError, (SysErrorAbusiveFile), X
+        gdriveDownloadFileImpl(fileId, writeBlock /*throw X*/, true /*acknowledgeAbuse*/, access); //throw SysError, (SysErrorAbusiveFile), X
     }
 }
 
@@ -1459,7 +1476,7 @@ void gdriveDownloadFile(const std::string& fileId, const std::function<void(cons
 //upload "small files" (5 MB or less; enforced by Google?) in a single round-trip
 std::string /*itemId*/ gdriveUploadSmallFile(const Zstring& fileName, const std::string& parentId, uint64_t streamSize, std::optional<time_t> modTime, //throw SysError, X
                                              const std::function<size_t(void* buffer, size_t bytesToRead)>& readBlock /*throw X*/, //returning 0 signals EOF: Posix read() semantics
-                                             const std::string& accessToken)
+                                             const GdriveAccess& access)
 {
     //https://developers.google.com/drive/api/v3/folder#inserting_a_file_in_a_folder
     //https://developers.google.com/drive/api/v3/manage-uploads#http_1
@@ -1535,14 +1552,14 @@ TODO:
         {"uploadType", "multipart"},
     });
     std::string response;
-    const HttpSession::Result httpResult = gdriveHttpsRequest("/upload/drive/v3/files?" + queryParams, //throw SysError, X
+    const HttpSession::Result httpResult = gdriveHttpsRequest("/upload/drive/v3/files?" + queryParams,
     {
-        "Authorization: Bearer " + accessToken,
         "Content-Type: multipart/related; boundary=" + boundaryString,
         "Content-Length: " + numberTo<std::string>(postBufHead.size() + streamSize + postBufTail.size())
     },
     {{CURLOPT_POST, 1}}, //otherwise HttpSession::perform() will PUT
-    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, readMultipartBlock, nullptr /*receiveHeader*/);
+    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, readMultipartBlock,
+    nullptr /*receiveHeader*/, access); //throw SysError, X
 
     JsonValue jresponse;
     try { jresponse = parseJson(response); }
@@ -1561,7 +1578,7 @@ TODO:
 //note: Google Drive upload is already transactional!
 std::string /*itemId*/ gdriveUploadFile(const Zstring& fileName, const std::string& parentId, std::optional<time_t> modTime, //throw SysError, X
                                         const std::function<size_t(void* buffer, size_t bytesToRead)>& readBlock /*throw X*/, //returning 0 signals EOF: Posix read() semantics
-                                        const std::string& accessToken)
+                                        const GdriveAccess& access)
 {
     //https://developers.google.com/drive/api/v3/folder#inserting_a_file_in_a_folder
     //https://developers.google.com/drive/api/v3/manage-uploads#resumable
@@ -1602,10 +1619,10 @@ std::string /*itemId*/ gdriveUploadFile(const Zstring& fileName, const std::stri
         };
 
         std::string response;
-        const HttpSession::Result httpResult = gdriveHttpsRequest("/upload/drive/v3/files?" + queryParams, //throw SysError
-        {"Authorization: Bearer " + accessToken, "Content-Type: application/json; charset=UTF-8"},
-        {{CURLOPT_POSTFIELDS, postBuf.c_str()}},
-        [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, onHeaderData);
+        const HttpSession::Result httpResult = gdriveHttpsRequest("/upload/drive/v3/files?" + queryParams,
+        {"Content-Type: application/json; charset=UTF-8"}, {{CURLOPT_POSTFIELDS, postBuf.c_str()}},
+        [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); },
+        nullptr /*readRequest*/, onHeaderData, access); //throw SysError
 
         if (httpResult.statusCode != 200)
             throw SysError(formatGdriveErrorRaw(response));
@@ -1624,9 +1641,10 @@ std::string /*itemId*/ gdriveUploadFile(const Zstring& fileName, const std::stri
     auto readBlockAsGzip = [&](std::span<char> buf) { return gzipStream.read(buf.data(), buf.size()); }; //throw SysError, X
     //returns "bytesToRead" bytes unless end of stream! => fits into "0 signals EOF: Posix read() semantics"
 
-    std::string response;
-    gdriveHttpsRequest(uploadUrlRelative, { "Content-Encoding: gzip"  }, {} /*extraOptions*/, //throw SysError, X
-    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, readBlockAsGzip, nullptr /*receiveHeader*/);
+    std::string response; //don't need "Authorization: Bearer":
+    googleHttpsRequest(GOOGLE_REST_API_SERVER, uploadUrlRelative, { "Content-Encoding: gzip" }, {} /*extraOptions*/,
+    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, readBlockAsGzip,
+    nullptr /*receiveHeader*/, access.timeoutSec); //throw SysError, X
 
     JsonValue jresponse;
     try { jresponse = parseJson(response); }
@@ -1641,7 +1659,7 @@ std::string /*itemId*/ gdriveUploadFile(const Zstring& fileName, const std::stri
 
 
 //instead of the "root" alias Google uses an actual ID in file metadata
-std::string /*itemId*/ getMyDriveId(const std::string& accessToken) //throw SysError
+std::string /*itemId*/ getMyDriveId(const GdriveAccess& access) //throw SysError
 {
     //https://developers.google.com/drive/api/v3/reference/files/get
     const std::string& queryParams = xWwwFormUrlEncode(
@@ -1650,8 +1668,9 @@ std::string /*itemId*/ getMyDriveId(const std::string& accessToken) //throw SysE
         {"fields", "id"},
     });
     std::string response;
-    gdriveHttpsRequest("/drive/v3/files/root?" + queryParams, {"Authorization: Bearer " + accessToken}, {} /*extraOptions*/, //throw SysError
-    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, nullptr /*readRequest*/, nullptr /*receiveHeader*/);
+    gdriveHttpsRequest("/drive/v3/files/root?" + queryParams, {} /*extraHeaders*/, {} /*extraOptions*/,
+    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); },
+    nullptr /*readRequest*/, nullptr /*receiveHeader*/, access); //throw SysError
 
     JsonValue jresponse;
     try { jresponse = parseJson(response); }
@@ -1668,7 +1687,9 @@ std::string /*itemId*/ getMyDriveId(const std::string& accessToken) //throw SysE
 class GdriveAccessBuffer //per-user-session & drive! => serialize access (perf: amortized fully buffered!)
 {
 public:
-    explicit GdriveAccessBuffer(const GdriveAccessInfo& accessInfo) : accessInfo_(accessInfo) {}
+    //GdriveDrivesBuffer constructor calls GdriveAccessBuffer::getAccessToken()
+    explicit GdriveAccessBuffer(const GdriveAccessInfo& accessInfo) :
+        accessInfo_(accessInfo) {}
 
     GdriveAccessBuffer(MemoryStreamIn<std::string>& stream) //throw SysError
     {
@@ -1689,16 +1710,28 @@ public:
         writeContainer(stream,                    accessInfo_.userInfo.email);
     }
 
-    std::string getAccessToken() //throw SysError
-    {
-        if (accessInfo_.accessToken.validUntil <= std::time(nullptr) + std::chrono::seconds(HTTP_SESSION_ACCESS_TIME_OUT).count() + 5 /*some leeway*/) //expired/will expire
-            accessInfo_.accessToken = gdriveRefreshAccess(accessInfo_.refreshToken); //throw SysError
+    //set *before* calling any of the subsequent functions; see GdrivePersistentSessions::accessUserSession()
+    void setContextTimeout(const std::weak_ptr<int>& timeoutSec) { timeoutSec_ = timeoutSec; }
 
-        assert(accessInfo_.accessToken.validUntil > std::time(nullptr) + std::chrono::seconds(HTTP_SESSION_ACCESS_TIME_OUT).count());
-        return accessInfo_.accessToken.value;
+    GdriveAccess getAccessToken() //throw SysError
+    {
+        const int timeoutSec = getTimeoutSec();
+
+        if (accessInfo_.accessToken.validUntil <= std::time(nullptr) + timeoutSec + 5 /*some leeway*/) //expired/will expire
+        {
+            GdriveAccessToken token = gdriveRefreshAccess(accessInfo_.refreshToken, timeoutSec); //throw SysError
+
+            //"there are limits on the number of refresh tokens that will be issued"
+            //Google Drive access token is usually valid for one hour => fail on pathologic user-defined time out:
+            if (token.validUntil <= std::time(nullptr) + 2 * timeoutSec)
+                throw SysError(_("Please set up a shorter time out for Google Drive.") + L" [" + _P("1 sec", "%x sec", timeoutSec) + L']');
+
+            accessInfo_.accessToken = std::move(token);
+        }
+
+        return {accessInfo_.accessToken.value, timeoutSec};
     }
 
-    //const std::wstring& getUserDisplayName() const { return accessInfo_.userInfo.displayName; }
     const std::string& getUserEmail() const { return accessInfo_.userInfo.email; }
 
     void update(const GdriveAccessInfo& accessInfo)
@@ -1712,7 +1745,18 @@ private:
     GdriveAccessBuffer           (const GdriveAccessBuffer&) = delete;
     GdriveAccessBuffer& operator=(const GdriveAccessBuffer&) = delete;
 
+    int getTimeoutSec() const
+    {
+        const std::shared_ptr<int> timeoutSec = timeoutSec_.lock();
+        assert(timeoutSec);
+        if (!timeoutSec)
+            throw std::runtime_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] GdriveAccessBuffer: Timeout duration was not set.");
+
+        return *timeoutSec;
+    }
+
     GdriveAccessInfo accessInfo_;
+    std::weak_ptr<int> timeoutSec_;
 };
 
 
@@ -2395,17 +2439,19 @@ public:
         }
     }
 
-    std::string addUserSession(const std::string& gdriveLoginHint, const std::function<void()>& updateGui /*throw X*/) //throw SysError, X
+    std::string addUserSession(const std::string& gdriveLoginHint, const std::function<void()>& updateGui /*throw X*/, int timeoutSec) //throw SysError, X
     {
-        const GdriveAccessInfo accessInfo = gdriveAuthorizeAccess(gdriveLoginHint, updateGui); //throw SysError, X
+        const GdriveAccessInfo accessInfo = gdriveAuthorizeAccess(gdriveLoginHint, updateGui, timeoutSec); //throw SysError, X
 
-        accessUserSession(accessInfo.userInfo.email, [&](std::optional<UserSession>& userSession) //throw SysError
+        accessUserSession(accessInfo.userInfo.email, timeoutSec, [&](std::optional<UserSession>& userSession) //throw SysError
         {
             if (userSession)
                 userSession->accessBuf.ref().update(accessInfo); //redundant?
             else
             {
+                const std::shared_ptr<int> timeoutSec2 = std::make_shared<int>(timeoutSec); //context option: valid only for duration of this call!
                 auto accessBuf = makeSharedRef<GdriveAccessBuffer>(accessInfo);
+                accessBuf.ref().setContextTimeout(timeoutSec2); //[!] used by GdriveDrivesBuffer()!
                 auto drivesBuf = makeSharedRef<GdriveDrivesBuffer>(accessBuf.ref()); //throw SysError
                 userSession = {accessBuf, drivesBuf};
             }
@@ -2414,11 +2460,11 @@ public:
         return accessInfo.userInfo.email;
     }
 
-    void removeUserSession(const std::string& accountEmail) //throw SysError
+    void removeUserSession(const std::string& accountEmail, int timeoutSec) //throw SysError
     {
         try
         {
-            accessUserSession(accountEmail, [&](std::optional<UserSession>& userSession) //throw SysError
+            accessUserSession(accountEmail, timeoutSec, [&](std::optional<UserSession>& userSession) //throw SysError
             {
                 if (userSession)
                     gdriveRevokeAccess(userSession->accessBuf.ref().getAccessToken()); //throw SysError
@@ -2444,7 +2490,7 @@ public:
         catch (const FileError& e) { throw SysError(replaceCpy(e.toString(), L"\n\n", L'\n')); } //file access errors should be further enriched by context info => SysError
 
 
-        accessUserSession(accountEmail, [&](std::optional<UserSession>& userSession) //throw SysError
+        accessUserSession(accountEmail, timeoutSec, [&](std::optional<UserSession>& userSession) //throw SysError
         {
             userSession.reset();
         });
@@ -2488,11 +2534,11 @@ public:
         return emails;
     }
 
-    std::vector<Zstring /*sharedDriveName*/> listSharedDrives(const std::string& accountEmail) //throw SysError
+    std::vector<Zstring /*sharedDriveName*/> listSharedDrives(const std::string& accountEmail, int timeoutSec) //throw SysError
     {
         std::vector<Zstring> sharedDriveNames;
 
-        accessUserSession(accountEmail, [&](std::optional<UserSession>& userSession) //throw SysError
+        accessUserSession(accountEmail, timeoutSec, [&](std::optional<UserSession>& userSession) //throw SysError
         {
             if (!userSession)
                 throw SysError(replaceCpy(_("Please authorize access to user account %x."), L"%x", utfTo<std::wstring>(accountEmail)));
@@ -2504,27 +2550,27 @@ public:
 
     struct AsyncAccessInfo
     {
-        std::string accessToken; //don't allow (long-running) web requests while holding the global session lock!
+        GdriveAccess access; //don't allow (long-running) web requests while holding the global session lock!
         GdriveFileState::FileStateDelta stateDelta;
     };
     //perf: amortized fully buffered!
     AsyncAccessInfo accessGlobalFileState(const GdriveLogin& login, const std::function<void(GdriveFileState& fileState)>& useFileState /*throw X*/) //throw SysError, X
     {
-        std::string accessToken;
+        GdriveAccess access;
         GdriveFileState::FileStateDelta stateDelta;
 
-        accessUserSession(login.email, [&](std::optional<UserSession>& userSession) //throw SysError
+        accessUserSession(login.email, login.timeoutSec, [&](std::optional<UserSession>& userSession) //throw SysError
         {
             if (!userSession)
                 throw SysError(replaceCpy(_("Please authorize access to user account %x."), L"%x", utfTo<std::wstring>(login.email)));
 
             GdriveFileState* fileState = nullptr;
-            accessToken                     = userSession->accessBuf.ref().getAccessToken(); //throw SysError
+            access                          = userSession->accessBuf.ref().getAccessToken(); //throw SysError
             std::tie(fileState, stateDelta) = userSession->drivesBuf.ref().prepareAccess(login.sharedDriveName); //throw SysError
 
             useFileState(*fileState); //throw X
         });
-        return {accessToken, stateDelta};
+        return {access, stateDelta};
     }
 
 private:
@@ -2541,7 +2587,7 @@ private:
         return appendSeparator(configDirPath_) + utfTo<Zstring>(accountEmail) + Zstr(".db");
     }
 
-    void accessUserSession(const std::string& accountEmail, const std::function<void(std::optional<UserSession>& userSession)>& useSession /*throw X*/) //throw SysError, X
+    void accessUserSession(const std::string& accountEmail, int timeoutSec, const std::function<void(std::optional<UserSession>& userSession)>& useSession /*throw X*/) //throw SysError, X
     {
         Protected<SessionHolder>* protectedSession = nullptr; //pointers remain stable, thanks to std::map<>
         globalSessions_.access([&](GlobalSessions& sessions) { protectedSession = &sessions[accountEmail]; });
@@ -2551,10 +2597,15 @@ private:
             if (!holder.dbWasLoaded) //let's NOT load the DB files under the globalSessions_ lock, but the session-specific one!
                 try
                 {
-                    holder.session = loadSession(getDbFilePath(accountEmail)); //throw SysError
+                    holder.session = loadSession(getDbFilePath(accountEmail), timeoutSec); //throw SysError
                 }
                 catch (const FileError& e) { throw SysError(replaceCpy(e.toString(), L"\n\n", L'\n')); } //GdrivePersistentSessions errors should be further enriched with context info => SysError
             holder.dbWasLoaded = true;
+
+            const std::shared_ptr<int> timeoutSec2 = std::make_shared<int>(timeoutSec); //context option: valid only for duration of this call!
+            if (holder.session)
+                holder.session->accessBuf.ref().setContextTimeout(timeoutSec2);
+
             useSession(holder.session); //throw X
         });
     }
@@ -2578,7 +2629,7 @@ private:
         setFileContent(dbFilePath, streamOut.ref(), nullptr /*notifyUnbufferedIO*/); //throw FileError
     }
 
-    static std::optional<UserSession> loadSession(const Zstring& dbFilePath) //throw FileError
+    static std::optional<UserSession> loadSession(const Zstring& dbFilePath, int timeoutSec) //throw FileError
     {
         std::string byteStream;
         try
@@ -2599,6 +2650,8 @@ private:
             //-------- file format header --------
             char tmp[sizeof(DB_FILE_DESCR)] = {};
             readArray(streamIn, &tmp, sizeof(tmp)); //throw SysErrorUnexpectedEos
+
+            const std::shared_ptr<int> timeoutSec2 = std::make_shared<int>(timeoutSec); //context option: valid only for duration of this call!
 
             //TODO: remove migration code at some time! 2020-07-03
             if (!std::equal(std::begin(tmp), std::end(tmp), std::begin(DB_FILE_DESCR)))
@@ -2621,6 +2674,7 @@ private:
                 //version 1 + 2: fully discard old state due to missing "ownedByMe" attribute + shortcut support
                 //version 3:     fully discard old state due to revamped shared drive handling
                 auto accessBuf = makeSharedRef<GdriveAccessBuffer>(streamIn2); //throw SysError
+                accessBuf.ref().setContextTimeout(timeoutSec2); //not used by GdriveDrivesBuffer(), but let's be consistent
                 auto drivesBuf = makeSharedRef<GdriveDrivesBuffer>(accessBuf.ref()); //throw SysError
                 return UserSession{accessBuf, drivesBuf};
             }
@@ -2637,6 +2691,7 @@ private:
                 MemoryStreamIn streamInBody(decompress(std::string(byteStream.begin() + streamIn.pos(), byteStream.end()))); //throw SysError
 
                 auto accessBuf = makeSharedRef<GdriveAccessBuffer>(streamInBody); //throw SysError
+                accessBuf.ref().setContextTimeout(timeoutSec2); //not used by GdriveDrivesBuffer(), but let's be consistent
                 auto drivesBuf = [&]
                 {
                     //TODO: remove migration code at some time! 2021-05-15
@@ -2713,7 +2768,7 @@ struct GetDirDetails
 
             if (!childItemsBuf)
             {
-                childItemsBuf = readFolderContent(folderId, aai.accessToken); //throw SysError
+                childItemsBuf = readFolderContent(folderId, aai.access); //throw SysError
 
                 //buffer new file state ASAP => make sure accessGlobalFileState() has amortized constant access (despite the occasional internal readFolderContent() on non-leaf folders)
                 accessGlobalFileState(folderPath_.gdriveLogin, [&](GdriveFileState& fileState) //throw SysError
@@ -2757,7 +2812,7 @@ struct GetShortcutTargetDetails
             });
             if (!targetDetailsBuf)
             {
-                targetDetailsBuf = getItemDetails(shortcutDetails_.targetId, aai.accessToken); //throw SysError
+                targetDetailsBuf = getItemDetails(shortcutDetails_.targetId, aai.access); //throw SysError
 
                 //buffer new file state ASAP
                 accessGlobalFileState(shortcutPath_.gdriveLogin, [&](GdriveFileState& fileState) //throw SysError
@@ -2881,14 +2936,14 @@ struct InputStreamGdrive : public AFS::InputStream
             setCurrentThreadName(Zstr("Istream[Gdrive] ") + utfTo<Zstring>(getGdriveDisplayPath(gdrivePath)));
             try
             {
-                std::string accessToken;
+                GdriveAccess access;
                 std::string fileId;
                 try
                 {
-                    accessToken = accessGlobalFileState(gdrivePath.gdriveLogin, [&](GdriveFileState& fileState) //throw SysError
+                    access = accessGlobalFileState(gdrivePath.gdriveLogin, [&](GdriveFileState& fileState) //throw SysError
                     {
                         fileId = fileState.getItemId(gdrivePath.itemPath, true /*followLeafShortcut*/); //throw SysError
-                    }).accessToken;
+                    }).access;
                 }
                 catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot open file %x."), L"%x", fmtPath(getGdriveDisplayPath(gdrivePath))), e.toString()); }
 
@@ -2899,7 +2954,7 @@ struct InputStreamGdrive : public AFS::InputStream
                         return asyncStreamOut->write(buffer, bytesToWrite); //throw ThreadStopRequest
                     };
 
-                    gdriveDownloadFile(fileId, writeBlock, accessToken); //throw SysError, ThreadStopRequest
+                    gdriveDownloadFile(fileId, writeBlock, access); //throw SysError, ThreadStopRequest
                 }
                 catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(getGdriveDisplayPath(gdrivePath))), e.toString()); }
 
@@ -3005,8 +3060,8 @@ struct OutputStreamGdrive : public AFS::OutputStreamImpl
                 //for whatever reason, gdriveUploadFile() is slightly faster than gdriveUploadSmallFile()! despite its two roundtrips! even when file sizes are 0!
                 //=> 1. issue likely on Google's side => 2. persists even after having fixed "Expect: 100-continue"
                 const std::string fileIdNew = //streamSize && *streamSize < 5 * 1024 * 1024 ?
-                    //gdriveUploadSmallFile(fileName, parentId, *streamSize, modTime, readBlock, aai.accessToken) : //throw SysError, ThreadStopRequest
-                    gdriveUploadFile       (fileName, parentId,              modTime, readBlock, aai.accessToken);  //throw SysError, ThreadStopRequest
+                    //gdriveUploadSmallFile(fileName, parentId, *streamSize, modTime, readBlock, aai.access) : //throw SysError, ThreadStopRequest
+                    gdriveUploadFile       (fileName, parentId,              modTime, readBlock, aai.access);  //throw SysError, ThreadStopRequest
                 assert(asyncStreamIn->getTotalBytesRead() == asyncStreamIn->getTotalBytesWritten());
                 //already existing: creates duplicate
 
@@ -3202,7 +3257,7 @@ private:
             });
 
             //already existing: creates duplicate
-            const std::string folderIdNew = gdriveCreateFolderPlain(folderName, parentId, aai.accessToken); //throw SysError
+            const std::string folderIdNew = gdriveCreateFolderPlain(folderName, parentId, aai.access); //throw SysError
 
             //buffer new file state ASAP (don't wait GDRIVE_SYNC_INTERVAL)
             accessGlobalFileState(gdriveLogin_, [&](GdriveFileState& fileState) //throw SysError
@@ -3233,7 +3288,7 @@ private:
 
         if (parentIdToUnlink)
         {
-            gdriveUnlinkParent(itemId, *parentIdToUnlink, aai.accessToken); //throw SysError
+            gdriveUnlinkParent(itemId, *parentIdToUnlink, aai.access); //throw SysError
 
             //buffer new file state ASAP (don't wait GDRIVE_SYNC_INTERVAL)
             accessGlobalFileState(gdriveLogin_, [&](GdriveFileState& fileState) //throw SysError
@@ -3244,9 +3299,9 @@ private:
         else
         {
             if (permanent)
-                gdriveDeleteItem(itemId, aai.accessToken); //throw SysError
+                gdriveDeleteItem(itemId, aai.access); //throw SysError
             else
-                gdriveMoveToTrash(itemId, aai.accessToken); //throw SysError
+                gdriveMoveToTrash(itemId, aai.access); //throw SysError
 
             //buffer new file state ASAP (don't wait GDRIVE_SYNC_INTERVAL)
             accessGlobalFileState(gdriveLogin_, [&](GdriveFileState& fileState) //throw SysError
@@ -3408,7 +3463,7 @@ private:
             });
 
             //already existing: creates duplicate
-            const std::string fileIdTrg = gdriveCopyFile(itemIdSrc, parentIdTrg, itemNameNew, itemDetailsSrc.modTime, aaiTrg.accessToken); //throw SysError
+            const std::string fileIdTrg = gdriveCopyFile(itemIdSrc, parentIdTrg, itemNameNew, itemDetailsSrc.modTime, aaiTrg.access); //throw SysError
 
             //buffer new file state ASAP (don't wait GDRIVE_SYNC_INTERVAL)
             accessGlobalFileState(fsTarget.gdriveLogin_, [&](GdriveFileState& fileState) //throw SysError
@@ -3485,7 +3540,7 @@ private:
             });
 
             //already existing: creates duplicate
-            const std::string shortcutIdNew = gdriveCreateShortcutPlain(shortcutName, parentId, targetId, aaiTrg.accessToken); //throw SysError
+            const std::string shortcutIdNew = gdriveCreateShortcutPlain(shortcutName, parentId, targetId, aaiTrg.access); //throw SysError
 
             //buffer new file state ASAP (don't wait GDRIVE_SYNC_INTERVAL)
             accessGlobalFileState(fsTarget.gdriveLogin_, [&](GdriveFileState& fileState) //throw SysError
@@ -3560,7 +3615,7 @@ private:
                 return; //nothing to do
 
             //already existing: creates duplicate
-            gdriveMoveAndRenameItem(itemId, parentIdFrom, parentIdTo, itemNameNew, itemDetails.modTime, aai.accessToken); //throw SysError
+            gdriveMoveAndRenameItem(itemId, parentIdFrom, parentIdTo, itemNameNew, itemDetails.modTime, aai.access); //throw SysError
 
             //buffer new file state ASAP (don't wait GDRIVE_SYNC_INTERVAL)
             accessGlobalFileState(gdriveLogin_, [&](GdriveFileState& fileState) //throw SysError
@@ -3589,14 +3644,14 @@ private:
                 for (const std::string& accountEmail : gps->listAccounts()) //throw SysError
                     if (equalAsciiNoCase(accountEmail, gdriveLogin_.email))
                         return;
-                gps->addUserSession(gdriveLogin_.email /*gdriveLoginHint*/, nullptr /*updateGui*/); //throw SysError
+                gps->addUserSession(gdriveLogin_.email /*gdriveLoginHint*/, nullptr /*updateGui*/, gdriveLogin_.timeoutSec); //throw SysError
                 //error messages will be lost after time out in dir_exist_async.h! However:
                 //The most-likely-to-fail parts (web access) are reported by gdriveAuthorizeAccess() via the browser!
             }
             catch (const SysError& e) { throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", fmtPath(getDisplayPath(AfsPath()))), e.toString()); }
     }
 
-    int getAccessTimeout() const override { return static_cast<int>(std::chrono::seconds(HTTP_SESSION_ACCESS_TIME_OUT).count()); } //returns "0" if no timeout in force
+    int getAccessTimeout() const override { return gdriveLogin_.timeoutSec; } //returns "0" if no timeout in force
 
     bool hasNativeTransactionalCopy() const override { return true; }
     //----------------------------------------------------------------------------------------------------------------
@@ -3608,8 +3663,8 @@ private:
 
         try
         {
-            const std::string& accessToken = accessGlobalFileState(gdriveLogin_, [](GdriveFileState& fileState) {}).accessToken; //throw SysError
-            return gdriveGetMyDriveFreeSpace(accessToken); //throw SysError; returns < 0 if not available
+            const GdriveAccess& access = accessGlobalFileState(gdriveLogin_, [](GdriveFileState& fileState) {}).access; //throw SysError
+            return gdriveGetMyDriveFreeSpace(access); //throw SysError; returns < 0 if not available
         }
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot determine free disk space for %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString()); }
     }
@@ -3643,6 +3698,27 @@ private:
     const GdriveLogin gdriveLogin_;
 };
 //===========================================================================================================================
+
+//expects "clean" input data
+Zstring concatenateGdriveFolderPathPhrase(const GdrivePath& gdrivePath) //noexcept
+{
+    Zstring emailAndDrive = utfTo<Zstring>(gdrivePath.gdriveLogin.email);
+    if (!gdrivePath.gdriveLogin.sharedDriveName.empty())
+        emailAndDrive += Zstr(':') + gdrivePath.gdriveLogin.sharedDriveName;
+
+    Zstring options;
+    if (gdrivePath.gdriveLogin.timeoutSec != GdriveLogin().timeoutSec)
+        options += Zstr("|timeout=") + numberTo<Zstring>(gdrivePath.gdriveLogin.timeoutSec);
+
+    Zstring itemPath;
+    if (!gdrivePath.itemPath.value.empty())
+        itemPath += FILE_NAME_SEPARATOR + gdrivePath.itemPath.value;
+
+    if (endsWith(itemPath, Zstr(' ')) && options.empty()) //path phrase concept must survive trimming!
+        itemPath += FILE_NAME_SEPARATOR;
+
+    return Zstring(gdrivePrefix) + FILE_NAME_SEPARATOR + emailAndDrive + itemPath + options;
+}
 }
 
 
@@ -3673,12 +3749,12 @@ void fff::gdriveTeardown()
 }
 
 
-std::string fff::gdriveAddUser(const std::function<void()>& updateGui /*throw X*/) //throw FileError, X
+std::string fff::gdriveAddUser(const std::function<void()>& updateGui /*throw X*/, int timeoutSec) //throw FileError, X
 {
     try
     {
         if (const std::shared_ptr<GdrivePersistentSessions> gps = globalGdriveSessions.get())
-            return gps->addUserSession("" /*gdriveLoginHint*/, updateGui); //throw SysError, X
+            return gps->addUserSession("" /*gdriveLoginHint*/, updateGui, timeoutSec); //throw SysError, X
 
         throw SysError(formatSystemError("gdriveAddUser", L"", L"Function call not allowed during init/shutdown."));
     }
@@ -3686,12 +3762,12 @@ std::string fff::gdriveAddUser(const std::function<void()>& updateGui /*throw X*
 }
 
 
-void fff::gdriveRemoveUser(const std::string& accountEmail) //throw FileError
+void fff::gdriveRemoveUser(const std::string& accountEmail, int timeoutSec) //throw FileError
 {
     try
     {
         if (const std::shared_ptr<GdrivePersistentSessions> gps = globalGdriveSessions.get())
-            return gps->removeUserSession(accountEmail); //throw SysError
+            return gps->removeUserSession(accountEmail, timeoutSec); //throw SysError
 
         throw SysError(formatSystemError("gdriveRemoveUser", L"", L"Function call not allowed during init/shutdown."));
     }
@@ -3712,12 +3788,12 @@ std::vector<std::string /*account email*/> fff::gdriveListAccounts() //throw Fil
 }
 
 
-std::vector<Zstring /*sharedDriveName*/> fff::gdriveListSharedDrives(const std::string& accountEmail) //throw FileError
+std::vector<Zstring /*sharedDriveName*/> fff::gdriveListSharedDrives(const std::string& accountEmail, int timeoutSec) //throw FileError
 {
     try
     {
         if (const std::shared_ptr<GdrivePersistentSessions> gps = globalGdriveSessions.get())
-            return gps->listSharedDrives(accountEmail); //throw SysError
+            return gps->listSharedDrives(accountEmail, timeoutSec); //throw SysError
 
         throw SysError(formatSystemError("gdriveListSharedDrives", L"", L"Function call not allowed during init/shutdown."));
     }
@@ -3730,6 +3806,8 @@ AfsDevice fff::condenseToGdriveDevice(const GdriveLogin& login) //noexcept
     //clean up input:
     GdriveLogin loginTmp = login;
     trim(loginTmp.email);
+
+    loginTmp.timeoutSec = std::max(1, loginTmp.timeoutSec);
 
     return makeSharedRef<GdriveFileSystem>(loginTmp);
 }
@@ -3762,23 +3840,35 @@ bool fff::acceptsItemPathPhraseGdrive(const Zstring& itemPathPhrase) //noexcept
 }
 
 
-//e.g.: gdrive:/john@gmail.com:SharedDrive/folder/file.txt
+/* syntax: gdrive:\<email>[:<shared drive>]\<relative-path>[|option_name=value]
+
+    e.g.: gdrive:\john@gmail.com\folder\file.txt
+          gdrive:\john@gmail.com:SharedDrive\folder\file.txt|option_name=value        */
 AbstractPath fff::createItemPathGdrive(const Zstring& itemPathPhrase) //noexcept
 {
-    Zstring path = itemPathPhrase;
-    path = expandMacros(path); //expand before trimming!
-    trim(path);
+    Zstring pathPhrase = expandMacros(itemPathPhrase); //expand before trimming!
+    trim(pathPhrase);
 
-    if (startsWithAsciiNoCase(path, gdrivePrefix))
-        path = path.c_str() + strLength(gdrivePrefix);
+    if (startsWithAsciiNoCase(pathPhrase, gdrivePrefix))
+        pathPhrase = pathPhrase.c_str() + strLength(gdrivePrefix);
+    trim(pathPhrase, true, false, [](Zchar c) { return c == Zstr('/') || c == Zstr('\\'); });
 
-    const AfsPath& sanPath = sanitizeDeviceRelativePath(path); //Win/macOS compatibility: let's ignore slash/backslash differences
+    const Zstring fullPath = beforeFirst(pathPhrase, Zstr('|'), IfNotFoundReturn::all);
+    const Zstring options  =  afterFirst(pathPhrase, Zstr('|'), IfNotFoundReturn::none);
 
-    const Zstring& accountEmailAndDrive = beforeFirst(sanPath.value, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
-    const AfsPath afsPath                 (afterFirst(sanPath.value, FILE_NAME_SEPARATOR, IfNotFoundReturn::none));
+    auto it = std::find_if(fullPath.begin(), fullPath.end(), [](Zchar c) { return c == '/' || c == '\\'; });
+    const Zstring emailAndDrive(fullPath.begin(), it);
+    const AfsPath afsPath = sanitizeDeviceRelativePath({it, fullPath.end()});
 
-    const Zstring& accountEmail = beforeFirst(accountEmailAndDrive, Zstr(':'), IfNotFoundReturn::all);
-    const Zstring& sharedDrive  = afterFirst (accountEmailAndDrive, Zstr(':'), IfNotFoundReturn::none);
+    GdriveLogin login;
+    login.email           = utfTo<std::string>(beforeFirst(emailAndDrive, Zstr(':'), IfNotFoundReturn::all));
+    login.sharedDriveName =                    afterFirst (emailAndDrive, Zstr(':'), IfNotFoundReturn::none);
 
-    return AbstractPath(makeSharedRef<GdriveFileSystem>(GdriveLogin{utfTo<std::string>(accountEmail), sharedDrive}), afsPath);
+    for (const Zstring& optPhrase : split(options, Zstr("|"), SplitOnEmpty::skip))
+        if (startsWith(optPhrase, Zstr("timeout=")))
+            login.timeoutSec = stringTo<int>(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
+        else
+            assert(false);
+
+    return AbstractPath(makeSharedRef<GdriveFileSystem>(login), afsPath);
 }

@@ -117,7 +117,7 @@ std::weak_ordering operator<=>(const SshSessionId& lhs, const SshSessionId& rhs)
 {
     //exactly the type of case insensitive comparison we need for server names!
     if (const std::weak_ordering cmp = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
-        std::is_neq(cmp))
+        cmp != std::weak_ordering::equivalent)
         return cmp;
 
     const int portLhs = getEffectivePort(lhs.port);
@@ -125,7 +125,7 @@ std::weak_ordering operator<=>(const SshSessionId& lhs, const SshSessionId& rhs)
 
     if (const std::strong_ordering cmp = std::tie(portLhs, lhs.username, lhs.authType, lhs.allowZlib) <=> //username: case sensitive!
                                          std::tie(portRhs, rhs.username, rhs.authType, rhs.allowZlib);
-        std::is_neq(cmp))
+        cmp != std::strong_ordering::equal)
         return cmp;
 
     switch (lhs.authType)
@@ -949,7 +949,7 @@ private:
 };
 
 //--------------------------------------------------------------------------------------
-UniInitializer globalStartupInitSftp(*globalSftpSessionCount.get());
+UniInitializer globalInitSftp(*globalSftpSessionCount.get());
 
 constinit Global<SftpSessionManager> globalSftpSessionManager; //caveat: life time must be subset of static UniInitializer!
 //--------------------------------------------------------------------------------------
@@ -1527,16 +1527,16 @@ private:
 
         //exactly the type of case insensitive comparison we need for server names!
         if (const std::weak_ordering cmp = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
-            std::is_neq(cmp))
+            cmp != std::weak_ordering::equivalent)
             return cmp;
 
         //port DOES create a *different* data source! https://freefilesync.org/forum/viewtopic.php?t=9047
-    const int portLhs = getEffectivePort(lhs.port);
-    const int portRhs = getEffectivePort(rhs.port);
+        const int portLhs = getEffectivePort(lhs.port);
+        const int portRhs = getEffectivePort(rhs.port);
 
         //consider username: different users may have different views and folder access rights!
         return std::tie(portLhs, lhs.username) <=> //username: case sensitive!
-               std::tie(portRhs, rhs.username); 
+               std::tie(portRhs, rhs.username);
     }
 
     //----------------------------------------------------------------------------------------------------------------
@@ -1750,7 +1750,7 @@ private:
                                                         L"%y", L'\n' + fmtPath(AFS::getDisplayPath(pathTo)));
                                     };
 
-        if (std::is_neq(compareDeviceSameAfsType(pathTo.afsDevice.ref())))
+        if (compareDeviceSameAfsType(pathTo.afsDevice.ref()) != std::weak_ordering::equivalent)
             throw ErrorMoveUnsupported(generateErrorMsg(), _("Operation not supported between different devices."));
 
         try
@@ -2013,7 +2013,7 @@ AbstractPath fff::createItemPathSftp(const Zstring& itemPathPhrase) //noexcept
 
     assert(login.allowZlib == false);
 
-    for (const Zstring& optPhrase : split(options, Zstr("|"), SplitOnEmpty::skip))
+    for (const Zstring& optPhrase : split(options, Zstr('|'), SplitOnEmpty::skip))
         if (startsWith(optPhrase, Zstr("timeout=")))
             login.timeoutSec = stringTo<int>(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
         else if (startsWith(optPhrase, Zstr("chan=")))

@@ -41,7 +41,7 @@ std::weak_ordering AFS::compareDevice(const AbstractFileSystem& lhs, const Abstr
     //note: in worst case, order is guaranteed to be stable only during each program run
     //caveat: typeid returns static type for pointers, dynamic type for references!!!
     if (const std::strong_ordering cmp = std::type_index(typeid(lhs)) <=> std::type_index(typeid(rhs));
-        std::is_neq(cmp))
+        cmp != std::strong_ordering::equal)
         return cmp;
 
     return lhs.compareDeviceSameAfsType(rhs);

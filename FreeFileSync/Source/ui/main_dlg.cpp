@@ -49,6 +49,7 @@
 #include "../base/icon_loader.h"
 #include "../ffs_paths.h"
 #include "../localization.h"
+#include "../fatal_error.h"
 #include "../version/version.h"
 #include "../afs/gdrive.h"
 
@@ -883,6 +884,8 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
         m_gridCfgHistory->makeRowVisible(selectedRows.front());
 
 
+onSystemShutdownRegister(onBeforeSystemShutdownCookie_);
+
     //start up: user most likely wants to change config, or start comparison by pressing ENTER
     m_gridCfgHistory->SetFocus();
 
@@ -954,22 +957,22 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
 
 MainDialog::~MainDialog()
 {
-    std::optional<FileError> firstError;
-    try //save "LastRun.ffs_gui"
+            std::wstring errorMsg;
+    try //LastRun.ffs_gui
     {
         writeConfig(getConfig(), lastRunConfigPath_); //throw FileError
     }
-    catch (const FileError& e) { if (!firstError) firstError = e; }
+    catch (const FileError& e) { errorMsg += e.toString() + L"\n\n"; }
 
-    try //save "GlobalSettings.xml"
+    try //GlobalSettings.xml
     {
         writeConfig(getGlobalCfgBeforeExit(), globalConfigFilePath_); //throw FileError
     }
-    catch (const FileError& e) { if (!firstError) firstError = e; }
+    catch (const FileError& e) { errorMsg += e.toString() + L"\n\n"; }
 
     //don't annoy users on read-only drives: it's enough to show a single error message
-    if (firstError)
-        showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(firstError->toString()));
+    if (!errorMsg.empty())
+        showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(trimCpy(errorMsg)));
 
     //auiMgr_.UnInit(); - "since wxWidgets 3.1.4 [...] it will be called automatically when this window is destroyed, as well as when the manager itself is."
 
@@ -981,20 +984,19 @@ MainDialog::~MainDialog()
 
 //-------------------------------------------------------------------------------------------------------------------------------------
 
-void MainDialog::onQueryEndSession()
+void MainDialog::onBeforeSystemShutdown()
 {
-    //we try our best to do something useful in this extreme situation - no reason to notify or even log errors here!
-    try { writeConfig(getGlobalCfgBeforeExit(), globalConfigFilePath_); }
-    catch (FileError&) {}
-
     try { writeConfig(getConfig(), lastRunConfigPath_); }
-    catch (FileError&) {}
+    catch (const FileError& e) { logFatalError(e.toString()); }
+
+    try { writeConfig(getGlobalCfgBeforeExit(), globalConfigFilePath_); }
+    catch (const FileError& e) { logFatalError(e.toString()); }
 }
 
 
 void MainDialog::onClose(wxCloseEvent& event)
 {
-    //attention: system shutdown is handled in onQueryEndSession()!
+    //wxEVT_END_SESSION is already handled by application.cpp::onSystemShutdown()!
 
     //regular destruction handling
     if (event.CanVeto())
@@ -1110,7 +1112,7 @@ void MainDialog::setGlobalCfgOnInit(const XmlGlobalSettings& globalSettings)
     }
     //--------------------------------------------------------------------------------
 
-    //if MainDialog::onQueryEndSession() is called while comparison is active, this panel is saved and restored as "visible"
+    //if MainDialog::onBeforeSystemShutdown() is called while comparison is active, this panel is saved and restored as "visible"
     progPane.Hide();
 
     auiMgr_.GetPane(m_panelSearch).Hide(); //no need to show it on startup
@@ -4430,9 +4432,10 @@ void MainDialog::onStartSync(wxCommandEvent& event)
         case FinalRequest::shutdown: //run *after* last sync stats were updated and saved! https://freefilesync.org/forum/viewtopic.php?t=5761
             try
             {
-                onQueryEndSession(); //(try to) save GlobalSettings.xml => don't block shutdown if failed!!!
                 shutdownSystem(); //throw FileError
-                terminateProcess(FFS_EXIT_SUCCESS); //no point in continuing and saving cfg again in ~MainDialog()/onQueryEndSession() while the OS will kill us anytime!
+                terminateProcess(FFS_EXIT_SUCCESS);
+                //1. no point in continuing and saving cfg again in ~MainDialog()/onBeforeSystemShutdown() while the OS will kill us anytime!
+                //2. is seems wxEVT_END_SESSION is not implemented on wxGTK anyway!
             }
             catch (const FileError& e) { showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString())); }
             //[!] ignores current error handling setting, BUT this is not a sync error!
@@ -4793,6 +4796,26 @@ void MainDialog::onSwapSides(wxEvent& event)
 
 void MainDialog::swapSides()
 {
+    warn_static("fix swap button design mess: https://freefilesync.org/forum/viewtopic.php?t=9204")
+#if 0
+    if (globalCfg_.confirmDlgs.confirmSwapSides)
+    {
+        bool dontWarnAgain = false;
+        switch (showConfirmationDialog(this, DialogInfoType::info,
+                                       PopupDialogCfg().setMainInstructions(_("Please confirm you want to swap sides.")).
+                                       setCheckBox(dontWarnAgain, _("&Don't show this dialog again")),
+                                       _("&Swap")))
+        {
+            case ConfirmationButton::accept: //swap
+                globalCfg_.confirmDlgs.confirmSwapSides = !dontWarnAgain;
+                break;
+            case ConfirmationButton::cancel:
+                return;
+        }
+    }
+    //------------------------------------------------------
+#endif
+
     //swap directory names:
     LocalPairConfig lpc1st = firstFolderPair_->getValues();
     std::swap(lpc1st.folderPathPhraseLeft, lpc1st.folderPathPhraseRight);

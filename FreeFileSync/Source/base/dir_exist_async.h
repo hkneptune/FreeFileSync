@@ -9,7 +9,6 @@
 
 #include <zen/thread.h>
 #include <zen/file_error.h>
-//#include <zen/basic_math.h>
 #include "process_callback.h"
 #include "../afs/abstract.h"
 
@@ -74,10 +73,10 @@ FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath>& folderPath
                 return static_cast<bool>(AFS::itemStillExists(folderPath)); //throw FileError
                 //consider ItemType::file a failure instead? Meanwhile: return "false" IFF nothing (of any type) exists
             });
-            auto fut = pt.get_future();
+            auto ftIsExisting = pt.get_future();
             threadGroup.run(std::move(pt));
 
-            futureDetails.emplace_back(folderPath, std::move(fut));
+            futureDetails.emplace_back(folderPath, std::move(ftIsExisting));
         }
     }
 
@@ -86,7 +85,7 @@ FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath>& folderPath
 
     FolderStatus output;
 
-    for (auto& [folderPath, future] : futureDetails)
+    for (auto& [folderPath, ftIsExisting] : futureDetails)
     {
         const std::wstring& displayPathFmt = fmtPath(AFS::getDisplayPath(folderPath));
 
@@ -99,17 +98,17 @@ FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath>& folderPath
         const auto timeoutTime = startTime + std::chrono::seconds(deviceTimeOutSec);
 
         while (std::chrono::steady_clock::now() < timeoutTime &&
-               future.wait_for(UI_UPDATE_INTERVAL / 2) == std::future_status::timeout)
+               ftIsExisting.wait_for(UI_UPDATE_INTERVAL / 2) == std::future_status::timeout)
             procCallback.requestUiUpdate(); //throw X
 
-        if (!isReady(future))
+        if (!isReady(ftIsExisting))
             output.failedChecks.emplace(folderPath, FileError(replaceCpy(_("Timeout while searching for folder %x."), L"%x", displayPathFmt) +
                                                               L" [" + _P("1 sec", "%x sec", deviceTimeOutSec) + L']'));
         else
             try
             {
                 //call future::get() only *once*! otherwise: undefined behavior!
-                if (future.get()) //throw FileError
+                if (ftIsExisting.get()) //throw FileError
                     output.existing.emplace(folderPath);
                 else
                     output.notExisting.insert(folderPath);

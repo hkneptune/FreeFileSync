@@ -500,7 +500,7 @@ bool lessFilePath(const FileSystemObject::ObjectId& lhs, const FileSystemObject:
 
     //different components...
     if (const std::weak_ordering cmp = compareNatural((*itL)->getItemNameAny(), (*itR)->getItemNameAny());
-        std::is_neq(cmp))
+        cmp != std::weak_ordering::equivalent)
     {
         if constexpr (ascending)
             return std::is_lt(cmp);

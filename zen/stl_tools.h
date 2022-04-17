@@ -290,11 +290,24 @@ Num hashArray(ByteIterator first, ByteIterator last)
 
 struct StringHash //support for custom string classes with std::unordered_set/map
 {
+    using is_transparent = int; //allow heterogenous lookup!
+
     template <class String>
     size_t operator()(const String& str) const
     {
-        const auto* strFirst = strBegin(str);
+        const auto* const strFirst = strBegin(str);
         return hashArray<size_t>(strFirst, strFirst + strLength(str));
+    }
+};
+
+struct StringEqual
+{
+    using is_transparent = int; //allow heterogenous lookup!
+
+    template <class String1, class String2>
+    bool operator()(const String1& lhs, const String2& rhs) const
+    {
+        return equalString(lhs, rhs);
     }
 };
 }

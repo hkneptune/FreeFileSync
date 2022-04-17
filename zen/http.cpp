@@ -144,7 +144,7 @@ public:
 
         statusCode_ = stringTo<int>(statusItems[1]);
 
-        for (const std::string& line : split(headersBuf, "\r\n", SplitOnEmpty::skip))
+        for (const std::string& line : split(headersBuf, '\n', SplitOnEmpty::skip)) //careful: actual line separator is "\r\n"!
             responseHeaders_[trimCpy(beforeFirst(line, ':', IfNotFoundReturn::all))] =
                 /**/         trimCpy(afterFirst (line, ':', IfNotFoundReturn::none));
 
@@ -344,7 +344,7 @@ bool zen::internetIsAlive() //noexcept
 {
     try
     {
-        auto response = std::make_unique<HttpInputStream::Impl>(Zstr("http://www.google.com/"),
+        auto response = std::make_unique<HttpInputStream::Impl>(Zstr("https://www.google.com/"), //https more appropriate than http for testing? (different ports!)
                                                                 nullptr /*postParams*/,
                                                                 "" /*contentType*/,
                                                                 true /*disableGetCache*/,
@@ -353,7 +353,7 @@ bool zen::internetIsAlive() //noexcept
                                                                 nullptr /*notifyUnbufferedIO*/); //throw SysError
         const int statusCode = response->getStatusCode();
 
-        //attention: http://www.google.com/ might redirect to "https" => don't follow, just return "true"!!!
+        //attention: google.com might redirect to https://consent.google.com => don't follow, just return "true"!!!
         return statusCode / 100 == 2 || //e.g. 200
                statusCode / 100 == 3;   //e.g. 301, 302, 303, 307... when in doubt, consider internet alive!
     }

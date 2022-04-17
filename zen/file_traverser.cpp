@@ -8,7 +8,6 @@
 #include "file_error.h"
 
 
-    //#include <unistd.h> //::pathconf()
     #include <sys/stat.h>
     #include <dirent.h>
 

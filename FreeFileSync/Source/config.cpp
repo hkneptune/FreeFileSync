@@ -150,13 +150,13 @@ void writeText(const wxLanguage& value, std::string& output)
 {
     //use description as unique wxLanguage identifier, see localization.cpp
     //=> handle changes to wxLanguage enum between wxWidgets versions
-    if (const wxLanguageInfo* lngInfo = wxLocale::GetLanguageInfo(value))
+    const wxLanguageInfo* lngInfo = wxLocale::GetLanguageInfo(value);
+    assert(lngInfo);
+    if (!lngInfo)
+        lngInfo = wxLocale::GetLanguageInfo(wxLANGUAGE_ENGLISH_US);
+
+    if (lngInfo)
         output = utfTo<std::string>(lngInfo->Description);
-    else
-    {
-        assert(false);
-        output = "English (U.S.)";
-    }
 }
 
 template <> inline
@@ -1174,7 +1174,7 @@ void readConfig(const XmlIn& in, LocalPairConfig& lpc, std::map<AfsDevice, size_
             if (startsWithAsciiNoCase(folderPathPhrase, "sftp:") ||
                 startsWithAsciiNoCase(folderPathPhrase,  "ftp:"))
             {
-                for (const Zstring& optPhrase : split(folderPathPhrase, Zstr("|"), SplitOnEmpty::skip))
+                for (const Zstring& optPhrase : split(folderPathPhrase, Zstr('|'), SplitOnEmpty::skip))
                     if (startsWith(optPhrase, Zstr("con=")))
                         parallelOps = stringTo<int>(afterFirst(optPhrase, Zstr("con="), IfNotFoundReturn::none));
             }

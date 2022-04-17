@@ -145,7 +145,6 @@ std::optional<Zstring> tryResolveMacro(const Zstring& macro) //macro without %-c
     if (std::optional<Zstring> value = getEnvironmentVar(macro))
         return *value;
 
-
     return {};
 }
 

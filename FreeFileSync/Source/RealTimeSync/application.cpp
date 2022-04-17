@@ -83,7 +83,7 @@ bool Application::OnInit()
     }
     catch (const SysError& e)
     {
-        logInitError(e.toString() + L"\n" L"Loading GTK3\'s old CSS format instead...\n");
+        std::cerr << "RealTimeSync" << utfTo<std::string>(SPACED_DASH + e.toString()) + "\n" "Loading GTK3\'s old CSS format instead..." "\n";
         try
         {
             loadCSS("Gtk3Styles.old.css"); //throw SysError
@@ -108,7 +108,7 @@ bool Application::OnInit()
 
 
     //Windows User Experience Interaction Guidelines: tool tips should have 5s timeout, info tips no timeout => compromise:
-    wxToolTip::Enable(true); //yawn, a wxWidgets screw-up: wxToolTip::SetAutoPop is no-op if global tooltip window is not yet constructed: wxToolTip::Enable creates it
+    wxToolTip::Enable(true); //wxWidgets screw-up: wxToolTip::SetAutoPop is no-op if global tooltip window is not yet constructed: wxToolTip::Enable creates it
     wxToolTip::SetAutoPop(10'000); //https://docs.microsoft.com/en-us/windows/win32/uxguide/ctrl-tooltips-and-infotips
 
     SetAppName(L"RealTimeSync");
@@ -121,8 +121,15 @@ bool Application::OnInit()
     catch (const FileError& e) { logInitError(e.toString()); }
 
 
-    Bind(wxEVT_QUERY_END_SESSION, [this](wxCloseEvent& event) { onQueryEndSession(event); }); //can veto
-    Bind(wxEVT_END_SESSION,       [this](wxCloseEvent& event) { onQueryEndSession(event); }); //can *not* veto
+    auto onSystemShutdown = []
+    {
+        onSystemShutdownRunTasks();
+
+        //it's futile to try and clean up while the process is in full swing (CRASH!) => just terminate!
+        terminateProcess(fff::FFS_EXIT_ABORTED);
+    };
+    Bind(wxEVT_QUERY_END_SESSION, [onSystemShutdown](wxCloseEvent& event) { onSystemShutdown(); }); //can veto
+    Bind(wxEVT_END_SESSION,       [onSystemShutdown](wxCloseEvent& event) { onSystemShutdown(); }); //can *not* veto
 
     //Note: app start is deferred:  -> see FreeFileSync
     Bind(EVENT_ENTER_EVENT_LOOP, &Application::onEnterEventLoop, this);
@@ -199,13 +206,4 @@ void Application::OnUnhandledException() //handles both wxApp::OnInit() + wxApp:
         terminateProcess(fff::FFS_EXIT_EXCEPTION);
     }
     //catch (...) -> Windows: let it crash and create mini dump!!! Linux/macOS: std::exception::what() logged to console
-}
-
-
-void Application::onQueryEndSession(wxEvent& event)
-{
-    if (auto mainWin = dynamic_cast<MainDialog*>(GetTopWindow()))
-        mainWin->onQueryEndSession();
-    //it's futile to try and clean up while the process is in full swing (CRASH!) => just terminate!
-    terminateProcess(fff::FFS_EXIT_ABORTED);
 }

@@ -28,11 +28,11 @@ class MainDialog: public MainDlgGenerated
 public:
     static void create(const Zstring& cfgFile);
 
-    void onQueryEndSession(); //last chance to do something useful before killing the application!
-
 private:
     MainDialog(const Zstring& cfgFileName);
     ~MainDialog();
+
+    void onBeforeSystemShutdown(); //last chance to do something useful before killing the application!
 
     void loadConfig(const Zstring& filepath);
 
@@ -67,6 +67,8 @@ private:
     Zstring folderLastSelected_;
 
     zen::AsyncGuiQueue guiQueue_; //schedule and run long-running tasks asynchronously, but process results on GUI queue
+
+    const zen::SharedRef<std::function<void()>> onBeforeSystemShutdownCookie_ = zen::makeSharedRef<std::function<void()>>([this] { onBeforeSystemShutdown(); });
 };
 }
 

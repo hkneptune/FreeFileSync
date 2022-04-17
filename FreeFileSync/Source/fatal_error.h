@@ -30,6 +30,12 @@ void logFatalError(const std::wstring& msg); //noexcept
 inline
 void logFatalError(const std::wstring& msg) //noexcept
 {
+    warn_static("new semantics: logErrorWhileBusy or logErrorShowLater + show upon next FFS start!?")
+        warn_static("this really should append!")
+        //create time-stamped file path + show if newer than last FFS run? (save in GlobalSettings.xml)
+        //replace calls to  ::MessageBox() and std::cerr ?
+        //save std::time()
+
     using namespace zen;
 
     assert(false); //this is stuff we like to debug

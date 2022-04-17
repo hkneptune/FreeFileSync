@@ -61,7 +61,7 @@ struct ZstringNoCase //use as STL container key: avoid needless upper-case conve
      macOS:   ignore case + Unicode normalization forms                    */
 std::weak_ordering compareNativePath(const Zstring& lhs, const Zstring& rhs);
 
-inline bool equalNativePath(const Zstring& lhs, const Zstring& rhs) { return std::is_eq(compareNativePath(lhs, rhs)); }
+inline bool equalNativePath(const Zstring& lhs, const Zstring& rhs) { return compareNativePath(lhs, rhs) == std::weak_ordering::equivalent; }
 
 struct LessNativePath { bool operator()(const Zstring& lhs, const Zstring& rhs) const { return std::is_lt(compareNativePath(lhs, rhs)); } };
 

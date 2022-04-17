@@ -9,6 +9,7 @@
 
 #include <vector>
 #include <memory>
+#include <unordered_set>
 #include <zen/zstring.h>
 
 
@@ -87,11 +88,43 @@ private:
     friend class CombinedFilter;
     std::strong_ordering compareSameType(const PathFilter& other) const override;
 
-    //upper-case + Unicode-normalized by construction:
-    std::vector<Zstring> includeMasksFileFolder;
-    std::vector<Zstring> includeMasksFolder;
-    std::vector<Zstring> excludeMasksFileFolder;
-    std::vector<Zstring> excludeMasksFolder;
+    class MaskMatcher
+    {
+    public:
+        void insert(const Zstring& mask); //expected: upper-case + Unicode-normalized!
+        bool matches(const Zchar* pathFirst, const Zchar* pathLast) const;
+        bool matchesBegin(const Zstring& relPath) const;
+
+        inline friend std::strong_ordering operator<=>(const MaskMatcher& lhs, const MaskMatcher& rhs)
+        {
+            return std::tie(lhs.realMasks_, lhs.relPathsCmp_) <=>
+                   std::tie(rhs.realMasks_, rhs.relPathsCmp_);
+        }
+        //can't "= default" because std::unordered_set doesn't support <=>!
+        //CAVEAT: when operator<=> is not "default" we also don't get operator== for free! declare manually:
+        bool operator==(const MaskMatcher&) const;
+        //why declare, but not define? if undeclared, "std::tie <=> std::tie" incorrectly deduces std::weak_ordering
+        //=> bug? no, looks like "C++ standard nonsense": https://cplusplus.github.io/LWG/issue3431
+        //std::three_way_comparable requires __WeaklyEqualityComparableWith!! this is stupid on first sight. And on second. And on third.
+
+    private:
+        std::set<Zstring> realMasks_; //always containing ? or *       (use std::set<> to scrap duplicates!)
+        std::unordered_set<Zstring, zen::StringHash, zen::StringEqual> relPaths_; //never containing ? or *
+        std::set<Zstring>                                              relPathsCmp_; //req. for operator<=> only :(
+    };
+
+    struct FilterSet
+    {
+        MaskMatcher fileFolderMasks;
+        MaskMatcher folderMasks;
+
+        std::strong_ordering operator<=>(const FilterSet&) const = default;
+    };
+
+    static void parseFilterPhrase(const Zstring& filterPhrase, FilterSet& filter);
+
+    FilterSet includeFilter;
+    FilterSet excludeFilter;
 };
 
 
@@ -193,7 +226,7 @@ std::strong_ordering CombinedFilter::compareSameType(const PathFilter& other) co
     const CombinedFilter& rhs = static_cast<const CombinedFilter&>(other);
 
     if (const std::strong_ordering cmp = lhs.first_.compareSameType(rhs.first_);
-        std::is_neq(cmp))
+        cmp != std::strong_ordering::equal)
         return cmp;
 
     return lhs.second_.compareSameType(rhs.second_);

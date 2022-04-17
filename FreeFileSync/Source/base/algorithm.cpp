@@ -1288,7 +1288,7 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
                                const AbstractPath& targetFolderPath,
                                bool keepRelPaths,
                                bool overwriteIfExists,
-                               ProcessCallback& callback)
+                               ProcessCallback& callback /*throw X*/) //throw X
 {
     auto notifyItemCopy = [&](const std::wstring& statusText, const std::wstring& displayPath)
     {
@@ -1300,7 +1300,7 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
     const std::wstring txtCreatingFolder(_("Creating folder %x"       ));
     const std::wstring txtCreatingLink  (_("Creating symbolic link %x"));
 
-    auto copyItem = [&](const AbstractPath& targetPath, ItemStatReporter<ProcessCallback>& statReporter, //throw FileError
+    auto copyItem = [&](const AbstractPath& targetPath, //throw FileError
                         const std::function<void(const std::function<void()>& deleteTargetItem)>& copyItemPlain) //throw FileError
     {
         //start deleting existing target as required by copyFileTransactional():
@@ -1366,25 +1366,26 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
 
         [&](const FilePair& file)
         {
-            ItemStatReporter statReporter(1, file.getFileSize<side>(), callback);
-            notifyItemCopy(txtCreatingFile, AFS::getDisplayPath(targetPath));
+            std::wstring statusMsg = replaceCpy(txtCreatingFile, L"%x", fmtPath(AFS::getDisplayPath(targetPath)));
+            callback.logInfo(statusMsg); //throw X
+            PercentStatReporter statReporter(std::move(statusMsg), file.getFileSize<side>(), callback); //throw X
 
             const FileAttributes attr = file.getAttributes<side>();
             const AFS::StreamAttributes sourceAttr{attr.modTime, attr.fileSize, attr.filePrint};
 
-            copyItem(targetPath, statReporter, [&](const std::function<void()>& deleteTargetItem) //throw FileError
+            copyItem(targetPath, [&](const std::function<void()>& deleteTargetItem) //throw FileError
             {
-                auto notifyUnbufferedIO = [&](int64_t bytesDelta)
-                {
-                    statReporter.reportDelta(0, bytesDelta);
-                    callback.requestUiUpdate(); //throw X
-                };
                 //already existing + !overwriteIfExists: undefined behavior! (e.g. fail/overwrite/auto-rename)
                 /*const AFS::FileCopyResult result =*/ AFS::copyFileTransactional(sourcePath, sourceAttr, targetPath, //throw FileError, ErrorFileLocked, X
-                                                                                  false /*copyFilePermissions*/, true /*transactionalCopy*/, deleteTargetItem, notifyUnbufferedIO);
+                                                                                  false /*copyFilePermissions*/, true /*transactionalCopy*/, deleteTargetItem,
+                                                                                  [&](int64_t bytesDelta)
+                {
+                    statReporter.updateStatus(0, bytesDelta); //throw X
+                    callback.requestUiUpdate(); //throw X  => not reliably covered by PercentStatReporter::updateStatus()! e.g. during first few seconds: STATUS_PERCENT_DELAY!
+                });
                 //result.errorModTime? => probably irrelevant (behave like Windows Explorer)
             });
-            statReporter.reportDelta(1, 0);
+            statReporter.updateStatus(1, 0); //throw X
         },
 
         [&](const SymlinkPair& symlink)
@@ -1392,7 +1393,7 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
             ItemStatReporter statReporter(1, 0, callback);
             notifyItemCopy(txtCreatingLink, AFS::getDisplayPath(targetPath));
 
-            copyItem(targetPath, statReporter, [&](const std::function<void()>& deleteTargetItem) //throw FileError
+            copyItem(targetPath, [&](const std::function<void()>& deleteTargetItem) //throw FileError
             {
                 deleteTargetItem(); //throw FileError
                 AFS::copySymlink(sourcePath, targetPath, false /*copyFilePermissions*/); //throw FileError
@@ -1412,7 +1413,7 @@ void fff::copyToAlternateFolder(std::span<const FileSystemObject* const> rowsToC
                                 bool keepRelPaths,
                                 bool overwriteIfExists,
                                 WarningDialogs& warnings,
-                                ProcessCallback& callback)
+                                ProcessCallback& callback /*throw X*/) //throw X
 {
     std::vector<const FileSystemObject*> itemSelectionLeft (rowsToCopyOnLeft .begin(), rowsToCopyOnLeft .end());
     std::vector<const FileSystemObject*> itemSelectionRight(rowsToCopyOnRight.begin(), rowsToCopyOnRight.end());
@@ -1581,7 +1582,7 @@ void fff::deleteFromGridAndHD(const std::vector<FileSystemObject*>& rowsToDelete
                               const std::vector<std::pair<BaseFolderPair*, SyncDirectionConfig>>& directCfgs, //attention: rows will be physically deleted!
                               bool useRecycleBin,
                               bool& warnRecyclerMissing,
-                              ProcessCallback& callback)
+                              ProcessCallback& callback /*throw X*/) //throw X
 {
     if (directCfgs.empty())
         return;
@@ -1682,6 +1683,7 @@ TempFileBuffer::~TempFileBuffer()
             removeDirectoryPlainRecursion(tempFolderPath_); //throw FileError
         }
         catch (FileError&) { assert(false); }
+        warn_static("log, maybe?")
 }
 
 
@@ -1719,7 +1721,7 @@ Zstring TempFileBuffer::getTempPath(const FileDescriptor& descr) const
 }
 
 
-void TempFileBuffer::createTempFiles(const std::set<FileDescriptor>& workLoad, ProcessCallback& callback)
+void TempFileBuffer::createTempFiles(const std::set<FileDescriptor>& workLoad, ProcessCallback& callback /*throw X*/) //throw X
 {
     const int itemTotal = static_cast<int>(workLoad.size());
     int64_t bytesTotal = 0;
@@ -1773,7 +1775,6 @@ void TempFileBuffer::createTempFiles(const std::set<FileDescriptor>& workLoad, P
             {
                 statReporter.updateStatus(0, bytesDelta); //throw X
                 callback.requestUiUpdate(); //throw X  => not reliably covered by PercentStatReporter::updateStatus()! e.g. during first few seconds: STATUS_PERCENT_DELAY!
-
             });
             //result.errorModTime? => irrelevant for temp files!
             statReporter.updateStatus(1, 0); //throw X

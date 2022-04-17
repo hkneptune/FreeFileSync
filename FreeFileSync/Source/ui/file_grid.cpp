@@ -10,7 +10,6 @@
 #include <wx/settings.h>
 #include <zen/i18n.h>
 #include <zen/file_error.h>
-//#include <zen/basic_math.h>
 #include <zen/format_unit.h>
 #include <zen/scope_guard.h>
 #include <wx+/tooltip.h>

@@ -387,7 +387,7 @@ std::weak_ordering fff::operator<=>(const VersioningLimitFolder& lhs, const Vers
 {
     if (const std::weak_ordering cmp = std::tie(lhs.versioningFolderPath, lhs.versionMaxAgeDays) <=>
                                        std::tie(rhs.versioningFolderPath, rhs.versionMaxAgeDays);
-        std::is_neq(cmp))
+        cmp != std::weak_ordering::equivalent)
         return cmp;
 
     if (lhs.versionMaxAgeDays > 0)

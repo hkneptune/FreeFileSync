@@ -25,7 +25,6 @@ private:
     void OnUnhandledException () override;
     wxLayoutDirection GetLayoutDirection() const override;
     void onEnterEventLoop(wxEvent& event);
-    void onQueryEndSession(wxEvent& event);
     void launch(const std::vector<Zstring>& commandArgs);
 
     FfsExitCode exitCode_ = FFS_EXIT_SUCCESS;

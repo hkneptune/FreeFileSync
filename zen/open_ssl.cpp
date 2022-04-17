@@ -5,6 +5,7 @@
 // *****************************************************************************
 
 #include "open_ssl.h"
+#include <bit> //std::endian (needed for macOS)
 #include "base64.h"
 #include "thread.h"
 #include <openssl/pem.h>

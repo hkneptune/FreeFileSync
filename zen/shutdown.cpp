@@ -5,6 +5,7 @@
 // *****************************************************************************
 
 #include "shutdown.h"
+#include "thread.h"
     #include <zen/process_exec.h>
 
 
@@ -15,6 +16,9 @@ using namespace zen;
 
 void zen::shutdownSystem() //throw FileError
 {
+        assert(runningOnMainThread());
+        if (runningOnMainThread())
+            onSystemShutdownRunTasks();
     try
     {
         //https://linux.die.net/man/2/reboot => needs admin rights!
@@ -62,3 +66,40 @@ void zen::terminateProcess(int exitCode)
     //      alternative requiring admin: sudo killall Xorg
     //      alternative without admin: dbus-send --session --print-reply --dest=org.gnome.SessionManager /org/gnome/SessionManager org.gnome.SessionManager.Logout uint32:1
 
+
+
+namespace
+{
+using ShutdownTaskList = std::vector<std::weak_ptr<const std::function<void()>>>;
+constinit Global<ShutdownTaskList> globalShutdownTasks;
+GLOBAL_RUN_ONCE(globalShutdownTasks.set(std::make_unique<ShutdownTaskList>()));
+}
+
+
+void zen::onSystemShutdownRegister(const SharedRef<std::function<void()>>& task)
+{
+    assert(runningOnMainThread());
+
+    const auto& tasks = globalShutdownTasks.get();
+    assert(tasks);
+    if (tasks)
+        tasks->push_back(task.ptr());
+}
+
+
+void zen::onSystemShutdownRunTasks()
+{
+    assert(runningOnMainThread()); //no multithreading! else: after taskWeak.lock() task() references may go out of scope! (e.g. "this")
+
+    const auto& tasks = globalShutdownTasks.get();
+    assert(tasks);
+    if (tasks)
+        for (const std::weak_ptr<const std::function<void()>>& taskWeak : *tasks)
+            if (const std::shared_ptr<const std::function<void()>>& task = taskWeak.lock();
+                task)
+                try
+                { (*task)(); }
+                catch (...) { assert(false); }
+
+    globalShutdownTasks.set(nullptr); //trigger assert in onSystemShutdownRegister(), just in case...
+}

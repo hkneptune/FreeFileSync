@@ -1240,7 +1240,7 @@ MiscSyncConfig ConfigDialog::getMiscSyncOptions() const
         ++i;
     }
     //----------------------------------------------------------------------------
-    miscCfg.ignoreErrors        = m_checkBoxIgnoreErrors  ->GetValue();
+    miscCfg.ignoreErrors   = m_checkBoxIgnoreErrors  ->GetValue();
     miscCfg.autoRetryCount = m_checkBoxAutoRetry     ->GetValue() ? m_spinCtrlAutoRetryCount->GetValue() : 0;
     miscCfg.autoRetryDelay = std::chrono::seconds(m_spinCtrlAutoRetryDelay->GetValue());
     //----------------------------------------------------------------------------
@@ -1464,9 +1464,9 @@ void ConfigDialog::selectFolderPairConfig(int newPairIndexToShow)
     }
     else
     {
-        setCompConfig  (get(localPairCfg_[selectedPairIndexToShow_].localCmpCfg ));
-        setSyncConfig  (get(localPairCfg_[selectedPairIndexToShow_].localSyncCfg));
-        setFilterConfig(localPairCfg_[selectedPairIndexToShow_].localFilter);
+        setCompConfig(get(localPairCfg_[selectedPairIndexToShow_].localCmpCfg ));
+        setSyncConfig(get(localPairCfg_[selectedPairIndexToShow_].localSyncCfg));
+        setFilterConfig  (localPairCfg_[selectedPairIndexToShow_].localFilter);
     }
 }
 

@@ -64,7 +64,7 @@ void copyToAlternateFolder(std::span<const FileSystemObject* const> rowsToCopyOn
                            bool keepRelPaths,
                            bool overwriteIfExists,
                            WarningDialogs& warnings,
-                           ProcessCallback& callback);
+                           ProcessCallback& callback /*throw X*/); //throw X
 
 //manual deletion of files on main grid
 void deleteFromGridAndHD(const std::vector<FileSystemObject*>& rowsToDeleteOnLeft,  //refresh GUI grid after deletion to remove invalid rows
@@ -73,7 +73,7 @@ void deleteFromGridAndHD(const std::vector<FileSystemObject*>& rowsToDeleteOnLef
                          bool useRecycleBin,
                          //global warnings:
                          bool& warnRecyclerMissing,
-                         ProcessCallback& callback);
+                         ProcessCallback& callback /*throw X*/); //throw X
 
 struct FileDescriptor
 {
@@ -95,8 +95,7 @@ public:
     Zstring getTempPath(const FileDescriptor& descr) const; //returns empty if not in buffer (item not existing, error during copy)
 
     //contract: only add files not yet in the buffer!
-    void createTempFiles(const std::set<FileDescriptor>& workLoad, ProcessCallback& callback);
-
+    void createTempFiles(const std::set<FileDescriptor>& workLoad, ProcessCallback& callback /*throw X*/); //throw X
 
 private:
     TempFileBuffer           (const TempFileBuffer&) = delete;

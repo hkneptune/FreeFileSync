@@ -57,6 +57,7 @@ bool Application::OnInit()
 {
     //do not call wxApp::OnInit() to avoid using wxWidgets command line parser
 
+    warn_static("log or show popup? which one is it!?")
     auto logInitError = [&](const std::wstring& msg)
     {
         //error handling strategy unknown and no sync log output available at this point!
@@ -108,7 +109,7 @@ bool Application::OnInit()
     }
     catch (const SysError& e)
     {
-        logInitError(e.toString() + L"\n" L"Loading GTK3\'s old CSS format instead...");
+        std::cerr << "FreeFileSync" << utfTo<std::string>(SPACED_DASH + e.toString()) + "\n" "Loading GTK3\'s old CSS format instead..." "\n";
         try
         {
             loadCSS("Gtk3Styles.old.css"); //throw SysError
@@ -133,7 +134,7 @@ bool Application::OnInit()
 
 
     //Windows User Experience Interaction Guidelines: tool tips should have 5s timeout, info tips no timeout => compromise:
-    wxToolTip::Enable(true); //yawn, a wxWidgets screw-up: wxToolTip::SetAutoPop is no-op if global tooltip window is not yet constructed: wxToolTip::Enable creates it
+    wxToolTip::Enable(true); //wxWidgets screw-up: wxToolTip::SetAutoPop is no-op if global tooltip window is not yet constructed: wxToolTip::Enable creates it
     wxToolTip::SetAutoPop(10'000); //https://docs.microsoft.com/en-us/windows/win32/uxguide/ctrl-tooltips-and-infotips
 
     SetAppName(L"FreeFileSync"); //if not set, the default is the executable's name!
@@ -142,11 +143,21 @@ bool Application::OnInit()
     try { localizationInit(getResourceDirPf() + Zstr("Languages.zip")); } //throw FileError
     catch (const FileError& e) { logInitError(e.toString()); }
 
-    initAfs({getResourceDirPf(), getConfigDirPathPf()}); //bonus: using FTP Gdrive implicitly inits OpenSSL (used in runSanityChecks() on Linux) alredy during globals init
+    initAfs({getResourceDirPf(), getConfigDirPathPf()}); //bonus: using FTP Gdrive implicitly inits OpenSSL (used in runSanityChecks() on Linux) already during globals init
 
 
-    Bind(wxEVT_QUERY_END_SESSION, [this](wxCloseEvent& event) { onQueryEndSession(event); }); //can veto
-    Bind(wxEVT_END_SESSION,       [this](wxCloseEvent& event) { onQueryEndSession(event); }); //can *not* veto
+
+    auto onSystemShutdown = []
+    {
+        onSystemShutdownRunTasks();
+
+        //- it's futile to try and clean up while the process is in full swing (CRASH!) => just terminate!
+        //- system sends close events to all open dialogs: If one of these calls wxCloseEvent::Veto(),
+        //  e.g. user clicking cancel on save prompt, this would cancel the shutdown
+        terminateProcess(FFS_EXIT_ABORTED);
+    };
+    Bind(wxEVT_QUERY_END_SESSION, [onSystemShutdown](wxCloseEvent& event) { onSystemShutdown(); }); //can veto
+    Bind(wxEVT_END_SESSION,       [onSystemShutdown](wxCloseEvent& event) { onSystemShutdown(); }); //can *not* veto
 
     //Note: app start is deferred: batch mode requires the wxApp eventhandler to be established for UI update events. This is not the case at the time of OnInit()!
     Bind(EVENT_ENTER_EVENT_LOOP, &Application::onEnterEventLoop, this);
@@ -157,7 +168,7 @@ bool Application::OnInit()
 
 void Application::onEnterEventLoop(wxEvent& event)
 {
-    [[maybe_unused]] bool ubOk = Unbind(EVENT_ENTER_EVENT_LOOP, &Application::onEnterEventLoop, this);
+    [[maybe_unused]] const bool ubOk = Unbind(EVENT_ENTER_EVENT_LOOP, &Application::onEnterEventLoop, this);
     assert(ubOk);
 
     launch(getCommandlineArgs(*this)); //determine FFS mode of operation
@@ -168,14 +179,18 @@ int Application::OnExit()
 {
     localizationCleanup();
     imageResourcesCleanup();
-    teardownAfs();
+
+    if (const std::wstring& warningMsg = teardownAfs();
+        !warningMsg.empty())
+    {
+    }
+    warn_static("log?")
+
     return wxApp::OnExit();
 }
 
 
 wxLayoutDirection Application::GetLayoutDirection() const { return getLayoutDirection(); }
-
-
 
 
 int Application::OnRun()
@@ -203,14 +218,6 @@ void Application::OnUnhandledException() //handles both wxApp::OnInit() + wxApp:
 }
 
 
-void Application::onQueryEndSession(wxEvent& event)
-{
-    if (auto mainWin = dynamic_cast<MainDialog*>(GetTopWindow()))
-        mainWin->onQueryEndSession();
-    //it's futile to try and clean up while the process is in full swing (CRASH!) => just terminate!
-    //also: avoid wxCloseEvent::Veto() cancels shutdown when dialogs receive a close event from the system
-    terminateProcess(FFS_EXIT_ABORTED);
-}
 
 
 void runGuiMode  (const Zstring& globalConfigFile);
@@ -227,6 +234,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
 
     auto notifyFatalError = [&](const std::wstring& msg, const std::wstring& title)
     {
+        warn_static("that doesnt seem right generally:")
         logFatalError(msg);
 
         //error handling strategy unknown and no sync log output available at this point!
@@ -695,7 +703,7 @@ void runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& bat
             try
             {
                 shutdownSystem(); //throw FileError
-                terminateProcess(exitCode); //no point in continuing and saving cfg again in onQueryEndSession() while the OS will kill us anytime!
+                terminateProcess(exitCode); //no point in continuing and saving cfg again in onSystemShutdown() while the OS will kill us anytime!
             }
             catch (const FileError& e) { notifyError(e.toString(), FFS_EXIT_ERROR); }
             break;

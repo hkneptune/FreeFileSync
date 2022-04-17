@@ -23,6 +23,7 @@
 #include "../base/algorithm.h"
 #include "../return_codes.h"
 
+
 namespace fff
 {
 class FolderPairFirst;
@@ -46,7 +47,6 @@ public:
                        const std::vector<Zstring>& referenceFiles,
                        bool startComparison);
 
-    void onQueryEndSession(); //last chance to do something useful before killing the application!
 private:
     MainDialog(const Zstring& globalConfigFilePath,
                const XmlGuiConfig& guiCfg,
@@ -54,6 +54,8 @@ private:
                const XmlGlobalSettings& globalSettings, //take over ownership => save on exit
                bool startComparison);
     ~MainDialog();
+
+    void onBeforeSystemShutdown(); //last chance to do something useful before killing the application!
 
     friend class StatusHandlerTemporaryPanel;
     friend class StatusHandlerFloatingDialog;
@@ -366,6 +368,8 @@ private:
     TempFileBuffer tempFileBuf_; //buffer temporary copies of non-native files for %local_path%
 
     const wxImage imgTrashSmall_;
+
+    const zen::SharedRef<std::function<void()>> onBeforeSystemShutdownCookie_ = zen::makeSharedRef<std::function<void()>>([this]{ onBeforeSystemShutdown(); });
 };
 }
 

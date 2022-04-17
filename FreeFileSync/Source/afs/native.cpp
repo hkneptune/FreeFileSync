@@ -612,7 +612,7 @@ private:
     {
         //perf test: detecting different volumes by path is ~30 times faster than having ::MoveFileEx() fail with ERROR_NOT_SAME_DEVICE (6µs vs 190µs)
         //=> maybe we can even save some actual I/O in some cases?
-        if (std::is_neq(compareDeviceSameAfsType(pathTo.afsDevice.ref())))
+        if (compareDeviceSameAfsType(pathTo.afsDevice.ref()) != std::weak_ordering::equivalent)
             throw ErrorMoveUnsupported(replaceCpy(replaceCpy(_("Cannot move file %x to %y."),
                                                              L"%x", L'\n' + fmtPath(getDisplayPath(pathFrom))),
                                                   L"%y", L'\n' + fmtPath(AFS::getDisplayPath(pathTo))),

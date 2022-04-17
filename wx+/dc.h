@@ -91,8 +91,8 @@ constexpr int defaultDpi = 96;
 inline
 int getDPI()
 {
-#ifndef wxHAVE_DPI_INDEPENDENT_PIXELS
-#error why is wxHAVE_DPI_INDEPENDENT_PIXELS not defined?
+#ifndef wxHAS_DPI_INDEPENDENT_PIXELS
+#error why is wxHAS_DPI_INDEPENDENT_PIXELS not defined?
 #endif
     //GTK2 doesn't properly support high DPI: https://freefilesync.org/forum/viewtopic.php?t=6114
     //=> requires general fix at wxWidgets-level

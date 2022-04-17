@@ -22,11 +22,12 @@ void fff::initAfs(const AfsConfig& cfg)
 }
 
 
-void fff::teardownAfs()
+std::wstring /*warningMsg*/ fff::teardownAfs()
 {
-    gdriveTeardown();
+    std::wstring warningMsg = gdriveTeardown();
     sftpTeardown();
     ftpTeardown();
+    return warningMsg;
 }
 
 

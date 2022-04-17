@@ -47,7 +47,7 @@ int getEffectivePort(int portOption)
 {
     if (portOption > 0)
         return portOption;
-    return DEFAULT_PORT_FTP; 
+    return DEFAULT_PORT_FTP;
 }
 }
 
@@ -58,7 +58,7 @@ std::weak_ordering operator<=>(const FtpSessionId& lhs, const FtpSessionId& rhs)
 {
     //exactly the type of case insensitive comparison we need for server names!
     if (const std::weak_ordering cmp = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
-        std::is_neq(cmp))
+        cmp != std::weak_ordering::equivalent)
         return cmp;
 
     const int portLhs = getEffectivePort(lhs.port);
@@ -157,7 +157,7 @@ std::wstring getCurlDisplayPath(const FtpSessionId& sessionId, const AfsPath& af
 
     if (!sessionId.username.empty()) //show username! consider AFS::compareDeviceSameAfsType()
         displayPath += sessionId.username + Zstr('@');
-    
+
     displayPath += sessionId.server;
 
     if (const int port = getEffectivePort(sessionId.port);
@@ -176,17 +176,14 @@ std::vector<std::string> splitFtpResponse(const std::string& buf)
 {
     std::vector<std::string> lines;
 
-    const auto isLb = [](char c) { return isLineBreak(c) || c == '\0'; };
-    auto it = buf.begin();
-    for (;;)
+    split2(buf, [](char c) { return isLineBreak(c) || c == '\0'; }, //is 0-char check even needed?
+    [&lines](const char* blockFirst, const char* blockLast)
     {
-        auto itLineBegin = std::find_if_not(it, buf.end(), isLb);
-        if (itLineBegin == buf.end())
-            return lines;
+        if (blockFirst != blockLast)
+            lines.emplace_back(blockFirst, blockLast);
+    });
 
-        it = std::find_if(itLineBegin + 1, buf.end(), isLb);
-        lines.emplace_back(itLineBegin, it);
-    }
+    return lines;
 }
 
 
@@ -352,7 +349,7 @@ public:
             options.emplace_back(CURLOPT_PASSWORD, password.c_str());
         }
 
-            options.emplace_back(CURLOPT_PORT, getEffectivePort(sessionId_.port));
+        options.emplace_back(CURLOPT_PORT, getEffectivePort(sessionId_.port));
 
         options.emplace_back(CURLOPT_NOSIGNAL, 1); //thread-safety: https://curl.haxx.se/libcurl/c/threadsafe.html
 
@@ -1972,16 +1969,16 @@ private:
 
         //exactly the type of case insensitive comparison we need for server names!
         if (const std::weak_ordering cmp = compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
-            std::is_neq(cmp))
+            cmp != std::weak_ordering::equivalent)
             return cmp;
 
         //port DOES create a *different* data source! https://freefilesync.org/forum/viewtopic.php?t=9047
-    const int portLhs = getEffectivePort(lhs.port);
-    const int portRhs = getEffectivePort(rhs.port);
-        
+        const int portLhs = getEffectivePort(lhs.port);
+        const int portRhs = getEffectivePort(rhs.port);
+
         //username: usually creates different folder view for FTP
         return std::tie(portLhs, lhs.username) <=> //username: case sensitive!
-               std::tie(portRhs, rhs.username); 
+               std::tie(portRhs, rhs.username);
     }
 
     //----------------------------------------------------------------------------------------------------------------
@@ -2214,7 +2211,7 @@ private:
                                                         L"%y", L'\n' + fmtPath(AFS::getDisplayPath(pathTo)));
                                     };
 
-        if (std::is_neq(compareDeviceSameAfsType(pathTo.afsDevice.ref())))
+        if (compareDeviceSameAfsType(pathTo.afsDevice.ref()) != std::weak_ordering::equivalent)
             throw ErrorMoveUnsupported(generateErrorMsg(), _("Operation not supported between different devices."));
 
         try
@@ -2390,7 +2387,7 @@ AbstractPath fff::createItemPathFtp(const Zstring& itemPathPhrase) //noexcept
     const Zstring fullPathOpt =  afterFirst(pathPhrase, Zstr('@'), IfNotFoundReturn::all);
 
     FtpLogin login;
-    login.username = decodeFtpUsername(beforeFirst(credentials, Zstr(':'), IfNotFoundReturn::all)); //support standard FTP syntax, even though 
+    login.username = decodeFtpUsername(beforeFirst(credentials, Zstr(':'), IfNotFoundReturn::all)); //support standard FTP syntax, even though
     login.password =                    afterFirst(credentials, Zstr(':'), IfNotFoundReturn::none); //concatenateFtpFolderPathPhrase() uses "pass64" instead
 
     const Zstring fullPath = beforeFirst(fullPathOpt, Zstr('|'), IfNotFoundReturn::all);
@@ -2404,7 +2401,7 @@ AbstractPath fff::createItemPathFtp(const Zstring& itemPathPhrase) //noexcept
     const Zstring port =  afterLast(serverPort, Zstr(':'), IfNotFoundReturn::none);
     login.port = stringTo<int>(port); //0 if empty
 
-    for (const Zstring& optPhrase : split(options, Zstr("|"), SplitOnEmpty::skip))
+    for (const Zstring& optPhrase : split(options, Zstr('|'), SplitOnEmpty::skip))
         if (startsWith(optPhrase, Zstr("timeout=")))
             login.timeoutSec = stringTo<int>(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
         else if (optPhrase == Zstr("ssl"))

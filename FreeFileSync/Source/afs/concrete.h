@@ -17,7 +17,7 @@ struct AfsConfig
     Zstring configDirPathPf;   //directory to store AFS-specific files
 };
 void initAfs(const AfsConfig& cfg);
-void teardownAfs();
+[[nodiscard]] std::wstring /*warningMsg*/ teardownAfs();
 
 AbstractPath getNullPath();
 AbstractPath createAbstractPath(const Zstring& itemPathPhrase); //noexcept

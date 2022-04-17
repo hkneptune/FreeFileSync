@@ -71,7 +71,7 @@ BatchStatusHandler::Result BatchStatusHandler::reportResults(const Zstring& post
                                                              const std::string& emailNotifyAddress, ResultsNotification emailNotifyCondition) //noexcept!!
 {
     //keep correct summary window stats considering count down timer, system sleep
-    const std::chrono::milliseconds totalTime = progressDlg_->pauseAndGetTotalTime(); 
+    const std::chrono::milliseconds totalTime = progressDlg_->pauseAndGetTotalTime();
 
     //determine post-sync status irrespective of further errors during tear-down
     const SyncResult syncResult = [&]
@@ -146,7 +146,7 @@ BatchStatusHandler::Result BatchStatusHandler::reportResults(const Zstring& post
                 catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); }
 
         //--------------------- post sync actions ----------------------
-        auto mayRunAfterCountDown = [&](const std::wstring& operationName)
+        auto proceedWithShutdown = [&](const std::wstring& operationName)
         {
             if (progressDlg_->getWindowIfVisible())
                 try
@@ -161,7 +161,7 @@ BatchStatusHandler::Result BatchStatusHandler::reportResults(const Zstring& post
                                 throw;
                         }
                     };
-                    delayAndCountDown(std::chrono::steady_clock::now() + std::chrono::seconds(5), notifyStatusThrowOnCancel); //throw AbortProcess
+                    delayAndCountDown(std::chrono::steady_clock::now() + std::chrono::seconds(10), notifyStatusThrowOnCancel); //throw AbortProcess
                 }
                 catch (AbortProcess&) { return false; }
 
@@ -177,14 +177,14 @@ BatchStatusHandler::Result BatchStatusHandler::reportResults(const Zstring& post
                 assert(false);
                 break;
             case PostSyncAction2::sleep:
-                if (mayRunAfterCountDown(_("System: Sleep")))
+                if (proceedWithShutdown(_("System: Sleep")))
                 {
                     autoClose = progressDlg_->getOptionAutoCloseDialog();
                     suspend = true;
                 }
                 break;
             case PostSyncAction2::shutdown:
-                if (mayRunAfterCountDown(_("System: Shut down")))
+                if (proceedWithShutdown(_("System: Shut down")))
                 {
                     autoClose = true;
                     finalRequest = FinalRequest::shutdown; //system shutdown must be handled by calling context!

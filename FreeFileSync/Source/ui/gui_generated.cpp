@@ -2681,7 +2681,7 @@ CloudSetupDlgGenerated::CloudSetupDlgGenerated( wxWindow* parent, wxWindowID id,
 
 	bSizer3041->Add( bSizer305, 0, wxALL, 5 );
 
-	m_listBoxGdriveDrives = new wxListBox( m_panel41, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0, NULL, wxLB_NEEDED_SB|wxLB_SINGLE|wxLB_SORT );
+	m_listBoxGdriveDrives = new wxListBox( m_panel41, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0, NULL, wxLB_NEEDED_SB|wxLB_SINGLE );
 	bSizer3041->Add( m_listBoxGdriveDrives, 1, wxEXPAND|wxBOTTOM|wxRIGHT|wxLEFT, 5 );
 
 

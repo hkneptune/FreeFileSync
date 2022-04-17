@@ -282,20 +282,16 @@ struct FilterConfig
         sizeMax      (sizeMaxIn),
         unitSizeMax  (unitSizeMaxIn) {}
 
-    /*
-    Semantics of PathFilter:
-    1. using it creates a NEW folder hierarchy! -> must be considered by <Two way> variant! (fortunately it turns out, doing nothing already has perfect semantics :)
-    2. it applies equally to both sides => it always matches either both sides or none! => can be used while traversing a single folder!
-    */
+    /* Semantics of PathFilter:
+        1. using it creates a NEW folder hierarchy! -> must be considered by <Two way> variant! (fortunately it turns out, doing nothing already has perfect semantics :)
+        2. it applies equally to both sides => it always matches either both sides or none! => can be used while traversing a single folder!    */
     Zstring includeFilter = Zstr("*");
     Zstring excludeFilter;
 
-    /*
-    Semantics of SoftFilter:
-    1. It potentially may match only one side => it MUST NOT be applied while traversing a single folder to avoid mismatches
-    2. => it is applied after traversing and just marks rows, (NO deletions after comparison are allowed)
-    3. => equivalent to a user temporarily (de-)selecting rows -> not relevant for <Two way> variant! ;)
-    */
+    /* Semantics of SoftFilter:
+        1. It potentially may match only one side => it MUST NOT be applied while traversing a single folder to avoid mismatches
+        2. => it is applied after traversing and just marks rows, (NO deletions after comparison are allowed)
+        3. => equivalent to a user temporarily (de-)selecting rows -> not relevant for <Two way> variant! ;)    */
     size_t timeSpan = 0;
     UnitTime unitTimeSpan = UnitTime::none;
 

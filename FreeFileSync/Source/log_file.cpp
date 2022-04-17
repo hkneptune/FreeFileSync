@@ -107,7 +107,7 @@ std::string generateLogFooterTxt(const std::wstring& logFilePath /*optional*/, i
         output += "  [...]  " + utfTo<std::string>(replaceCpy(_P("Showing %y of 1 item", "Showing %y of %x items", logItemsTotal), //%x used as plural form placeholder!
                                                               L"%y", formatNumber(logPreviewItemsMax))) + '\n';
 
-    output += '\n' + std::string(SEPARATION_LINE_LEN, '_') + '\n' +
+    output += std::string(SEPARATION_LINE_LEN, '_') + '\n' +
 
               utfTo<std::string>(getOsDescription() + /*throw FileError*/ +
                                  L" - " + utfTo<std::wstring>(getUserDescription()) /*throw FileError*/ +
@@ -342,8 +342,7 @@ std::string generateLogFooterHtml(const std::wstring& logFilePath /*optional*/, 
                   htmlTxt(replaceCpy(_P("Showing %y of 1 item", "Showing %y of %x items", logItemsTotal), //%x used as plural form placeholder!
                           L"%y", formatNumber(logPreviewItemsMax))) + "</div>\n";
 
-    output += R"(	<br>
-
+    output += R"(
     <div style="border-bottom:1px solid #AAA; margin:5px 0;"></div>
     <div style="font-size:small;">
         <img src="https://freefilesync.org/images/log/)" + osImage + R"(" width="24" height="24" alt="" style="vertical-align:middle;">

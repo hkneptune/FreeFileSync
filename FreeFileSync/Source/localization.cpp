@@ -368,9 +368,9 @@ public:
             stringsList.append(original.c_str(), original.size() + 1); //include 0-termination
         }
 
-        for (const auto& [original, trans] : transMapping)
+        for (const auto& [original, translationW] : transMapping)
         {
-            const auto& translation = utfTo<std::string>(trans);
+            const auto& translation = utfTo<std::string>(translationW);
             writeNumber<uint32_t>(moBuf_, translation.size()); //string length
             writeNumber<uint32_t>(moBuf_, stringsOffset + stringsList.size()); //string offset
             stringsList.append(translation.c_str(), translation.size() + 1); //include 0-termination
@@ -381,6 +381,12 @@ public:
 
     wxMsgCatalog* LoadCatalog(const wxString& domain, const wxString& lang) override
     {
+        auto extractIsoLangCode = [](wxString langCode)
+        {
+            langCode = beforeLast(langCode, L".", IfNotFoundReturn::all);
+            return beforeLast(langCode, L"_", IfNotFoundReturn::all);
+        };
+
         //"lang" is NOT (exactly) what we return from GetAvailableTranslations(), but has a little "extra", e.g.: de_DE.WINDOWS-1252 or ar.WINDOWS-1252
         if (equalAsciiNoCase(extractIsoLangCode(lang), extractIsoLangCode(canonicalName_)))
             return wxMsgCatalog::CreateFromData(wxScopedCharBuffer::CreateNonOwned(moBuf_.ref().c_str(), moBuf_.ref().size()), domain);
@@ -396,24 +402,18 @@ public:
     }
 
 private:
-    static wxString extractIsoLangCode(wxString langCode)
-    {
-        langCode = beforeLast(langCode, L".", IfNotFoundReturn::all);
-        return beforeLast(langCode, L"_", IfNotFoundReturn::all);
-    }
-
     const wxString canonicalName_;
     MemoryStreamOut<std::string> moBuf_;
 };
 
 
-//global wxWidgets localization: sets up C localization runtime as well!
-class wxWidgetsLocale
+//global wxWidgets localization: sets up C locale as well!
+class ZenLocale
 {
 public:
-    static wxWidgetsLocale& getInstance()
+    static ZenLocale& getInstance()
     {
-        static wxWidgetsLocale inst;
+        static ZenLocale inst;
         return inst;
     }
 
@@ -439,7 +439,7 @@ public:
             locale_ = std::make_unique<wxLocale>(wxLANGUAGE_DEFAULT, wxLOCALE_DONT_LOAD_DEFAULT /*we're not using wxwin.mo*/);
             //wxLANGUAGE_DEFAULT => internally calls std::setlocale(LC_ALL, "" /*== user-preferred locale*/) on Windows/Linux (but not macOS)
             /*  => exactly what's needed on Windows/Linux
-            
+
                 but not needed on macOS; even detrimental:
                 - breaks wxWidgets file drag and drop! https://freefilesync.org/forum/viewtopic.php?t=8215
                 - even wxWidgets knows: "under macOS C locale must not be changed, as doing this exposes bugs in the system"
@@ -463,12 +463,12 @@ public:
 
     void tearDown() { locale_.reset(); lng_ = wxLANGUAGE_UNKNOWN; layoutDir_ = wxLayout_Default; }
 
-    wxLanguage getLanguage       () const { return lng_; }
+    wxLanguage getLanguage() const { return lng_; }
     wxLayoutDirection getLayoutDirection() const { return layoutDir_; }
 
 private:
-    wxWidgetsLocale() {}
-    ~wxWidgetsLocale() { assert(!locale_); }
+    ZenLocale() {}
+    ~ZenLocale() { assert(!locale_); }
 
     wxLanguage lng_ = wxLANGUAGE_UNKNOWN;
     wxLayoutDirection layoutDir_ = wxLayout_Default;
@@ -498,7 +498,7 @@ void fff::localizationInit(const Zstring& zipPath) //throw FileError
 void fff::localizationCleanup()
 {
     assert(!globalTranslations.empty());
-    wxWidgetsLocale::getInstance().tearDown();
+    ZenLocale::getInstance().tearDown();
     setTranslator(nullptr); //good place for clean up rather than some time during static destruction: is this an actual benefit???
     globalTranslations.clear();
 }
@@ -546,7 +546,7 @@ void fff::setLanguage(wxLanguage lng) //throw FileError
         }
 
     //handle RTL swapping: we need wxWidgets to do this
-    wxWidgetsLocale::getInstance().init(lng);
+    ZenLocale::getInstance().init(lng);
 
     //add translation for wxWidgets-internal strings:
     assert(wxTranslations::Get()); //already initialized by wxLocale
@@ -555,7 +555,7 @@ void fff::setLanguage(wxLanguage lng) //throw FileError
         std::map<std::string, std::wstring> transMapping =
         {
         };
-        wxtrans->SetLanguage(lng); //!= wxLocale's language, which could be wxLANGUAGE_DEFAULT (see wxWidgetsLocale)
+        wxtrans->SetLanguage(lng); //!= wxLocale's language, which could be wxLANGUAGE_DEFAULT (see ZenLocale)
         wxtrans->SetLoader(new MemoryTranslationLoader(lng, std::move(transMapping)));
         [[maybe_unused]] const bool catalogAdded = wxtrans->AddCatalog(wxString());
         assert(catalogAdded || lng == wxLANGUAGE_ENGLISH_US);
@@ -565,7 +565,7 @@ void fff::setLanguage(wxLanguage lng) //throw FileError
 
 wxLanguage fff::getDefaultLanguage()
 {
-    static const wxLanguage defaultLng = static_cast<wxLanguage>(wxLocale::GetSystemLanguage()); 
+    static const wxLanguage defaultLng = static_cast<wxLanguage>(wxLocale::GetSystemLanguage());
     //uses GetUserDefaultUILanguage(): https://github.com/wxWidgets/wxWidgets/commit/9600c29ff2ca13ef66b76eabadaac5ec8654b792
 
     return defaultLng;
@@ -574,11 +574,11 @@ wxLanguage fff::getDefaultLanguage()
 
 wxLanguage fff::getLanguage()
 {
-    return wxWidgetsLocale::getInstance().getLanguage();
+    return ZenLocale::getInstance().getLanguage();
 }
 
 
 wxLayoutDirection fff::getLayoutDirection()
 {
-    return wxWidgetsLocale::getInstance().getLayoutDirection();
+    return ZenLocale::getInstance().getLayoutDirection();
 }

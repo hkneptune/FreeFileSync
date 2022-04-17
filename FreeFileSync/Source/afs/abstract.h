@@ -411,7 +411,7 @@ private:
 
 
 inline std::weak_ordering operator<=>(const AfsDevice& lhs, const AfsDevice& rhs) { return AbstractFileSystem::compareDevice(lhs.ref(), rhs.ref()); }
-inline bool               operator== (const AfsDevice& lhs, const AfsDevice& rhs) { return std::is_eq(lhs <=> rhs); }
+inline bool               operator== (const AfsDevice& lhs, const AfsDevice& rhs) { return (lhs <=> rhs) == std::weak_ordering::equivalent; }
 
 inline
 std::weak_ordering operator<=>(const AbstractPath& lhs, const AbstractPath& rhs)

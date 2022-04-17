@@ -21,7 +21,7 @@ std::strong_ordering fff::operator<=>(const FilterRef& lhs, const FilterRef& rhs
     //caveat: typeid returns static type for pointers, dynamic type for references!!!
     if (const std::strong_ordering cmp = std::type_index(typeid(lhs.ref())) <=>
                                          std::type_index(typeid(rhs.ref()));
-        std::is_neq(cmp))
+        cmp != std::strong_ordering::equal)
         return cmp;
 
     return lhs.ref().compareSameType(rhs.ref());
@@ -30,25 +30,28 @@ std::strong_ordering fff::operator<=>(const FilterRef& lhs, const FilterRef& rhs
 
 std::vector<Zstring> fff::splitByDelimiter(const Zstring& filterPhrase)
 {
-    //delimiters may be FILTER_ITEM_SEPARATOR or '\n'
     std::vector<Zstring> output;
 
-    for (const Zstring& str : split(filterPhrase, FILTER_ITEM_SEPARATOR, SplitOnEmpty::skip)) //split by less common delimiter first (create few, large strings)
-        for (Zstring entry : split(str, Zstr('\n'), SplitOnEmpty::skip))
-        {
-            trim(entry);
-            if (!entry.empty())
-                output.push_back(std::move(entry));
-        }
+    split2(filterPhrase, [](Zchar c) { return c == FILTER_ITEM_SEPARATOR || c == Zstr('\n'); }, //delimiters
+    [&output](const Zchar* blockFirst, const Zchar* blockLast)
+    {
+        std::tie(blockFirst, blockLast) = trimCpy(blockFirst, blockLast, true /*fromLeft*/, true /*fromRight*/, [](Zchar c) { return isWhiteSpace(c); });
+        if (blockFirst != blockLast)
+            output.emplace_back(blockFirst, blockLast);
+    });
 
     return output;
 }
 
 
-namespace
+void NameFilter::parseFilterPhrase(const Zstring& filterPhrase, FilterSet& filter)
 {
-void parseFilterPhrase(const Zstring& filterPhrase, std::vector<Zstring>& masksFileFolder, std::vector<Zstring>& masksFolder)
-{
+    //normalize filter: 1. ignore Unicode normalization form 2. ignore case
+    Zstring filterPhraseFmt = getUpperCase(filterPhrase);
+    //3. fix path separator
+    if constexpr (FILE_NAME_SEPARATOR != Zstr('/' )) replace(filterPhraseFmt, Zstr('/'),  FILE_NAME_SEPARATOR);
+    if constexpr (FILE_NAME_SEPARATOR != Zstr('\\')) replace(filterPhraseFmt, Zstr('\\'), FILE_NAME_SEPARATOR);
+
     const Zstring sepAsterisk = Zstr("/*");
     const Zstring asteriskSep = Zstr("*/");
     static_assert(FILE_NAME_SEPARATOR == '/');
@@ -60,18 +63,14 @@ void parseFilterPhrase(const Zstring& filterPhrase, std::vector<Zstring>& masksF
         {
             const Zstring dirPhrase = beforeLast(phrase, FILE_NAME_SEPARATOR, IfNotFoundReturn::none);
             if (!dirPhrase.empty())
-                masksFolder.push_back(dirPhrase);
+                filter.folderMasks.insert(dirPhrase);
         }
         else if (!phrase.empty())
-            masksFileFolder.push_back(phrase);
+            filter.fileFolderMasks.insert(phrase);
     };
 
-    for (const Zstring& itemPhrase : splitByDelimiter(filterPhrase))
+    for (const Zstring& itemPhrase : splitByDelimiter(filterPhraseFmt))
     {
-        //normalize filter input: 1. ignore Unicode normalization form 2. ignore case 3. ignore path separator
-        Zstring phraseFmt = getUpperCase(itemPhrase);
-        if constexpr (FILE_NAME_SEPARATOR != Zstr('/' )) replace(phraseFmt, Zstr('/'),  FILE_NAME_SEPARATOR);
-        if constexpr (FILE_NAME_SEPARATOR != Zstr('\\')) replace(phraseFmt, Zstr('\\'), FILE_NAME_SEPARATOR);
         /*    phrase  | action
             +---------+--------
             | \blah   | remove \
@@ -92,55 +91,36 @@ void parseFilterPhrase(const Zstring& filterPhrase, std::vector<Zstring>& masksF
             | blah*\* | remove \*; folder only
             +---------+--------                    */
 
-        if (startsWith(phraseFmt, FILE_NAME_SEPARATOR)) // \abc
-            processTail(afterFirst(phraseFmt, FILE_NAME_SEPARATOR, IfNotFoundReturn::none));
+        if (startsWith(itemPhrase, FILE_NAME_SEPARATOR)) // \abc
+            processTail(afterFirst(itemPhrase, FILE_NAME_SEPARATOR, IfNotFoundReturn::none));
         else
         {
-            processTail(phraseFmt);
-            if (startsWith(phraseFmt, asteriskSep)) // *\abc
-                processTail(afterFirst(phraseFmt, asteriskSep, IfNotFoundReturn::none));
+            processTail(itemPhrase);
+            if (startsWith(itemPhrase, asteriskSep)) // *\abc
+                processTail(afterFirst(itemPhrase, asteriskSep, IfNotFoundReturn::none));
         }
     }
 }
 
 
-template <class Char> inline
-const Char* cStringFind(const Char* str, Char ch) //= strchr(), wcschr()
+void NameFilter::MaskMatcher::insert(const Zstring& mask)
 {
-    for (;;)
+    assert(mask == getUpperCase(mask));
+    if (contains(mask, Zstr('?')) ||
+        contains(mask, Zstr('*')))
+        realMasks_.insert(mask);
+    else
     {
-        const Char s = *str;
-        if (s == ch) //ch is allowed to be 0 by contract! must return end of string in this case
-            return str;
-
-        if (s == 0)
-            return nullptr;
-        ++str;
+        relPaths_   .emplace(mask);
+        relPathsCmp_.emplace(mask); //little memory wasted thanks to COW string!
     }
 }
 
 
-/*  struct FullMatch
-    {
-        static bool matchesMaskEnd (const Zchar* path) { return *path == 0; }
-        static bool matchesMaskStar(const Zchar* path) { return true; }
-    };                                                                         */
-
-struct ParentFolderMatch //strict match of parent folder path!
+namespace
 {
-    static bool matchesMaskEnd (const Zchar* path) { return *path == FILE_NAME_SEPARATOR; }
-    static bool matchesMaskStar(const Zchar* path) { return cStringFind(path, FILE_NAME_SEPARATOR) != nullptr; }
-};
-
-struct AnyMatch
-{
-    static bool matchesMaskEnd (const Zchar* path) { return *path == 0 || *path == FILE_NAME_SEPARATOR; }
-    static bool matchesMaskStar(const Zchar* path) { return true; }
-};
-
-
-template <class PathEndMatcher>
-bool matchesMask(const Zchar* path, const Zchar* mask)
+//"true" if path or any parent path matches the mask
+bool matchesMask(const Zchar* path, const Zchar* const pathEnd, const Zchar* mask /*0-terminated*/)
 {
     for (;; ++mask, ++path)
     {
@@ -148,10 +128,10 @@ bool matchesMask(const Zchar* path, const Zchar* mask)
         switch (m)
         {
             case 0:
-                return PathEndMatcher::matchesMaskEnd(path);
+                return path == pathEnd || *path == FILE_NAME_SEPARATOR; //"full" or parent path match
 
-            case Zstr('?'):
-                if (*path == 0)
+            case Zstr('?'): //should not match FILE_NAME_SEPARATOR
+                if (path == pathEnd || *path == FILE_NAME_SEPARATOR)
                     return false;
                 break;
 
@@ -163,102 +143,111 @@ bool matchesMask(const Zchar* path, const Zchar* mask)
                 while (m == Zstr('*'));
 
                 if (m == 0) //mask ends with '*':
-                    return PathEndMatcher::matchesMaskStar(path);
+                    return true;
 
-                //*? - pattern
-                if (m == Zstr('?'))
-                {
-                    ++mask;
-                    while (*path++ != 0)
-                        if (matchesMask<PathEndMatcher>(path, mask))
-                            return true;
-                    return false;
-                }
-
-                //*[letter] - pattern
                 ++mask;
-                for (;;)
+                if (m == Zstr('?')) //*? pattern
                 {
-                    path = cStringFind(path, m);
-                    if (!path)
-                        return false;
-
-                    ++path;
-                    if (matchesMask<PathEndMatcher>(path, mask))
-                        return true;
+                    while (path != pathEnd)
+                        if (*path++ != FILE_NAME_SEPARATOR)
+                            if (matchesMask(path, pathEnd, mask))
+                                return true;
                 }
+                else //*[letter or /] pattern
+                    while (path != pathEnd)
+                        if (*path++ == m)
+                            if (matchesMask(path, pathEnd, mask))
+                                return true;
+                return false;
 
             default:
-                if (*path != m)
+                if (path == pathEnd || *path != m)
                     return false;
         }
     }
 }
 
 
-//returns true if string matches at least the beginning of mask
-inline
-bool matchesMaskBegin(const Zchar* str, const Zchar* mask)
+//"true" if path matches (only!) the beginning of mask
+template <bool haveWildcards> bool matchesMaskBegin(const Zstring& relPath, const Zstring& mask);
+
+template <> inline
+bool matchesMaskBegin<true /*haveWildcards*/>(const Zstring& relPath, const Zstring& mask)
 {
-    for (;; ++mask, ++str)
+    auto itP = relPath.begin();
+    for (auto itM = mask.begin(); itM != mask.end(); ++itM, ++itP)
     {
-        const Zchar m = *mask;
+        const Zchar m = *itM;
         switch (m)
         {
-            case 0:
-                return *str == 0;
-
             case Zstr('?'):
-                if (*str == 0)
-                    return true;
+                if (itP == relPath.end() || *itP == FILE_NAME_SEPARATOR)
+                    return false;
                 break;
 
             case Zstr('*'):
                 return true;
 
             default:
-                if (*str != m)
-                    return *str == 0;
+                if (itP == relPath.end())
+                    return m == FILE_NAME_SEPARATOR && mask.end() - itM > 1; //require strict sub match
+
+                if (*itP != m)
+                    return false;
         }
+    }
+    return false; //not a strict sub match
+}
+
+template <> inline //perf: going overboard? remaining fruits are hanging higher and higher...
+bool matchesMaskBegin<false /*haveWildcards*/>(const Zstring& relPath, const Zstring& mask)
+{
+    return mask.size() > relPath.size() + 1 && //room for FILE_NAME_SEPARATOR *and* at least one more char
+           mask[relPath.size()] == FILE_NAME_SEPARATOR &&
+           startsWith(mask, relPath);
+}
+}
+
+
+bool NameFilter::MaskMatcher::matches(const Zchar* pathFirst, const Zchar* pathLast) const
+{
+    if (std::any_of(realMasks_.begin(), realMasks_.end(), [&](const Zstring& mask) { return matchesMask(pathFirst, pathLast, mask.c_str()); }))
+    /**/return true;
+
+    //perf: for relPaths_ we can go from linear to *constant* time!!! => annihilates https://freefilesync.org/forum/viewtopic.php?t=7768#p26519
+    const Zchar* sepPos = pathFirst;
+    for (;;) //check all parent paths!
+    {
+        sepPos = std::find(sepPos, pathLast, FILE_NAME_SEPARATOR);
+
+        if (relPaths_.contains(makeStringView(pathFirst, sepPos))) //heterogenous lookup!
+            return true;
+
+        if (sepPos == pathLast)
+            return false;
+
+        ++sepPos;
     }
 }
 
-
-template <class PathEndMatcher> inline
-bool matchesMask(const Zstring& name, const std::vector<Zstring>& masks)
+bool NameFilter::MaskMatcher::matchesBegin(const Zstring& relPath) const
 {
-    return std::any_of(masks.begin(), masks.end(), [&](const Zstring& mask) { return matchesMask<PathEndMatcher>(name.c_str(), mask.c_str()); });
-}
-
-
-inline
-bool matchesMaskBegin(const Zstring& name, const std::vector<Zstring>& masks)
-{
-    return std::any_of(masks.begin(), masks.end(), [&](const Zstring& mask) { return matchesMaskBegin(name.c_str(), mask.c_str()); });
-}
+    return std::any_of(realMasks_.begin(), realMasks_.end(), [&](const Zstring& mask) { return matchesMaskBegin<true  /*haveWildcards*/>(relPath, mask); }) ||
+    /**/   std::any_of(relPaths_ .begin(), relPaths_ .end(), [&](const Zstring& mask) { return matchesMaskBegin<false /*haveWildcards*/>(relPath, mask); });
 }
 
 //#################################################################################################
 
 NameFilter::NameFilter(const Zstring& includePhrase, const Zstring& excludePhrase)
 {
-    //setup include/exclude filters for files and directories
-    parseFilterPhrase(includePhrase, includeMasksFileFolder, includeMasksFolder);
-    parseFilterPhrase(excludePhrase, excludeMasksFileFolder, excludeMasksFolder);
-
-    removeDuplicates(includeMasksFileFolder);
-    removeDuplicates(includeMasksFolder    );
-    removeDuplicates(excludeMasksFileFolder);
-    removeDuplicates(excludeMasksFolder    );
+    parseFilterPhrase(includePhrase, includeFilter);
+    parseFilterPhrase(excludePhrase, excludeFilter);
 }
 
 
 void NameFilter::addExclusion(const Zstring& excludePhrase)
 {
-    parseFilterPhrase(excludePhrase, excludeMasksFileFolder, excludeMasksFolder);
-
-    removeDuplicates(excludeMasksFileFolder);
-    removeDuplicates(excludeMasksFolder    );
+    parseFilterPhrase(excludePhrase, excludeFilter);
 }
 
 
@@ -269,12 +258,14 @@ bool NameFilter::passFileFilter(const Zstring& relFilePath) const
     //normalize input: 1. ignore Unicode normalization form 2. ignore case
     const Zstring& pathFmt = getUpperCase(relFilePath);
 
-    if (matchesMask<AnyMatch         >(pathFmt, excludeMasksFileFolder) || //either full match on file or partial match on any parent folder
-        matchesMask<ParentFolderMatch>(pathFmt, excludeMasksFolder)) //partial match on any parent folder only
+    const Zchar* sepPos = findLast(pathFmt.begin(), pathFmt.end(), FILE_NAME_SEPARATOR);
+
+    if (excludeFilter.fileFolderMasks.matches(pathFmt.begin(), pathFmt.end()) || //either match on file or any parent folder
+        (sepPos != pathFmt.end() && excludeFilter.folderMasks.matches(pathFmt.begin(), sepPos))) //match on any parent folder only
         return false;
 
-    return matchesMask<AnyMatch         >(pathFmt, includeMasksFileFolder) ||
-           matchesMask<ParentFolderMatch>(pathFmt, includeMasksFolder);
+    return includeFilter.fileFolderMasks.matches(pathFmt.begin(), pathFmt.end()) ||
+           (sepPos != pathFmt.end() && includeFilter.folderMasks.matches(pathFmt.begin(), sepPos));
 }
 
 
@@ -286,56 +277,42 @@ bool NameFilter::passDirFilter(const Zstring& relDirPath, bool* childItemMightMa
     //normalize input: 1. ignore Unicode normalization form 2. ignore case
     const Zstring& pathFmt = getUpperCase(relDirPath);
 
-    if (matchesMask<AnyMatch>(pathFmt, excludeMasksFileFolder) ||
-        matchesMask<AnyMatch>(pathFmt, excludeMasksFolder))
+    if (excludeFilter.fileFolderMasks.matches(pathFmt.begin(), pathFmt.end()) ||
+        excludeFilter.folderMasks    .matches(pathFmt.begin(), pathFmt.end()))
     {
         if (childItemMightMatch)
             *childItemMightMatch = false; //perf: no need to traverse deeper; subfolders/subfiles would be excluded by filter anyway!
 
-        /* Attention: the design choice that "childItemMightMatch" is optional implies that the filter must provide correct results no matter if this
-           value is considered by the client!
-           In particular, if *childItemMightMatch == false, then any filter evaluations for child items must also return "false"!
+        /* Attention: If *childItemMightMatch == false, then any direct filter evaluation for a child item must also return "false"!
+
            This is not a problem for folder traversal which stops at the first *childItemMightMatch == false anyway, but other code continues recursing further,
-           e.g. the database update code in db_file.cpp recurses unconditionally without filter check! It's possible to construct edge cases with incorrect
-           behavior if "childItemMightMatch" were not optional:
-               1. two folders including a subfolder with some files are in sync with up-to-date database files
-               2. deny access to this subfolder on both sides and start sync ignoring errors
-               3. => database entries of this subfolder are incorrectly deleted! (if sub-folder is excluded, but child items are not!)           */
+           e.g. the database update code in db_file.cpp recurses unconditionally without *childItemMightMatch check! */
         return false;
     }
 
-    if (matchesMask<AnyMatch>(pathFmt, includeMasksFileFolder) ||
-        matchesMask<AnyMatch>(pathFmt, includeMasksFolder))
+    if (includeFilter.fileFolderMasks.matches(pathFmt.begin(), pathFmt.end()) ||
+        includeFilter.folderMasks    .matches(pathFmt.begin(), pathFmt.end()))
         return true;
 
     if (childItemMightMatch)
-    {
-        const Zstring& childPathBegin = pathFmt + FILE_NAME_SEPARATOR;
-
-        *childItemMightMatch = matchesMaskBegin(childPathBegin, includeMasksFileFolder) || //might match a file  or folder in subdirectory
-                               matchesMaskBegin(childPathBegin, includeMasksFolder );      //
-    }
+        *childItemMightMatch = includeFilter.fileFolderMasks.matchesBegin(pathFmt) || //might match a file  or folder in subdirectory
+                               includeFilter.folderMasks    .matchesBegin(pathFmt);   //
     return false;
 }
 
 
 bool NameFilter::isNull(const Zstring& includePhrase, const Zstring& excludePhrase)
 {
-    const Zstring include = trimCpy(includePhrase);
-    const Zstring exclude = trimCpy(excludePhrase);
-
-    return include == Zstr("*") && exclude.empty();
+    return trimCpy(includePhrase) == Zstr("*") &&
+           trimCpy(excludePhrase).empty();
     //return NameFilter(includePhrase, excludePhrase).isNull(); -> very expensive for huge lists
 }
 
 
 bool NameFilter::isNull() const
 {
-    return includeMasksFileFolder.size() == 1 && includeMasksFileFolder[0] == Zstr("*") &&
-           includeMasksFolder    .empty() &&
-           excludeMasksFileFolder.empty() &&
-           excludeMasksFolder    .empty();
-    //avoid static non-POD null-NameFilter instance; instead test manually and verify function on startup:
+    return compareSameType(NameFilter(Zstr("*"), Zstr(""))) == std::strong_ordering::equal;
+    //avoid static non-POD null-NameFilter instance
 }
 
 
@@ -346,6 +323,6 @@ std::strong_ordering NameFilter::compareSameType(const PathFilter& other) const
     const NameFilter& lhs = *this;
     const NameFilter& rhs = static_cast<const NameFilter&>(other);
 
-    return std::tie(lhs.includeMasksFileFolder, lhs.includeMasksFolder, lhs.excludeMasksFileFolder, lhs.excludeMasksFolder) <=>
-           std::tie(rhs.includeMasksFileFolder, rhs.includeMasksFolder, rhs.excludeMasksFileFolder, rhs.excludeMasksFolder);
+    return std::tie(lhs.includeFilter, lhs.excludeFilter) <=>
+           std::tie(rhs.includeFilter, rhs.excludeFilter);
 }

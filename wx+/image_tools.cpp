@@ -7,6 +7,7 @@
 #include "image_tools.h"
 #include <zen/string_tools.h>
 #include <zen/zstring.h>
+#include <zen/scope_guard.h>
 #include <wx/app.h>
 #include <xBRZ/src/xbrz_tools.h>
 
@@ -113,19 +114,6 @@ void copyImageLayover(const wxImage& src,
         }
     }
 }
-
-
-std::vector<std::pair<wxString, wxSize>> getTextExtentInfo(const wxString& text, const wxFont& font)
-{
-    wxMemoryDC dc; //the context used for bitmaps
-    dc.SetFont(font); //the font parameter of GetMultiLineTextExtent() is not evaluated on OS X, wxWidgets 2.9.5, so apply it to the DC directly!
-
-    std::vector<std::pair<wxString, wxSize>> lineInfo; //text + extent
-    for (const wxString& line : split(text, L'\n', SplitOnEmpty::allow))
-        lineInfo.emplace_back(line, line.empty() ? wxSize() : dc.GetTextExtent(line));
-
-    return lineInfo;
-}
 }
 
 
@@ -180,7 +168,13 @@ wxImage zen::stackImages(const wxImage& img1, const wxImage& img2, ImageStackLay
 
 wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const wxColor& col, ImageStackAlignment textAlign)
 {
-    const std::vector<std::pair<wxString, wxSize>> lineInfo = getTextExtentInfo(text, font);
+    wxMemoryDC dc; //the context used for bitmaps
+    dc.SetFont(font); //the font parameter of GetMultiLineTextExtent() is not evaluated on OS X, wxWidgets 2.9.5, so apply it to the DC directly!
+
+    std::vector<std::pair<wxString, wxSize>> lineInfo; //text + extent
+    for (const wxString& line : split(text, L'\n', SplitOnEmpty::allow))
+        lineInfo.emplace_back(line, line.empty() ? wxSize() : dc.GetTextExtent(line));
+    //------------------------------------------------------------------------------------------------
 
     int maxWidth   = 0;
     int lineHeight = 0;
@@ -194,7 +188,8 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
 
     wxBitmap newBitmap(maxWidth, lineHeight * lineInfo.size()); //seems we don't need to pass 24-bit depth here even for high-contrast color schemes
     {
-        wxMemoryDC dc(newBitmap);
+        dc.SelectObject(newBitmap);
+        ZEN_ON_SCOPE_EXIT(dc.SelectObject(wxNullBitmap));
 
         if (wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft)
             dc.SetLayoutDirection(wxLayout_RightToLeft); //handle e.g. "weak" bidi characters: -> arrows in hebrew/arabic
@@ -204,7 +199,6 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
 
         dc.SetTextForeground(*wxBLACK); //for proper alpha-channel calculation
         dc.SetTextBackground(*wxWHITE); //
-        dc.SetFont(font);
 
         int posY = 0;
         for (const auto& [lineText, lineSize] : lineInfo)

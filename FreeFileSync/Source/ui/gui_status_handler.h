@@ -74,8 +74,8 @@ public:
                                 const Zstring& soundFileSyncComplete,
                                 const Zstring& soundFileAlertPending,
                                 const wxSize& progressDlgSize, bool dlgMaximize,
-                                bool autoCloseDialog, 
-        const zen::ErrorLog* errorLogStart /*optional*/); //noexcept!
+                                bool autoCloseDialog,
+                                const zen::ErrorLog* errorLogStart /*optional*/); //noexcept!
     ~StatusHandlerFloatingDialog();
 
     void     initNewPhase    (int itemsTotal, int64_t bytesTotal, ProcessPhase phaseID) override; //

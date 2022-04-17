@@ -26,6 +26,14 @@ using namespace zen;
 
 Zstring zen::getLoginUser() //throw FileError
 {
+    auto tryGetNonRootUser = [](const char* varName) -> const char*
+    {
+        if (const char* buf = ::getenv(varName)) //no extended error reporting
+            if (strLength(buf) > 0 && !equalString(buf, "root"))
+                return buf;
+        return nullptr;
+    };
+
     const uid_t userIdNo = ::getuid(); //never fails
 
     if (userIdNo != 0) //nofail; non-root
@@ -54,21 +62,15 @@ Zstring zen::getLoginUser() //throw FileError
             return loginUser;
     //BUT: getlogin() can fail with ENOENT on Linux Mint: https://freefilesync.org/forum/viewtopic.php?t=8181
 
-    auto tryGetNonRootUser = [](const char* varName) -> const char*
-    {
-        if (const char* buf = ::getenv(varName)) //no extended error reporting
-            if (strLength(buf) > 0 && !equalString(buf, "root"))
-                return buf;
-        return nullptr;
-    };
     //getting a little desperate: variables used by installer.sh
     if (const char* userName = tryGetNonRootUser("USER"))      return userName;
     if (const char* userName = tryGetNonRootUser("SUDO_USER")) return userName;
     if (const char* userName = tryGetNonRootUser("LOGNAME"))   return userName;
 
-    //apparently the current user really IS root: https://freefilesync.org/forum/viewtopic.php?t=8405
-    return "root";
 
+    //apparently the current user really IS root: https://freefilesync.org/forum/viewtopic.php?t=8405
+    assert(getuid() == 0);
+    return "root";
 }
 
 

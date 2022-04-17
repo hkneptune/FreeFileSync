@@ -1,3 +1,16 @@
+FreeFileSync 11.19 [2022-04-16]
+-------------------------------
+Improved performance for huge exclusion filter lists: linear to constant(!) time
+Support sync with Google Drive starred folders
+Access "My Computers" (as created by Google Backup and Sync) if starred
+Western Digital Mycloud NAS: fixed ERROR_ALREADY_EXISTS when changing case
+Added per-file progress for "copy to" function
+Have filter wildcard ? not match path separator
+Work around WBEM_E_INVALID_NAMESPACE error during installation
+Fixed login user incorrectly displayed as root (macOS)
+Save Google Drive buffer before system shutdown
+
+
 FreeFileSync 11.18 [2022-03-07]
 -------------------------------
 Add comparison time to sync log when using GUI

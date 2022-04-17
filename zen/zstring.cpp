@@ -240,7 +240,7 @@ std::weak_ordering compareNatural(const Zstring& lhs, const Zstring& rhs)
         while (strR != strEndR && !isWhiteSpace(*strR) && !isDigit(*strR)) ++strR;
 
         if (const std::weak_ordering cmp = compareNoCaseUtf8(textBeginL, strL - textBeginL, textBeginR, strR - textBeginR);
-            std::is_neq(cmp))
+            cmp != std::weak_ordering::equivalent)
             return cmp;
     }
 

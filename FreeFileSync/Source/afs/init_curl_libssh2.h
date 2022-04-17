@@ -32,7 +32,7 @@ class UniCounterCookie;
 std::shared_ptr<UniCounterCookie> getLibsshCurlUnifiedInitCookie(Global<UniSessionCounter>& globalSftpSessionCount); //throw SysError
 
 
-//3. Create static "UniInitializer globalStartupInitSftp(*globalSftpSessionCount.get());" instance *before* constructing objects like "SftpSessionManager"
+//3. Create static "UniInitializer globalInitSftp(*globalSftpSessionCount.get());" instance *before* constructing objects like "SftpSessionManager"
 // => ~SftpSessionManager will run first and all remaining sessions are on non-main threads => can be waited on in ~UniInitializer
 class UniInitializer
 {

@@ -69,10 +69,10 @@ struct SyncProgressDialog
                                       bool ignoreErrors,
                                       size_t autoRetryCount,
                                       PostSyncAction2 postSyncAction);
-    struct Result 
+    struct Result
     {
-        bool autoCloseDialog; 
-        wxSize dlgSize; 
+        bool autoCloseDialog;
+        wxSize dlgSize;
         bool dlgIsMaximized;
     };
     virtual Result destroy(bool autoClose, bool restoreParentFrame, SyncResult syncResult, const zen::SharedRef<const zen::ErrorLog>& log) = 0;

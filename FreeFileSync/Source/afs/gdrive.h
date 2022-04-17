@@ -16,20 +16,21 @@ AbstractPath createItemPathGdrive       (const Zstring& itemPathPhrase); //noexc
 
 void gdriveInit(const Zstring& configDirPath,   //directory to store Google-Drive-specific files
                 const Zstring& caCertFilePath); //cacert.pem
-void gdriveTeardown();
+[[nodiscard]] std::wstring /*warningMsg*/ gdriveTeardown();
 
 //-------------------------------------------------------
 
+//caveat: gdriveAddUser() blocks indefinitely if user doesn't log in with Google! timeoutSec is only regarding HTTP requests
 std::string /*account email*/ gdriveAddUser(const std::function<void()>& updateGui /*throw X*/, int timeoutSec); //throw FileError, X
 void                          gdriveRemoveUser(const std::string& accountEmail, int timeoutSec);                 //throw FileError
 
 std::vector<std::string /*account email*/> gdriveListAccounts(); //throw FileError
-std::vector<Zstring /*sharedDriveName*/> gdriveListSharedDrives(const std::string& accountEmail, int timeoutSec); //throw FileError
+std::vector<Zstring /*locationName*/> gdriveListLocations(const std::string& accountEmail, int timeoutSec); //throw FileError
 
 struct GdriveLogin
 {
     std::string email;
-    Zstring sharedDriveName; //empty for "My Drive"
+    Zstring locationName; //empty for "My Drive"; can be a shared drive or starred folder name
     int timeoutSec = 15; //Gdrive can "hang" for 20 seconds when "scanning for viruses": https://freefilesync.org/forum/viewtopic.php?t=9116
 };
 

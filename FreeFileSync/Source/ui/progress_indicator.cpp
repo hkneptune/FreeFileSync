@@ -153,10 +153,10 @@ public:
     }
     bool timerIsRunning() const { return !stopWatch_.isPaused(); }
 
-    std::chrono::milliseconds pauseAndGetTotalTime() 
+    std::chrono::milliseconds pauseAndGetTotalTime()
     {
-        stopWatch_.pause(); 
-        return std::chrono::duration_cast<std::chrono::milliseconds>(stopWatch_.elapsed()); 
+        stopWatch_.pause();
+        return std::chrono::duration_cast<std::chrono::milliseconds>(stopWatch_.elapsed());
     }
 
 private:
@@ -250,7 +250,7 @@ void CompareProgressPanel::Impl::init(const Statistics& syncStat, bool ignoreErr
 
 void CompareProgressPanel::Impl::teardown()
 {
-assert(stopWatch_.isPaused()); //why wasn't pauseAndGetTotalTime() called?
+    assert(stopWatch_.isPaused()); //why wasn't pauseAndGetTotalTime() called?
 
     syncStat_ = nullptr;
     parentWindow_.SetTitle(parentTitleBackup_);
@@ -410,7 +410,7 @@ CompareProgressPanel::CompareProgressPanel(wxFrame& parentWindow) : pimpl_(new I
 wxWindow* CompareProgressPanel::getAsWindow() { return pimpl_; }
 void CompareProgressPanel::init(const Statistics& syncStat, bool ignoreErrors, size_t autoRetryCount) { pimpl_->init(syncStat, ignoreErrors, autoRetryCount); }
 void CompareProgressPanel::teardown()    { pimpl_->teardown(); }
-void CompareProgressPanel::initNewPhase(){ pimpl_->initNewPhase(); }
+void CompareProgressPanel::initNewPhase() { pimpl_->initNewPhase(); }
 void CompareProgressPanel::updateGui()   { pimpl_->updateProgressGui(); }
 bool CompareProgressPanel::getOptionIgnoreErrors() const { return pimpl_->getOptionIgnoreErrors(); }
 void CompareProgressPanel::setOptionIgnoreErrors(bool ignoreErrors) { pimpl_->setOptionIgnoreErrors(ignoreErrors); }
@@ -684,10 +684,10 @@ public:
 
     bool timerIsRunning() const override { return !stopWatch_.isPaused(); }
 
-    std::chrono::milliseconds pauseAndGetTotalTime() override 
+    std::chrono::milliseconds pauseAndGetTotalTime() override
     {
-        stopWatch_.pause(); 
-        return std::chrono::duration_cast<std::chrono::milliseconds>(stopWatch_.elapsed()); 
+        stopWatch_.pause();
+        return std::chrono::duration_cast<std::chrono::milliseconds>(stopWatch_.elapsed());
     }
 
 private:
@@ -1542,7 +1542,7 @@ template <class TopLevelDialog>
 void SyncProgressDialogImpl<TopLevelDialog>::onClose(wxCloseEvent& event)
 {
     assert(event.CanVeto()); //this better be true: if "this" is parent of a modal error dialog, there is NO way (in hell) we allow destruction here!!!
-    //note: close cannot be prevented on Windows during system shutdown! => already handled via Application::onQueryEndSession()
+    //wxEVT_END_SESSION is already handled by application.cpp::onSystemShutdown()!
     event.Veto();
 
     closePressed_ = true; //"temporary" auto-close: preempt closing results dialog

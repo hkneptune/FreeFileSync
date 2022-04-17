@@ -39,8 +39,8 @@ struct SshSessionId
     bool allowZlib = false;
 };
 const int DEFAULT_PORT_SFTP = 22;
-        //SFTP default port: 22, see %WINDIR%\system32\drivers\etc\services
-        //=> we could use the "ssh" alias, but let's be explicit
+//SFTP default port: 22, see %WINDIR%\system32\drivers\etc\services
+//=> we could use the "ssh" alias, but let's be explicit
 
 struct SftpLogin : SshSessionId
 {

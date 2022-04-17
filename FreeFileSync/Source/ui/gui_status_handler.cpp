@@ -352,7 +352,7 @@ StatusHandlerFloatingDialog::StatusHandlerFloatingDialog(wxFrame* parentDlg,
                                                          const Zstring& soundFileAlertPending,
                                                          const wxSize& progressDlgSize, bool dlgMaximize,
                                                          bool autoCloseDialog,
-    const ErrorLog* errorLogStart) :
+                                                         const ErrorLog* errorLogStart) :
     jobNames_(jobNames),
     startTime_(startTime),
     autoRetryCount_(autoRetryCount),
@@ -360,7 +360,7 @@ StatusHandlerFloatingDialog::StatusHandlerFloatingDialog(wxFrame* parentDlg,
     soundFileSyncComplete_(soundFileSyncComplete),
     soundFileAlertPending_(soundFileAlertPending),
     progressDlg_(SyncProgressDialog::create(progressDlgSize, dlgMaximize, [this] { userRequestAbort(); }, *this, parentDlg, true /*showProgress*/, autoCloseDialog,
-jobNames, std::chrono::system_clock::to_time_t(startTime), ignoreErrors, autoRetryCount, PostSyncAction2::none)) 
+jobNames, std::chrono::system_clock::to_time_t(startTime), ignoreErrors, autoRetryCount, PostSyncAction2::none))
 {
     if (errorLogStart)
         errorLog_ = *errorLogStart;
@@ -380,7 +380,7 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(c
                                                                                const std::string& emailNotifyAddress, ResultsNotification emailNotifyCondition)
 {
     //keep correct summary window stats considering count down timer, system sleep
-    const std::chrono::milliseconds totalTime = progressDlg_->pauseAndGetTotalTime(); 
+    const std::chrono::milliseconds totalTime = progressDlg_->pauseAndGetTotalTime();
 
     //determine post-sync status irrespective of further errors during tear-down
     const SyncResult syncResult = [&]
@@ -456,7 +456,7 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(c
                 catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); }
 
         //--------------------- post sync actions ----------------------
-        auto mayRunAfterCountDown = [&](const std::wstring& operationName)
+        auto proceedWithShutdown = [&](const std::wstring& operationName)
         {
             if (progressDlg_->getWindowIfVisible())
                 try
@@ -471,7 +471,7 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(c
                                 throw;
                         }
                     };
-                    delayAndCountDown(std::chrono::steady_clock::now() + std::chrono::seconds(5), notifyStatusThrowOnCancel); //throw AbortProcess
+                    delayAndCountDown(std::chrono::steady_clock::now() + std::chrono::seconds(10), notifyStatusThrowOnCancel); //throw AbortProcess
                 }
                 catch (AbortProcess&) { return false; }
 
@@ -488,14 +488,14 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(c
                 finalRequest = FinalRequest::exit; //program exit must be handled by calling context!
                 break;
             case PostSyncAction2::sleep:
-                if (mayRunAfterCountDown(_("System: Sleep")))
+                if (proceedWithShutdown(_("System: Sleep")))
                 {
                     autoClose = progressDlg_->getOptionAutoCloseDialog();
                     suspend = true;
                 }
                 break;
             case PostSyncAction2::shutdown:
-                if (mayRunAfterCountDown(_("System: Shut down")))
+                if (proceedWithShutdown(_("System: Shut down")))
                 {
                     autoClose = true;
                     finalRequest = FinalRequest::shutdown; //system shutdown must be handled by calling context!
@@ -603,6 +603,8 @@ ProcessCallback::Response StatusHandlerFloatingDialog::reportError(const ErrorIn
     //auto-retry
     if (errorInfo.retryNumber < autoRetryCount_)
     {
+        warn_static("maybe we should consider errorInfo.failTime, and not 'now' when logging the error?")
+
         errorLog_.logMsg(errorInfo.msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO);
         delayAndCountDown(errorInfo.failTime + autoRetryDelay_,
                           [&, statusPrefix  = _("Automatic retry") +

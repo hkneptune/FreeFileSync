@@ -189,7 +189,7 @@ private:
     void onGdriveUserAdd   (wxCommandEvent& event) override;
     void onGdriveUserRemove(wxCommandEvent& event) override;
     void onGdriveUserSelect(wxCommandEvent& event) override;
-    void gdriveUpdateDrivesAndSelect(const std::string& accountEmail, const Zstring& sharedDriveName);
+    void gdriveUpdateDrivesAndSelect(const std::string& accountEmail, const Zstring& locationToSelect);
 
     void onDetectServerChannelLimit(wxCommandEvent& event) override;
     void onToggleShowPassword(wxCommandEvent& event) override;
@@ -316,7 +316,7 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, Zstrin
         {
             m_listBoxGdriveUsers->EnsureVisible(selPos);
             m_listBoxGdriveUsers->SetSelection(selPos);
-            gdriveUpdateDrivesAndSelect(login.email, login.sharedDriveName);
+            gdriveUpdateDrivesAndSelect(login.email, login.locationName);
         }
         else
         {
@@ -455,21 +455,21 @@ void CloudSetupDlg::onGdriveUserSelect(wxCommandEvent& event)
 }
 
 
-void CloudSetupDlg::gdriveUpdateDrivesAndSelect(const std::string& accountEmail, const Zstring& sharedDriveName)
+void CloudSetupDlg::gdriveUpdateDrivesAndSelect(const std::string& accountEmail, const Zstring& locationToSelect)
 {
     m_listBoxGdriveDrives->Clear();
     m_listBoxGdriveDrives->Append(txtLoading_);
 
     guiQueue_.processAsync([accountEmail, timeoutSec = extractGdriveLogin(getFolderPath().afsDevice).timeoutSec]() ->
-                           std::variant<std::vector<Zstring /*sharedDriveName*/>, FileError>
+                           std::variant<std::vector<Zstring /*locationName*/>, FileError>
     {
         try
         {
-            return gdriveListSharedDrives(accountEmail, timeoutSec); //throw FileError
+            return gdriveListLocations(accountEmail, timeoutSec); //throw FileError
         }
         catch (const FileError& e) { return e; }
     },
-    [this, accountEmail, sharedDriveName](const std::variant<std::vector<Zstring /*sharedDriveName*/>, FileError>& result)
+    [this, accountEmail, locationToSelect](std::variant<std::vector<Zstring /*locationName*/>, FileError>&& result)
     {
         if (const int selPos = m_listBoxGdriveUsers->GetSelection();
             selPos == wxNOT_FOUND || utfTo<std::string>(m_listBoxGdriveUsers->GetString(selPos)) != accountEmail)
@@ -481,14 +481,17 @@ void CloudSetupDlg::gdriveUpdateDrivesAndSelect(const std::string& accountEmail,
             showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e->toString()));
         else
         {
-            m_listBoxGdriveDrives->Append(txtMyDrive_);
+            auto& locationNames = std::get<std::vector<Zstring>>(result);
+            std::sort(locationNames.begin(), locationNames.end(), LessNaturalSort());
 
-            for (const Zstring& driveName : std::get<std::vector<Zstring>>(result))
-                m_listBoxGdriveDrives->Append(utfTo<wxString>(driveName));
+            m_listBoxGdriveDrives->Append(txtMyDrive_); //sort locations, but keep "My Drive" at top
 
-            const wxString driveNameLabel = sharedDriveName.empty() ? txtMyDrive_ : utfTo<wxString>(sharedDriveName);
+            for (const Zstring& itemLabel : locationNames)
+                m_listBoxGdriveDrives->Append(utfTo<wxString>(itemLabel));
 
-            if (const int selPos = m_listBoxGdriveDrives->FindString(driveNameLabel, true /*caseSensitive*/);
+            const wxString labelToSelect = locationToSelect.empty() ? txtMyDrive_ : utfTo<wxString>(locationToSelect);
+
+            if (const int selPos = m_listBoxGdriveDrives->FindString(labelToSelect, true /*caseSensitive*/);
                 selPos != wxNOT_FOUND)
             {
                 m_listBoxGdriveDrives->EnsureVisible(selPos);
@@ -603,9 +606,9 @@ void CloudSetupDlg::updateGui()
             m_radioBtnKeyfile ->SetValue(false);
             m_radioBtnAgent   ->SetValue(false);
 
-    m_textCtrlPort->SetHint(numberTo<wxString>(DEFAULT_PORT_SFTP));
+            m_textCtrlPort->SetHint(numberTo<wxString>(DEFAULT_PORT_SFTP));
 
-    switch (sftpAuthType_) //*not* owned by GUI controls
+            switch (sftpAuthType_) //*not* owned by GUI controls
             {
                 case SftpAuthType::password:
                     m_radioBtnPassword->SetValue(true);
@@ -622,8 +625,8 @@ void CloudSetupDlg::updateGui()
             break;
 
         case CloudType::ftp:
-    m_textCtrlPort->SetHint(numberTo<wxString>(DEFAULT_PORT_FTP));
-        m_staticTextPassword->SetLabelText(_("Password:"));
+            m_textCtrlPort->SetHint(numberTo<wxString>(DEFAULT_PORT_FTP));
+            m_staticTextPassword->SetLabelText(_("Password:"));
             break;
     }
 
@@ -656,10 +659,10 @@ AbstractPath CloudSetupDlg::getFolderPath() const
                 if (const int selPos2 = m_listBoxGdriveDrives->GetSelection();
                     selPos2 != wxNOT_FOUND)
                 {
-                    if (const wxString& sharedDriveName = m_listBoxGdriveDrives->GetString(selPos2);
-                        sharedDriveName != txtMyDrive_ &&
-                        sharedDriveName != txtLoading_)
-                        login.sharedDriveName = utfTo<Zstring>(sharedDriveName);
+                    if (const wxString& locationName = m_listBoxGdriveDrives->GetString(selPos2);
+                        locationName != txtMyDrive_ &&
+                        locationName != txtLoading_)
+                        login.locationName = utfTo<Zstring>(locationName);
                 }
             }
             login.timeoutSec = m_spinCtrlTimeout->GetValue();
@@ -1332,7 +1335,7 @@ void OptionsDlg::playSoundWithDiagnostics(const wxString& filePath)
         //::PlaySound() => NO failure indication on Windows! does not set last last error!
         //wxSound::Play(..., wxSOUND_SYNC) can return false, but does not provide details!
         //=> check file access manually:
-        [[maybe_unused]] std::string stream = getFileContent(utfTo<Zstring>(filePath), nullptr /*notifyUnbufferedIO*/); //throw FileError
+        [[maybe_unused]] const std::string& stream = getFileContent(utfTo<Zstring>(filePath), nullptr /*notifyUnbufferedIO*/); //throw FileError
 
         [[maybe_unused]] const bool success = wxSound::Play(filePath, wxSOUND_ASYNC);
     }
@@ -1727,7 +1730,7 @@ void ActivationDlg::onActivateOffline(wxCommandEvent& event)
     if (trimCpy(manualActivationKeyOut_).empty()) //alternative: disable button? => user thinks option is not available!
     {
         showNotificationDialog(this, DialogInfoType::info, PopupDialogCfg().setMainInstructions(_("Please enter a key for offline activation.")));
-        m_textCtrlOfflineActivationKey->SetFocus(); 
+        m_textCtrlOfflineActivationKey->SetFocus();
         return;
     }
 

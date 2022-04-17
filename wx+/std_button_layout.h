@@ -78,7 +78,7 @@ void setStandardButtonLayout(wxBoxSizer& sizer, const StdButtons& buttons)
         if (wxSizerItem& item = *sizer.GetItem(pos);
             item.IsSpacer() && item.GetProportion() == 0 && item.GetSize().y == 0)
         {
-            [[maybe_unused]] bool rv = sizer.Detach(pos);
+            [[maybe_unused]] const bool rv = sizer.Detach(pos);
             assert(rv);
         }
 

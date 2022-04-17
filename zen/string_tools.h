@@ -68,11 +68,14 @@ enum class SplitOnEmpty
     allow,
     skip
 };
-template <class S, class T> std::vector<S> split(const S& str, const T& delimiter, SplitOnEmpty soe);
+template <class S, class Char> [[nodiscard]] std::vector<S> split(const S& str, Char delimiter, SplitOnEmpty soe);
+template <class S, class Function1, class Function2> void split2(const S& str, Function1 isDelimiter, Function2 onStringPart);
 
-template <class S>      [[nodiscard]] S trimCpy(S  str, bool fromLeft = true, bool fromRight = true);
+template <class S> [[nodiscard]] S trimCpy(S  str, bool fromLeft = true, bool fromRight = true);
+template <class Char, class Function> [[nodiscard]] std::pair<Char*, Char*> trimCpy(Char* first, Char* last, bool fromLeft, bool fromRight, Function trimThisChar);
 template <class S>                 void trim   (S& str, bool fromLeft = true, bool fromRight = true);
 template <class S, class Function> void trim(S& str, bool fromLeft, bool fromRight, Function trimThisChar);
+
 
 template <class S, class T, class U> [[nodiscard]] S replaceCpy(S  str, const T& oldTerm, const U& newTerm, bool replaceAll = true);
 template <class S, class T, class U>            void replace   (S& str, const T& oldTerm, const U& newTerm, bool replaceAll = true);
@@ -210,7 +213,7 @@ template <class S, class T> inline
 bool startsWith(const S& str, const T& prefix)
 {
     const size_t pfLen = strLength(prefix);
-    return strLength(str) >= pfLen && std::is_eq(impl::strcmpWithNulls(strBegin(str), strBegin(prefix), pfLen));
+    return strLength(str) >= pfLen && impl::strcmpWithNulls(strBegin(str), strBegin(prefix), pfLen) == std::strong_ordering::equal;
 }
 
 
@@ -218,7 +221,7 @@ template <class S, class T> inline
 bool startsWithAsciiNoCase(const S& str, const T& prefix)
 {
     const size_t pfLen = strLength(prefix);
-    return strLength(str) >= pfLen && std::is_eq(impl::strcmpAsciiNoCase(strBegin(str), strBegin(prefix), pfLen));
+    return strLength(str) >= pfLen && impl::strcmpAsciiNoCase(strBegin(str), strBegin(prefix), pfLen) == std::weak_ordering::equivalent;
 }
 
 
@@ -227,7 +230,7 @@ bool endsWith(const S& str, const T& postfix)
 {
     const size_t strLen = strLength(str);
     const size_t pfLen  = strLength(postfix);
-    return strLen >= pfLen && std::is_eq(impl::strcmpWithNulls(strBegin(str) + strLen - pfLen, strBegin(postfix), pfLen));
+    return strLen >= pfLen && impl::strcmpWithNulls(strBegin(str) + strLen - pfLen, strBegin(postfix), pfLen) == std::strong_ordering::equal;
 }
 
 
@@ -236,7 +239,7 @@ bool endsWithAsciiNoCase(const S& str, const T& postfix)
 {
     const size_t strLen = strLength(str);
     const size_t pfLen  = strLength(postfix);
-    return strLen >= pfLen && std::is_eq(impl::strcmpAsciiNoCase(strBegin(str) + strLen - pfLen, strBegin(postfix), pfLen));
+    return strLen >= pfLen && impl::strcmpAsciiNoCase(strBegin(str) + strLen - pfLen, strBegin(postfix), pfLen) == std::weak_ordering::equivalent;
 }
 
 
@@ -244,7 +247,7 @@ template <class S, class T> inline
 bool equalString(const S& lhs, const T& rhs)
 {
     const size_t lhsLen = strLength(lhs);
-    return lhsLen == strLength(rhs) && std::is_eq(impl::strcmpWithNulls(strBegin(lhs), strBegin(rhs), lhsLen));
+    return lhsLen == strLength(rhs) && impl::strcmpWithNulls(strBegin(lhs), strBegin(rhs), lhsLen) == std::strong_ordering::equal;
 }
 
 
@@ -252,7 +255,7 @@ template <class S, class T> inline
 bool equalAsciiNoCase(const S& lhs, const T& rhs)
 {
     const size_t lhsLen = strLength(lhs);
-    return lhsLen == strLength(rhs) && std::is_eq(impl::strcmpAsciiNoCase(strBegin(lhs), strBegin(rhs), lhsLen));
+    return lhsLen == strLength(rhs) && impl::strcmpAsciiNoCase(strBegin(lhs), strBegin(rhs), lhsLen) == std::weak_ordering::equivalent;
 }
 
 
@@ -265,7 +268,7 @@ std::strong_ordering compareString(const S& lhs, const T& rhs)
 
     //length check *after* strcmpWithNulls(): we DO care about natural ordering: e.g. for "compareString(getUpperCase(lhs), getUpperCase(rhs))"
     if (const std::strong_ordering cmp = impl::strcmpWithNulls(strBegin(lhs), strBegin(rhs), std::min(lhsLen, rhsLen));
-        std::is_neq(cmp))
+        cmp != std::strong_ordering::equal)
         return cmp;
     return lhsLen <=> rhsLen;
 }
@@ -279,7 +282,7 @@ std::weak_ordering compareAsciiNoCase(const S& lhs, const T& rhs)
     const size_t rhsLen = strLength(rhs);
 
     if (const std::weak_ordering cmp = impl::strcmpAsciiNoCase(strBegin(lhs), strBegin(rhs), std::min(lhsLen, rhsLen));
-        std::is_neq(cmp))
+        cmp != std::weak_ordering::equivalent)
         return cmp;
     return lhsLen <=> rhsLen;
 }
@@ -385,37 +388,37 @@ S beforeFirst(const S& str, const T& term, IfNotFoundReturn infr)
 }
 
 
-template <class S, class T> inline
-std::vector<S> split(const S& str, const T& delimiter, SplitOnEmpty soe)
+template <class S, class Function1, class Function2> inline
+void split2(const S& str, Function1 isDelimiter, Function2 onStringPart)
 {
-    static_assert(std::is_same_v<GetCharTypeT<S>, GetCharTypeT<T>>);
-    const size_t delimLen = strLength(delimiter);
-    assert(delimLen > 0);
-    if (delimLen == 0)
-    {
-        if (str.empty() && soe == SplitOnEmpty::skip)
-            return {};
-        return {str};
-    }
+    const auto* blockFirst = strBegin(str);
+    const auto* const strEnd = blockFirst + strLength(str);
 
-    const auto* const delimFirst = strBegin(delimiter);
-    const auto* const delimLast  = delimFirst + delimLen;
-
-    const auto* blockStart    = strBegin(str);
-    const auto* const strLast = blockStart + strLength(str);
-
-    std::vector<S> output;
     for (;;)
     {
-        const auto* const blockEnd = std::search(blockStart, strLast,
-                                                 delimFirst, delimLast);
-        if (blockStart != blockEnd || soe == SplitOnEmpty::allow)
-            output.emplace_back(blockStart, blockEnd - blockStart);
+        const auto* const blockLast = std::find_if(blockFirst, strEnd, isDelimiter);
+        onStringPart(blockFirst, blockLast);
 
-        if (blockEnd == strLast)
-            return output;
-        blockStart = blockEnd + delimLen;
+        if (blockLast == strEnd)
+            return;
+
+        blockFirst = blockLast + 1;
     }
+}
+
+
+template <class S, class Char> inline
+std::vector<S> split(const S& str, Char delimiter, SplitOnEmpty soe)
+{
+    static_assert(std::is_same_v<GetCharTypeT<S>, Char>);
+    std::vector<S> output;
+
+    split2(str, [delimiter](Char c) { return c == delimiter; }, [&](const Char* blockFirst, const Char* blockLast)
+    {
+        if (blockFirst != blockLast || soe == SplitOnEmpty::allow)
+            output.emplace_back(blockFirst, blockLast);
+    });
+    return output;
 }
 
 
@@ -484,25 +487,33 @@ void replace(S& str, const T& oldTerm, const U& newTerm, bool replaceAll)
 }
 
 
+template <class Char, class Function> inline
+std::pair<Char*, Char*> trimCpy(Char* first, Char* last, bool fromLeft, bool fromRight, Function trimThisChar)
+{
+    assert(fromLeft || fromRight);
+
+    if (fromRight)
+        while (first != last && trimThisChar(last[-1]))
+            --last;
+
+    if (fromLeft)
+        while (first != last && trimThisChar(*first))
+            ++first;
+
+    return {first, last};
+}
+
+
 template <class S, class Function> inline
 void trim(S& str, bool fromLeft, bool fromRight, Function trimThisChar)
 {
     assert(fromLeft || fromRight);
 
     const auto* const oldBegin = strBegin(str);
-    const auto*       newBegin = oldBegin;
-    const auto*       newEnd   = oldBegin + strLength(str);
-
-    if (fromRight)
-        while (newBegin != newEnd && trimThisChar(newEnd[-1]))
-            --newEnd;
-
-    if (fromLeft)
-        while (newBegin != newEnd && trimThisChar(*newBegin))
-            ++newBegin;
+    const auto& [newBegin, newEnd] = trimCpy(oldBegin, oldBegin + strLength(str), fromLeft, fromRight, trimThisChar);
 
     if (newBegin != oldBegin)
-        str = S(newBegin, newEnd - newBegin); //minor inefficiency: in case "str" is not shared, we could save an allocation and do a memory move only
+        str = S(newBegin, newEnd); //minor inefficiency: in case "str" is not shared, we could save an allocation and do a memory move only
     else
         str.resize(newEnd - newBegin);
 }
@@ -613,8 +624,10 @@ S numberTo(const Num& number, std::integral_constant<NumberType, NumberType::flo
     const char* strEnd = toChars(std::begin(buffer), std::end(buffer), number);
 
     S output;
-    std::for_each(static_cast<const char*>(buffer), strEnd,
-    [&](char c) { output += static_cast<GetCharTypeT<S>>(c); });
+
+    for (const char c : makeStringView(static_cast<const char*>(buffer), strEnd))
+        output += static_cast<GetCharTypeT<S>>(c);
+
     return output;
 }
 
@@ -716,8 +729,10 @@ double stringToFloat(const char* first, const char* last)
 inline
 double stringToFloat(const wchar_t* first, const wchar_t* last)
 {
-    std::string buf(last - first, '\0');
-    std::transform(first, last, buf.begin(), [](wchar_t c) { return static_cast<char>(c); });
+    std::string buf; //let's rely on SSO
+
+    for (const wchar_t c : makeStringView(first, last))
+        buf += static_cast<char>(c);
 
     return fromChars(buf.c_str(), buf.c_str() + buf.size());
 }
@@ -756,17 +771,16 @@ Num extractInteger(const S& str, bool& hasMinusSign) //very fast conversion to i
     }
 
     Num number = 0;
-    for (const CharType* it = first; it != last; ++it)
-    {
-        const CharType c = *it;
+
+    for (const CharType c : makeStringView(first, last))
         if (static_cast<CharType>('0') <= c && c <= static_cast<CharType>('9'))
         {
             number *= 10;
             number += c - static_cast<CharType>('0');
         }
         else //rest of string should contain whitespace only, it's NOT a bug if there is something else!
-            break; //assert(std::all_of(iter, last, isWhiteSpace<CharType>)); -> this is NO assert situation
-    }
+            break; //assert(std::all_of(it, last, isWhiteSpace<CharType>)); -> this is NO assert situation
+
     return number;
 }
 

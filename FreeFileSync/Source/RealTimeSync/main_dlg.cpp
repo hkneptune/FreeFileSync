@@ -14,6 +14,7 @@
 #include <zen/file_access.h>
 #include <zen/file_path.h>
 #include <zen/build_info.h>
+#include <zen/shutdown.h>
 #include <zen/time.h>
 #include "config.h"
 #include "tray_menu.h"
@@ -21,6 +22,7 @@
 #include "../icon_buffer.h"
 #include "../ffs_paths.h"
 #include "../version/version.h"
+#include "../fatal_error.h"
 
     #include <gtk/gtk.h>
 
@@ -134,6 +136,8 @@ MainDialog::MainDialog(const Zstring& cfgFileName) :
     setLastUsedConfig(currentConfigFile);
     //-----------------------------------------------------------------------------------------
 
+    onSystemShutdownRegister(onBeforeSystemShutdownCookie_);
+
     Center(); //needs to be re-applied after a dialog size change! (see addFolder() within setConfiguration())
 
     if (startWatchingImmediately) //start watch mode directly
@@ -156,10 +160,8 @@ MainDialog::MainDialog(const Zstring& cfgFileName) :
 
 MainDialog::~MainDialog()
 {
-    //save current configuration
     const XmlRealConfig currentCfg = getConfiguration();
-
-    try //write config to XML
+    try
     {
         writeConfig(currentCfg, lastRunConfigPath_); //throw FileError
     }
@@ -170,10 +172,10 @@ MainDialog::~MainDialog()
 }
 
 
-void MainDialog::onQueryEndSession()
+void MainDialog::onBeforeSystemShutdown()
 {
     try { writeConfig(getConfiguration(), lastRunConfigPath_); } //throw FileError
-    catch (FileError&) {} //we try our best do to something useful in this extreme situation - no reason to notify or even log errors here!
+    catch (const FileError& e) { fff::logFatalError(e.toString()); }
 }
 
 

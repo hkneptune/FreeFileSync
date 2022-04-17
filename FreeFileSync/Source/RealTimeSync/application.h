@@ -23,7 +23,6 @@ private:
     wxLayoutDirection GetLayoutDirection() const override;
 
     void onEnterEventLoop(wxEvent& event);
-    void onQueryEndSession(wxEvent& event);
 };
 }
 

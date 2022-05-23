@@ -44,12 +44,14 @@ public:
     FolderPairPanelBasic(GuiPanel& basicPanel) : //takes reference on basic panel to be enhanced
         basicPanel_(basicPanel)
     {
+        using namespace zen;
+
         //register events for removal of alternate configuration
         basicPanel_.m_bpButtonLocalCompCfg ->Bind(wxEVT_RIGHT_DOWN, [this](wxMouseEvent& event) { onLocalCompCfgContext  (event); });
         basicPanel_.m_bpButtonLocalSyncCfg ->Bind(wxEVT_RIGHT_DOWN, [this](wxMouseEvent& event) { onLocalSyncCfgContext  (event); });
         basicPanel_.m_bpButtonLocalFilter  ->Bind(wxEVT_RIGHT_DOWN, [this](wxMouseEvent& event) { onLocalFilterCfgContext(event); });
 
-        basicPanel_.m_bpButtonRemovePair->SetBitmapLabel(zen::loadImage("item_remove"));
+        setImage(*basicPanel_.m_bpButtonRemovePair, loadImage("item_remove"));
     }
 
 private:

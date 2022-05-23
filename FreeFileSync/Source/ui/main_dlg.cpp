@@ -469,23 +469,23 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
         return layOver(backImg, loadImage(layoverName, backImg.GetWidth() * 7 / 10), wxALIGN_TOP | wxALIGN_RIGHT);
     };
 
-    m_bpButtonCmpConfig ->SetBitmapLabel(loadImage("options_compare"));
-    m_bpButtonSyncConfig->SetBitmapLabel(loadImage("options_sync"));
+    setImage(*m_bpButtonCmpConfig,  loadImage("options_compare"));
+    setImage(*m_bpButtonSyncConfig, loadImage("options_sync"));
 
-    m_bpButtonCmpContext   ->SetBitmapLabel(mirrorIfRtl(loadImage("button_arrow_right")));
-    m_bpButtonFilterContext->SetBitmapLabel(mirrorIfRtl(loadImage("button_arrow_right")));
-    m_bpButtonSyncContext  ->SetBitmapLabel(mirrorIfRtl(loadImage("button_arrow_right")));
-    m_bpButtonViewFilterContext->SetBitmapLabel(mirrorIfRtl(loadImage("button_arrow_right")));
+    setImage(*m_bpButtonCmpContext,        mirrorIfRtl(loadImage("button_arrow_right")));
+    setImage(*m_bpButtonFilterContext,     mirrorIfRtl(loadImage("button_arrow_right")));
+    setImage(*m_bpButtonSyncContext,       mirrorIfRtl(loadImage("button_arrow_right")));
+    setImage(*m_bpButtonViewFilterContext, mirrorIfRtl(loadImage("button_arrow_right")));
 
     //m_bpButtonNew      ->set dynamically
-    m_bpButtonOpen       ->SetBitmapLabel(loadImage("cfg_load"));
+    setImage(*m_bpButtonOpen, loadImage("cfg_load"));
     //m_bpButtonSave     ->set dynamically
-    m_bpButtonSaveAs     ->SetBitmapLabel(generateSaveAsImage("start_sync"));
-    m_bpButtonSaveAsBatch->SetBitmapLabel(generateSaveAsImage("cfg_batch"));
+    setImage(*m_bpButtonSaveAs,      generateSaveAsImage("start_sync"));
+    setImage(*m_bpButtonSaveAsBatch, generateSaveAsImage("cfg_batch"));
 
-    m_bpButtonAddPair    ->SetBitmapLabel(loadImage("item_add"));
-    m_bpButtonHideSearch ->SetBitmapLabel(loadImage("close_panel"));
-    m_bpButtonToggleLog  ->SetBitmapLabel(loadImage("log_file"));
+    setImage(*m_bpButtonAddPair,    loadImage("item_add"));
+    setImage(*m_bpButtonHideSearch, loadImage("close_panel"));
+    setImage(*m_bpButtonToggleLog,  loadImage("log_file"));
 
     m_bpButtonFilter   ->SetMinSize({loadImage("options_filter").GetWidth() + fastFromDIP(27), -1}); //make the filter button wider
     m_textCtrlSearchTxt->SetMinSize({fastFromDIP(220), -1});
@@ -528,10 +528,10 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     //init log panel
     setRelativeFontSize(*m_staticTextSyncResult, 1.5);
 
-    m_bitmapItemStat->SetBitmap(imgFile);
+    setImage(*m_bitmapItemStat, imgFile);
 
     wxImage imgTime = loadImage("time", -1 /*maxWidth*/, imgFile.GetHeight());
-    m_bitmapTimeStat->SetBitmap(imgTime);
+    setImage(*m_bitmapTimeStat, imgTime);
     m_bitmapTimeStat->SetMinSize({-1, imgFile.GetHeight()});
 
     logPanel_ = new LogPanel(m_panelLog); //pass ownership
@@ -720,49 +720,32 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     //m_bpButtonSyncContext->SetToolTip(m_bpButtonSyncConfig->GetToolTipText());
 
 
-    m_bitmapSmallDirectoryLeft ->SetBitmap(imgDir);
-    m_bitmapSmallFileLeft      ->SetBitmap(imgFile);
-    m_bitmapSmallDirectoryRight->SetBitmap(imgDir);
-    m_bitmapSmallFileRight     ->SetBitmap(imgFile);
+    setImage(*m_bitmapSmallDirectoryLeft,  imgDir);
+    setImage(*m_bitmapSmallFileLeft,       imgFile);
+    setImage(*m_bitmapSmallDirectoryRight, imgDir);
+    setImage(*m_bitmapSmallFileRight,      imgFile);
 
     //---------------------- menu bar----------------------------
-    m_menuItemNew        ->SetBitmap(loadImage("cfg_new_sicon"));
-    m_menuItemLoad       ->SetBitmap(loadImage("cfg_load_sicon"));
-    m_menuItemSave       ->SetBitmap(loadImage("cfg_save_sicon"));
-    m_menuItemSaveAsBatch->SetBitmap(loadImage("cfg_batch_sicon"));
+    setImage(*m_menuItemNew,         loadImage("cfg_new_sicon"));
+    setImage(*m_menuItemLoad,        loadImage("cfg_load_sicon"));
+    setImage(*m_menuItemSave,        loadImage("cfg_save_sicon"));
+    setImage(*m_menuItemSaveAsBatch, loadImage("cfg_batch_sicon"));
 
-    m_menuItemShowLog     ->SetBitmap(loadImage("log_file_sicon"));
-    m_menuItemCompare     ->SetBitmap(loadImage("compare_sicon"));
-    m_menuItemCompSettings->SetBitmap(loadImage("options_compare_sicon"));
-    m_menuItemFilter      ->SetBitmap(loadImage("options_filter_sicon"));
-    m_menuItemSyncSettings->SetBitmap(loadImage("options_sync_sicon"));
-    m_menuItemSynchronize ->SetBitmap(loadImage("start_sync_sicon"));
+    setImage(*m_menuItemShowLog,      loadImage("log_file_sicon"));
+    setImage(*m_menuItemCompare,      loadImage("compare_sicon"));
+    setImage(*m_menuItemCompSettings, loadImage("options_compare_sicon"));
+    setImage(*m_menuItemFilter,       loadImage("options_filter_sicon"));
+    setImage(*m_menuItemSyncSettings, loadImage("options_sync_sicon"));
+    setImage(*m_menuItemSynchronize,  loadImage("start_sync_sicon"));
 
-    m_menuItemOptions    ->SetBitmap(loadImage("settings_sicon"));
-    m_menuItemFind       ->SetBitmap(loadImage("find_sicon"));
-    m_menuItemResetLayout->SetBitmap(loadImage("reset_sicon"));
+    setImage(*m_menuItemOptions,     loadImage("settings_sicon"));
+    setImage(*m_menuItemFind,        loadImage("find_sicon"));
+    setImage(*m_menuItemResetLayout, loadImage("reset_sicon"));
 
-    m_menuItemHelp ->SetBitmap(loadImage("help_sicon"));
-    m_menuItemAbout->SetBitmap(loadImage("about_sicon"));
-    m_menuItemCheckVersionNow->SetBitmap(loadImage("update_check_sicon"));
+    setImage(*m_menuItemHelp,            loadImage("help_sicon"));
+    setImage(*m_menuItemAbout,           loadImage("about_sicon"));
+    setImage(*m_menuItemCheckVersionNow, loadImage("update_check_sicon"));
 
-    auto fixMenuIcons = [](wxMenu& menu) //GTK: image must be set *before* adding wxMenuItem to menu or it won't show
-    {
-        std::vector<std::pair<wxMenuItem*, size_t /*pos*/>> itemsWithBmp;
-        {
-            size_t pos = 0;
-            for (wxMenuItem* item : menu.GetMenuItems())
-            {
-                if (item->GetBitmap().IsOk())
-                    itemsWithBmp.emplace_back(item, pos);
-                ++pos;
-            }
-        }
-
-        for (const auto& [item, pos] : itemsWithBmp)
-            if (!menu.Insert(pos, menu.Remove(item))) //detach + reinsert
-                assert(false);
-    };
     fixMenuIcons(*m_menuFile);
     fixMenuIcons(*m_menuActions);
     fixMenuIcons(*m_menuTools);
@@ -772,7 +755,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     for (const TranslationInfo& ti : getAvailableTranslations())
     {
         wxMenuItem* newItem = new wxMenuItem(m_menuLanguages, wxID_ANY, ti.languageName);
-        newItem->SetBitmap(loadImage(ti.languageFlag)); //GTK: set *before* inserting into menu
+        setImage(*newItem, loadImage(ti.languageFlag)); //GTK: set *before* inserting into menu
 
         m_menuLanguages->Bind(wxEVT_COMMAND_MENU_SELECTED, [this, langId = ti.languageID](wxCommandEvent&) { switchProgramLanguage(langId); }, newItem->GetId());
         m_menuLanguages->Append(newItem); //pass ownership
@@ -4256,7 +4239,7 @@ void MainDialog::updateStatistics()
             txtControl.SetFont(fnt);
 
             txtControl.SetLabelText(valueAsString);
-            bmpControl.SetBitmap(greyScaleIfDisabled(mirrorIfRtl(loadImage(imageName)), !isZeroValue));
+            setImage(bmpControl, greyScaleIfDisabled(mirrorIfRtl(loadImage(imageName)), !isZeroValue));
         }
     };
 
@@ -4644,7 +4627,7 @@ void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::s
         return wxNullImage;
     }();
 
-    m_bitmapSyncResult->SetBitmap(syncResultImage);
+    setImage(*m_bitmapSyncResult, syncResultImage);
     m_staticTextSyncResult->SetLabelText(getSyncResultLabel(summary.syncResult));
 
 
@@ -5485,7 +5468,7 @@ void MainDialog::insertAddFolderPair(const std::vector<LocalPairConfig>& newPair
             newPair->m_folderPathRight->setHistory(folderHistoryRight_);
 
             const wxSize optionsIconSize = loadImage("item_add").GetSize();
-            newPair->m_bpButtonFolderPairOptions->SetBitmapLabel(resizeCanvas(mirrorIfRtl(loadImage("button_arrow_right")), optionsIconSize, wxALIGN_CENTER));
+            setImage(*(newPair->m_bpButtonFolderPairOptions), resizeCanvas(mirrorIfRtl(loadImage("button_arrow_right")), optionsIconSize, wxALIGN_CENTER));
 
             //set width of left folder panel
             const int width = m_panelTopLeft->GetSize().GetWidth();

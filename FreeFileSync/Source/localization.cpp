@@ -131,17 +131,17 @@ std::vector<TranslationInfo> loadTranslations(const Zstring& zipPath) //throw Fi
     }
     //--------------------------------------------------------------------
 
-    std::vector<TranslationInfo> locMapping;
+    std::vector<TranslationInfo> translations;
     {
         //default entry:
         TranslationInfo newEntry;
         newEntry.languageID     = wxLANGUAGE_ENGLISH_US;
-        newEntry.languageName   = std::wstring(L"English (US)") + LTR_MARK; //handle weak ")" for bidi-algorithm
+        newEntry.languageName   = L"English";
         newEntry.translatorName = L"Zenju";
         newEntry.languageFlag   = "flag_usa";
         newEntry.lngFileName    = Zstr("");
         newEntry.lngStream      = "";
-        locMapping.push_back(newEntry);
+        translations.push_back(newEntry);
     }
 
     for (/*const*/ auto& [fileName, stream] : streams)
@@ -152,187 +152,83 @@ std::vector<TranslationInfo> loadTranslations(const Zstring& zipPath) //throw Fi
             assert(!lngHeader.translatorName.empty());
             assert(!lngHeader.localeName    .empty());
             assert(!lngHeader.flagFile      .empty());
-            /*
-            Some ISO codes are used by multiple wxLanguage IDs which can lead to incorrect mapping by wxLocale::FindLanguageInfo()!!!
-            => Identify by description, e.g. "Chinese (Traditional)". The following IDs are affected:
-                wxLANGUAGE_CHINESE_TRADITIONAL
-                wxLANGUAGE_ENGLISH_UK
-                wxLANGUAGE_SPANISH //non-unique, but still mapped correctly (or is it incidentally???)
-                wxLANGUAGE_SERBIAN //
-            */
-            if (const wxLanguageInfo* locInfo = wxLocale::FindLanguageInfo(utfTo<wxString>(lngHeader.localeName)))
+
+            const wxLanguageInfo* lngInfo = wxLocale::FindLanguageInfo(utfTo<wxString>(lngHeader.localeName));
+            assert(lngInfo && lngInfo->CanonicalName == utfTo<wxString>(lngHeader.localeName));
+            if (lngInfo)
             {
                 TranslationInfo newEntry;
-                newEntry.languageID     = static_cast<wxLanguage>(locInfo->Language);
+                newEntry.languageID     = static_cast<wxLanguage>(lngInfo->Language);
                 newEntry.languageName   = utfTo<std::wstring>(lngHeader.languageName);
                 newEntry.translatorName = utfTo<std::wstring>(lngHeader.translatorName);
                 newEntry.languageFlag   = lngHeader.flagFile;
                 newEntry.lngFileName    = fileName;
                 newEntry.lngStream      = std::move(stream);
-                locMapping.push_back(newEntry);
+                translations.push_back(std::move(newEntry));
             }
-            else assert(false);
         }
         catch (lng::ParsingError&) { assert(false); }
 
-    std::sort(locMapping.begin(), locMapping.end(), [](const TranslationInfo& lhs, const TranslationInfo& rhs)
+    std::sort(translations.begin(), translations.end(), [](const TranslationInfo& lhs, const TranslationInfo& rhs)
     {
         return LessNaturalSort()(utfTo<Zstring>(lhs.languageName),
-                                 utfTo<Zstring>(rhs.languageName)); //use a more "natural" sort: ignore case and diacritics
+                                 utfTo<Zstring>(rhs.languageName)); //"natural" sort: ignore case and diacritics
     });
-    return locMapping;
+    return translations;
 }
 
 
-wxLanguage mapLanguageDialect(wxLanguage language)
+/* Some ISO codes are used by multiple wxLanguage IDs which can lead to incorrect mapping by wxLocale::FindLanguageInfo()!!!
+    => Identify by description, e.g. "Chinese (Traditional)". The following IDs are affected:
+    - zh_TW: wxLANGUAGE_CHINESE_TAIWAN, wxLANGUAGE_CHINESE, wxLANGUAGE_CHINESE_TRADITIONAL_EXPLICIT
+    - en_GB: wxLANGUAGE_ENGLISH_UK, wxLANGUAGE_ENGLISH
+    - es_ES: wxLANGUAGE_SPANISH, wxLANGUAGE_SPANISH_SPAIN                      */
+wxLanguage mapLanguageDialect(wxLanguage lng)
 {
-    switch (static_cast<int>(language)) //avoid enumeration value wxLANGUAGE_*' not handled in switch [-Wswitch-enum]
+    if (const wxString& canonicalName = wxLocale::GetLanguageCanonicalName(lng);
+        !canonicalName.empty())
     {
-        //variants of wxLANGUAGE_ARABIC
-        case wxLANGUAGE_ARABIC_ALGERIA:
-        case wxLANGUAGE_ARABIC_BAHRAIN:
-        case wxLANGUAGE_ARABIC_EGYPT:
-        case wxLANGUAGE_ARABIC_IRAQ:
-        case wxLANGUAGE_ARABIC_JORDAN:
-        case wxLANGUAGE_ARABIC_KUWAIT:
-        case wxLANGUAGE_ARABIC_LEBANON:
-        case wxLANGUAGE_ARABIC_LIBYA:
-        case wxLANGUAGE_ARABIC_MOROCCO:
-        case wxLANGUAGE_ARABIC_OMAN:
-        case wxLANGUAGE_ARABIC_QATAR:
-        case wxLANGUAGE_ARABIC_SAUDI_ARABIA:
-        case wxLANGUAGE_ARABIC_SUDAN:
-        case wxLANGUAGE_ARABIC_SYRIA:
-        case wxLANGUAGE_ARABIC_TUNISIA:
-        case wxLANGUAGE_ARABIC_UAE:
-        case wxLANGUAGE_ARABIC_YEMEN:
-            return wxLANGUAGE_ARABIC;
+        assert(!contains(canonicalName, L'-'));
+        const std::string locale = beforeFirst(utfTo<std::string>(canonicalName), '@', IfNotFoundReturn::all); //e.g. "sr_RS@latin"; see wxLocale::InitLanguagesDB()
+        const std::string lngCode = beforeFirst(locale, '_', IfNotFoundReturn::all);
 
-        //variants of wxLANGUAGE_CHINESE_SIMPLIFIED
-        case wxLANGUAGE_CHINESE:
-        case wxLANGUAGE_CHINESE_SINGAPORE:
-            return wxLANGUAGE_CHINESE_SIMPLIFIED;
+        if (lngCode == "zh")
+        {
+            if (lng == wxLANGUAGE_CHINESE) //wxWidgets assigns this to "zh" or "zh_TW" for some reason
+                return wxLANGUAGE_CHINESE_CHINA;
 
-        //variants of wxLANGUAGE_CHINESE_TRADITIONAL
-        case wxLANGUAGE_CHINESE_TAIWAN:
-        case wxLANGUAGE_CHINESE_HONGKONG:
-        case wxLANGUAGE_CHINESE_MACAU:
-            return wxLANGUAGE_CHINESE_TRADITIONAL;
+            for (const char* l : {"zh_HK", "zh_MO", "zh_TW"})
+                if (locale == l)
+                    return wxLANGUAGE_CHINESE_TAIWAN;
 
-        //variants of wxLANGUAGE_DUTCH
-        case wxLANGUAGE_DUTCH_BELGIAN:
-            return wxLANGUAGE_DUTCH;
+            return wxLANGUAGE_CHINESE_CHINA;
+        }
 
-        //variants of wxLANGUAGE_ENGLISH_UK
-        case wxLANGUAGE_ENGLISH_AUSTRALIA:
-        case wxLANGUAGE_ENGLISH_NEW_ZEALAND:
-        case wxLANGUAGE_ENGLISH_TRINIDAD:
-        case wxLANGUAGE_ENGLISH_CARIBBEAN:
-        case wxLANGUAGE_ENGLISH_JAMAICA:
-        case wxLANGUAGE_ENGLISH_BELIZE:
-        case wxLANGUAGE_ENGLISH_EIRE:
-        case wxLANGUAGE_ENGLISH_SOUTH_AFRICA:
-        case wxLANGUAGE_ENGLISH_ZIMBABWE:
-        case wxLANGUAGE_ENGLISH_BOTSWANA:
-        case wxLANGUAGE_ENGLISH_DENMARK:
+        if (lngCode == "en")
+        {
+            if (lng == wxLANGUAGE_ENGLISH || //wxWidgets assigns this to "en" or "en_GB" for some reason
+                lng == wxLANGUAGE_ENGLISH_WORLD)
+                return wxLANGUAGE_ENGLISH_US;
+
+            for (const char* l : {"en_US", "en_CA", "en_AS", "en_UM", "en_VI"})
+                if (locale == l)
+                    return wxLANGUAGE_ENGLISH_US;
+
             return wxLANGUAGE_ENGLISH_UK;
+        }
 
-        //variants of wxLANGUAGE_ENGLISH_US
-        case wxLANGUAGE_ENGLISH:
-        case wxLANGUAGE_ENGLISH_CANADA:
-        case wxLANGUAGE_ENGLISH_PHILIPPINES:
-            return wxLANGUAGE_ENGLISH_US;
+        if (lngCode == "nb" || lngCode == "nn") //wxLANGUAGE_NORWEGIAN_BOKMAL, wxLANGUAGE_NORWEGIAN_NYNORSK
+            return wxLANGUAGE_NORWEGIAN;
 
-        //variants of wxLANGUAGE_FRENCH
-        case wxLANGUAGE_FRENCH_BELGIAN:
-        case wxLANGUAGE_FRENCH_CANADIAN:
-        case wxLANGUAGE_FRENCH_LUXEMBOURG:
-        case wxLANGUAGE_FRENCH_MONACO:
-        case wxLANGUAGE_FRENCH_SWISS:
-            return wxLANGUAGE_FRENCH;
+        if (locale == "pt_BR")
+            return wxLANGUAGE_PORTUGUESE_BRAZILIAN;
 
-        //variants of wxLANGUAGE_GERMAN
-        case wxLANGUAGE_GERMAN_AUSTRIAN:
-        case wxLANGUAGE_GERMAN_BELGIUM:
-        case wxLANGUAGE_GERMAN_LIECHTENSTEIN:
-        case wxLANGUAGE_GERMAN_LUXEMBOURG:
-        case wxLANGUAGE_GERMAN_SWISS:
-            return wxLANGUAGE_GERMAN;
-
-        //variants of wxLANGUAGE_ITALIAN
-        case wxLANGUAGE_ITALIAN_SWISS:
-            return wxLANGUAGE_ITALIAN;
-
-        //variants of wxLANGUAGE_NORWEGIAN_BOKMAL
-        case wxLANGUAGE_NORWEGIAN_NYNORSK:
-            return wxLANGUAGE_NORWEGIAN_BOKMAL;
-
-        //variants of wxLANGUAGE_ROMANIAN
-        case wxLANGUAGE_MOLDAVIAN:
-            return wxLANGUAGE_ROMANIAN;
-
-        //variants of wxLANGUAGE_RUSSIAN
-        case wxLANGUAGE_RUSSIAN_UKRAINE:
-            return wxLANGUAGE_RUSSIAN;
-
-        //variants of wxLANGUAGE_SERBIAN
-        case wxLANGUAGE_SERBIAN_CYRILLIC:
-        case wxLANGUAGE_SERBIAN_LATIN:
-        case wxLANGUAGE_SERBO_CROATIAN:
-            return wxLANGUAGE_SERBIAN;
-
-        //variants of wxLANGUAGE_SPANISH
-        case wxLANGUAGE_SPANISH_ARGENTINA:
-        case wxLANGUAGE_SPANISH_BOLIVIA:
-        case wxLANGUAGE_SPANISH_CHILE:
-        case wxLANGUAGE_SPANISH_COLOMBIA:
-        case wxLANGUAGE_SPANISH_COSTA_RICA:
-        case wxLANGUAGE_SPANISH_DOMINICAN_REPUBLIC:
-        case wxLANGUAGE_SPANISH_ECUADOR:
-        case wxLANGUAGE_SPANISH_EL_SALVADOR:
-        case wxLANGUAGE_SPANISH_GUATEMALA:
-        case wxLANGUAGE_SPANISH_HONDURAS:
-        case wxLANGUAGE_SPANISH_MEXICAN:
-        case wxLANGUAGE_SPANISH_MODERN:
-        case wxLANGUAGE_SPANISH_NICARAGUA:
-        case wxLANGUAGE_SPANISH_PANAMA:
-        case wxLANGUAGE_SPANISH_PARAGUAY:
-        case wxLANGUAGE_SPANISH_PERU:
-        case wxLANGUAGE_SPANISH_PUERTO_RICO:
-        case wxLANGUAGE_SPANISH_URUGUAY:
-        case wxLANGUAGE_SPANISH_US:
-        case wxLANGUAGE_SPANISH_VENEZUELA:
-            return wxLANGUAGE_SPANISH;
-
-        //variants of wxLANGUAGE_SWEDISH
-        case wxLANGUAGE_SWEDISH_FINLAND:
-            return wxLANGUAGE_SWEDISH;
-
-        //languages without variants:
-        //case wxLANGUAGE_BULGARIAN:
-        //case wxLANGUAGE_CROATIAN:
-        //case wxLANGUAGE_CZECH:
-        //case wxLANGUAGE_DANISH:
-        //case wxLANGUAGE_FINNISH:
-        //case wxLANGUAGE_GREEK:
-        //case wxLANGUAGE_HINDI:
-        //case wxLANGUAGE_HEBREW:
-        //case wxLANGUAGE_HUNGARIAN:
-        //case wxLANGUAGE_JAPANESE:
-        //case wxLANGUAGE_KOREAN:
-        //case wxLANGUAGE_LITHUANIAN:
-        //case wxLANGUAGE_POLISH:
-        //case wxLANGUAGE_PORTUGUESE:
-        //case wxLANGUAGE_PORTUGUESE_BRAZILIAN:
-        //case wxLANGUAGE_SCOTS_GAELIC:
-        //case wxLANGUAGE_SLOVAK:
-        //case wxLANGUAGE_SLOVENIAN:
-        //case wxLANGUAGE_TURKISH:
-        //case wxLANGUAGE_UKRAINIAN:
-        //case wxLANGUAGE_VIETNAMESE:
-        default:
-            return language;
+        //all other cases: map to primary language code
+        if (contains(locale, '_'))
+            if (const wxLanguageInfo* lngInfo2 = wxLocale::FindLanguageInfo(utfTo<wxString>(lngCode)))
+                return static_cast<wxLanguage>(lngInfo2->Language);
     }
+    return lng; //including wxLANGUAGE_DEFAULT, wxLANGUAGE_UNKNOWN
 }
 
 
@@ -473,6 +369,8 @@ private:
     wxLanguage lng_ = wxLANGUAGE_UNKNOWN;
     wxLayoutDirection layoutDir_ = wxLayout_Default;
     std::unique_ptr<wxLocale> locale_;
+    //use wxWidgets 3.1.6 wxUILocale? wxLocale already does *exactly* what we need, while wxLocale does a half-arsed job (as expected):
+    //setlocale() is only called on wxGTK, but not on Windows + wxTranslations is not initialized.
 };
 
 
@@ -522,7 +420,7 @@ void fff::setLanguage(wxLanguage lng) //throw FileError
         }
 
     //load language file into buffer
-    if (lngStream.empty()) //if file stream is empty, texts will be English by default
+    if (lngStream.empty()) //if file stream is empty, texts will be English (US) by default
     {
         setTranslator(nullptr);
         lng = wxLANGUAGE_ENGLISH_US;
@@ -565,9 +463,9 @@ void fff::setLanguage(wxLanguage lng) //throw FileError
 
 wxLanguage fff::getDefaultLanguage()
 {
-    static const wxLanguage defaultLng = static_cast<wxLanguage>(wxLocale::GetSystemLanguage());
-    //uses GetUserDefaultUILanguage(): https://github.com/wxWidgets/wxWidgets/commit/9600c29ff2ca13ef66b76eabadaac5ec8654b792
-
+    static const wxLanguage defaultLng = mapLanguageDialect(static_cast<wxLanguage>(wxLocale::GetSystemLanguage()));
+    //uses GetUserPreferredUILanguages() since wxWidgets 1.3.6, not GetUserDefaultUILanguage() anymore:
+    // https://github.com/wxWidgets/wxWidgets/blob/master/src/common/intl.cpp
     return defaultLng;
 }
 

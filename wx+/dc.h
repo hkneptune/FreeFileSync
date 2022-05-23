@@ -12,6 +12,7 @@
 #include <zen/basic_math.h>
 #include <wx/dcbuffer.h> //for macro: wxALWAYS_NATIVE_DOUBLE_BUFFER
 #include <wx/dcscreen.h>
+#include <wx/bmpbndl.h>
     #include <gtk/gtk.h>
 
 
@@ -114,6 +115,16 @@ inline
 int getDpiScalePercent()
 {
     return numeric::intDivRound(100 * getDPI(), defaultDpi);
+}
+
+
+inline
+wxBitmapBundle toBitmapBundle(const wxImage& img /*expected to be DPI-scaled!*/)
+{
+    //return wxBitmap(img, -1 /*depth*/, static_cast<double>(getDPI()) / defaultDpi); implementation just ignores scale parameter! WTF!
+    wxBitmap bmpScaled(img);
+    bmpScaled.SetScaleFactor(static_cast<double>(getDPI()) / defaultDpi);
+    return bmpScaled;
 }
 
 

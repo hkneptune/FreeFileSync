@@ -401,7 +401,7 @@ showMultipleCfgs_(showMultipleCfgs)
     m_staticTextCompVarDescription->SetMinSize({fastFromDIP(CFG_DESCRIPTION_WIDTH_DIP), -1});
 
     m_scrolledWindowPerf->SetMinSize({fastFromDIP(220), -1});
-    m_bitmapPerf->SetBitmap(greyScaleIfDisabled(loadImage("speed"), enableExtraFeatures_));
+    setImage(*m_bitmapPerf, greyScaleIfDisabled(loadImage("speed"), enableExtraFeatures_));
 
     const int scrollDelta = GetCharHeight();
     m_scrolledWindowPerf->SetScrollRate(scrollDelta, scrollDelta);
@@ -424,7 +424,7 @@ showMultipleCfgs_(showMultipleCfgs)
 
     m_staticTextFilterDescr->Wrap(fastFromDIP(450));
 
-    m_bpButtonDefaultContext->SetBitmapLabel(mirrorIfRtl(loadImage("button_arrow_right")));
+    setImage(*m_bpButtonDefaultContext, mirrorIfRtl(loadImage("button_arrow_right")));
 
     enumTimeDescr_.
     add(UnitTime::none, L'(' + _("None") + L')'). //meta options should be enclosed in parentheses
@@ -446,12 +446,12 @@ showMultipleCfgs_(showMultipleCfgs)
     m_buttonUpdate->SetToolTip(getSyncVariantDescription(SyncVariant::update));
     m_buttonCustom->SetToolTip(getSyncVariantDescription(SyncVariant::custom));
 
-    m_bitmapLeftOnly  ->SetBitmap(mirrorIfRtl(greyScale(loadImage("cat_left_only"  ))));
-    m_bitmapRightOnly ->SetBitmap(mirrorIfRtl(greyScale(loadImage("cat_right_only" ))));
-    m_bitmapLeftNewer ->SetBitmap(mirrorIfRtl(greyScale(loadImage("cat_left_newer" ))));
-    m_bitmapRightNewer->SetBitmap(mirrorIfRtl(greyScale(loadImage("cat_right_newer"))));
-    m_bitmapDifferent ->SetBitmap(mirrorIfRtl(greyScale(loadImage("cat_different"  ))));
-    m_bitmapConflict  ->SetBitmap(mirrorIfRtl(greyScale(loadImage("cat_conflict"   ))));
+    setImage(*m_bitmapLeftOnly,   mirrorIfRtl(greyScale(loadImage("cat_left_only"  ))));
+    setImage(*m_bitmapRightOnly,  mirrorIfRtl(greyScale(loadImage("cat_right_only" ))));
+    setImage(*m_bitmapLeftNewer,  mirrorIfRtl(greyScale(loadImage("cat_left_newer" ))));
+    setImage(*m_bitmapRightNewer, mirrorIfRtl(greyScale(loadImage("cat_right_newer"))));
+    setImage(*m_bitmapDifferent,  mirrorIfRtl(greyScale(loadImage("cat_different"  ))));
+    setImage(*m_bitmapConflict,   mirrorIfRtl(greyScale(loadImage("cat_conflict"   ))));
 
     setRelativeFontSize(*m_buttonTwoWay, 1.25);
     setRelativeFontSize(*m_buttonMirror, 1.25);
@@ -745,13 +745,13 @@ void ConfigDialog::updateCompGui()
     {
         case CompareVariant::timeSize:
             //help wxWidgets a little to render inactive config state (needed on Windows, NOT on Linux!)
-            m_bitmapCompVariant->SetBitmap(greyScaleIfDisabled(loadImage("cmp_time"), compOptionsEnabled));
+            setImage(*m_bitmapCompVariant, greyScaleIfDisabled(loadImage("cmp_time"), compOptionsEnabled));
             break;
         case CompareVariant::content:
-            m_bitmapCompVariant->SetBitmap(greyScaleIfDisabled(loadImage("cmp_content"), compOptionsEnabled));
+            setImage(*m_bitmapCompVariant, greyScaleIfDisabled(loadImage("cmp_content"), compOptionsEnabled));
             break;
         case CompareVariant::size:
-            m_bitmapCompVariant->SetBitmap(greyScaleIfDisabled(loadImage("cmp_size"), compOptionsEnabled));
+            setImage(*m_bitmapCompVariant, greyScaleIfDisabled(loadImage("cmp_size"), compOptionsEnabled));
             break;
     }
 
@@ -832,10 +832,10 @@ void ConfigDialog::updateFilterGui()
     m_notebook->SetPageImage(static_cast<size_t>(SyncConfigPanel::filter),
                              static_cast<int>(!isNullFilter(activeCfg) ? ConfigTypeImage::filter: ConfigTypeImage::filterGrey));
 
-    m_bitmapInclude   ->SetBitmap(greyScaleIfDisabled(loadImage("filter_include"), !NameFilter::isNull(activeCfg.includeFilter, FilterConfig().excludeFilter)));
-    m_bitmapExclude   ->SetBitmap(greyScaleIfDisabled(loadImage("filter_exclude"), !NameFilter::isNull(FilterConfig().includeFilter, activeCfg.excludeFilter)));
-    m_bitmapFilterDate->SetBitmap(greyScaleIfDisabled(loadImage("cmp_time"), activeCfg.unitTimeSpan != UnitTime::none));
-    m_bitmapFilterSize->SetBitmap(greyScaleIfDisabled(loadImage("cmp_size"), activeCfg.unitSizeMin  != UnitSize::none || activeCfg.unitSizeMax != UnitSize::none));
+    setImage(*m_bitmapInclude,    greyScaleIfDisabled(loadImage("filter_include"), !NameFilter::isNull(activeCfg.includeFilter, FilterConfig().excludeFilter)));
+    setImage(*m_bitmapExclude,    greyScaleIfDisabled(loadImage("filter_exclude"), !NameFilter::isNull(FilterConfig().includeFilter, activeCfg.excludeFilter)));
+    setImage(*m_bitmapFilterDate, greyScaleIfDisabled(loadImage("cmp_time"), activeCfg.unitTimeSpan != UnitTime::none));
+    setImage(*m_bitmapFilterSize, greyScaleIfDisabled(loadImage("cmp_size"), activeCfg.unitSizeMin  != UnitSize::none || activeCfg.unitSizeMax != UnitSize::none));
 
     m_spinCtrlTimespan->Enable(activeCfg.unitTimeSpan == UnitTime::lastDays);
     m_spinCtrlMinSize ->Enable(activeCfg.unitSizeMin != UnitSize::none);
@@ -1015,8 +1015,8 @@ void updateSyncDirectionIcons(const SyncDirectionConfig& directionCfg,
                     break;
             }
             wxImage img = mirrorIfRtl(loadImage(imgName));
-            button.SetBitmapLabel(img);
-            button.SetBitmapDisabled(greyScale(img)); //fix wxWidgets' all-too-clever multi-state!
+            button.SetBitmapLabel   (toBitmapBundle(          img));
+            button.SetBitmapDisabled(toBitmapBundle(greyScale(img))); //fix wxWidgets' all-too-clever multi-state!
             //=> the disabled bitmap is generated during first SetBitmapLabel() call but never updated again by wxWidgets!
         };
 
@@ -1107,7 +1107,7 @@ void ConfigDialog::updateSyncGui()
     bSizerSyncDirections->Show(directionCfg_.var != SyncVariant::twoWay);
 
     if (directionCfg_.var == SyncVariant::twoWay)
-        m_bitmapDatabase->SetBitmap(greyScaleIfDisabled(loadImage("database"), syncOptionsEnabled));
+        setImage(*m_bitmapDatabase, greyScaleIfDisabled(loadImage("database"), syncOptionsEnabled));
     else
     {
         const CompareVariant activeCmpVar = m_checkBoxUseLocalCmpOptions->GetValue() ? localCmpVar_ : globalPairCfg_.cmpCfg.compareVar;
@@ -1145,16 +1145,16 @@ void ConfigDialog::updateSyncGui()
             try { imgTrash = extractWxImage(fff::getTrashIcon(imgTrash.GetHeight())); /*throw SysError*/ }
             catch (SysError&) { assert(false); }
 
-            m_bitmapDeletionType->SetBitmap(greyScaleIfDisabled(imgTrash, syncOptionsEnabled));
+            setImage(*m_bitmapDeletionType, greyScaleIfDisabled(imgTrash, syncOptionsEnabled));
             setText(*m_staticTextDeletionTypeDescription, _("Retain deleted and overwritten files in the recycle bin"));
         }
         break;
         case DeletionPolicy::permanent:
-            m_bitmapDeletionType->SetBitmap(greyScaleIfDisabled(loadImage("delete_permanently"), syncOptionsEnabled));
+            setImage(*m_bitmapDeletionType, greyScaleIfDisabled(loadImage("delete_permanently"), syncOptionsEnabled));
             setText(*m_staticTextDeletionTypeDescription, _("Delete and overwrite files permanently"));
             break;
         case DeletionPolicy::versioning:
-            m_bitmapVersioning->SetBitmap(greyScaleIfDisabled(loadImage("delete_versioning"), syncOptionsEnabled));
+            setImage(*m_bitmapVersioning, greyScaleIfDisabled(loadImage("delete_versioning"), syncOptionsEnabled));
             break;
     }
     //m_staticTextDeletionTypeDescription->Wrap(fastFromDIP(200)); //needs to be reapplied after SetLabel()
@@ -1334,15 +1334,15 @@ void ConfigDialog::updateMiscGui()
 {
     const MiscSyncConfig miscCfg = getMiscSyncOptions();
 
-    m_bitmapIgnoreErrors->SetBitmap(greyScaleIfDisabled(loadImage("error_ignore_active"), miscCfg.ignoreErrors));
-    m_bitmapRetryErrors ->SetBitmap(greyScaleIfDisabled(loadImage("error_retry"), miscCfg.autoRetryCount > 0 ));
+    setImage(*m_bitmapIgnoreErrors, greyScaleIfDisabled(loadImage("error_ignore_active"), miscCfg.ignoreErrors));
+    setImage(*m_bitmapRetryErrors , greyScaleIfDisabled(loadImage("error_retry"), miscCfg.autoRetryCount > 0 ));
 
     fgSizerAutoRetry->Show(miscCfg.autoRetryCount > 0);
 
     m_panelComparisonSettings->Layout(); //showing "retry count" can affect bSizerPerformance!
     //----------------------------------------------------------------------------
     const bool sendEmailEnabled = m_checkBoxSendEmail->GetValue();
-    m_bitmapEmail->SetBitmap(greyScaleIfDisabled(loadImage("email"), sendEmailEnabled));
+    setImage(*m_bitmapEmail, greyScaleIfDisabled(loadImage("email"), sendEmailEnabled));
     m_comboBoxEmail->Show(sendEmailEnabled);
 
     auto updateButton = [successIcon = loadImage("msg_success", getDefaultMenuIconSize()),
@@ -1374,8 +1374,8 @@ void ConfigDialog::updateMiscGui()
                 label = resizeCanvas(label, {label.GetWidth() + successIcon.GetWidth(), label.GetHeight()}, wxALIGN_LEFT);
 
             button.SetToolTip(tooltip);
-            button.SetBitmapLabel(notifyCondition == emailNotifyCondition_ && sendEmailEnabled ? label : greyScale(label));
-            button.SetBitmapDisabled(greyScale(label)); //fix wxWidgets' all-too-clever multi-state!
+            button.SetBitmapLabel   (toBitmapBundle(notifyCondition == emailNotifyCondition_ && sendEmailEnabled ? label : greyScale(label)));
+            button.SetBitmapDisabled(toBitmapBundle(greyScale(label))); //fix wxWidgets' all-too-clever multi-state!
             //=> the disabled bitmap is generated during first SetBitmapLabel() call but never updated again by wxWidgets!
         }
     };
@@ -1386,7 +1386,7 @@ void ConfigDialog::updateMiscGui()
     m_hyperlinkPerfDeRequired2->Show(!enableExtraFeatures_); //required after each bSizerSyncMisc->Show()
 
     //----------------------------------------------------------------------------
-    m_bitmapLogFile->SetBitmap(greyScaleIfDisabled(loadImage("log_file", fastFromDIP(20)), m_checkBoxOverrideLogPath->GetValue()));
+    setImage(*m_bitmapLogFile, greyScaleIfDisabled(loadImage("log_file", fastFromDIP(20)), m_checkBoxOverrideLogPath->GetValue()));
     m_logFolderPath             ->Enable(m_checkBoxOverrideLogPath->GetValue()); //
     m_buttonSelectLogFolder     ->Show(m_checkBoxOverrideLogPath->GetValue()); //enabled status can't be derived from resolved config!
     m_bpButtonSelectAltLogFolder->Show(m_checkBoxOverrideLogPath->GetValue()); //

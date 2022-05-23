@@ -18,6 +18,7 @@
 #include <wx/filedlg.h>
 #include <wx/clipbrd.h>
 #include <wx/sound.h>
+//#include <wx+/bitmap_button.h>
 #include <wx+/choice_enum.h>
 #include <wx+/bitmap_button.h>
 #include <wx+/rtl.h>
@@ -78,8 +79,8 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
 
     assert(m_buttonClose->GetId() == wxID_OK); //we cannot use wxID_CLOSE else Esc key won't work: yet another wxWidgets bug??
 
-    m_bitmapLogo    ->SetBitmap(loadImage("logo"));
-    m_bitmapLogoLeft->SetBitmap(loadImage("logo-left"));
+    setImage(*m_bitmapLogo,     loadImage("logo"));
+    setImage(*m_bitmapLogoLeft, loadImage("logo-left"));
 
 
     //------------------------------------
@@ -102,7 +103,7 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
     //------------------------------------
     {
         m_panelThankYou->Hide();
-        m_bitmapDonate->SetBitmap(loadImage("ffs_heart"));
+        setImage(*m_bitmapDonate, loadImage("ffs_heart"));
         setRelativeFontSize(*m_staticTextDonate, 1.25);
         setRelativeFontSize(*m_buttonDonate, 1.25);
     }
@@ -111,14 +112,14 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
     wxImage forumImage = stackImages(loadImage("ffs_forum"),
                                      createImageFromText(L"FreeFileSync Forum", *wxNORMAL_FONT, m_bpButtonForum->GetForegroundColour()),
                                      ImageStackLayout::vertical, ImageStackAlignment::center, fastFromDIP(5));
-    m_bpButtonForum->SetBitmapLabel(forumImage);
+    setImage(*m_bpButtonForum, forumImage);
 
     setBitmapTextLabel(*m_bpButtonHomepage, loadImage("ffs_homepage"), L"FreeFileSync.org");
     setBitmapTextLabel(*m_bpButtonEmail,    loadImage("ffs_email"   ), L"zenju@" L"freefilesync.org");
     m_bpButtonEmail->SetToolTip(L"mailto:zenju@" L"freefilesync.org");
 
     //------------------------------------
-    m_bpButtonGpl->SetBitmapLabel(loadImage("gpl"));
+    setImage(*m_bpButtonGpl, loadImage("gpl"));
 
     //have the GPL text wrap to two lines:
     wxMemoryDC dc;
@@ -248,7 +249,7 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, Zstrin
 {
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
 
-    m_toggleBtnGdrive->SetBitmap(loadImage("google_drive"));
+    setImage(*m_toggleBtnGdrive, loadImage("google_drive"));
 
     setRelativeFontSize(*m_toggleBtnGdrive, 1.25);
     setRelativeFontSize(*m_toggleBtnSftp,   1.25);
@@ -257,12 +258,12 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, Zstrin
     setBitmapTextLabel(*m_buttonGdriveAddUser,    loadImage("user_add",    fastFromDIP(20)), m_buttonGdriveAddUser   ->GetLabelText());
     setBitmapTextLabel(*m_buttonGdriveRemoveUser, loadImage("user_remove", fastFromDIP(20)), m_buttonGdriveRemoveUser->GetLabelText());
 
-    m_bitmapGdriveUser ->SetBitmap(loadImage("user",   fastFromDIP(20)));
-    m_bitmapGdriveDrive->SetBitmap(loadImage("drive",  fastFromDIP(20)));
-    m_bitmapServer     ->SetBitmap(loadImage("server", fastFromDIP(20)));
-    m_bitmapCloud      ->SetBitmap(loadImage("cloud"));
-    m_bitmapPerf       ->SetBitmap(loadImage("speed"));
-    m_bitmapServerDir->SetBitmap(IconBuffer::genericDirIcon(IconBuffer::SIZE_SMALL));
+    setImage(*m_bitmapGdriveUser,  loadImage("user",   fastFromDIP(20)));
+    setImage(*m_bitmapGdriveDrive, loadImage("drive",  fastFromDIP(20)));
+    setImage(*m_bitmapServer,      loadImage("server", fastFromDIP(20)));
+    setImage(*m_bitmapCloud,       loadImage("cloud"));
+    setImage(*m_bitmapPerf,        loadImage("speed"));
+    setImage(*m_bitmapServerDir, IconBuffer::genericDirIcon(IconBuffer::SIZE_SMALL));
     m_checkBoxShowPassword->SetValue(false);
 
     m_textCtrlServer->SetHint(_("Example:") + L"    website.com    66.198.240.22");
@@ -802,7 +803,7 @@ CopyToDialog::CopyToDialog(wxWindow* parent,
 
     setMainInstructionFont(*m_staticTextHeader);
 
-    m_bitmapCopyTo->SetBitmap(loadImage("copy_to"));
+    setImage(*m_bitmapCopyTo, loadImage("copy_to"));
 
     targetFolder = std::make_unique<FolderSelector>(this, *this, *m_buttonSelectTargetFolder, *m_bpButtonSelectAltTargetFolder, *m_targetFolderPath,
                                                     targetFolderLastSelected, sftpKeyFileLastSelected, nullptr /*staticText*/, nullptr /*wxWindow*/, nullptr /*droppedPathsFilter*/,
@@ -961,14 +962,14 @@ void DeleteDialog::updateGui()
 {
     if (m_checkBoxUseRecycler->GetValue())
     {
-        m_bitmapDeleteType->SetBitmap(imgTrash_);
+        setImage(*m_bitmapDeleteType, imgTrash_);
         m_staticTextHeader->SetLabelText(_P("Do you really want to move the following item to the recycle bin?",
                                             "Do you really want to move the following %x items to the recycle bin?", itemCount_));
         m_buttonOK->SetLabelText(_("Move")); //no access key needed: use ENTER!
     }
     else
     {
-        m_bitmapDeleteType->SetBitmap(loadImage("delete_permanently"));
+        setImage(*m_bitmapDeleteType, loadImage("delete_permanently"));
         m_staticTextHeader->SetLabelText(_P("Do you really want to delete the following item?",
                                             "Do you really want to delete the following %x items?", itemCount_));
         m_buttonOK->SetLabelText(wxControl::RemoveMnemonics(_("&Delete"))); //no access key needed: use ENTER!
@@ -1041,7 +1042,7 @@ SyncConfirmationDlg::SyncConfirmationDlg(wxWindow* parent,
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonStartSync).setCancel(m_buttonCancel));
 
     setMainInstructionFont(*m_staticTextCaption);
-    m_bitmapSync->SetBitmap(loadImage(syncSelection ? "start_sync_selection" : "start_sync"));
+    setImage(*m_bitmapSync, loadImage(syncSelection ? "start_sync_selection" : "start_sync"));
 
     m_staticTextCaption->SetLabelText(syncSelection ?_("Start to synchronize the selection?") : _("Start synchronization now?"));
     m_staticTextSyncVar->SetLabelText(getVariantName(syncVar));
@@ -1058,7 +1059,7 @@ SyncConfirmationDlg::SyncConfirmationDlg(wxWindow* parent,
             //*INDENT-ON*
         }
     if (varImgName)
-        m_bitmapSyncVar->SetBitmap(loadImage(varImgName, -1 /*maxWidth*/, getDefaultMenuIconSize()));
+        setImage(*m_bitmapSyncVar, loadImage(varImgName, -1 /*maxWidth*/, getDefaultMenuIconSize()));
 
     m_checkBoxDontShowAgain->SetValue(dontShowAgain);
 
@@ -1073,7 +1074,7 @@ SyncConfirmationDlg::SyncConfirmationDlg(wxWindow* parent,
 
         setText(txtControl, valueAsString);
 
-        bmpControl.SetBitmap(greyScaleIfDisabled(mirrorIfRtl(loadImage(imageName)), !isZeroValue));
+        setImage(bmpControl, greyScaleIfDisabled(mirrorIfRtl(loadImage(imageName)), !isZeroValue));
     };
 
     auto setIntValue = [&setValue](wxStaticText& txtControl, int value, wxStaticBitmap& bmpControl, const char* imageName)
@@ -1195,19 +1196,19 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
     m_hyperlinkLogFolder->SetLabel(utfTo<wxString>(getLogFolderDefaultPath()));
     setRelativeFontSize(*m_hyperlinkLogFolder, 1.2);
 
-    m_bitmapSettings          ->SetBitmap     (loadImage("settings"));
-    m_bitmapWarnings          ->SetBitmap     (loadImage("msg_warning", fastFromDIP(20)));
-    m_bitmapLogFile           ->SetBitmap     (loadImage("log_file",    fastFromDIP(20)));
-    m_bitmapNotificationSounds->SetBitmap     (loadImage("notification_sounds"));
-    m_bitmapConsole           ->SetBitmap     (loadImage("command_line", fastFromDIP(20)));
-    m_bitmapCompareDone       ->SetBitmap     (loadImage("compare_sicon"));
-    m_bitmapSyncDone          ->SetBitmap     (loadImage("start_sync_sicon"));
-    m_bitmapAlertPending      ->SetBitmap     (loadImage("msg_error", loadImage("compare_sicon").GetSize().x));
-    m_bpButtonPlayCompareDone ->SetBitmapLabel(loadImage("play_sound"));
-    m_bpButtonPlaySyncDone    ->SetBitmapLabel(loadImage("play_sound"));
-    m_bpButtonPlayAlertPending->SetBitmapLabel(loadImage("play_sound"));
-    m_bpButtonAddRow          ->SetBitmapLabel(loadImage("item_add"));
-    m_bpButtonRemoveRow       ->SetBitmapLabel(loadImage("item_remove"));
+    setImage(*m_bitmapSettings,           loadImage("settings"));
+    setImage(*m_bitmapWarnings,           loadImage("msg_warning", fastFromDIP(20)));
+    setImage(*m_bitmapLogFile,            loadImage("log_file",    fastFromDIP(20)));
+    setImage(*m_bitmapNotificationSounds, loadImage("notification_sounds"));
+    setImage(*m_bitmapConsole,            loadImage("command_line", fastFromDIP(20)));
+    setImage(*m_bitmapCompareDone,        loadImage("compare_sicon"));
+    setImage(*m_bitmapSyncDone,           loadImage("start_sync_sicon"));
+    setImage(*m_bitmapAlertPending,       loadImage("msg_error", loadImage("compare_sicon").GetSize().x));
+    setImage(*m_bpButtonPlayCompareDone,  loadImage("play_sound"));
+    setImage(*m_bpButtonPlaySyncDone,     loadImage("play_sound"));
+    setImage(*m_bpButtonPlayAlertPending, loadImage("play_sound"));
+    setImage(*m_bpButtonAddRow,           loadImage("item_add"));
+    setImage(*m_bpButtonRemoveRow,        loadImage("item_remove"));
 
     m_staticTextAllDialogsShown->SetLabelText(L'(' + _("No dialogs hidden") + L')');
 
@@ -1687,7 +1688,7 @@ ActivationDlg::ActivationDlg(wxWindow* parent,
     m_textCtrlOfflineActivationKey->SetMinSize({fastFromDIP(260), -1});
     //setMainInstructionFont(*m_staticTextMain);
 
-    m_bitmapActivation->SetBitmap(loadImage("internet"));
+    setImage(*m_bitmapActivation, loadImage("internet"));
     m_textCtrlOfflineActivationKey->ForceUpper();
 
     setTextWithUrls(*m_richTextLastError, lastErrorMsg);
@@ -1800,7 +1801,7 @@ DownloadProgressWindow::Impl::Impl(wxWindow* parent, int64_t fileSizeTotal) :
 
     m_staticTextDetails->SetMinSize({fastFromDIP(550), -1});
 
-    m_bitmapDownloading->SetBitmap(loadImage("internet"));
+    setImage(*m_bitmapDownloading, loadImage("internet"));
 
     m_gaugeProgress->SetRange(GAUGE_FULL_RANGE);
 

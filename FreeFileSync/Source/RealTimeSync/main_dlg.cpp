@@ -53,7 +53,7 @@ public:
         FolderGenerated(parent),
         folderSelector_(parent, *this, *m_buttonSelectFolder, *m_txtCtrlDirectory, folderLastSelected, nullptr /*staticText*/)
     {
-        m_bpButtonRemoveFolder->SetBitmapLabel(loadImage("item_remove"));
+        setImage(*m_bpButtonRemoveFolder, loadImage("item_remove"));
     }
 
     void setPath(const Zstring& dirpath) { folderSelector_.setPath(dirpath); }
@@ -87,12 +87,12 @@ MainDialog::MainDialog(const Zstring& cfgFileName) :
     m_bpButtonRemoveTopFolder->Hide();
     m_panelMainFolder->Layout();
 
-    m_bitmapBatch  ->SetBitmap(loadImage("cfg_batch_sicon"));
-    m_bitmapFolders->SetBitmap(fff::IconBuffer::genericDirIcon(fff::IconBuffer::SIZE_SMALL));
-    m_bitmapConsole->SetBitmap(loadImage("command_line", fastFromDIP(20)));
+    setImage(*m_bitmapBatch,   loadImage("cfg_batch_sicon"));
+    setImage(*m_bitmapFolders, fff::IconBuffer::genericDirIcon(fff::IconBuffer::SIZE_SMALL));
+    setImage(*m_bitmapConsole, loadImage("command_line", fastFromDIP(20)));
 
-    m_bpButtonAddFolder      ->SetBitmapLabel(loadImage("item_add"));
-    m_bpButtonRemoveTopFolder->SetBitmapLabel(loadImage("item_remove"));
+    setImage(*m_bpButtonAddFolder, loadImage("item_add"));
+    setImage(*m_bpButtonRemoveTopFolder, loadImage("item_remove"));
     setBitmapTextLabel(*m_buttonStart, loadImage("startRts"), m_buttonStart->GetLabelText(), fastFromDIP(5), fastFromDIP(8));
 
     Bind(wxEVT_CHAR_HOOK, [this](wxKeyEvent& event) { onLocalKeyEvent(event); });

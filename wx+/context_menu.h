@@ -12,6 +12,8 @@
 #include <functional>
 #include <wx/menu.h>
 #include <wx/app.h>
+#include "dc.h"
+
 
 /*  A context menu supporting lambda callbacks!
 
@@ -23,6 +25,13 @@
 
 namespace zen
 {
+inline
+void setImage(wxMenuItem& menuItem, const wxImage& img)
+{
+    menuItem.SetBitmap(toBitmapBundle(img));
+}
+
+
 class ContextMenu : private wxEvtHandler
 {
 public:
@@ -32,7 +41,7 @@ public:
     {
         wxMenuItem* newItem = new wxMenuItem(menu_.get(), wxID_ANY, label); //menu owns item!
         if (img.IsOk())
-            newItem->SetBitmap(img); //do not set AFTER appending item! wxWidgets screws up for yet another crappy reason
+            setImage(*newItem, img); //do not set AFTER appending item! wxWidgets screws up for yet another crappy reason
         menu_->Append(newItem);
         if (!enabled)
             newItem->Enable(false); //do not enable BEFORE appending item! wxWidgets screws up for yet another crappy reason
@@ -69,7 +78,7 @@ public:
 
         wxMenuItem* newItem = new wxMenuItem(menu_.get(), wxID_ANY, label, L"", wxITEM_NORMAL, submenu.menu_.release()); //menu owns item, item owns submenu!
         if (img.IsOk())
-            newItem->SetBitmap(img); //do not set AFTER appending item! wxWidgets screws up for yet another crappy reason
+            setImage(*newItem, img); //do not set AFTER appending item! wxWidgets screws up for yet another crappy reason
         menu_->Append(newItem);
         if (!enabled)
             newItem->Enable(false);
@@ -93,6 +102,27 @@ private:
     std::unique_ptr<wxMenu> menu_ = std::make_unique<wxMenu>();
     std::map<int /*item id*/, std::function<void()> /*command*/> commandList_;
 };
+
+
+//GTK: image must be set *before* adding wxMenuItem to menu or it won't show => workaround:
+inline //also needed on Windows + macOS since wxWidgets 3.1.6 (thanks?)
+void fixMenuIcons(wxMenu& menu)
+{
+    std::vector<std::pair<wxMenuItem*, size_t /*pos*/>> itemsWithBmp;
+    {
+        size_t pos = 0;
+        for (wxMenuItem* item : menu.GetMenuItems())
+        {
+            if (item->GetBitmap().IsOk())
+                itemsWithBmp.emplace_back(item, pos);
+            ++pos;
+        }
+    }
+
+    for (const auto& [item, pos] : itemsWithBmp)
+        if (!menu.Insert(pos, menu.Remove(item))) //detach + reinsert
+            assert(false);
+}
 }
 
 #endif //CONTEXT_MENU_H_18047302153418174632141234

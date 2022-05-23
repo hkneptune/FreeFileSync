@@ -164,26 +164,3 @@ Backspace not working in filter dialog: http://www.freefilesync.org/forum/viewto
  
      g_signal_connect (widget, "key_press_event",
                        G_CALLBACK (gtk_window_key_press_callback), this);
-
-__________________________________________________________________________________________________________
-/src/msw/dcmemory.cpp
-Undo buggy font scaling: https://github.com/wxWidgets/wxWidgets/pull/22234
-
-- // Remember content scale factor used by the bitmap: we don't use it
-- // ourselves, but this can be needed later for creating fonts of the
-- // correct size.
-- m_contentScaleFactor = bitmap.GetScaleFactor();
-- 
-- // The font may need to be adjusted for the new scale factor.
-- SetFont(GetFont());
-}
-
-void wxMemoryDCImpl::SetFont(const wxFont& font)
-{
-    // We need to adjust the font size by the ratio between the scale factor we
-    // use and the default/global scale factor used when creating fonts.
-    wxFont scaledFont = font;
-- if ( scaledFont.IsOk() )
--     scaledFont.WXAdjustToPPI(wxDisplay::GetStdPPI()*m_contentScaleFactor);
-- wxMSWDCImpl::SetFont(scaledFont);
-}

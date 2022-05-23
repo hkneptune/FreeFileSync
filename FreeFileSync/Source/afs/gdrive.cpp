@@ -877,7 +877,7 @@ std::vector<StarredFolderDetails> getStarredFolders(const GdriveAccess& access) 
                     throw SysError(formatGdriveErrorRaw(serializeJson(childVal)));
 
                 starredFolders.push_back({std::move(*itemId),
-                                          std::move(utfTo<Zstring>(*itemName)),
+                                          utfTo<Zstring>(*itemName),
                                           driveId ? *driveId : ""});
             }
         }

@@ -9,6 +9,7 @@
 #include <zen/file_access.h>
 #include <wx/dirdlg.h>
 #include <wx/scrolwin.h>
+#include <wx+/bitmap_button.h>
 #include <wx+/popup_dlg.h>
 #include <wx+/context_menu.h>
 #include <wx+/image_resources.h>
@@ -94,7 +95,7 @@ FolderSelector::FolderSelector(wxWindow*         parent,
     if (dropWindow2_)
         setupDragDrop(*dropWindow2_);
 
-    selectAltFolderButton_.SetBitmapLabel(loadImage("cloud_small"));
+    setImage(selectAltFolderButton_, loadImage("cloud_small"));
 
     //keep folderSelector and dirpath synchronous
     folderComboBox_       .Bind(wxEVT_MOUSEWHEEL,                &FolderSelector::onMouseWheel,          this);

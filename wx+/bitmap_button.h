@@ -9,6 +9,7 @@
 
 #include <wx/bmpbuttn.h>
 #include <wx/settings.h>
+#include <wx/statbmp.h>
 #include "image_tools.h"
 #include "dc.h"
 
@@ -37,7 +38,8 @@ public:
 void setBitmapTextLabel(wxBitmapButton& btn, const wxImage& img, const wxString& text, int gap = fastFromDIP(5), int border = fastFromDIP(5));
 
 //set bitmap label flicker free:
-void setImage(wxBitmapButton& button, const wxImage& bmp);
+void setImage(wxAnyButton& button, const wxImage& bmp);
+void setImage(wxStaticBitmap& staticBmp, const wxImage& img);
 
 wxBitmap renderSelectedButton(const wxSize& sz);
 wxBitmap renderPressedButton(const wxSize& sz);
@@ -68,14 +70,12 @@ void setBitmapTextLabel(wxBitmapButton& btn, const wxImage& img, const wxString&
     btn.SetMinSize({imgTxt.GetWidth () + 2 * border,
                     std::max(imgTxt.GetHeight() + 2 * border, defaultHeight)});
 
-    btn.SetBitmapLabel(imgTxt);
-    //SetLabel() calls confuse wxBitmapButton in the disabled state and it won't show the image! workaround:
-    btn.SetBitmapDisabled(imgTxt.ConvertToDisabled());
+    setImage(btn, imgTxt);
 }
 
 
 inline
-void setImage(wxBitmapButton& button, const wxImage& img)
+void setImage(wxAnyButton& button, const wxImage& img)
 {
     if (!img.IsOk())
     {
@@ -84,11 +84,18 @@ void setImage(wxBitmapButton& button, const wxImage& img)
         return;
     }
 
-    button.SetBitmapLabel(img);
+    button.SetBitmapLabel(toBitmapBundle(img));
 
     //wxWidgets excels at screwing up consistently once again:
     //the first call to SetBitmapLabel() *implicitly* sets the disabled bitmap, too, subsequent calls, DON'T!
-    button.SetBitmapDisabled(img.ConvertToDisabled()); //inefficiency: wxBitmap::ConvertToDisabled() implicitly converts to wxImage!
+    button.SetBitmapDisabled(toBitmapBundle(img.ConvertToDisabled())); //inefficiency: wxBitmap::ConvertToDisabled() implicitly converts to wxImage!
+}
+
+
+inline
+void setImage(wxStaticBitmap& staticBmp, const wxImage& img)
+{
+    staticBmp.SetBitmap(toBitmapBundle(img));
 }
 
 

@@ -191,14 +191,14 @@ CompareProgressPanel::Impl::Impl(wxFrame& parentWindow) :
     parentWindow_(parentWindow)
 {
     const wxImage& imgFile = IconBuffer::genericFileIcon(IconBuffer::SIZE_SMALL);
-    m_bitmapItemStat->SetBitmap(imgFile);
+    setImage(*m_bitmapItemStat, imgFile);
 
     const wxImage imgTime = loadImage("time", -1 /*maxWidth*/, imgFile.GetHeight());
-    m_bitmapTimeStat->SetBitmap(imgTime);
+    setImage(*m_bitmapTimeStat, imgTime);
     m_bitmapTimeStat->SetMinSize({-1, imgFile.GetHeight()});
 
-    m_bitmapIgnoreErrors->SetBitmap(loadImage("error_ignore_active"));
-    m_bitmapRetryErrors ->SetBitmap(loadImage("error_retry"));
+    setImage(*m_bitmapIgnoreErrors, loadImage("error_ignore_active"));
+    setImage(*m_bitmapRetryErrors,  loadImage("error_retry"));
 
     //make sure that standard height matches ProcessPhase::comparingContent statistics layout (== largest)
 
@@ -835,17 +835,17 @@ dlgSizeBuf_(dlgSize)
     //set std order after button visibility was set
     setStandardButtonLayout(*pnl_.bSizerStdButtons, StdButtons().setAffirmative(pnl_.m_buttonPause).setCancel(pnl_.m_buttonStop));
 
-    pnl_.m_bpButtonMinimizeToTray->SetBitmapLabel(loadImage("minimize_to_tray"));
+    setImage(*pnl_.m_bpButtonMinimizeToTray, loadImage("minimize_to_tray"));
 
     const wxImage& imgFile = IconBuffer::genericFileIcon(IconBuffer::SIZE_SMALL);
-    pnl_.m_bitmapItemStat->SetBitmap(imgFile);
+    setImage(*pnl_.m_bitmapItemStat, imgFile);
 
     const wxImage imgTime = loadImage("time", -1 /*maxWidth*/, imgFile.GetHeight());
-    pnl_.m_bitmapTimeStat->SetBitmap(imgTime);
+    setImage(*pnl_.m_bitmapTimeStat, imgTime);
     pnl_.m_bitmapTimeStat->SetMinSize({-1, imgFile.GetHeight()});
 
-    pnl_.m_bitmapIgnoreErrors->SetBitmap(loadImage("error_ignore_active"));
-    pnl_.m_bitmapRetryErrors ->SetBitmap(loadImage("error_retry"));
+    setImage(*pnl_.m_bitmapIgnoreErrors, loadImage("error_ignore_active"));
+    setImage(*pnl_.m_bitmapRetryErrors,  loadImage("error_retry"));
 
     //init graph
     const int xLabelHeight = this->GetCharHeight() + fastFromDIP(2) /*margin*/; //use same height for both graphs to make sure they stretch evenly
@@ -882,6 +882,7 @@ dlgSizeBuf_(dlgSize)
             wxMemoryDC dc(bmpSquare);
             drawInsetRectangle(dc, wxRect(bmpSquare.GetSize()), fastFromDIP(1), borderCol, fillCol);
         }
+        bmpSquare.SetScaleFactor(static_cast<double>(getDPI()) / defaultDpi);
         return bmpSquare;
     };
     pnl_.m_bitmapGraphKeyBytes->SetBitmap(generateSquareBitmap(getColorBytes(), getColorBytesRim()));
@@ -1273,7 +1274,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateStaticGui() //depends on "syn
         assert(false);
         return wxNullImage;
     }();
-    pnl_.m_bitmapStatus->SetBitmap(statusImage);
+    setImage(*pnl_.m_bitmapStatus, statusImage);
 
     //show status on Windows 7 taskbar
     if (taskbar_.get())
@@ -1373,7 +1374,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult syncResult, 
         assert(false);
         return wxNullImage;
     }();
-    pnl_.m_bitmapStatus->SetBitmap(statusImage);
+    setImage(*pnl_.m_bitmapStatus, statusImage);
 
     pnl_.m_staticTextPhase->SetLabelText(getSyncResultLabel(syncResult));
     //pnl_.m_bitmapStatus->SetToolTip(); -> redundant

@@ -3,7 +3,6 @@
 // * GNU General Public License: https://www.gnu.org/licenses/gpl-3.0          *
 // * Copyright (C) Zenju (zenju AT freefilesync DOT org) - All Rights Reserved *
 // *****************************************************************************
-
 #include "tooltip.h"
 #include <wx/dialog.h>
 #include <wx/stattext.h>
@@ -12,6 +11,7 @@
 #include <wx/settings.h>
 #include <wx/app.h>
 #include "image_tools.h"
+#include "bitmap_button.h"
 #include "dc.h"
     #include <gtk/gtk.h>
 
@@ -64,7 +64,7 @@ void Tooltip::show(const wxString& text, wxPoint mousePos, const wxImage* img)
     if (!lastUsedImg_.IsSameAs(newImg))
     {
         lastUsedImg_ = newImg;
-        tipWindow_->bitmapLeft_->SetBitmap(newImg);
+        setImage(*tipWindow_->bitmapLeft_, newImg);
         tipWindow_->Refresh(); //needed if bitmap size changed!
     }
 

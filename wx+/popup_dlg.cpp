@@ -10,6 +10,7 @@
 #include <wx/app.h>
 #include <wx/display.h>
 #include <wx/sound.h>
+#include "bitmap_button.h"
 #include "no_flicker.h"
 #include "font_size.h"
 #include "image_resources.h"
@@ -141,7 +142,7 @@ public:
             titleTmp = cfg.title;
         //-----------------------------------------------
         if (iconTmp.IsOk())
-            m_bitmapMsgType->SetBitmap(iconTmp);
+            setImage(*m_bitmapMsgType, iconTmp);
 
         if (titleTmp.empty())
             SetTitle(wxTheApp->GetAppDisplayName());

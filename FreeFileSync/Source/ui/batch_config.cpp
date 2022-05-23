@@ -70,7 +70,7 @@ BatchDialog::BatchDialog(wxWindow* parent, BatchDialogConfig& dlgCfg) :
     m_staticTextHeader->SetLabelText(replaceCpy(m_staticTextHeader->GetLabelText(), L"%x", L"FreeFileSync.exe <" + _("configuration file") + L">.ffs_batch"));
     m_staticTextHeader->Wrap(fastFromDIP(520));
 
-    m_bitmapBatchJob->SetBitmap(loadImage("cfg_batch"));
+    setImage(*m_bitmapBatchJob, loadImage("cfg_batch"));
 
     enumPostSyncAction_.
     add(PostSyncAction::none,     L"").
@@ -93,12 +93,12 @@ void BatchDialog::updateGui() //re-evaluate gui after config changes
 {
     const BatchDialogConfig dlgCfg = getConfig(); //resolve parameter ownership: some on GUI controls, others member variables
 
-    m_bitmapIgnoreErrors->SetBitmap(greyScaleIfDisabled(loadImage("error_ignore_active"), dlgCfg.ignoreErrors));
+    setImage(*m_bitmapIgnoreErrors, greyScaleIfDisabled(loadImage("error_ignore_active"), dlgCfg.ignoreErrors));
 
     m_radioBtnErrorDialogShow  ->Enable(!dlgCfg.ignoreErrors);
     m_radioBtnErrorDialogCancel->Enable(!dlgCfg.ignoreErrors);
 
-    m_bitmapMinimizeToTray->SetBitmap(greyScaleIfDisabled(loadImage("minimize_to_tray"), dlgCfg.batchExCfg.runMinimized));
+    setImage(*m_bitmapMinimizeToTray, greyScaleIfDisabled(loadImage("minimize_to_tray"), dlgCfg.batchExCfg.runMinimized));
 }
 
 

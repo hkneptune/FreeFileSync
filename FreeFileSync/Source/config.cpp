@@ -150,13 +150,13 @@ void writeText(const wxLanguage& value, std::string& output)
 {
     //use description as unique wxLanguage identifier, see localization.cpp
     //=> handle changes to wxLanguage enum between wxWidgets versions
-    const wxLanguageInfo* lngInfo = wxLocale::GetLanguageInfo(value);
-    assert(lngInfo);
-    if (!lngInfo)
-        lngInfo = wxLocale::GetLanguageInfo(wxLANGUAGE_ENGLISH_US);
 
-    if (lngInfo)
-        output = utfTo<std::string>(lngInfo->Description);
+    const wxString& canonicalName = wxLocale::GetLanguageCanonicalName(value);
+    assert(!canonicalName.empty());
+    if (!canonicalName.empty())
+        output = utfTo<std::string>(canonicalName);
+    else
+        output = utfTo<std::string>(wxLocale::GetLanguageCanonicalName(wxLANGUAGE_ENGLISH_US));
 }
 
 template <> inline
@@ -1494,7 +1494,29 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     else if (in["General"]) //TODO: remove old parameter after migration! 2020-12-03
         in2 = in["General"];
 
-    in2["Language"].attribute("Name", cfg.programLanguage);
+    //TODO: remove after migration! 2022-04-18
+    if (in2["Language"].hasAttribute("Name"))
+    {
+        std::string lngName;
+        in2["Language"].attribute("Name", lngName);
+
+        if (lngName == "English (US)")
+            cfg.programLanguage = wxLANGUAGE_ENGLISH_US;
+        else if (lngName == "Chinese (Simplified)")
+            cfg.programLanguage = wxLANGUAGE_CHINESE_CHINA;
+        else if (lngName == "Chinese (Traditional)")
+            cfg.programLanguage = wxLANGUAGE_CHINESE_TAIWAN;
+        else if (lngName == "English (U.K.)")
+            cfg.programLanguage = wxLANGUAGE_ENGLISH_UK;
+        else if (lngName == "Norwegian (Bokmal)")
+            cfg.programLanguage = wxLANGUAGE_NORWEGIAN;
+        else if (lngName == "Portuguese (Brazilian)")
+            cfg.programLanguage = wxLANGUAGE_PORTUGUESE_BRAZILIAN;
+        else if (const wxLanguageInfo* lngInfo = wxLocale::FindLanguageInfo(utfTo<wxString>(lngName)))
+            cfg.programLanguage = static_cast<wxLanguage>(lngInfo->Language);
+    }
+    else
+        in2["Language"].attribute("Code", cfg.programLanguage);
 
     in2["FailSafeFileCopy"         ].attribute("Enabled", cfg.failSafeFileCopy);
     in2["CopyLockedFiles"          ].attribute("Enabled", cfg.copyLockedFiles);
@@ -2332,7 +2354,7 @@ void writeConfig(const XmlBatchConfig& cfg, XmlOut& out)
 
 void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
 {
-    out["Language"].attribute("Name", cfg.programLanguage);
+    out["Language"].attribute("Code", cfg.programLanguage);
 
     out["FailSafeFileCopy"         ].attribute("Enabled", cfg.failSafeFileCopy);
     out["CopyLockedFiles"          ].attribute("Enabled", cfg.copyLockedFiles);

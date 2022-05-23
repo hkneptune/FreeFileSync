@@ -1,3 +1,9 @@
+FreeFileSync 11.20 [2022-04-17]
+-------------------------------
+Fixed broken icon scaling on high-DPI displays
+Fixed user language set to English after update
+
+
 FreeFileSync 11.19 [2022-04-16]
 -------------------------------
 Improved performance for huge exclusion filter lists: linear to constant(!) time

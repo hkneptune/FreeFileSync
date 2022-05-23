@@ -57,7 +57,7 @@ public:
 
     void revisionSymlink(const AbstractPath& linkPath, const Zstring& relativePath) const; //throw FileError
 
-    void revisionFolder(const AbstractPath& folderPath, const Zstring& relativePath, //throw FileError, X
+    void revisionFolder(const AbstractPath& folderPath, const Zstring& relPath, //throw FileError, X
                         const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeFileMove,   /*throw X*/
                         const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeFolderMove, /*throw X*/
                         //called frequently if move has to revert to copy + delete => see zen::copyFile for limitations when throwing exceptions!

@@ -419,15 +419,13 @@ std::string zen::convertPuttyKeyToPkix(const std::string& keyStream, const std::
 {
     std::vector<std::string> lines;
 
-    for (auto it = keyStream.begin();;) //=> keep local: "warning: declaration of ‘it’ shadows a previous local"
+    split2(keyStream, isLineBreak<char>,
+           [&lines](const char* blockFirst, const char* blockLast)
     {
-        auto itLineBegin = std::find_if_not(it, keyStream.end(), isLineBreak<char>);
-        if (itLineBegin == keyStream.end())
-            break;
+        if (blockFirst != blockLast) //consider Windows' <CR><LF>
+            lines.emplace_back(blockFirst, blockLast);
+    });
 
-        it = std::find_if(itLineBegin + 1, keyStream.end(), isLineBreak<char>);
-        lines.emplace_back(itLineBegin, it);
-    }
     //----------- parse PuTTY ppk structure ----------------------------------
     auto itLine = lines.begin();
     if (itLine == lines.end() || !startsWith(*itLine, "PuTTY-User-Key-File-2: "))

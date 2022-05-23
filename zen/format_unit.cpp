@@ -7,7 +7,6 @@
 #include "format_unit.h"
 #include <ctime>
 #include <cstdio>
-#include <stdexcept>
 #include "basic_math.h"
 #include "sys_error.h"
 #include "i18n.h"

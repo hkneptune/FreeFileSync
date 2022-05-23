@@ -7,7 +7,6 @@
 #ifndef SOCKET_H_23498325972583947678456437
 #define SOCKET_H_23498325972583947678456437
 
-#include <zen/zstring.h>
 #include "sys_error.h"
     #include <unistd.h> //close
     #include <sys/socket.h>

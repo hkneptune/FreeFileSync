@@ -9,7 +9,6 @@
 
 #include <wx+/grid.h>
 #include "file_view.h"
-#include "file_grid_attr.h"
 #include "../icon_buffer.h"
 
 

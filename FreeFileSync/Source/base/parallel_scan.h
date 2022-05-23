@@ -33,10 +33,10 @@ struct DirectoryValue
     FolderContainer folderCont;
 
     //relative paths (or empty string for root) for directories that could not be read (completely), e.g. access denied, or temporary network drop
-    std::map<Zstring, Zstringc /*error message*/> failedFolderReads;
+    std::unordered_map<Zstring, Zstringc /*error message*/> failedFolderReads;
 
     //relative paths (never empty) for failure to read single file/dir/symlink
-    std::map<Zstring, Zstringc /*error message*/> failedItemReads;
+    std::unordered_map<Zstring, Zstringc /*error message*/> failedItemReads;
 };
 
 

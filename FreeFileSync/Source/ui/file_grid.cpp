@@ -8,6 +8,7 @@
 #include <set>
 #include <wx/dc.h>
 #include <wx/settings.h>
+#include <wx/timer.h>
 #include <zen/i18n.h>
 #include <zen/file_error.h>
 #include <zen/format_unit.h>
@@ -206,11 +207,11 @@ struct IconManager
     IconManager() {}
 
     IconManager(GridDataLeft& provLeft, GridDataRight& provRight, IconBuffer::IconSize sz, bool showFileIcons) :
-        fileIcon_        (IconBuffer::genericFileIcon (showFileIcons ? sz : IconBuffer::SIZE_SMALL)),
-        dirIcon_         (IconBuffer::genericDirIcon  (showFileIcons ? sz : IconBuffer::SIZE_SMALL)),
-        linkOverlayIcon_ (IconBuffer::linkOverlayIcon (showFileIcons ? sz : IconBuffer::SIZE_SMALL)),
-        plusOverlayIcon_ (IconBuffer::plusOverlayIcon (showFileIcons ? sz : IconBuffer::SIZE_SMALL)),
-        minusOverlayIcon_(IconBuffer::minusOverlayIcon(showFileIcons ? sz : IconBuffer::SIZE_SMALL))
+        fileIcon_        (IconBuffer::genericFileIcon (showFileIcons ? sz : IconBuffer::IconSize::small)),
+        dirIcon_         (IconBuffer::genericDirIcon  (showFileIcons ? sz : IconBuffer::IconSize::small)),
+        linkOverlayIcon_ (IconBuffer::linkOverlayIcon (showFileIcons ? sz : IconBuffer::IconSize::small)),
+        plusOverlayIcon_ (IconBuffer::plusOverlayIcon (showFileIcons ? sz : IconBuffer::IconSize::small)),
+        minusOverlayIcon_(IconBuffer::minusOverlayIcon(showFileIcons ? sz : IconBuffer::IconSize::small))
     {
         if (showFileIcons)
         {
@@ -219,7 +220,7 @@ struct IconManager
         }
     }
 
-    int getIconSize() const { return iconBuffer_ ? iconBuffer_->getSize() : IconBuffer::getSize(IconBuffer::SIZE_SMALL); }
+    int getIconSize() const { return iconBuffer_ ? iconBuffer_->getSize() : IconBuffer::getSize(IconBuffer::IconSize::small); }
 
     IconBuffer* getIconBuffer() { return iconBuffer_.get(); }
     void startIconUpdater();
@@ -652,7 +653,7 @@ private:
             _____________________________________________________  _____________________________________________________
             |   <right-aligned> (gap | icon | gap | group name) |  |                  | (gap | icon) | gap | item name | <- group name on first row
             |---------------------------------------------------|  | (2x gap | vline) |--------------------------------|
-            | (gap | group parent/... | wide gap)               |  |                  | (gap | icon) | gap | item name | <- group parent on second
+            | (gap | group parent_/\ | wide gap)                |  |                  | (gap | icon) | gap | item name | <- group parent on second
             -----------------------------------------------------  -----------------------------------------------------                            */
         bool stackedGroupRender = false;
         int groupParentWidth = groupParentFolder.empty() ? 0 : (gapSize_ + getTextExtentBuffered(dc, groupParentFolder).x);
@@ -674,14 +675,8 @@ private:
                 //1. render group components on two rows
                 stackedGroupRender = true;
 
-                //add slashes for better readability + a wide gap for disambiguation
-                assert(!contains(groupParentFolder, L'/') || !contains(groupParentFolder, L'\\'));
-                const wchar_t groupParentSep = contains(groupParentFolder, L'/') ? L'/' : (contains(groupParentFolder, L'\\') ? L'\\' : FILE_NAME_SEPARATOR);
-
-                if (!endsWith(groupParentFolder, L'/' ) && //e.g. ftp://server/
-                    !endsWith(groupParentFolder, L'\\'))   /*e.g. C:\ */
-                    groupParentFolder += groupParentSep;
-                groupParentFolder += ELLIPSIS;
+                //add Unicode arrow to indicate that path was split
+                groupParentFolder += L'\u2934'; //Right Arrow Curving Up
 
                 const int groupParentMinWidth = gapSize_ + ellipsisWidth + gapSizeWide_;
                 groupParentWidth = gapSize_ + getTextExtentBuffered(dc, groupParentFolder).x + gapSizeWide_;
@@ -785,7 +780,7 @@ private:
                                 if (const auto& [cudAction, cudSide] = getCudAction(syncOp);
                                     cudAction != CudAction::doNothing && side == cudSide)
                                 {
-                                    rectCud.width = gapSize_ + IconBuffer::getSize(IconBuffer::SIZE_SMALL);
+                                    rectCud.width = gapSize_ + IconBuffer::getSize(IconBuffer::IconSize::small);
                                     //fixed-size looks fine for all icon sizes! use same width even if file icons are disabled!
                                     clearArea(dc, rectCud, getBackGroundColorSyncAction(syncOp));
 

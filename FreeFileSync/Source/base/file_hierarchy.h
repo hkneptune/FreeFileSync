@@ -7,14 +7,12 @@
 #ifndef FILE_HIERARCHY_H_257235289645296
 #define FILE_HIERARCHY_H_257235289645296
 
-#include <map>
 #include <string>
 #include <memory>
 #include <list>
 #include <functional>
 #include <unordered_set>
-#include <zen/zstring.h>
-#include <zen/stl_tools.h>
+#include <unordered_map>
 #include "structures.h"
 #include "path_filter.h"
 #include "../afs/abstract.h"
@@ -71,32 +69,19 @@ enum class SelectSide
     right
 };
 
-template <SelectSide side>
-struct OtherSide;
 
-template <>
-struct OtherSide<SelectSide::left> { static const SelectSide value = SelectSide::right; };
-
-template <>
-struct OtherSide<SelectSide::right> { static const SelectSide value = SelectSide::left; };
+template <SelectSide side> 
+constexpr SelectSide getOtherSide = side == SelectSide::left ? SelectSide::right : SelectSide::left;
 
 
-template <SelectSide side>
-struct SelectParam;
-
-template <>
-struct SelectParam<SelectSide::left>
+template <SelectSide side, class T> inline
+static T& selectParam(T& left, T& right)
 {
-    template <class T>
-    static T& ref(T& left, T& right) { return left; }
-};
-
-template <>
-struct SelectParam<SelectSide::right>
-{
-    template <class T>
-    static T& ref(T& left, T& right) { return right; }
-};
+    if constexpr (side == SelectSide::left)
+        return left;
+    else
+        return right;
+}
 
 //------------------------------------------------------------------
 
@@ -107,9 +92,11 @@ std::wstring getShortDisplayNameForFolderPair(const AbstractPath& itemPathL, con
 struct FolderContainer
 {
     //------------------------------------------------------------------
-    using FolderList  = std::map<Zstring, std::pair<FolderAttributes, FolderContainer>>; //
-    using FileList    = std::map<Zstring, FileAttributes>; //key: raw file name, without any (Unicode) normalization, preserving original upper-/lower-case
-    using SymlinkList = std::map<Zstring, LinkAttributes>; //"Changing data [...] to NFC would cause interoperability problems. Always leave data as it is."
+    //key: raw file name, without any (Unicode) normalization, preserving original upper-/lower-case
+    //"Changing data [...] to NFC would cause interoperability problems. Always leave data as it is."
+    using FolderList  = std::unordered_map<Zstring, std::pair<FolderAttributes, FolderContainer>>;
+    using FileList    = std::unordered_map<Zstring, FileAttributes>;
+    using SymlinkList = std::unordered_map<Zstring, LinkAttributes>;
     //------------------------------------------------------------------
 
     FolderContainer() = default;
@@ -561,7 +548,7 @@ public:
 
     FilePair(const Zstring&        itemNameL, //use empty string if "not existing"
              const FileAttributes& attrL,
-             CompareFileResult    defaultCmpResult,
+             CompareFileResult     defaultCmpResult,
              const Zstring&        itemNameR, //
              const FileAttributes& attrR,
              ContainerObject& parentObj) :
@@ -595,8 +582,8 @@ public:
                      bool isSymlinkSrc);
 
 private:
-    Zstring getRelativePathL() const override { return nativeAppendPaths(parent().getRelativePath<SelectSide::left >(), getItemName<SelectSide::left >()); }
-    Zstring getRelativePathR() const override { return nativeAppendPaths(parent().getRelativePath<SelectSide::right>(), getItemName<SelectSide::right>()); }
+    Zstring getRelativePathL() const override { return appendPath(parent().getRelativePath<SelectSide::left >(), getItemName<SelectSide::left >()); }
+    Zstring getRelativePathR() const override { return appendPath(parent().getRelativePath<SelectSide::right>(), getItemName<SelectSide::right>()); }
 
     SyncOperation applyMoveOptimization(SyncOperation op) const;
 
@@ -639,8 +626,8 @@ public:
                      int64_t lastWriteTimeSrc);
 
 private:
-    Zstring getRelativePathL() const override { return nativeAppendPaths(parent().getRelativePath<SelectSide::left >(), getItemName<SelectSide::left >()); }
-    Zstring getRelativePathR() const override { return nativeAppendPaths(parent().getRelativePath<SelectSide::right>(), getItemName<SelectSide::right>()); }
+    Zstring getRelativePathL() const override { return appendPath(parent().getRelativePath<SelectSide::left >(), getItemName<SelectSide::left >()); }
+    Zstring getRelativePathR() const override { return appendPath(parent().getRelativePath<SelectSide::right>(), getItemName<SelectSide::right>()); }
 
     void flip()          override;
     void removeObjectL() override { attrL_ = LinkAttributes(); }
@@ -662,30 +649,89 @@ std::wstring getSyncOpDescription  (const FileSystemObject& fsObj);
 
 //------------------------------------------------------------------
 
+namespace impl
+{
 template <class Function1, class Function2, class Function3>
 struct FSObjectLambdaVisitor : public FSObjectVisitor
 {
     FSObjectLambdaVisitor(Function1 onFolder,
                           Function2 onFile,
-                          Function3 onSymlink) : onFolder_(onFolder), onFile_(onFile), onSymlink_(onSymlink) {}
+                          Function3 onSymlink) : //unifying assignment
+        onFolder_(std::move(onFolder)), onFile_(std::move(onFile)), onSymlink_(std::move(onSymlink)) {}
 private:
-    void visit(const FolderPair&  folder) override { onFolder_ (folder); }
-    void visit(const FilePair&    file  ) override { onFile_   (file); }
-    void visit(const SymlinkPair& link  ) override { onSymlink_(link); }
+    void visit(const FolderPair&  folder ) override { onFolder_ (folder);  }
+    void visit(const FilePair&    file   ) override { onFile_   (file);    }
+    void visit(const SymlinkPair& symlink) override { onSymlink_(symlink); }
 
-    Function1 onFolder_;
-    Function2 onFile_;
-    Function3 onSymlink_;
+    const Function1 onFolder_;
+    const Function2 onFile_;
+    const Function3 onSymlink_;
 };
+}
 
 template <class Function1, class Function2, class Function3> inline
 void visitFSObject(const FileSystemObject& fsObj, Function1 onFolder, Function2 onFile, Function3 onSymlink)
 {
-    FSObjectLambdaVisitor<Function1, Function2, Function3> visitor(onFolder, onFile, onSymlink);
+    impl::FSObjectLambdaVisitor<Function1, Function2, Function3> visitor(onFolder, onFile, onSymlink);
     fsObj.accept(visitor);
 }
 
+//------------------------------------------------------------------
 
+namespace impl
+{
+template <class Function1, class Function2, class Function3>
+class RecursiveObjectVisitor
+{
+public:
+    RecursiveObjectVisitor(Function1 onFolder,
+                           Function2 onFile,
+                           Function3 onSymlink) : //unifying assignment
+        onFolder_(std::move(onFolder)), onFile_(std::move(onFile)), onSymlink_(std::move(onSymlink)) {}
+
+    void execute(ContainerObject& hierObj)
+    {
+        for (FilePair& file : hierObj.refSubFiles())
+            onFile_(file);
+        for (SymlinkPair& symlink : hierObj.refSubLinks())
+            onSymlink_(symlink);
+        for (FolderPair& subFolder : hierObj.refSubFolders())
+        {
+            onFolder_(subFolder);
+            execute(subFolder);
+        }
+    }
+
+private:
+    const Function1 onFolder_;
+    const Function2 onFile_;
+    const Function3 onSymlink_;
+};
+}
+
+template <class Function1, class Function2, class Function3> inline
+void visitFSObjectRecursively(ContainerObject& hierObj, //consider contained items only
+                              Function1 onFolder,
+                              Function2 onFile,
+                              Function3 onSymlink)
+{
+    impl::RecursiveObjectVisitor(onFolder, onFile, onSymlink).execute(hierObj);
+}
+
+template <class Function1, class Function2, class Function3> inline
+void visitFSObjectRecursively(FileSystemObject& fsObj, //consider item and contained items (if folder)
+                              Function1 onFolder,
+                              Function2 onFile,
+                              Function3 onSymlink)
+{
+    visitFSObject(fsObj, [onFolder, onFile, onSymlink](const FolderPair& folder)
+    {
+        onFolder(const_cast<FolderPair&>(folder));
+        impl::RecursiveObjectVisitor(onFolder, onFile, onSymlink).execute(const_cast<FolderPair&>(folder));
+    },
+    [onFile   ](const FilePair&       file) { onFile   (const_cast<FilePair&   >(file   )); },  //physical object is not const anyway
+    [onSymlink](const SymlinkPair& symlink) { onSymlink(const_cast<SymlinkPair&>(symlink)); }); //
+}
 
 
 
@@ -774,7 +820,7 @@ void FileSystemObject::setActive(bool active)
 template <SelectSide side> inline
 bool FileSystemObject::isEmpty() const
 {
-    return SelectParam<side>::ref(itemNameL_, itemNameR_).empty();
+    return selectParam<side>(itemNameL_, itemNameR_).empty();
 }
 
 
@@ -791,10 +837,10 @@ Zstring FileSystemObject::getItemName() const
     assert(!itemNameL_.empty() || !itemNameR_.empty()); //-> file pair might be empty (until removed after sync)
     //=> okay, but where does this trigger!? calling this function in this case is a bug!
 
-    const Zstring& itemName = SelectParam<side>::ref(itemNameL_, itemNameR_); //empty if not existing
+    const Zstring& itemName = selectParam<side>(itemNameL_, itemNameR_); //empty if not existing
     if (!itemName.empty()) //avoid ternary-WTF! (implicit copy-constructor call!!!!!!)
         return itemName;
-    return SelectParam<OtherSide<side>::value>::ref(itemNameL_, itemNameR_);
+    return selectParam<getOtherSide<side>>(itemNameL_, itemNameR_);
 }
 
 
@@ -919,10 +965,10 @@ void FileSystemObject::propagateChangedItemName(const Zstring& itemNameOld)
 template <SelectSide side> inline
 void ContainerObject::updateRelPathsRecursion(const FileSystemObject& fsAlias)
 {
-    assert(SelectParam<side>::ref(relPathL_, relPathR_) != //perf: only call if actual item name changed!
-           nativeAppendPaths(fsAlias.parent().getRelativePath<side>(), fsAlias.getItemName<side>()));
+    assert(selectParam<side>(relPathL_, relPathR_) != //perf: only call if actual item name changed!
+           appendPath(fsAlias.parent().getRelativePath<side>(), fsAlias.getItemName<side>()));
 
-    SelectParam<side>::ref(relPathL_, relPathR_) = nativeAppendPaths(fsAlias.parent().getRelativePath<side>(), fsAlias.getItemName<side>());
+    selectParam<side>(relPathL_, relPathR_) = appendPath(fsAlias.parent().getRelativePath<side>(), fsAlias.getItemName<side>());
 
     for (FolderPair& folder : subFolders_)
         folder.updateRelPathsRecursion<side>(folder);
@@ -931,14 +977,14 @@ void ContainerObject::updateRelPathsRecursion(const FileSystemObject& fsAlias)
 
 inline
 ContainerObject::ContainerObject(const FileSystemObject& fsAlias) :
-    relPathL_(nativeAppendPaths(fsAlias.parent().relPathL_, fsAlias.getItemName<SelectSide::left>())),
+    relPathL_(appendPath(fsAlias.parent().relPathL_, fsAlias.getItemName<SelectSide::left>())),
     relPathR_(
         fsAlias.parent().relPathL_.c_str() ==        //
         fsAlias.parent().relPathR_.c_str() &&        //take advantage of FileSystemObject's Zstring reuse:
         fsAlias.getItemName<SelectSide::left >().c_str() == //=> perf: 12% faster merge phase; -4% peak memory
         fsAlias.getItemName<SelectSide::right>().c_str() ?  //
         relPathL_ : //ternary-WTF! (implicit copy-constructor call!!) => no big deal for a Zstring
-        nativeAppendPaths(fsAlias.parent().relPathR_, fsAlias.getItemName<SelectSide::right>())),
+        appendPath(fsAlias.parent().relPathR_, fsAlias.getItemName<SelectSide::right>())),
     base_(fsAlias.parent().base_)
 {
     assert(relPathL_.c_str() == relPathR_.c_str() || relPathL_ != relPathR_);
@@ -950,8 +996,8 @@ void ContainerObject::flip()
 {
     for (FilePair& file : refSubFiles())
         file.flip();
-    for (SymlinkPair& link : refSubLinks())
-        link.flip();
+    for (SymlinkPair& symlink : refSubLinks())
+        symlink.flip();
     for (FolderPair& folder : refSubFolders())
         folder.flip();
 
@@ -1066,8 +1112,8 @@ void FolderPair::removeObjectL()
 {
     for (FilePair& file : refSubFiles())
         file.removeObject<SelectSide::left>();
-    for (SymlinkPair& link : refSubLinks())
-        link.removeObject<SelectSide::left>();
+    for (SymlinkPair& symlink : refSubLinks())
+        symlink.removeObject<SelectSide::left>();
     for (FolderPair& folder : refSubFolders())
         folder.removeObject<SelectSide::left>();
 
@@ -1080,8 +1126,8 @@ void FolderPair::removeObjectR()
 {
     for (FilePair& file : refSubFiles())
         file.removeObject<SelectSide::right>();
-    for (SymlinkPair& link : refSubLinks())
-        link.removeObject<SelectSide::right>();
+    for (SymlinkPair& symlink : refSubLinks())
+        symlink.removeObject<SelectSide::right>();
     for (FolderPair& folder : refSubFolders())
         folder.removeObject<SelectSide::right>();
 
@@ -1092,14 +1138,14 @@ void FolderPair::removeObjectR()
 template <SelectSide side> inline
 BaseFolderStatus BaseFolderPair::getFolderStatus() const
 {
-    return SelectParam<side>::ref(folderStatusLeft_, folderStatusRight_);
+    return selectParam<side>(folderStatusLeft_, folderStatusRight_);
 }
 
 
 template <SelectSide side> inline
 void BaseFolderPair::setFolderStatus(BaseFolderStatus value)
 {
-    SelectParam<side>::ref(folderStatusLeft_, folderStatusRight_) = value;
+    selectParam<side>(folderStatusLeft_, folderStatusRight_) = value;
 }
 
 
@@ -1114,49 +1160,49 @@ void FilePair::flip()
 template <SelectSide side> inline
 FileAttributes FilePair::getAttributes() const
 {
-    return SelectParam<side>::ref(attrL_, attrR_);
+    return selectParam<side>(attrL_, attrR_);
 }
 
 
 template <SelectSide side> inline
 time_t FilePair::getLastWriteTime() const
 {
-    return SelectParam<side>::ref(attrL_, attrR_).modTime;
+    return selectParam<side>(attrL_, attrR_).modTime;
 }
 
 
 template <SelectSide side> inline
 uint64_t FilePair::getFileSize() const
 {
-    return SelectParam<side>::ref(attrL_, attrR_).fileSize;
+    return selectParam<side>(attrL_, attrR_).fileSize;
 }
 
 
 template <SelectSide side> inline
 bool FilePair::isFollowedSymlink() const
 {
-    return SelectParam<side>::ref(attrL_, attrR_).isFollowedSymlink;
+    return selectParam<side>(attrL_, attrR_).isFollowedSymlink;
 }
 
 
 template <SelectSide side> inline
 bool FolderPair::isFollowedSymlink() const
 {
-    return SelectParam<side>::ref(attrL_, attrR_).isFollowedSymlink;
+    return selectParam<side>(attrL_, attrR_).isFollowedSymlink;
 }
 
 
 template <SelectSide side> inline
 AFS::FingerPrint FilePair::getFilePrint() const
 {
-    return SelectParam<side>::ref(attrL_, attrR_).filePrint;
+    return selectParam<side>(attrL_, attrR_).filePrint;
 }
 
 
 template <SelectSide side> inline
 void FilePair::clearFilePrint()
 {
-    SelectParam<side>::ref(attrL_, attrR_).filePrint = 0;
+    selectParam<side>(attrL_, attrR_).filePrint = 0;
 }
 
 
@@ -1171,10 +1217,8 @@ void FilePair::setSyncedTo(const Zstring& itemName,
                            bool isSymlinkSrc)
 {
     //FILE_EQUAL is only allowed for same short name and file size: enforced by this method!
-    constexpr SelectSide sideSrc = OtherSide<sideTrg>::value;
-
-    SelectParam<sideTrg>::ref(attrL_, attrR_) = FileAttributes(lastWriteTimeTrg, fileSize, filePrintTrg, isSymlinkTrg);
-    SelectParam<sideSrc>::ref(attrL_, attrR_) = FileAttributes(lastWriteTimeSrc, fileSize, filePrintSrc, isSymlinkSrc);
+    selectParam<             sideTrg >(attrL_, attrR_) = FileAttributes(lastWriteTimeTrg, fileSize, filePrintTrg, isSymlinkTrg);
+    selectParam<getOtherSide<sideTrg>>(attrL_, attrR_) = FileAttributes(lastWriteTimeSrc, fileSize, filePrintSrc, isSymlinkSrc);
 
     moveFileRef_ = nullptr;
     FileSystemObject::setSynced(itemName); //set FileSystemObject specific part
@@ -1186,10 +1230,8 @@ void SymlinkPair::setSyncedTo(const Zstring& itemName,
                               int64_t lastWriteTimeTrg,
                               int64_t lastWriteTimeSrc)
 {
-    constexpr SelectSide sideSrc = OtherSide<sideTrg>::value;
-
-    SelectParam<sideTrg>::ref(attrL_, attrR_) = LinkAttributes(lastWriteTimeTrg);
-    SelectParam<sideSrc>::ref(attrL_, attrR_) = LinkAttributes(lastWriteTimeSrc);
+    selectParam<             sideTrg >(attrL_, attrR_) = LinkAttributes(lastWriteTimeTrg);
+    selectParam<getOtherSide<sideTrg>>(attrL_, attrR_) = LinkAttributes(lastWriteTimeSrc);
 
     FileSystemObject::setSynced(itemName); //set FileSystemObject specific part
 }
@@ -1200,10 +1242,8 @@ void FolderPair::setSyncedTo(const Zstring& itemName,
                              bool isSymlinkTrg,
                              bool isSymlinkSrc)
 {
-    constexpr SelectSide sideSrc = OtherSide<sideTrg>::value;
-
-    SelectParam<sideTrg>::ref(attrL_, attrR_) = FolderAttributes(isSymlinkTrg);
-    SelectParam<sideSrc>::ref(attrL_, attrR_) = FolderAttributes(isSymlinkSrc);
+    selectParam<             sideTrg >(attrL_, attrR_) = FolderAttributes(isSymlinkTrg);
+    selectParam<getOtherSide<sideTrg>>(attrL_, attrR_) = FolderAttributes(isSymlinkSrc);
 
     FileSystemObject::setSynced(itemName); //set FileSystemObject specific part
 }
@@ -1212,7 +1252,7 @@ void FolderPair::setSyncedTo(const Zstring& itemName,
 template <SelectSide side> inline
 time_t SymlinkPair::getLastWriteTime() const
 {
-    return SelectParam<side>::ref(attrL_, attrR_).modTime;
+    return selectParam<side>(attrL_, attrR_).modTime;
 }
 
 

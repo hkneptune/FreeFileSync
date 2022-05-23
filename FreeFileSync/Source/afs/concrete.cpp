@@ -11,14 +11,15 @@
 #include "gdrive.h"
 
 using namespace fff;
+using namespace zen;
 
 
 void fff::initAfs(const AfsConfig& cfg)
 {
     ftpInit();
     sftpInit();
-    gdriveInit(appendSeparator(cfg.configDirPathPf)   + Zstr("GoogleDrive"),
-               appendSeparator(cfg.resourceDirPathPf) + Zstr("cacert.pem"));
+    gdriveInit(appendPath(cfg.configDirPath,   Zstr("GoogleDrive")),
+               appendPath(cfg.resourceDirPath, Zstr("cacert.pem")));
 }
 
 

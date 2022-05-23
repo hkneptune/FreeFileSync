@@ -179,7 +179,7 @@ std::vector<std::string> splitFtpResponse(const std::string& buf)
     split2(buf, [](char c) { return isLineBreak(c) || c == '\0'; }, //is 0-char check even needed?
     [&lines](const char* blockFirst, const char* blockLast)
     {
-        if (blockFirst != blockLast)
+        if (blockFirst != blockLast) //consider Windows' <CR><LF>
             lines.emplace_back(blockFirst, blockLast);
     });
 
@@ -210,11 +210,10 @@ public:
     std::string readRange(Function acceptChar) //throw SysError
     {
         auto itEnd = std::find_if_not(it_, line_.end(), acceptChar);
-        std::string output(it_, itEnd);
-        if (output.empty())
+        if (itEnd == it_)
             throw SysError(L"Expected char range not found.");
-        it_ = itEnd;
-        return output;
+
+        return {std::exchange(it_, itEnd), itEnd};
     }
 
     char peekNextChar() const { return it_ == line_.end() ? '\0' : *it_; }
@@ -747,7 +746,7 @@ private:
         bool clnt = false;
         bool utf8 = false;
     };
-    using FeatureList = std::map<Zstring /*server name*/, std::optional<Features>, LessAsciiNoCase>;
+    using FeatureList = std::unordered_map<Zstring /*server name*/, std::optional<Features>, StringHashAsciiNoCase, StringEqualAsciiNoCase>;
 
     bool getFeatureSupport(bool Features::* status) //throw SysError
     {
@@ -910,7 +909,7 @@ private:
 
             lastCleanupTime = std::chrono::steady_clock::now();
 
-            std::vector<Protected<IdleFtpSessions>*> sessionStores; //pointers remain stable, thanks to std::map<>
+            std::vector<Protected<IdleFtpSessions>*> sessionStores; //pointers remain stable, thanks to std::unordered_map<>
 
             globalSessionStore_.access([&](GlobalFtpSessions& sessionsById)
             {
@@ -1185,7 +1184,7 @@ private:
                            BUT: practially this will be the inode ID/file index, so we can assume persistence */
                     const std::string uniqueId = afterFirst(fact, '=', IfNotFoundReturn::none);
                     assert(!uniqueId.empty());
-                    item.filePrint = hashArray<AFS::FingerPrint>(uniqueId.begin(), uniqueId.end());
+                    item.filePrint = hashString<AFS::FingerPrint>(uniqueId);
                     //other metadata to hash e.g. create fact? => not available on Linux-hosted FTP!
                 }
 
@@ -1584,7 +1583,7 @@ private:
     {
         for (const FtpItem& item : FtpDirectoryReader::execute(login_, dirPath)) //throw FileError
         {
-            const AfsPath itemPath(nativeAppendPaths(dirPath.value, item.itemName));
+            const AfsPath itemPath(appendPath(dirPath.value, item.itemName));
 
             switch (item.type)
             {
@@ -1957,6 +1956,8 @@ public:
 
 private:
     Zstring getInitPathPhrase(const AfsPath& afsPath) const override { return concatenateFtpFolderPathPhrase(login_, afsPath); }
+
+    std::vector<Zstring> getPathPhraseAliases(const AfsPath& afsPath) const override { return {getInitPathPhrase(afsPath)}; }
 
     std::wstring getDisplayPath(const AfsPath& afsPath) const override { return getCurlDisplayPath(login_, afsPath); }
 

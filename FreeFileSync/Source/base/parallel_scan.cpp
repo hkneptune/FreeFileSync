@@ -7,7 +7,6 @@
 #include "parallel_scan.h"
 #include <chrono>
 #include <zen/file_error.h>
-//#include <zen/basic_math.h>
 #include <zen/thread.h>
 #include <zen/scope_guard.h>
 
@@ -211,8 +210,8 @@ struct TraverserConfig
     const FilterRef filter;
     const SymLinkHandling handleSymlinks;
 
-    std::map<Zstring, Zstringc>& failedDirReads;
-    std::map<Zstring, Zstringc>& failedItemReads;
+    std::unordered_map<Zstring, Zstringc>& failedDirReads;
+    std::unordered_map<Zstring, Zstringc>& failedItemReads;
 
     AsyncCallback& acb;
     const int threadIdx;
@@ -435,7 +434,8 @@ std::map<DirectoryKey, DirectoryValue> fff::parallelDeviceTraversal(const std::s
     for (const auto& [afsDevice, dirKeys] : perDeviceFolders)
     {
         const int threadIdx = static_cast<int>(worker.size());
-        Zstring threadName = Zstr("Comp Device[") + numberTo<Zstring>(threadIdx + 1) + Zstr('/') + numberTo<Zstring>(perDeviceFolders.size()) + Zstr(']');
+        Zstring threadName = Zstr("Comp Device[") + numberTo<Zstring>(threadIdx + 1) + Zstr('/') + numberTo<Zstring>(perDeviceFolders.size()) + Zstr("] ") +
+                             utfTo<Zstring>(AFS::getDisplayPath({afsDevice, AfsPath()}));
 
         const size_t parallelOps = 1;
         std::map<DirectoryKey, DirectoryValue*> workload;

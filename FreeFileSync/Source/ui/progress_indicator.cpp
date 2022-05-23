@@ -190,7 +190,7 @@ CompareProgressPanel::Impl::Impl(wxFrame& parentWindow) :
     CompareProgressDlgGenerated(&parentWindow),
     parentWindow_(parentWindow)
 {
-    const wxImage& imgFile = IconBuffer::genericFileIcon(IconBuffer::SIZE_SMALL);
+    const wxImage& imgFile = IconBuffer::genericFileIcon(IconBuffer::IconSize::small);
     setImage(*m_bitmapItemStat, imgFile);
 
     const wxImage imgTime = loadImage("time", -1 /*maxWidth*/, imgFile.GetHeight());
@@ -323,7 +323,7 @@ void CompareProgressPanel::Impl::updateProgressGui()
     if (!haveTotalStats)
     {
         //dialog caption, taskbar
-        setTitle(formatNumber(itemsCurrent) + L" | " + getDialogPhaseText(*syncStat_, false /*paused*/));
+        setTitle(formatNumber(itemsCurrent) + SPACED_DASH + getDialogPhaseText(*syncStat_, false /*paused*/));
 
         //progress indicators
         //taskbar_ already set to STATUS_INDETERMINATE within initNewPhase()
@@ -564,7 +564,7 @@ struct LabelFormatterBytes : public LabelFormatter
             return 1;
 
         //round to next number which is a convenient to read block size
-        const double k = std::floor(std::log(bytesProposed) / std::log(2.0));
+        const double k = std::floor(std::log(bytesProposed) / std::numbers::ln2);
         const double e = std::pow(2.0, k);
         if (numeric::isNull(e))
             return 0;
@@ -837,7 +837,7 @@ dlgSizeBuf_(dlgSize)
 
     setImage(*pnl_.m_bpButtonMinimizeToTray, loadImage("minimize_to_tray"));
 
-    const wxImage& imgFile = IconBuffer::genericFileIcon(IconBuffer::SIZE_SMALL);
+    const wxImage& imgFile = IconBuffer::genericFileIcon(IconBuffer::IconSize::small);
     setImage(*pnl_.m_bitmapItemStat, imgFile);
 
     const wxImage imgTime = loadImage("time", -1 /*maxWidth*/, imgFile.GetHeight());
@@ -1017,7 +1017,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::setExternalStatus(const wxString& s
     //sys tray: order "top-down": jobname, status, progress
     wxString tooltip = L"FreeFileSync";
     if (!jobName_.empty())
-        tooltip += L" | " + jobName_;
+        tooltip += SPACED_DASH + jobName_;
 
     tooltip += L'\n' + statusTxt;
 
@@ -1032,7 +1032,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::setExternalStatus(const wxString& s
     title += statusTxt;
 
     if (!jobName_.empty())
-        title += L" | " + jobName_;
+        title += SPACED_DASH + jobName_;
 
     const Zchar* format = [&tc = syncStartTime_]
     {
@@ -1043,7 +1043,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::setExternalStatus(const wxString& s
             return formatTimeTag;
         return formatDateTimeTag;
     }();
-    title += L" | " + utfTo<std::wstring>(formatTime(format, syncStartTime_));
+    title += SPACED_DASH + utfTo<std::wstring>(formatTime(format, syncStartTime_));
 
     //---------------------------------------------------------------------------
 
@@ -1185,8 +1185,8 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
 
             const double timeRemainingSec = remTimeSec ? *remTimeSec : 0;
             const double timeTotalSec = timeElapsedDouble + timeRemainingSec;
-            //update estimated total time marker only with precision of "15% remaining time" to avoid needless jumping around:
-            if (numeric::dist(curveBytesEstim_.ref().getTotalTime(), timeTotalSec) > 0.15 * timeRemainingSec)
+            //update estimated total time marker only with precision of "20% remaining time" to avoid needless jumping around:
+            if (numeric::dist(curveBytesEstim_.ref().getTotalTime(), timeTotalSec) > 0.2 * timeRemainingSec)
             {
                 //avoid needless flicker and don't update total time graph too often:
                 static_assert(std::chrono::duration_cast<std::chrono::milliseconds>(GRAPH_TOTAL_TIME_UPDATE_INTERVAL).count() % SPEED_ESTIMATE_UPDATE_INTERVAL.count() == 0);

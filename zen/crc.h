@@ -52,7 +52,9 @@ uint16_t getCrc16(ByteIterator first, ByteIterator last) //http://www.sunshine2k
             0x8801, 0x48c0, 0x4980, 0x8941, 0x4b00, 0x8bc1, 0x8a81, 0x4a40, 0x4e00, 0x8ec1, 0x8f81, 0x4f40, 0x8d01, 0x4dc0, 0x4c80, 0x8c41,
             0x4400, 0x84c1, 0x8581, 0x4540, 0x8701, 0x47c0, 0x4680, 0x8641, 0x8201, 0x42c0, 0x4380, 0x8341, 0x4100, 0x81c1, 0x8081, 0x4040
         };
-        static_assert(arraySize(crcTable) == 256 && arrayAccumulate<uint32_t>(crcTable) == 8380544);
+        static_assert(std::size(crcTable) == 256);
+        static_assert(arrayHash(crcTable) == 728085957);
+
         crc = (crc >> 8) ^ crcTable[(crc ^ b) & 0xFF];
     });
     return crc;
@@ -96,7 +98,8 @@ uint32_t getCrc32(ByteIterator first, ByteIterator last) //https://en.wikipedia.
             0xbdbdf21c, 0xcabac28a, 0x53b39330, 0x24b4a3a6, 0xbad03605, 0xcdd70693, 0x54de5729, 0x23d967bf, 0xb3667a2e, 0xc4614ab8,
             0x5d681b02, 0x2a6f2b94, 0xb40bbe37, 0xc30c8ea1, 0x5a05df1b, 0x2d02ef8d
         };
-        static_assert(arraySize(crcTable) == 256 && arrayAccumulate<uint64_t>(crcTable) == 549755813760);
+        static_assert(std::size(crcTable) == 256);
+        static_assert(arrayHash(crcTable) == 2988069445);
 
         crc = (crc >> 8) ^ crcTable[(crc ^ b) & 0xFF];
     });

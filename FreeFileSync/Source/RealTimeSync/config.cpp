@@ -166,7 +166,7 @@ void rts::readRealOrBatchConfig(const Zstring& filePath, XmlRealConfig& cfg, std
 
 wxLanguage rts::getProgramLanguage() //throw FileError
 {
-    const Zstring& filePath = fff::getConfigDirPathPf() + Zstr("GlobalSettings.xml");
+    const Zstring& filePath = appendPath(fff::getConfigDirPath(), Zstr("GlobalSettings.xml"));
 
     XmlDoc doc;
     try

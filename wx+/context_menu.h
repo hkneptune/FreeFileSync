@@ -100,7 +100,7 @@ private:
     ContextMenu& operator=(const ContextMenu&) = delete;
 
     std::unique_ptr<wxMenu> menu_ = std::make_unique<wxMenu>();
-    std::map<int /*item id*/, std::function<void()> /*command*/> commandList_;
+    std::unordered_map<int /*item id*/, std::function<void()> /*command*/> commandList_;
 };
 
 

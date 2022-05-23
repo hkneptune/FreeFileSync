@@ -7,7 +7,6 @@
 #include "main_dlg.h"
 #include <zen/format_unit.h>
 #include <zen/file_access.h>
-#include <zen/file_path.h>
 #include <zen/file_io.h>
 #include <zen/thread.h>
 #include <zen/process_exec.h>
@@ -88,18 +87,18 @@ bool containsFileItemMacro(const Zstring& commandLinePhrase)
 }
 
 
-IconBuffer::IconSize convert(FileIconSize isize)
+IconBuffer::IconSize convert(GridIconSize isize)
 {
     switch (isize)
     {
-        case FileIconSize::small:
-            return IconBuffer::SIZE_SMALL;
-        case FileIconSize::medium:
-            return IconBuffer::SIZE_MEDIUM;
-        case FileIconSize::large:
-            return IconBuffer::SIZE_LARGE;
+        case GridIconSize::small:
+            return IconBuffer::IconSize::small;
+        case GridIconSize::medium:
+            return IconBuffer::IconSize::medium;
+        case GridIconSize::large:
+            return IconBuffer::IconSize::large;
     }
-    return IconBuffer::SIZE_SMALL;
+    return IconBuffer::IconSize::small;
 }
 
 
@@ -522,8 +521,8 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     m_bpButtonShowDifferent ->SetToolTip(_("Show files that are different"));
     //----------------------------------------------------------------------------------------
 
-    const wxImage& imgFile = IconBuffer::genericFileIcon(IconBuffer::SIZE_SMALL);
-    const wxImage& imgDir  = IconBuffer::genericDirIcon (IconBuffer::SIZE_SMALL);
+    const wxImage& imgFile = IconBuffer::genericFileIcon(IconBuffer::IconSize::small);
+    const wxImage& imgDir  = IconBuffer::genericDirIcon (IconBuffer::IconSize::small);
 
     //init log panel
     setRelativeFontSize(*m_staticTextSyncResult, 1.5);
@@ -867,7 +866,7 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
         m_gridCfgHistory->makeRowVisible(selectedRows.front());
 
 
-onSystemShutdownRegister(onBeforeSystemShutdownCookie_);
+    onSystemShutdownRegister(onBeforeSystemShutdownCookie_);
 
     //start up: user most likely wants to change config, or start comparison by pressing ENTER
     m_gridCfgHistory->SetFocus();
@@ -940,7 +939,7 @@ onSystemShutdownRegister(onBeforeSystemShutdownCookie_);
 
 MainDialog::~MainDialog()
 {
-            std::wstring errorMsg;
+    std::wstring errorMsg;
     try //LastRun.ffs_gui
     {
         writeConfig(getConfig(), lastRunConfigPath_); //throw FileError
@@ -1198,7 +1197,7 @@ std::vector<FileSystemObject*> expandSelectionForPartialSync(const std::vector<F
     std::vector<FileSystemObject*> output;
 
     for (FileSystemObject* fsObj : selection)
-        recursiveObjectVisitor(*fsObj, [&](FolderPair& folder) { output.push_back(&folder); },
+        visitFSObjectRecursively(*fsObj, [&](FolderPair& folder) { output.push_back(&folder); },
     [&](FilePair& file)
     {
         output.push_back(&file);
@@ -1239,11 +1238,10 @@ bool selectionIncludesNonEqualItem(const std::vector<FileSystemObject*>& selecti
     struct ItemFound {};
     try
     {
+        auto onFsItem = [](FileSystemObject& fsObj) { if (fsObj.getSyncOperation() != SO_EQUAL) throw ItemFound(); };
+
         for (FileSystemObject* fsObj : selection)
-            recursiveObjectVisitor(*fsObj,
-            [](FolderPair&   folder) { if (folder .getSyncOperation() != SO_EQUAL) throw ItemFound(); },
-        /**/[](FilePair&       file) { if (file   .getSyncOperation() != SO_EQUAL) throw ItemFound(); },
-        /**/[](SymlinkPair& symlink) { if (symlink.getSyncOperation() != SO_EQUAL) throw ItemFound(); });
+            visitFSObjectRecursively(*fsObj, onFsItem, onFsItem, onFsItem);
         return false;
     }
     catch (ItemFound&) { return true;}
@@ -1547,7 +1545,7 @@ void invokeCommandLine(const Zstring& commandLinePhrase, //throw FileError
                        const std::vector<FileSystemObject*>& selection,
                        const TempFileBuffer& tempFileBuf)
 {
-    constexpr SelectSide side2 = OtherSide<side>::value;
+    constexpr SelectSide side2 = getOtherSide<side>;
 
     for (const FileSystemObject* fsObj : selection) //context menu calls this function only if selection is not empty!
     {
@@ -1756,39 +1754,58 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
 }
 
 
-
-void MainDialog::flashStatusInformation(const wxString& text)
+void MainDialog::setStatusInfo(const wxString& text, bool highlight)
 {
-    oldStatusMsgs_.push_back(m_staticTextStatusCenter->GetLabelText());
-
-    m_staticTextStatusCenter->SetLabelText(text);
-    m_staticTextStatusCenter->SetForegroundColour(wxColor(31, 57, 226)); //highlight color: blue
-    m_staticTextStatusCenter->SetFont(m_staticTextStatusCenter->GetFont().Bold());
-
-    m_panelStatusBar->Layout();
-    //if (needLayoutUpdate) auiMgr.Update(); -> not needed here, this is called anyway in updateGui()
-
-    auto restoreStatusInformation = [this]
+    if (statusTxts_.empty())
     {
-        if (!oldStatusMsgs_.empty())
+        m_staticTextStatusCenter->SetForegroundColour(highlight ? wxColor(31, 57, 226) /*blue*/ : wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
+        m_staticTextStatusCenter->SetFont((m_staticTextStatusCenter->GetFont().*(highlight ? &wxFont::Bold : &wxFont::GetBaseFont))());
+
+        setText(*m_staticTextStatusCenter, text);
+        m_panelStatusBar->Layout();
+    }
+    else
+        statusTxts_.front() = text;
+
+    statusTxtHighlightFirst_ = highlight;
+}
+
+
+void MainDialog::flashStatusInfo(const wxString& text)
+{
+    if (statusTxts_.empty())
+    {
+        statusTxts_.push_back(m_staticTextStatusCenter->GetLabelText());
+        statusTxts_.push_back(text);
+
+        m_staticTextStatusCenter->SetForegroundColour(wxColor(31, 57, 226)); //highlight color: blue
+        m_staticTextStatusCenter->SetFont(m_staticTextStatusCenter->GetFont().Bold());
+
+        popStatusInfo();
+    }
+    else
+        statusTxts_.insert(statusTxts_.begin() + 1, text);
+}
+
+
+void MainDialog::popStatusInfo()
+{
+    assert(!statusTxts_.empty());
+    if (!statusTxts_.empty())
+    {
+        const wxString statusTxt = std::move(statusTxts_.back());
+        statusTxts_.pop_back();
+
+        if (statusTxts_.empty())
+            setStatusInfo(statusTxt, statusTxtHighlightFirst_);
+        else
         {
-            wxString oldMsg = oldStatusMsgs_.back();
-            oldStatusMsgs_.pop_back();
+            guiQueue_.processAsync([] { std::this_thread::sleep_for(std::chrono::seconds(3)); }, [this] { popStatusInfo(); });
 
-            if (oldStatusMsgs_.empty()) //restore original status text
-            {
-                m_staticTextStatusCenter->SetLabelText(oldMsg);
-                m_staticTextStatusCenter->SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT)); //reset color
-
-                wxFont font = m_staticTextStatusCenter->GetFont();
-                font.SetWeight(wxFONTWEIGHT_NORMAL);
-                m_staticTextStatusCenter->SetFont(font);
-
-                m_panelStatusBar->Layout();
-            }
+            setText(*m_staticTextStatusCenter, statusTxt);
+            m_panelStatusBar->Layout();
         }
-    };
-    guiQueue_.processAsync([] { std::this_thread::sleep_for(std::chrono::seconds(3)); }, restoreStatusInformation);
+    }
 }
 
 
@@ -2726,7 +2743,7 @@ void MainDialog::onGridLabelContextRim(GridLabelClickEvent& event, bool leftSide
     addFormatEntry(_("Full path"    ), ItemPathFormat::full);
 
     //----------------------------------------------------------------------------------------------
-    auto setIconSize = [&](FileIconSize sz, bool showIcons)
+    auto setIconSize = [&](GridIconSize sz, bool showIcons)
     {
         globalCfg_.mainDlg.iconSize  = sz;
         globalCfg_.mainDlg.showIcons = showIcons;
@@ -2736,13 +2753,13 @@ void MainDialog::onGridLabelContextRim(GridLabelClickEvent& event, bool leftSide
     menu.addSeparator();
     menu.addCheckBox(_("Show icons:"), [&] { setIconSize(globalCfg_.mainDlg.iconSize, !globalCfg_.mainDlg.showIcons); }, globalCfg_.mainDlg.showIcons);
 
-    auto addSizeEntry = [&](const wxString& label, FileIconSize sz)
+    auto addSizeEntry = [&](const wxString& label, GridIconSize sz)
     {
         menu.addRadio(label, [sz, &setIconSize] { setIconSize(sz, true /*showIcons*/); }, globalCfg_.mainDlg.iconSize == sz, globalCfg_.mainDlg.showIcons);
     };
-    addSizeEntry(L"    " + _("Small" ), FileIconSize::small );
-    addSizeEntry(L"    " + _("Medium"), FileIconSize::medium);
-    addSizeEntry(L"    " + _("Large" ), FileIconSize::large );
+    addSizeEntry(L"    " + _("Small" ), GridIconSize::small );
+    addSizeEntry(L"    " + _("Medium"), GridIconSize::medium);
+    addSizeEntry(L"    " + _("Large" ), GridIconSize::large );
 
     //----------------------------------------------------------------------------------------------
     auto setDefault = [&]
@@ -2928,7 +2945,7 @@ void MainDialog::cfgHistoryRemoveObsolete(const std::vector<Zstring>& filePaths)
 {
     auto getUnavailableCfgFilesAsync = [filePaths] //don't use wxString: NOT thread-safe! (e.g. non-atomic ref-count)
     {
-        std::list<std::future<bool>> availableFiles; //check existence of all config files in parallel!
+        std::vector<std::future<bool>> availableFiles; //check existence of all config files in parallel!
 
         for (const Zstring& filePath : filePaths)
             availableFiles.push_back(runAsync([=] { return fileAvailable(filePath); }));
@@ -3096,7 +3113,7 @@ bool MainDialog::trySaveConfig(const Zstring* guiCfgPath) //"false": error/cance
         writeConfig(guiCfg, cfgFilePath); //throw FileError
         setLastUsedConfig(guiCfg, {cfgFilePath});
 
-        flashStatusInformation(_("Configuration saved"));
+        flashStatusInfo(_("Configuration saved"));
         return true;
     }
     catch (const FileError& e)
@@ -3178,7 +3195,7 @@ bool MainDialog::trySaveBatchConfig(const Zstring* batchCfgPath) //"false": erro
         writeConfig(batchCfg, cfgFilePath); //throw FileError
         setLastUsedConfig(guiCfg, {cfgFilePath}); //[!] behave as if we had saved guiCfg
 
-        flashStatusInformation(_("Configuration saved"));
+        flashStatusInfo(_("Configuration saved"));
         return true;
     }
     catch (const FileError& e)
@@ -3341,7 +3358,7 @@ bool MainDialog::loadConfiguration(const std::vector<Zstring>& filePaths, bool i
         setLastUsedConfig(XmlGuiConfig(), filePaths); //simulate changed config due to parsing errors
     }
 
-    //flashStatusInformation("Configuration loaded"); -> irrelevant!?
+    //flashStatusInfo("Configuration loaded"); -> irrelevant!?
     return true;
 }
 
@@ -3600,8 +3617,8 @@ void MainDialog::onCfgGridContext(GridContextMenuEvent& event)
                  showInFileManager, wxNullImage, !selectedRows.empty());
     menu.addSeparator();
     //--------------------------------------------------------------------------------------------------------
-    menu.addItem(_("Hide configuration") + L"\tDel", [this] { removeSelectedCfgHistoryItems(false /*deleteFromDisk*/); }, wxNullImage,    !selectedRows.empty());
-    menu.addItem(_("&Delete") +      L"\tShift+Del", [this] { removeSelectedCfgHistoryItems(true  /*deleteFromDisk*/); }, imgTrashSmall_, !selectedRows.empty());
+    menu.addItem(_("&Hide")   + L"\tDel",       [this] { removeSelectedCfgHistoryItems(false /*deleteFromDisk*/); }, wxNullImage,    !selectedRows.empty());
+    menu.addItem(_("&Delete") + L"\tShift+Del", [this] { removeSelectedCfgHistoryItems(true  /*deleteFromDisk*/); }, imgTrashSmall_, !selectedRows.empty());
     //--------------------------------------------------------------------------------------------------------
     menu.popup(*m_gridCfgHistory, event.mousePos_);
     //event.Skip();
@@ -4039,10 +4056,10 @@ void MainDialog::onViewFilterContext(wxEvent& event)
         saveButtonDefault(*m_bpButtonShowUpdateRight, def.updateRight);
         saveButtonDefault(*m_bpButtonShowDoNothing,   def.doNothing);
 
-        flashStatusInformation(_("View settings saved"));
+        flashStatusInfo(_("View settings saved"));
     };
 
-    menu.addItem(_("Save as default"), saveDefault, loadImage("cfg_save_sicon"));
+    menu.addItem(_("&Save as default"), saveDefault, loadImage("cfg_save_sicon"));
     menu.popup(*m_bpButtonViewFilterContext, {m_bpButtonViewFilterContext->GetSize().x, 0});
 }
 
@@ -4157,7 +4174,8 @@ void MainDialog::onCompare(wxCommandEvent& event)
             st.updateCount() +
             st.deleteCount() == 0)
         {
-            flashStatusInformation(_("No files to synchronize"));
+            setStatusInfo(_("No files to synchronize"), true /*highlight*/); //don't flashStatusInfo()
+
             updateConfigLastRunStats(std::chrono::system_clock::to_time_t(r.summary.startTime), r.summary.syncResult, getNullPath() /*logFilePath*/);
         }
     }
@@ -4434,9 +4452,9 @@ void appendInactive(ContainerObject& hierObj, std::vector<FileSystemObject*>& in
     for (FilePair& file : hierObj.refSubFiles())
         if (!file.isActive())
             inactiveItems.push_back(&file);
-    for (SymlinkPair& link : hierObj.refSubLinks())
-        if (!link.isActive())
-            inactiveItems.push_back(&link);
+    for (SymlinkPair& symlink : hierObj.refSubLinks())
+        if (!symlink.isActive())
+            inactiveItems.push_back(&symlink);
     for (FolderPair& folder : hierObj.refSubFolders())
     {
         if (!folder.isActive())
@@ -4766,22 +4784,10 @@ void MainDialog::onGridLabelLeftClickC(GridLabelClickEvent& event)
 }
 
 
-void MainDialog::onSwapSides(wxEvent& event)
-{
-    ContextMenu menu;
-    menu.addItem(_("Swap sides") +
-                 L"\tCtrl+Tab",
-                 [&] { swapSides(); });
-
-    menu.popup(*m_bpButtonSwapSides, {m_bpButtonSwapSides->GetSize().x, 0});
-}
-
-
 void MainDialog::swapSides()
 {
-    warn_static("fix swap button design mess: https://freefilesync.org/forum/viewtopic.php?t=9204")
-#if 0
-    if (globalCfg_.confirmDlgs.confirmSwapSides)
+    if (!folderCmp_.empty() && //require confirmation only *after* comparison
+        globalCfg_.confirmDlgs.confirmSwapSides)
     {
         bool dontWarnAgain = false;
         switch (showConfirmationDialog(this, DialogInfoType::info,
@@ -4797,7 +4803,6 @@ void MainDialog::swapSides()
         }
     }
     //------------------------------------------------------
-#endif
 
     //swap directory names:
     LocalPairConfig lpc1st = firstFolderPair_->getValues();
@@ -4864,7 +4869,7 @@ void MainDialog::swapSides()
 
     updateGui(); //e.g. unsaved changes
 
-    flashStatusInformation(_("Left and right sides have been swapped"));
+    flashStatusInfo(_("Left and right sides have been swapped"));
 }
 
 
@@ -5065,13 +5070,7 @@ void MainDialog::setStatusBarFileStats(FileView::FileStats statsLeft,
         replace(statusCenterNew, L"%y", formatNumber(filegrid::getDataView(*m_gridMainC).rowsOnView())); //%x used as plural form placeholder!
     }
 
-    //fill middle text (considering flashStatusInformation())
-    if (oldStatusMsgs_.empty())
-        setText(*m_staticTextStatusCenter, statusCenterNew);
-    else
-        oldStatusMsgs_.front() = statusCenterNew;
-
-    m_panelStatusBar->Layout();
+    setStatusInfo(statusCenterNew, false /*highlight*/);
 }
 
 
@@ -5657,8 +5656,8 @@ void MainDialog::onMenuExportFileList(wxCommandEvent& event)
             }
 
             const Zstring shortGuid = printNumber<Zstring>(Zstr("%04x"), static_cast<unsigned int>(getCrc16(generateGUID())));
-            const Zstring csvFilePath = appendSeparator(tempFileBuf_.getAndCreateFolderPath()) + //throw FileError
-                                        title + Zstr("~") + shortGuid + Zstr(".csv");
+            const Zstring csvFilePath = appendPath(tempFileBuf_.getAndCreateFolderPath(), //throw FileError
+                                                   title + Zstr("~") + shortGuid + Zstr(".csv"));
 
 
             TempFileOutput fileOut(csvFilePath, nullptr /*notifyUnbufferedIO*/); //throw FileError
@@ -5698,7 +5697,7 @@ void MainDialog::onMenuExportFileList(wxCommandEvent& event)
 
             openWithDefaultApp(csvFilePath); //throw FileError
 
-            flashStatusInformation(_("File list exported"));
+            flashStatusInfo(_("File list exported"));
         }
         catch (const FileError& e)
         {
@@ -5725,7 +5724,7 @@ void MainDialog::onMenuCheckVersionAutomatically(wxCommandEvent& event)
 
     if (shouldRunAutomaticUpdateCheck(globalCfg_.lastUpdateCheck))
     {
-        flashStatusInformation(_("Searching for program updates..."));
+        flashStatusInfo(_("Searching for program updates..."));
         //synchronous update check is sufficient here:
         automaticUpdateCheckEval(*this, globalCfg_.lastUpdateCheck, globalCfg_.lastOnlineVersion,
                                  automaticUpdateCheckRunAsync(automaticUpdateCheckPrepare(*this).get()).get());
@@ -5756,7 +5755,7 @@ void MainDialog::onStartupUpdateCheck(wxIdleEvent& event)
 
     if (shouldRunAutomaticUpdateCheck(globalCfg_.lastUpdateCheck))
     {
-        flashStatusInformation(_("Searching for program updates..."));
+        flashStatusInfo(_("Searching for program updates..."));
 
         std::shared_ptr<const UpdateCheckResultPrep> resultPrep = automaticUpdateCheckPrepare(*this); //run on main thread:
 

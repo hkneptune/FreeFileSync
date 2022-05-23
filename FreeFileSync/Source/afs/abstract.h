@@ -10,7 +10,7 @@
 #include <functional>
 #include <chrono>
 #include <zen/file_error.h>
-#include <zen/zstring.h>
+#include <zen/file_path.h>
 #include <zen/serialize.h> //InputStream/OutputStream support buffered stream concept
 #include <wx+/image_holder.h> //NOT a wxWidgets dependency!
 
@@ -18,7 +18,6 @@
 namespace fff
 {
 struct AfsPath;
-bool isValidRelPath(const Zstring& relPath);
 AfsPath sanitizeDeviceRelativePath(Zstring relPath);
 
 struct AbstractFileSystem;
@@ -29,7 +28,7 @@ using AfsDevice = zen::SharedRef<const AbstractFileSystem>;
 struct AfsPath //= path relative to the file system root folder (no leading/traling separator)
 {
     AfsPath() {}
-    explicit AfsPath(const Zstring& p) : value(p) { assert(isValidRelPath(value)); }
+    explicit AfsPath(const Zstring& p) : value(p) { assert(zen::isValidRelPath(value)); }
     Zstring value;
 
     std::strong_ordering operator<=>(const AfsPath&) const = default;
@@ -68,6 +67,8 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     static std::wstring getDisplayPath(const AbstractPath& ap) { return ap.afsDevice.ref().getDisplayPath(ap.afsPath); }
 
     static Zstring getInitPathPhrase(const AbstractPath& ap) { return ap.afsDevice.ref().getInitPathPhrase(ap.afsPath); }
+
+    static std::vector<Zstring> getPathPhraseAliases(const AbstractPath& ap) { return ap.afsDevice.ref().getPathPhraseAliases(ap.afsPath); }
 
     //----------------------------------------------------------------------------------------------------------------
     static void authenticateAccess(const AfsDevice& afsDevice, bool allowUserInteraction) //throw FileError
@@ -337,6 +338,8 @@ private:
 
     virtual Zstring getInitPathPhrase(const AfsPath& afsPath) const = 0;
 
+    virtual std::vector<Zstring> getPathPhraseAliases(const AfsPath& afsPath) const = 0;
+
     virtual std::wstring getDisplayPath(const AfsPath& afsPath) const = 0;
 
     virtual bool isNullFileSystem() const = 0;
@@ -434,8 +437,7 @@ bool operator==(const AbstractPath& lhs, const AbstractPath& rhs) { return lhs.a
 inline
 AbstractPath AbstractFileSystem::appendRelPath(const AbstractPath& ap, const Zstring& relPath)
 {
-    assert(isValidRelPath(relPath));
-    return AbstractPath(ap.afsDevice, AfsPath(nativeAppendPaths(ap.afsPath.value, relPath)));
+    return AbstractPath(ap.afsDevice, AfsPath(appendPath(ap.afsPath.value, relPath)));
 }
 
 //---------------------------------------------------------------------------------------------

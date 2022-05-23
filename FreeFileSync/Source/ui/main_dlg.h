@@ -128,11 +128,11 @@ private:
                                  const std::vector<FileSystemObject*>& selectionL,
                                  const std::vector<FileSystemObject*>& selectionR); //selection may be empty
 
-    //status bar supports one of the following two states at a time:
     void setStatusBarFileStats(FileView::FileStats statsLeft, FileView::FileStats statsRight);
-    //void setStatusBarFullText(const wxString& msg);
 
-    void flashStatusInformation(const wxString& msg); //temporarily show different status (only valid for setStatusBarFileStats)
+    void setStatusInfo(const wxString& text, bool highlight); //(permanently) set status bar center text
+    void flashStatusInfo(const wxString& text); //temporarily show different status
+    void popStatusInfo();
 
     //events
     void onGridKeyEvent(wxKeyEvent& event, zen::Grid& grid, bool leftSide);
@@ -209,9 +209,7 @@ private:
     void onCompare              (wxCommandEvent& event) override;
     void onStartSync            (wxCommandEvent& event) override;
     void onClose                (wxCloseEvent&   event) override;
-    void onSwapSides            (wxCommandEvent& event) override { onSwapSides(static_cast<wxEvent&>(event)); }
-    void onSwapSidesMouse       (wxMouseEvent&   event) override { onSwapSides(static_cast<wxEvent&>(event)); }
-    void onSwapSides            (wxEvent& event);
+    void onSwapSides            (wxCommandEvent& event) override { swapSides(); }
 
     void startSyncForSelecction(const std::vector<FileSystemObject*>& selection);
 
@@ -327,8 +325,9 @@ private:
     //-------------------------------------
 
     //***********************************************
-    //status information
-    std::vector<wxString> oldStatusMsgs_; //the first one is the original/non-flash status message
+    //status bar center text
+    std::vector<wxString> statusTxts_; //the first one is the original/non-flash status message
+    bool statusTxtHighlightFirst_ = false;
 
     //compare status panel (hidden on start, shown when comparing)
     std::unique_ptr<CompareProgressPanel> compareStatus_; //always bound
@@ -369,7 +368,7 @@ private:
 
     const wxImage imgTrashSmall_;
 
-    const zen::SharedRef<std::function<void()>> onBeforeSystemShutdownCookie_ = zen::makeSharedRef<std::function<void()>>([this]{ onBeforeSystemShutdown(); });
+    const zen::SharedRef<std::function<void()>> onBeforeSystemShutdownCookie_ = zen::makeSharedRef<std::function<void()>>([this] { onBeforeSystemShutdown(); });
 };
 }
 

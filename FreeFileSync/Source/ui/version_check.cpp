@@ -87,7 +87,7 @@ std::wstring getIso639Language()
 
     std::wstring localeName(wxLocale::GetLanguageCanonicalName(wxLocale::GetSystemLanguage()));
     localeName = beforeFirst(localeName, L'@', IfNotFoundReturn::all); //the locale may contain an @, e.g. "sr_RS@latin"; see wxLocale::InitLanguagesDB()
-        assert(beforeFirst(localeName, L'_', IfNotFoundReturn::all).size() == 2);
+    assert(beforeFirst(localeName, L'_', IfNotFoundReturn::all).size() == 2);
 
     if (!localeName.empty())
         return beforeFirst(localeName, L'_', IfNotFoundReturn::all);
@@ -126,10 +126,7 @@ std::vector<std::pair<std::string, std::string>> geHttpPostParameters(wxWindow& 
     const OsVersion osv = getOsVersion();
     params.emplace_back("os_version", numberTo<std::string>(osv.major) + "." + numberTo<std::string>(osv.minor));
 
-#ifndef ZEN_BUILD_ARCH
-#error include <zen/build_info.h>
-#endif
-    const char* osArch = ZEN_STRINGIZE_NUMBER(ZEN_BUILD_ARCH);
+    const char* osArch = BuildArch::program == BuildArch::bit32 ? "32" : "64";
     params.emplace_back("os_arch", osArch);
 
 #if GTK_MAJOR_VERSION == 2

@@ -67,9 +67,9 @@ struct InSyncFolder
     InSyncStatus status = DIR_STATUS_STRAW_MAN;
 
     //------------------------------------------------------------------
-    using FolderList  = std::map<Zstring, InSyncFolder,  LessUnicodeNormal>; //
-    using FileList    = std::map<Zstring, InSyncFile,    LessUnicodeNormal>; // key: file name (ignoring Unicode normal forms)
-    using SymlinkList = std::map<Zstring, InSyncSymlink, LessUnicodeNormal>; //
+    using FolderList  = std::unordered_map<ZstringNorm, InSyncFolder >; //
+    using FileList    = std::unordered_map<ZstringNorm, InSyncFile   >; // key: file name (ignoring Unicode normal forms)
+    using SymlinkList = std::unordered_map<ZstringNorm, InSyncSymlink>; //
     //------------------------------------------------------------------
 
     FolderList  folders;

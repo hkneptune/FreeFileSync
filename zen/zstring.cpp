@@ -5,13 +5,36 @@
 // *****************************************************************************
 
 #include "zstring.h"
-#include <stdexcept>
-#include "utf.h"
-
     #include <glib.h>
     #include "sys_error.h"
 
 using namespace zen;
+
+
+Zstring getUnicodeNormalForm(const Zstring& str)
+{
+    //fast pre-check:
+    if (isAsciiString(str)) //perf: in the range of 3.5ns
+        return str;
+    static_assert(std::is_same_v<decltype(str), const Zbase<Zchar>&>, "god bless our ref-counting! => save output string memory consumption!");
+
+    //Example: const char* decomposed  = "\x6f\xcc\x81";
+    //         const char* precomposed = "\xc3\xb3";
+    try
+    {
+        gchar* outStr = ::g_utf8_normalize(str.c_str(), str.length(), G_NORMALIZE_DEFAULT_COMPOSE);
+        if (!outStr)
+            throw SysError(formatSystemError("g_utf8_normalize(" + utfTo<std::string>(str) + ')', L"", L"Conversion failed."));
+        ZEN_ON_SCOPE_EXIT(::g_free(outStr));
+        return outStr;
+
+    }
+    catch ([[maybe_unused]] const SysError& e)
+    {
+        assert(false);
+        return str;
+    }
+}
 
 
 Zstring getUpperCase(const Zstring& str)
@@ -46,92 +69,6 @@ Zstring getUpperCase(const Zstring& str)
         assert(false);
         return str;
     }
-}
-
-
-Zstring getUnicodeNormalForm(const Zstring& str)
-{
-    //fast pre-check:
-    if (isAsciiString(str)) //perf: in the range of 3.5ns
-        return str;
-    static_assert(std::is_same_v<decltype(str), const Zbase<Zchar>&>, "god bless our ref-counting! => save output string memory consumption!");
-
-    //Example: const char* decomposed  = "\x6f\xcc\x81";
-    //         const char* precomposed = "\xc3\xb3";
-    try
-    {
-        gchar* outStr = ::g_utf8_normalize(str.c_str(), str.length(), G_NORMALIZE_DEFAULT_COMPOSE);
-        if (!outStr)
-            throw SysError(formatSystemError("g_utf8_normalize(" + utfTo<std::string>(str) + ')', L"", L"Conversion failed."));
-        ZEN_ON_SCOPE_EXIT(::g_free(outStr));
-        return outStr;
-
-    }
-    catch ([[maybe_unused]] const SysError& e)
-    {
-        assert(false);
-        return str;
-    }
-}
-
-
-Zstring replaceCpyAsciiNoCase(const Zstring& str, const Zstring& oldTerm, const Zstring& newTerm)
-{
-    if (oldTerm.empty())
-        return str;
-
-    //assert(isAsciiString(oldTerm));
-    Zstring output;
-
-    for (size_t pos = 0;;)
-    {
-        const size_t posFound = std::search(str.begin() + pos, str.end(), //can't use getUpperCase(): input/output sizes may differ!
-                                            oldTerm.begin(), oldTerm.end(),
-        [](Zchar charL, Zchar charR) { return asciiToUpper(charL) == asciiToUpper(charR); }) - str.begin();
-
-        if (posFound == str.size())
-        {
-            if (pos == 0) //optimize "oldTerm not found": return ref-counted copy
-                return str;
-            output.append(str.begin() + pos, str.end());
-            return output;
-        }
-
-        output.append(str.begin() + pos, str.begin() + posFound);
-        output += newTerm;
-        pos = posFound + oldTerm.size();
-    }
-}
-
-
-/* https://docs.microsoft.com/de-de/windows/desktop/Intl/handling-sorting-in-your-applications
-
-    Perf test: compare strings 10 mio times; 64 bit build
-    -----------------------------------------------------
-        string a = "Fjk84$%kgfj$%T\\\\Gffg\\gsdgf\\fgsx----------d-"
-        string b = "fjK84$%kgfj$%T\\\\gfFg\\gsdgf\\fgSy----------dfdf"
-
-    Windows (UTF16 wchar_t)
-      4 ns | wcscmp
-     67 ns | CompareStringOrdinalFunc+ + bIgnoreCase
-    314 ns | LCMapString + wmemcmp
-
-    OS X (UTF8 char)
-       6 ns | strcmp
-      98 ns | strcasecmp
-     120 ns | strncasecmp + std::min(sizeLhs, sizeRhs);
-     856 ns | CFStringCreateWithCString       + CFStringCompare(kCFCompareCaseInsensitive)
-    1110 ns | CFStringCreateWithCStringNoCopy + CFStringCompare(kCFCompareCaseInsensitive)
-    ________________________
-    time per call | function                                                   */
-
-std::weak_ordering compareNativePath(const Zstring& lhs, const Zstring& rhs)
-{
-    assert(lhs.find(Zchar('\0')) == Zstring::npos); //don't expect embedded nulls!
-    assert(rhs.find(Zchar('\0')) == Zstring::npos); //
-
-    return lhs <=> rhs;
-
 }
 
 

@@ -7,12 +7,13 @@
 #ifndef ZSTRING_H_73425873425789
 #define ZSTRING_H_73425873425789
 
+#include <stdexcept> //not used by this header, but the "rest of the world" needs it!
+#include "utf.h"     //
 #include "string_base.h"
 
 
     using Zchar = char;
     #define Zstr(x) x
-    const Zchar FILE_NAME_SEPARATOR = '/';
 
 
 //"The reason for all the fuss above" - Loki/SmartPtr
@@ -24,12 +25,6 @@ using Zstringc = zen::Zbase<char>;
 //using Zstringw = zen::Zbase<wchar_t>;
 
 
-/* Caveat: don't expect input/output string sizes to match:
-    - different UTF-8 encoding length of upper-case chars
-    - different number of upper case chars (e.g. ß => "SS" on macOS)
-    - output is Unicode-normalized                                         */
-Zstring getUpperCase(const Zstring& str);
-
 //Windows, Linux: precomposed
 //macOS: decomposed
 Zstring getUnicodeNormalForm(const Zstring& str);
@@ -37,105 +32,44 @@ Zstring getUnicodeNormalForm(const Zstring& str);
     and conformant software should not treat canonically equivalent sequences, whether composed or decomposed or something in between, as different."
     https://www.win.tue.nl/~aeb/linux/uc/nfc_vs_nfd.html             */
 
-struct LessUnicodeNormal { bool operator()(const Zstring& lhs, const Zstring& rhs) const { return getUnicodeNormalForm(lhs) < getUnicodeNormalForm(rhs); } };
-
-Zstring replaceCpyAsciiNoCase(const Zstring& str, const Zstring& oldTerm, const Zstring& newTerm);
+/* Caveat: don't expect input/output string sizes to match:
+    - different UTF-8 encoding length of upper-case chars
+    - different number of upper case chars (e.g. ß => "SS" on macOS)
+    - output is Unicode-normalized                                         */
+Zstring getUpperCase(const Zstring& str);
 
 //------------------------------------------------------------------------------------------
+struct ZstringNorm //use as STL container key: avoid needless Unicode normalizations during std::map<>::find()
+{
+    /*explicit*/ ZstringNorm(const Zstring& str) : normStr(getUnicodeNormalForm(str)) {}
+    Zstring normStr;
 
-inline bool equalNoCase(const Zstring& lhs, const Zstring& rhs) { return getUpperCase(lhs) == getUpperCase(rhs); }
+    std::strong_ordering operator<=>(const ZstringNorm&) const = default;
+};
+template<> struct std::hash<ZstringNorm> { size_t operator()(const ZstringNorm& str) const { return std::hash<Zstring>()(str.normStr); } };
 
+//struct LessUnicodeNormal { bool operator()(const Zstring& lhs, const Zstring& rhs) const { return getUnicodeNormalForm(lhs) < getUnicodeNormalForm(rhs); } };
+
+//------------------------------------------------------------------------------------------
 struct ZstringNoCase //use as STL container key: avoid needless upper-case conversions during std::map<>::find()
 {
-    ZstringNoCase(const Zstring& str) : upperCase(getUpperCase(str)) {}
+    /*explicit*/ ZstringNoCase(const Zstring& str) : upperCase(getUpperCase(str)) {}
     Zstring upperCase;
 
     std::strong_ordering operator<=>(const ZstringNoCase&) const = default;
 };
+template<> struct std::hash<ZstringNoCase> { size_t operator()(const ZstringNoCase& str) const { return std::hash<Zstring>()(str.upperCase); } };
 
-//------------------------------------------------------------------------------------------
-
-/* Compare *local* file paths:
-     Windows: igore case
-     Linux:   byte-wise comparison
-     macOS:   ignore case + Unicode normalization forms                    */
-std::weak_ordering compareNativePath(const Zstring& lhs, const Zstring& rhs);
-
-inline bool equalNativePath(const Zstring& lhs, const Zstring& rhs) { return compareNativePath(lhs, rhs) == std::weak_ordering::equivalent; }
-
-struct LessNativePath { bool operator()(const Zstring& lhs, const Zstring& rhs) const { return std::is_lt(compareNativePath(lhs, rhs)); } };
+inline bool equalNoCase(const Zstring& lhs, const Zstring& rhs) { return getUpperCase(lhs) == getUpperCase(rhs); }
 
 //------------------------------------------------------------------------------------------
 std::weak_ordering compareNatural(const Zstring& lhs, const Zstring& rhs);
 
 struct LessNaturalSort { bool operator()(const Zstring& lhs, const Zstring& rhs) const { return std::is_lt(compareNatural(lhs, rhs)); } };
+
+
 //------------------------------------------------------------------------------------------
-
-
-
-inline
-Zstring appendSeparator(Zstring path) //support rvalue references!
-{
-    if (!zen::endsWith(path, FILE_NAME_SEPARATOR))
-        path += FILE_NAME_SEPARATOR;
-    return path; //returning a by-value parameter => RVO if possible, r-value otherwise!
-}
-
-
-inline
-Zstring appendPaths(const Zstring& basePath, const Zstring& relPath, Zchar pathSep)
-{
-    using namespace zen;
-
-    assert(!startsWith(relPath, pathSep) && !endsWith(relPath, pathSep));
-    if (relPath.empty())
-        return basePath;
-    if (basePath.empty())
-        return relPath;
-
-    if (startsWith(relPath, pathSep))
-    {
-        if (relPath.size() == 1)
-            return basePath;
-
-        if (endsWith(basePath, pathSep))
-            return basePath + (relPath.c_str() + 1);
-    }
-    else if (!endsWith(basePath, pathSep))
-    {
-        Zstring output = basePath;
-        output.reserve(basePath.size() + 1 + relPath.size()); //append all three strings using a single memory allocation
-        return std::move(output) + pathSep + relPath;         //
-    }
-
-    return basePath + relPath;
-}
-
-
-inline Zstring nativeAppendPaths(const Zstring& basePath, const Zstring& relPath) { return appendPaths(basePath, relPath, FILE_NAME_SEPARATOR); }
-
-
-inline
-Zstring getFileExtension(const Zstring& filePath)
-{
-    //const Zstring fileName = afterLast(filePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
-    //return afterLast(fileName, Zstr('.'), zen::IfNotFoundReturn::none);
-
-    auto it = zen::findLast(filePath.begin(), filePath.end(), FILE_NAME_SEPARATOR);
-    if (it == filePath.end())
-        it = filePath.begin();
-    else
-        ++it;
-
-    auto it2 = zen::findLast(it, filePath.end(), Zstr('.'));
-    if (it2 != filePath.end())
-        ++it2;
-
-    return Zstring(it2, filePath.end());
-}
-
-
-//common unicode characters
+//common Unicode characters
 const wchar_t EN_DASH = L'\u2013';
 const wchar_t EM_DASH = L'\u2014';
     const wchar_t* const SPACED_DASH = L" \u2014 "; //using 'EM DASH'

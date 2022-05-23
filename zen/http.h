@@ -7,9 +7,8 @@
 #ifndef HTTP_H_879083425703425702
 #define HTTP_H_879083425703425702
 
-#include <zen/zstring.h>
-#include <zen/sys_error.h>
-#include <zen/serialize.h>
+#include "sys_error.h"
+#include "serialize.h"
 
 namespace zen
 {

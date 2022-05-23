@@ -9,9 +9,7 @@
 
 #include <thread>
 #include <future>
-#include "scope_guard.h"
 #include "ring_buffer.h"
-#include "string_tools.h"
 #include "zstring.h"
 
 
@@ -65,7 +63,7 @@ class ThreadStopRequest {};
 //context of worker thread:
 void interruptionPoint(); //throw ThreadStopRequest
 
-template<class Predicate>
+template <class Predicate>
 void interruptibleWait(std::condition_variable& cv, std::unique_lock<std::mutex>& lock, Predicate pred); //throw ThreadStopRequest
 
 template <class Rep, class Period>
@@ -90,7 +88,7 @@ auto runAsync(Function&& fun);
 
 //wait for all with a time limit: return true if *all* results are available!
 //TODO: use std::when_all when available
-template<class InputIterator, class Duration>
+template <class InputIterator, class Duration>
 bool waitForAllTimed(InputIterator first, InputIterator last, const Duration& wait_duration);
 
 template<typename T> inline
@@ -311,7 +309,7 @@ auto runAsync(Function&& fun)
 }
 
 
-template<class InputIterator, class Duration> inline
+template <class InputIterator, class Duration> inline
 bool waitForAllTimed(InputIterator first, InputIterator last, const Duration& duration)
 {
     const std::chrono::steady_clock::time_point stopTime = std::chrono::steady_clock::now() + duration;
@@ -417,7 +415,7 @@ public:
     }
 
     //context of worker thread:
-    template<class Predicate>
+    template <class Predicate>
     void interruptibleWait(std::condition_variable& cv, std::unique_lock<std::mutex>& lock, Predicate pred) //throw ThreadStopRequest
     {
         setConditionVar(&cv);
@@ -476,7 +474,7 @@ void interruptionPoint() //throw ThreadStopRequest
 
 
 //context of worker thread:
-template<class Predicate> inline
+template <class Predicate> inline
 void interruptibleWait(std::condition_variable& cv, std::unique_lock<std::mutex>& lock, Predicate pred) //throw ThreadStopRequest
 {
     assert(impl::threadLocalInterruptionStatus);

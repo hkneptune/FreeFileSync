@@ -7,13 +7,12 @@
 #include "image_resources.h"
 #include <map>
 #include <zen/utf.h>
-#include <zen/perf.h>
+//#include <zen/perf.h>
 #include <zen/thread.h>
 #include <zen/file_io.h>
 #include <zen/file_traverser.h>
 #include <wx/zipstrm.h>
 #include <wx/mstream.h>
-#include <wx/image.h>
 #include <xBRZ/src/xbrz.h>
 #include <xBRZ/src/xbrz_tools.h>
 #include "image_tools.h"

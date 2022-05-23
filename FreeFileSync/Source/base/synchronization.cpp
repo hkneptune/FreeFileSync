@@ -67,8 +67,8 @@ void SyncStatistics::recurse(const ContainerObject& hierObj)
 {
     for (const FilePair& file : hierObj.refSubFiles())
         processFile(file);
-    for (const SymlinkPair& link : hierObj.refSubLinks())
-        processLink(link);
+    for (const SymlinkPair& symlink : hierObj.refSubLinks())
+        processLink(symlink);
     for (const FolderPair& folder : hierObj.refSubFolders())
         processFolder(folder);
 
@@ -150,9 +150,9 @@ void SyncStatistics::processFile(const FilePair& file)
 
 
 inline
-void SyncStatistics::processLink(const SymlinkPair& link)
+void SyncStatistics::processLink(const SymlinkPair& symlink)
 {
-    switch (link.getSyncOperation()) //evaluate comparison result and sync direction
+    switch (symlink.getSyncOperation()) //evaluate comparison result and sync direction
     {
         case SO_CREATE_NEW_LEFT:
             ++createLeft_;
@@ -187,7 +187,7 @@ void SyncStatistics::processLink(const SymlinkPair& link)
         case SO_UNRESOLVED_CONFLICT:
             ++conflictCount_;
             if (conflictsPreview_.size() < CONFLICTS_PREVIEW_MAX)
-                conflictsPreview_.push_back({link.getRelativePathAny(), link.getSyncOpConflict()});
+                conflictsPreview_.push_back({symlink.getRelativePathAny(), symlink.getSyncOpConflict()});
             break;
 
         case SO_MOVE_LEFT_FROM:
@@ -959,7 +959,7 @@ private:
         acb_(acb) {}
 
     static PassNo getPass(const FilePair&    file);
-    static PassNo getPass(const SymlinkPair& link);
+    static PassNo getPass(const SymlinkPair& symlink);
     static PassNo getPass(const FolderPair&  folder);
     static bool needZeroPass(const FilePair& file);
     static bool needZeroPass(const FolderPair& folder);
@@ -975,8 +975,8 @@ private:
     void synchronizeFile(FilePair& file);                                                     //
     template <SelectSide side> void synchronizeFileInt(FilePair& file, SyncOperation syncOp); //throw FileError, ErrorMoveUnsupported, ThreadStopRequest
 
-    void synchronizeLink(SymlinkPair& link);                                                        //
-    template <SelectSide sideTrg> void synchronizeLinkInt(SymlinkPair& link, SyncOperation syncOp); //throw FileError, ThreadStopRequest
+    void synchronizeLink(SymlinkPair& symlink);                                                        //
+    template <SelectSide sideTrg> void synchronizeLinkInt(SymlinkPair& symlink, SyncOperation syncOp); //throw FileError, ThreadStopRequest
 
     void synchronizeFolder(FolderPair& folder);                                                        //
     template <SelectSide sideTrg> void synchronizeFolderInt(FolderPair& folder, SyncOperation syncOp); //throw FileError, ThreadStopRequest
@@ -1019,7 +1019,7 @@ private:
     const std::wstring txtVerifyingFile_     {_("Verifying file %x"        )};
     const std::wstring txtUpdatingAttributes_{_("Updating attributes of %x")};
     const std::wstring txtMovingFileXtoY_    {_("Moving file %x to %y"     )};
-    const std::wstring txtSourceItemNotExist_{_("Source item %x not found" )};
+    const std::wstring txtSourceItemNotExist_{_("Source item %x is not existing")};
 };
 
 //===================================================================================================
@@ -1401,9 +1401,9 @@ FolderPairSyncer::PassNo FolderPairSyncer::getPass(const FilePair& file)
 
 
 inline
-FolderPairSyncer::PassNo FolderPairSyncer::getPass(const SymlinkPair& link)
+FolderPairSyncer::PassNo FolderPairSyncer::getPass(const SymlinkPair& symlink)
 {
-    switch (link.getSyncOperation()) //evaluate comparison result and sync direction
+    switch (symlink.getSyncOperation()) //evaluate comparison result and sync direction
     {
         case SO_DELETE_LEFT:
         case SO_DELETE_RIGHT:
@@ -1486,8 +1486,8 @@ void FolderPairSyncer::synchronizeFile(FilePair& file) //throw FileError, ErrorM
 template <SelectSide sideTrg>
 void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) //throw FileError, ErrorMoveUnsupported, ThreadStopRequest
 {
-    constexpr SelectSide sideSrc = OtherSide<sideTrg>::value;
-    DeletionHandler& delHandlerTrg = SelectParam<sideTrg>::ref(delHandlerLeft_, delHandlerRight_);
+    constexpr SelectSide sideSrc = getOtherSide<sideTrg>;
+    DeletionHandler& delHandlerTrg = selectParam<sideTrg>(delHandlerLeft_, delHandlerRight_);
 
     switch (syncOp)
     {
@@ -1724,17 +1724,17 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
 
 
 inline
-void FolderPairSyncer::synchronizeLink(SymlinkPair& link) //throw FileError, ThreadStopRequest
+void FolderPairSyncer::synchronizeLink(SymlinkPair& symlink) //throw FileError, ThreadStopRequest
 {
     assert(isLocked(singleThread_));
-    const SyncOperation syncOp = link.getSyncOperation();
+    const SyncOperation syncOp = symlink.getSyncOperation();
 
     if (std::optional<SelectSide> sideTrg = getTargetDirection(syncOp))
     {
         if (*sideTrg == SelectSide::left)
-            synchronizeLinkInt<SelectSide::left>(link, syncOp);
+            synchronizeLinkInt<SelectSide::left>(symlink, syncOp);
         else
-            synchronizeLinkInt<SelectSide::right>(link, syncOp);
+            synchronizeLinkInt<SelectSide::right>(symlink, syncOp);
     }
 }
 
@@ -1742,8 +1742,8 @@ void FolderPairSyncer::synchronizeLink(SymlinkPair& link) //throw FileError, Thr
 template <SelectSide sideTrg>
 void FolderPairSyncer::synchronizeLinkInt(SymlinkPair& symlink, SyncOperation syncOp) //throw FileError, ThreadStopRequest
 {
-    constexpr SelectSide sideSrc = OtherSide<sideTrg>::value;
-    DeletionHandler& delHandlerTrg = SelectParam<sideTrg>::ref(delHandlerLeft_, delHandlerRight_);
+    constexpr SelectSide sideSrc = getOtherSide<sideTrg>;
+    DeletionHandler& delHandlerTrg = selectParam<sideTrg>(delHandlerLeft_, delHandlerRight_);
 
     switch (syncOp)
     {
@@ -1892,8 +1892,8 @@ void FolderPairSyncer::synchronizeFolder(FolderPair& folder) //throw FileError, 
 template <SelectSide sideTrg>
 void FolderPairSyncer::synchronizeFolderInt(FolderPair& folder, SyncOperation syncOp) //throw FileError, ThreadStopRequest
 {
-    constexpr SelectSide sideSrc = OtherSide<sideTrg>::value;
-    DeletionHandler& delHandlerTrg = SelectParam<sideTrg>::ref(delHandlerLeft_, delHandlerRight_);
+    constexpr SelectSide sideSrc = getOtherSide<sideTrg>;
+    DeletionHandler& delHandlerTrg = selectParam<sideTrg>(delHandlerLeft_, delHandlerRight_);
 
     switch (syncOp)
     {
@@ -2137,7 +2137,7 @@ bool createBaseFolder(BaseFolderPair& baseFolder, bool copyFilePermissions, Phas
         {
             //create target directory: user presumably ignored warning "dir not yet existing" in order to have it created automatically
             const AbstractPath folderPath = baseFolder.getAbstractPath<side>();
-            static const SelectSide sideSrc = OtherSide<side>::value;
+            static const SelectSide sideSrc = getOtherSide<side>;
 
             const std::wstring errMsg = tryReportingError([&]
             {

@@ -14,36 +14,40 @@ using namespace fff;
 
 std::vector<unsigned int> fff::fromTimeShiftPhrase(const std::wstring& timeShiftPhrase)
 {
-    std::wstring tmp = replaceCpy(timeShiftPhrase, L';', L','); //harmonize , ; and ' '
-    replace(tmp, L' ', L',');                                   //
-    replace(tmp, L'-', L""); //there is no negative shift => treat as positive!
+    std::vector<unsigned int> minutes;
 
-    std::set<unsigned int> minutes;
-    for (const std::wstring& part : split(tmp, L',', SplitOnEmpty::skip))
+    split2(timeShiftPhrase, [](wchar_t c) { return c == L',' || c == L';' || c == L' '; }, //delimiters
+    [&minutes](const wchar_t* blockFirst, const wchar_t* blockLast)
     {
-        if (contains(part, L':'))
-            minutes.insert(stringTo<unsigned int>(beforeFirst(part, L':', IfNotFoundReturn::none)) * 60 +
-                           stringTo<unsigned int>(afterFirst (part, L':', IfNotFoundReturn::none)));
-        else
-            minutes.insert(stringTo<unsigned int>(part) * 60);
-    }
-    minutes.erase(0);
+        if (blockFirst != blockLast)
+        {
+            std::wstring part(blockFirst, blockLast);
+            replace(part, L'-', L""); //there is no negative shift => treat as positive!
 
-    return {minutes.begin(), minutes.end()};
+            const unsigned int timeShift = stringTo<unsigned int>(beforeFirst(part, L':', IfNotFoundReturn::all)) * 60 +
+                                           stringTo<unsigned int>(afterFirst (part, L':', IfNotFoundReturn::none));
+            if (timeShift > 0)
+                minutes.push_back(timeShift);
+        }
+    });
+    removeDuplicates(minutes);
+    return minutes;
 }
 
 
 std::wstring fff::toTimeShiftPhrase(const std::vector<unsigned int>& ignoreTimeShiftMinutes)
 {
     std::wstring phrase;
-    for (auto it = ignoreTimeShiftMinutes.begin(); it != ignoreTimeShiftMinutes.end(); ++it)
+    for (const unsigned int timeShift : ignoreTimeShiftMinutes)
     {
-        if (it != ignoreTimeShiftMinutes.begin())
+        if (!phrase.empty())
             phrase += L", ";
 
-        phrase += numberTo<std::wstring>(*it / 60);
-        if (*it % 60 != 0)
-            phrase += L':' + printNumber<std::wstring>(L"%02d", static_cast<int>(*it % 60));
+        phrase += numberTo<std::wstring>(timeShift / 60);
+
+        if (const unsigned int shiftRem = timeShift % 60;
+            shiftRem != 0)
+            phrase += L':' + printNumber<std::wstring>(L"%02d", static_cast<int>(shiftRem));
     }
     return phrase;
 }

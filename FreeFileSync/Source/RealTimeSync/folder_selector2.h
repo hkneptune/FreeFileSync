@@ -7,7 +7,6 @@
 #ifndef FOLDER_SELECTOR2_H_073246031245342566
 #define FOLDER_SELECTOR2_H_073246031245342566
 
-#include <zen/zstring.h>
 #include <wx/stattext.h>
 #include <wx/button.h>
 #include <wx/textctrl.h>

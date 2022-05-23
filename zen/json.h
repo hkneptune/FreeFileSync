@@ -40,9 +40,9 @@ struct JsonValue
 
 
     Type type = Type::null;
-    std::string                        primVal; //for primitive types
-    std::map<std::string, JsonValue> objectVal; //"[...] most implementations of JSON libraries do not accept duplicate keys [...]" => fine!
-    std::vector<JsonValue>            arrayVal;
+    std::string                                primVal; //for primitive types
+    std::unordered_map<std::string, JsonValue> objectVal; //"[...] most implementations of JSON libraries do not accept duplicate keys [...]" => fine!
+    std::vector<JsonValue>                     arrayVal;
 };
 
 
@@ -303,26 +303,26 @@ std::string serializeJson(const JsonValue& jval,
 
 namespace json_impl
 {
+enum class TokenType
+{
+    eof,
+    curlyOpen,
+    curlyClose,
+    squareOpen,
+    squareClose,
+    colon,
+    comma,
+    string,  //
+    number,  //primitive types
+    boolean, //
+    null,    //
+};
+
 struct Token
 {
-    enum class Type
-    {
-        eof,
-        curlyOpen,
-        curlyClose,
-        squareOpen,
-        squareClose,
-        colon,
-        comma,
-        string,  //
-        number,  //primitive types
-        boolean, //
-        null,    //
-    };
+    Token(TokenType t) : type(t) {}
 
-    Token(Type t) : type(t) {}
-
-    Type type;
+    TokenType type;
     std::string primVal; //for primitive types
 };
 
@@ -341,27 +341,27 @@ public:
         pos_ = std::find_if_not(pos_, stream_.end(), isJsonWhiteSpace);
 
         if (pos_ == stream_.end())
-            return Token::Type::eof;
+            return TokenType::eof;
 
-        if (*pos_ == '{') return ++pos_, Token::Type::curlyOpen;
-        if (*pos_ == '}') return ++pos_, Token::Type::curlyClose;
-        if (*pos_ == '[') return ++pos_, Token::Type::squareOpen;
-        if (*pos_ == ']') return ++pos_, Token::Type::squareClose;
-        if (*pos_ == ':') return ++pos_, Token::Type::colon;
-        if (*pos_ == ',') return ++pos_, Token::Type::comma;
-        if (startsWith("null")) return pos_ += 4, Token(Token::Type::null);
+        if (*pos_ == '{') return ++pos_, TokenType::curlyOpen;
+        if (*pos_ == '}') return ++pos_, TokenType::curlyClose;
+        if (*pos_ == '[') return ++pos_, TokenType::squareOpen;
+        if (*pos_ == ']') return ++pos_, TokenType::squareClose;
+        if (*pos_ == ':') return ++pos_, TokenType::colon;
+        if (*pos_ == ',') return ++pos_, TokenType::comma;
+        if (startsWith("null")) return pos_ += 4, Token(TokenType::null);
 
         if (startsWith("true"))
         {
             pos_ += 4;
-            Token tk(Token::Type::boolean);
+            Token tk(TokenType::boolean);
             tk.primVal = "true";
             return tk;
         }
         if (startsWith("false"))
         {
             pos_ += 5;
-            Token tk(Token::Type::boolean);
+            Token tk(TokenType::boolean);
             tk.primVal = "false";
             return tk;
         }
@@ -371,7 +371,7 @@ public:
             for (auto it = ++pos_; it != stream_.end(); ++it)
                 if (*it == '"')
                 {
-                    Token tk(Token::Type::string);
+                    Token tk(TokenType::string);
                     tk.primVal = jsonUnescape({pos_, it});
                     pos_ = ++it;
                     return tk;
@@ -388,7 +388,7 @@ public:
         if (itNumEnd == pos_)
             throw JsonParsingError(posRow(), posCol());
 
-        Token tk(Token::Type::number);
+        Token tk(TokenType::number);
         tk.primVal.assign(pos_, itNumEnd);
         pos_ = itNumEnd;
         return tk;
@@ -441,7 +441,7 @@ public:
     JsonValue parse() //throw JsonParsingError
     {
         JsonValue jval = parseValue(); //throw JsonParsingError
-        expectToken(Token::Type::eof); //
+        expectToken(TokenType::eof); //
         return jval;
     }
 
@@ -451,73 +451,73 @@ private:
 
     JsonValue parseValue() //throw JsonParsingError
     {
-        if (token().type == Token::Type::curlyOpen)
+        if (token().type == TokenType::curlyOpen)
         {
             nextToken(); //throw JsonParsingError
 
             JsonValue jval(JsonValue::Type::object);
 
-            if (token().type != Token::Type::curlyClose)
+            if (token().type != TokenType::curlyClose)
                 for (;;)
                 {
-                    expectToken(Token::Type::string); //throw JsonParsingError
+                    expectToken(TokenType::string); //throw JsonParsingError
                     std::string name = token().primVal;
                     nextToken(); //throw JsonParsingError
 
-                    consumeToken(Token::Type::colon); //throw JsonParsingError
+                    consumeToken(TokenType::colon); //throw JsonParsingError
 
                     JsonValue value = parseValue(); //throw JsonParsingError
                     jval.objectVal.emplace(std::move(name), std::move(value));
 
-                    if (token().type != Token::Type::comma)
+                    if (token().type != TokenType::comma)
                         break;
                     nextToken(); //throw JsonParsingError
                 }
 
-            consumeToken(Token::Type::curlyClose); //throw JsonParsingError
+            consumeToken(TokenType::curlyClose); //throw JsonParsingError
             return jval;
         }
-        else if (token().type == Token::Type::squareOpen)
+        else if (token().type == TokenType::squareOpen)
         {
             nextToken(); //throw JsonParsingError
 
             JsonValue jval(JsonValue::Type::array);
 
-            if (token().type != Token::Type::squareClose)
+            if (token().type != TokenType::squareClose)
                 for (;;)
                 {
                     JsonValue value = parseValue();  //throw JsonParsingError
                     jval.arrayVal.emplace_back(std::move(value));
 
-                    if (token().type != Token::Type::comma)
+                    if (token().type != TokenType::comma)
                         break;
                     nextToken(); //throw JsonParsingError
                 }
 
-            consumeToken(Token::Type::squareClose); //throw JsonParsingError
+            consumeToken(TokenType::squareClose); //throw JsonParsingError
             return jval;
         }
-        else if (token().type == Token::Type::string)
+        else if (token().type == TokenType::string)
         {
             JsonValue jval(token().primVal);
             nextToken(); //throw JsonParsingError
             return jval;
         }
-        else if (token().type == Token::Type::number)
+        else if (token().type == TokenType::number)
         {
             JsonValue jval(JsonValue::Type::number);
             jval.primVal = token().primVal;
             nextToken(); //throw JsonParsingError
             return jval;
         }
-        else if (token().type == Token::Type::boolean)
+        else if (token().type == TokenType::boolean)
         {
             JsonValue jval(JsonValue::Type::boolean);
             jval.primVal = token().primVal;
             nextToken(); //throw JsonParsingError
             return jval;
         }
-        else if (token().type == Token::Type::null)
+        else if (token().type == TokenType::null)
         {
             nextToken(); //throw JsonParsingError
             return JsonValue();
@@ -530,13 +530,13 @@ private:
 
     void nextToken() { tk_ = scn_.getNextToken(); } //throw JsonParsingError
 
-    void expectToken(Token::Type t) //throw JsonParsingError
+    void expectToken(TokenType t) //throw JsonParsingError
     {
         if (token().type != t)
             throw JsonParsingError(scn_.posRow(), scn_.posCol());
     }
 
-    void consumeToken(Token::Type t) //throw JsonParsingError
+    void consumeToken(TokenType t) //throw JsonParsingError
     {
         expectToken(t); //throw JsonParsingError
         nextToken();    //

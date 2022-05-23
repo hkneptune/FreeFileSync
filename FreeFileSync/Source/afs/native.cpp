@@ -243,7 +243,7 @@ private:
     {
         for (const auto& [itemName] : getDirContentFlat(dirPath)) //throw FileError
         {
-            const Zstring itemPath = appendSeparator(dirPath) + itemName;
+            const Zstring itemPath = appendPath(dirPath, itemName);
 
             FsItemDetails itemDetails = {};
             if (!tryReportingItemError([&] //throw X
@@ -314,7 +314,7 @@ class RecycleSessionNative : public AFS::RecycleSession
 public:
     explicit RecycleSessionNative(const Zstring& baseFolderPath) : baseFolderPath_(baseFolderPath) {}
 
-    void recycleItemIfExists(const AbstractPath& itemPath, const Zstring& logicalRelPath) override; //throw FileError
+    void recycleItemIfExists(const AbstractPath& itemPath, const Zstring& relPath) override; //throw FileError
     void tryCleanup(const std::function<void (const std::wstring& displayPath)>& notifyDeletionStatus /*throw X*/) override; //throw FileError, X
 
 private:
@@ -400,15 +400,17 @@ class NativeFileSystem : public AbstractFileSystem
 public:
     explicit NativeFileSystem(const Zstring& rootPath) : rootPath_(rootPath) {}
 
-    Zstring getNativePath(const AfsPath& afsPath) const { return isNullFileSystem() ? Zstring() : nativeAppendPaths(rootPath_, afsPath.value); }
+    Zstring getNativePath(const AfsPath& afsPath) const { return appendPath(rootPath_, afsPath.value); }
 
 private:
-    Zstring getInitPathPhrase(const AfsPath& afsPath) const override
+    Zstring getInitPathPhrase(const AfsPath& afsPath) const override { return makePathPhrase(getNativePath(afsPath)); }
+
+    std::vector<Zstring> getPathPhraseAliases(const AfsPath& afsPath) const override
     {
-        Zstring initPathPhrase = getNativePath(afsPath);
-        if (endsWith(initPathPhrase, Zstr(' '))) //path prase concept must survive trimming!
-            initPathPhrase += FILE_NAME_SEPARATOR;
-        return initPathPhrase;
+        if (isNullFileSystem())
+            return {};
+
+        return ::getPathPhraseAliases(getNativePath(afsPath));
     }
 
     std::wstring getDisplayPath(const AfsPath& afsPath) const override { return utfTo<std::wstring>(getNativePath(afsPath)); }
@@ -693,10 +695,8 @@ private:
 
 //- return true if item existed
 //- multi-threaded access: internally synchronized!
-void RecycleSessionNative::recycleItemIfExists(const AbstractPath& itemPath, const Zstring& logicalRelPath) //throw FileError
+void RecycleSessionNative::recycleItemIfExists(const AbstractPath& itemPath, const Zstring& relPath) //throw FileError
 {
-    assert(!startsWith(logicalRelPath, FILE_NAME_SEPARATOR));
-
     const Zstring& itemPathNative = getNativeItemPath(itemPath);
     if (itemPathNative.empty())
         throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
@@ -717,9 +717,9 @@ bool fff::acceptsItemPathPhraseNative(const Zstring& itemPathPhrase) //noexcept
     Zstring path = expandMacros(itemPathPhrase); //expand before trimming!
     trim(path);
 
-
     if (path.empty()) //eat up empty paths before other AFS implementations get a chance!
         return true;
+
 
     if (startsWith(path, Zstr('['))) //drive letter by volume name syntax
         return true;
@@ -741,8 +741,8 @@ AbstractPath fff::createItemPathNative(const Zstring& itemPathPhrase) //noexcept
 
 AbstractPath fff::createItemPathNativeNoFormatting(const Zstring& nativePath) //noexcept
 {
-    if (const std::optional<PathComponents> comp = parsePathComponents(nativePath))
-        return AbstractPath(makeSharedRef<NativeFileSystem>(comp->rootPath), AfsPath(comp->relPath));
+    if (const std::optional<PathComponents> pc = parsePathComponents(nativePath))
+        return AbstractPath(makeSharedRef<NativeFileSystem>(pc->rootPath), AfsPath(pc->relPath));
     else //broken path syntax
         return AbstractPath(makeSharedRef<NativeFileSystem>(nativePath), AfsPath());
 }

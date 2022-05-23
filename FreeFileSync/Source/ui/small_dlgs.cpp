@@ -7,10 +7,8 @@
 #include "small_dlgs.h"
 #include <variant>
 #include <zen/time.h>
-#include <zen/file_path.h>
 #include <zen/format_unit.h>
 #include <zen/build_info.h>
-#include <zen/stl_tools.h>
 #include <zen/process_exec.h>
 #include <zen/file_io.h>
 #include <zen/http.h>
@@ -18,7 +16,6 @@
 #include <wx/filedlg.h>
 #include <wx/clipbrd.h>
 #include <wx/sound.h>
-//#include <wx+/bitmap_button.h>
 #include <wx+/choice_enum.h>
 #include <wx+/bitmap_button.h>
 #include <wx+/rtl.h>
@@ -263,7 +260,7 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, Zstrin
     setImage(*m_bitmapServer,      loadImage("server", fastFromDIP(20)));
     setImage(*m_bitmapCloud,       loadImage("cloud"));
     setImage(*m_bitmapPerf,        loadImage("speed"));
-    setImage(*m_bitmapServerDir, IconBuffer::genericDirIcon(IconBuffer::SIZE_SMALL));
+    setImage(*m_bitmapServerDir, IconBuffer::genericDirIcon(IconBuffer::IconSize::small));
     m_checkBoxShowPassword->SetValue(false);
 
     m_textCtrlServer->SetHint(_("Example:") + L"    website.com    66.198.240.22");
@@ -1136,7 +1133,8 @@ public:
 
 private:
     void onOkay          (wxCommandEvent& event) override;
-    void onRestoreDialogs(wxCommandEvent& event) override;
+    void onShowHiddenDialogs   (wxCommandEvent& event) override { expandConfigArea(ConfigArea::hidden); };
+    void onShowContextCustomize(wxCommandEvent& event) override { expandConfigArea(ConfigArea::context); };
     void onDefault       (wxCommandEvent& event) override;
     void onCancel        (wxCommandEvent& event) override { EndModal(static_cast<int>(ConfirmationButton::cancel)); }
     void onClose         (wxCloseEvent&   event) override { EndModal(static_cast<int>(ConfirmationButton::cancel)); }
@@ -1144,6 +1142,7 @@ private:
     void onRemoveRow     (wxCommandEvent& event) override;
     void onShowLogFolder    (wxHyperlinkEvent& event) override;
     void onToggleLogfilesLimit(wxCommandEvent& event) override { updateGui(); }
+    void onToggleHiddenDialog (wxCommandEvent& event) override { updateGui(); }
 
     void onSelectSoundCompareDone (wxCommandEvent& event) override { selectSound(*m_textCtrlSoundPathCompareDone); }
     void onSelectSoundSyncDone    (wxCommandEvent& event) override { selectSound(*m_textCtrlSoundPathSyncDone); }
@@ -1157,8 +1156,15 @@ private:
     void onPlayAlertPending(wxCommandEvent& event) override { playSoundWithDiagnostics(trimCpy(m_textCtrlSoundPathAlertPending->GetValue())); }
     void playSoundWithDiagnostics(const wxString& filePath);
 
-    void onResize(wxSizeEvent& event);
+    void onGridResize(wxEvent& event);
     void updateGui();
+
+    enum class ConfigArea
+    {
+        hidden,
+        context
+    };
+    void expandConfigArea(ConfigArea area);
 
     //work around defunct keyboard focus on macOS (or is it wxMac?) => not needed for this dialog!
     //void onLocalKeyEvent(wxKeyEvent& event);
@@ -1166,14 +1172,52 @@ private:
     void setExtApp(const std::vector<ExternalApp>& extApp);
     std::vector<ExternalApp> getExtApp() const;
 
-    std::map<std::wstring, std::wstring> descriptionTransToEng_; //"translated description" -> "english" mapping for external application config
-
-    //parameters NOT owned by GUI:
-    ConfirmationDialogs confirmDlgs_;
-    WarningDialogs warnDlgs_;
-    bool autoCloseProgressDialog_;
+    std::unordered_map<std::wstring, std::wstring> descriptionTransToEng_; //"translated description" -> "english" mapping for external application config
 
     const XmlGlobalSettings defaultCfg_;
+
+    std::vector<std::tuple<std::function<bool(const XmlGlobalSettings& gs)> /*get dialog shown status*/,
+        std::function<void(XmlGlobalSettings& gs, bool show)> /*set dialog shown status*/,
+        wxString /*dialog message*/>> hiddenDialogCfgMapping_
+    {
+        //*INDENT-OFF*
+        {[](const XmlGlobalSettings& gs){     return gs.confirmDlgs.confirmSyncStart; },
+         [](      XmlGlobalSettings& gs, bool show){ gs.confirmDlgs.confirmSyncStart = show; }, _("Start synchronization now?")},
+        {[](const XmlGlobalSettings& gs){     return gs.confirmDlgs.confirmSaveConfig; },
+         [](      XmlGlobalSettings& gs, bool show){ gs.confirmDlgs.confirmSaveConfig = show; }, _("Do you want to save changes to %x?")},
+        {[](const XmlGlobalSettings& gs){    return !gs.progressDlgAutoClose; },
+         [](      XmlGlobalSettings& gs, bool show){ gs.progressDlgAutoClose = !show; }, _("Leave progress dialog open after synchronization. (don't auto-close)")},
+        {[](const XmlGlobalSettings& gs){     return gs.confirmDlgs.confirmSwapSides; },
+         [](      XmlGlobalSettings& gs, bool show){ gs.confirmDlgs.confirmSwapSides = show; }, _("Please confirm you want to swap sides.")},
+        {[](const XmlGlobalSettings& gs){     return gs.confirmDlgs.confirmCommandMassInvoke; }, 
+         [](      XmlGlobalSettings& gs, bool show){ gs.confirmDlgs.confirmCommandMassInvoke = show; }, _P("Do you really want to execute the command %y for one item?",
+                                                                                                           "Do you really want to execute the command %y for %x items?", 42)},
+        {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnFolderNotExisting; },
+         [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnFolderNotExisting = show; }, _("The following folders do not yet exist:") + L" [...] " + _("The folders are created automatically when needed.")},
+        {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnFoldersDifferInCase; },
+         [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnFoldersDifferInCase = show; }, _("The following folder paths differ in case. Please use a single form in order to avoid duplicate accesses.")},
+        {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnDependentFolderPair; },
+         [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnDependentFolderPair = show; }, _("One base folder of a folder pair is contained in the other one.") + L' ' + _("The folder should be excluded from synchronization via filter.")},
+        {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnDependentBaseFolders; },
+         [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnDependentBaseFolders = show; }, _("Some files will be synchronized as part of multiple base folders.") + L' ' + _("To avoid conflicts, set up exclude filters so that each updated file is included by only one base folder.")},
+        {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnSignificantDifference; },
+         [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnSignificantDifference = show; }, _("The following folders are significantly different. Please check that the correct folders are selected for synchronization.")},
+        {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnNotEnoughDiskSpace; },
+         [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnNotEnoughDiskSpace = show; }, _("Not enough free disk space available in:")},
+        {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnUnresolvedConflicts; },
+         [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnUnresolvedConflicts = show; }, _("The following items have unresolved conflicts and will not be synchronized:")},
+        {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnModificationTimeError; },
+         [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnModificationTimeError = show; }, _("Cannot write modification time of %x.")},
+        {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnRecyclerMissing; },
+         [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnRecyclerMissing = show; }, _("The recycle bin is not supported by the following folders. Deleted or overwritten files will not be able to be restored:")},
+        {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnInputFieldEmpty; },
+         [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnInputFieldEmpty = show; }, _("A folder input field is empty.") + L' ' + _("The corresponding folder will be considered as empty.")},
+        {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnDirectoryLockFailed; },
+         [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnDirectoryLockFailed = show; }, _("Cannot set directory locks for the following folders:")},
+        {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnVersioningFolderPartOfSync; },
+         [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnVersioningFolderPartOfSync = show; }, _("The versioning folder is contained in a base folder.") + L' ' +  _("The folder should be excluded from synchronization via filter.")},
+        //*INDENT-ON*
+    };
 
     //output-only parameters:
     XmlGlobalSettings& globalCfgOut_;
@@ -1182,9 +1226,6 @@ private:
 
 OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
     OptionsDlgGenerated(parent),
-    confirmDlgs_(globalSettings.confirmDlgs),
-    warnDlgs_   (globalSettings.warnDlgs),
-    autoCloseProgressDialog_(globalSettings.progressDlgAutoClose),
     globalCfgOut_(globalSettings)
 {
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
@@ -1210,11 +1251,56 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
     setImage(*m_bpButtonAddRow,           loadImage("item_add"));
     setImage(*m_bpButtonRemoveRow,        loadImage("item_remove"));
 
-    m_staticTextAllDialogsShown->SetLabelText(L'(' + _("No dialogs hidden") + L')');
+    //--------------------------------------------------------------------------------
+    m_checkListHiddenDialogs->Hide();
+    m_buttonShowCtxCustomize->Hide();
 
-    m_staticTextResetDialogs->Wrap(std::max(fastFromDIP(250),
-                                            m_buttonRestoreDialogs     ->GetSize().x +
-                                            m_staticTextAllDialogsShown->GetSize().x));
+    //fix wxCheckListBox's stupid "per-item toggle"
+    m_checkListHiddenDialogs->Bind(wxEVT_KEY_DOWN, [&checklist = *m_checkListHiddenDialogs](wxKeyEvent& event)
+    {
+        switch (event.GetKeyCode())
+        {
+            case WXK_SPACE:
+            case WXK_NUMPAD_SPACE:
+                assert(checklist.HasMultipleSelection());
+
+                if (wxArrayInt selection;
+                    checklist.GetSelections(selection), !selection.empty())
+                {
+                    const bool checkedNew = !checklist.IsChecked(selection[0]);
+
+                    for (const int itemPos : selection)
+                        checklist.Check(itemPos, checkedNew);
+
+                    wxCommandEvent chkEvent(wxEVT_CHECKLISTBOX);
+                    chkEvent.SetInt(selection[0]);
+                    if (wxEvtHandler* evtHandler = checklist.GetEventHandler())
+                        evtHandler->ProcessEvent(chkEvent);
+                }
+                return;
+        }
+        event.Skip();
+    });
+
+    std::stable_partition(hiddenDialogCfgMapping_.begin(), hiddenDialogCfgMapping_.end(), [&](const auto& item)
+    {
+        const auto& [dlgShown, dlgSetShown, msg] = item;
+        return !dlgShown(globalSettings); //move hidden dialogs to the top
+    });
+
+    std::vector<wxString> dialogMessages;
+    for (const auto& [dlgShown, dlgSetShown, msg] : hiddenDialogCfgMapping_)
+        dialogMessages.push_back(msg);
+
+    m_checkListHiddenDialogs->Append(dialogMessages);
+
+    unsigned int itemPos = 0;
+    for (const auto& [dlgShown, dlgSetShown, msg] : hiddenDialogCfgMapping_)
+    {
+        if (dlgShown(globalSettings))
+            m_checkListHiddenDialogs->Check(itemPos);
+        ++itemPos;
+    }
 
     //--------------------------------------------------------------------------------
     m_checkBoxFailSafe       ->SetValue(globalSettings.failSafeFileCopy);
@@ -1242,11 +1328,11 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
     bSizerLockedFiles->Show(false);
     m_gridCustomCommand->SetMargins(0, 0);
 
+    //automatically fit column width to match total grid width
+    m_gridCustomCommand->GetGridWindow()->Bind(wxEVT_SIZE, [this](wxSizeEvent& event) { onGridResize(event); });
+
     //temporarily set dummy value for window height calculations:
     setExtApp(std::vector<ExternalApp>(globalSettings.externalApps.size() + 1));
-    confirmDlgs_             = defaultCfg_.confirmDlgs;          //
-    warnDlgs_                = defaultCfg_.warnDlgs;             //make sure m_staticTextAllDialogsShown is shown
-    autoCloseProgressDialog_ = defaultCfg_.progressDlgAutoClose; //
     updateGui();
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
@@ -1255,21 +1341,13 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
 
     //restore actual value:
     setExtApp(globalSettings.externalApps);
-    confirmDlgs_             = globalSettings.confirmDlgs;
-    warnDlgs_                = globalSettings.warnDlgs;
-    autoCloseProgressDialog_ = globalSettings.progressDlgAutoClose;
     updateGui();
-
-    //automatically fit column width to match total grid width
-    Bind(wxEVT_SIZE, [this](wxSizeEvent& event) { onResize(event); });
-    wxSizeEvent dummy;
-    onResize(dummy);
 
     m_buttonOkay->SetFocus();
 }
 
 
-void OptionsDlg::onResize(wxSizeEvent& event)
+void OptionsDlg::onGridResize(wxEvent& event)
 {
     const int widthTotal = m_gridCustomCommand->GetGridWindow()->GetClientSize().GetWidth();
     assert(m_gridCustomCommand->GetNumberCols() == 2);
@@ -1280,35 +1358,41 @@ void OptionsDlg::onResize(wxSizeEvent& event)
     m_gridCustomCommand->SetColSize(1, w1);
 
     m_gridCustomCommand->Refresh(); //required on Ubuntu
-
     event.Skip();
 }
 
 
 void OptionsDlg::updateGui()
 {
-    const bool haveHiddenDialogs = confirmDlgs_             != defaultCfg_.confirmDlgs ||
-                                   warnDlgs_                != defaultCfg_.warnDlgs    ||
-                                   autoCloseProgressDialog_ != defaultCfg_.progressDlgAutoClose;
-
-    m_buttonRestoreDialogs->Enable(haveHiddenDialogs);
-    m_staticTextAllDialogsShown->Show(!haveHiddenDialogs);
-    Layout();
-
     m_spinCtrlLogFilesMaxAge->Enable(m_checkBoxLogFilesMaxAge->GetValue());
 
     m_bpButtonPlayCompareDone ->Enable(!trimCpy(m_textCtrlSoundPathCompareDone ->GetValue()).empty());
     m_bpButtonPlaySyncDone    ->Enable(!trimCpy(m_textCtrlSoundPathSyncDone    ->GetValue()).empty());
     m_bpButtonPlayAlertPending->Enable(!trimCpy(m_textCtrlSoundPathAlertPending->GetValue()).empty());
+
+    int hiddenDialogs = 0;
+    for (unsigned int itemPos = 0; itemPos < static_cast<unsigned int>(hiddenDialogCfgMapping_.size()); ++itemPos)
+        if (!m_checkListHiddenDialogs->IsChecked(itemPos))
+            ++hiddenDialogs;
+    assert(hiddenDialogCfgMapping_.size() == m_checkListHiddenDialogs->GetCount());
+
+    m_staticTextHiddenDialogsCount->SetLabelText(L'(' + (hiddenDialogs == 0 ? _("No dialogs hidden") :
+                                                         _P("1 dialog hidden", "%x dialogs hidden", hiddenDialogs)) + L')');
+    Layout();
 }
 
 
-void OptionsDlg::onRestoreDialogs(wxCommandEvent& event)
+void OptionsDlg::expandConfigArea(ConfigArea area)
 {
-    confirmDlgs_             = defaultCfg_.confirmDlgs;
-    warnDlgs_                = defaultCfg_.warnDlgs;
-    autoCloseProgressDialog_ = defaultCfg_.progressDlgAutoClose;
-    updateGui();
+    //only show one expaned area at a time (wxGTK even crashes when showing both: not worth debugging)
+    m_buttonShowHiddenDialogs->Show(area != ConfigArea::hidden);
+    m_buttonShowCtxCustomize ->Show(area != ConfigArea::context);
+
+    m_checkListHiddenDialogs->Show(area == ConfigArea::hidden);
+    bSizerContextCustomize  ->Show(area == ConfigArea::context);
+
+    Layout();
+    Refresh(); //required on Windows
 }
 
 
@@ -1316,7 +1400,7 @@ void OptionsDlg::selectSound(wxTextCtrl& txtCtrl)
 {
     std::optional<Zstring> defaultFolderPath = getParentFolderPath(utfTo<Zstring>(txtCtrl.GetValue()));
     if (!defaultFolderPath)
-        defaultFolderPath = beforeLast(getResourceDirPf(), FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
+        defaultFolderPath = getResourceDirPath();
 
     wxFileDialog fileSelector(this, wxString() /*message*/, utfTo<wxString>(*defaultFolderPath), wxString() /*default file name*/,
                               wxString(L"WAVE (*.wav)|*.wav") + L"|" + _("All files") + L" (*.*)|*",
@@ -1333,7 +1417,7 @@ void OptionsDlg::playSoundWithDiagnostics(const wxString& filePath)
 {
     try
     {
-        //::PlaySound() => NO failure indication on Windows! does not set last last error!
+        //::PlaySound() => NO failure indication on Windows! does not set last error!
         //wxSound::Play(..., wxSOUND_SYNC) can return false, but does not provide details!
         //=> check file access manually:
         [[maybe_unused]] const std::string& stream = getFileContent(utfTo<Zstring>(filePath), nullptr /*notifyUnbufferedIO*/); //throw FileError
@@ -1349,6 +1433,10 @@ void OptionsDlg::onDefault(wxCommandEvent& event)
     m_checkBoxFailSafe       ->SetValue(defaultCfg_.failSafeFileCopy);
     m_checkBoxCopyLocked     ->SetValue(defaultCfg_.copyLockedFiles);
     m_checkBoxCopyPermissions->SetValue(defaultCfg_.copyFilePermissions);
+
+    unsigned int itemPos = 0;
+    for (const auto& [dlgShown, dlgSetShown, msg] : hiddenDialogCfgMapping_)
+        m_checkListHiddenDialogs->Check(itemPos++, dlgShown(defaultCfg_));
 
     m_checkBoxLogFilesMaxAge->SetValue(defaultCfg_.logfilesMaxAgeDays > 0);
     m_spinCtrlLogFilesMaxAge->SetValue(defaultCfg_.logfilesMaxAgeDays > 0 ? defaultCfg_.logfilesMaxAgeDays : 14);
@@ -1389,9 +1477,9 @@ void OptionsDlg::onOkay(wxCommandEvent& event)
 
     globalCfgOut_.externalApps = getExtApp();
 
-    globalCfgOut_.confirmDlgs          = confirmDlgs_;
-    globalCfgOut_.warnDlgs             = warnDlgs_;
-    globalCfgOut_.progressDlgAutoClose = autoCloseProgressDialog_;
+    unsigned int itemPos = 0;
+    for (const auto& [dlgShown, dlgSetShown, msg] : hiddenDialogCfgMapping_)
+        dlgSetShown(globalCfgOut_, m_checkListHiddenDialogs->IsChecked(itemPos++));
 
     EndModal(static_cast<int>(ConfirmationButton::accept));
 }
@@ -1407,16 +1495,16 @@ void OptionsDlg::setExtApp(const std::vector<ExternalApp>& extApps)
     else
         m_gridCustomCommand->DeleteRows(0, -rowDiff);
 
-    for (auto it = extApps.begin(); it != extApps.end(); ++it)
+    int row = 0;
+    for (const auto& [descriptionEng, cmdLine] : extApps)
     {
-        const int row = it - extApps.begin();
-
-        const std::wstring description = translate(it->description);
-        if (description != it->description) //remember english description to save in GlobalSettings.xml later rather than hard-code translation
-            descriptionTransToEng_[description] = it->description;
+        const std::wstring description = translate(descriptionEng);
+        //remember english description to save in GlobalSettings.xml later rather than hard-code translation
+        descriptionTransToEng_[description] = descriptionEng;
 
         m_gridCustomCommand->SetCellValue(row, 0, description);
-        m_gridCustomCommand->SetCellValue(row, 1, utfTo<wxString>(it->cmdLine)); //commandline
+        m_gridCustomCommand->SetCellValue(row, 1, utfTo<wxString>(cmdLine));
+        ++row;
     }
 }
 
@@ -1449,9 +1537,6 @@ void OptionsDlg::onAddRow(wxCommandEvent& event)
     else
         m_gridCustomCommand->AppendRows();
 
-    wxSizeEvent dummy2;
-    onResize(dummy2);
-
     m_gridCustomCommand->SetFocus(); //make grid cursor visible
 }
 
@@ -1465,9 +1550,6 @@ void OptionsDlg::onRemoveRow(wxCommandEvent& event)
             m_gridCustomCommand->DeleteRows(selectedRow);
         else
             m_gridCustomCommand->DeleteRows(m_gridCustomCommand->GetNumberRows() - 1);
-
-        wxSizeEvent dummy2;
-        onResize(dummy2);
 
         m_gridCustomCommand->SetFocus(); //make grid cursor visible
     }

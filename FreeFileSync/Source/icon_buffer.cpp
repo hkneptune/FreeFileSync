@@ -35,10 +35,10 @@ std::variant<ImageHolder, FileIconHolder> getDisplayIcon(const AbstractPath& ite
     //1. try to load thumbnails
     switch (sz)
     {
-        case IconBuffer::SIZE_SMALL:
+        case IconBuffer::IconSize::small:
             break;
-        case IconBuffer::SIZE_MEDIUM:
-        case IconBuffer::SIZE_LARGE:
+        case IconBuffer::IconSize::medium:
+        case IconBuffer::IconSize::large:
             try
             {
                 if (ImageHolder ih = AFS::getThumbnailImage(itemPath, IconBuffer::getSize(sz))) //throw SysError; optional return value
@@ -286,7 +286,7 @@ struct IconBuffer::Impl
     InterruptibleThread worker;
     //-------------------------
     //-------------------------
-    std::map<Zstring, wxImage, LessAsciiNoCase> extensionIcons; //no item count limit!? Test case C:\ ~ 3800 unique file extensions
+    std::unordered_map<Zstring, wxImage, StringHashAsciiNoCase, StringEqualAsciiNoCase> extensionIcons; //no item count limit!? Test case C:\ ~ 3800 unique file extensions
 };
 
 
@@ -312,7 +312,7 @@ IconBuffer::~IconBuffer()
 {
     setWorkload({}); //make sure interruption point is always reached! needed???
     pimpl_->worker.requestStop(); //end thread life time *before*
-    pimpl_->worker.join();      //IconBuffer::Impl member clean up!
+    pimpl_->worker.join();        //IconBuffer::Impl member clean up!
 }
 
 
@@ -321,12 +321,11 @@ int IconBuffer::getSize(IconSize sz)
     //coordinate with getIconByIndexImpl() and linkOverlayIcon()!
     switch (sz)
     {
-        case IconBuffer::SIZE_SMALL:
+        case IconSize::small:
             return getDefaultMenuIconSize();
-        case IconBuffer::SIZE_MEDIUM:
+        case IconSize::medium:
             return fastFromDIP(48);
-
-        case IconBuffer::SIZE_LARGE:
+        case IconSize::large:
             return fastFromDIP(128);
     }
     assert(false);

@@ -7,8 +7,8 @@
 #ifndef UTF_H_01832479146991573473545
 #define UTF_H_01832479146991573473545
 
-#include <cstdint>
-#include <iterator>
+//#include <cstdint>
+//#include <iterator>
 #include "string_tools.h" //copyStringTo
 
 

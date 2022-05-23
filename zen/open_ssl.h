@@ -7,8 +7,7 @@
 #ifndef OPEN_SSL_H_801974580936508934568792347506
 #define OPEN_SSL_H_801974580936508934568792347506
 
-#include <zen/zstring.h>
-#include <zen/sys_error.h>
+#include "sys_error.h"
 
 
 namespace zen

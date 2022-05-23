@@ -10,16 +10,28 @@
 #include <set>
 #include <map>
 #include <vector>
+#include <unordered_set>
+#include <unordered_map>
 #include <memory>
 #include <cassert>
 #include <algorithm>
 #include <optional>
-#include "string_traits.h"
+#include "type_traits.h"
 
 
 //enhancements for <algorithm>
 namespace zen
 {
+//unfortunately std::erase_if is useless garbage on GCC 12 (requires non-modifying predicate)
+template <class T, class Alloc, class Predicate>
+void eraseIf(std::vector<T, Alloc>& v, Predicate p);
+
+template <class T, class LessType, class Alloc, class Predicate>
+void eraseIf(std::set<T, LessType, Alloc>& s, Predicate p);
+
+template <class KeyType, class ValueType, class LessType, class Alloc, class Predicate>
+void eraseIf(std::map<KeyType, ValueType, LessType, Alloc>& m, Predicate p);
+
 //append STL containers
 template <class T, class Alloc, class C>
 void append(std::vector<T, Alloc>& v, const C& c);
@@ -104,6 +116,44 @@ SharedRef<T> makeSharedRef(Args&& ... args) { return SharedRef<T>(std::make_shar
 
 
 //######################## implementation ########################
+
+template <class T, class Alloc, class Predicate> inline
+void eraseIf(std::vector<T, Alloc>& v, Predicate p)
+{
+    v.erase(std::remove_if(v.begin(), v.end(), p), v.end());
+}
+
+
+namespace impl
+{
+template <class S, class Predicate> inline
+void setOrMapEraseIf(S& s, Predicate p)
+{
+    for (auto it = s.begin(); it != s.end();)
+        if (p(*it))
+            s.erase(it++);
+        else
+            ++it;
+}
+}
+
+
+template <class T, class LessType, class Alloc, class Predicate> inline
+void eraseIf(std::set<T, LessType, Alloc>& s, Predicate p) { impl::setOrMapEraseIf(s, p); } //don't make this any more generic! e.g. must not compile for std::vector!!!
+
+
+template <class KeyType, class ValueType, class LessType, class Alloc, class Predicate> inline
+void eraseIf(std::map<KeyType, ValueType, LessType, Alloc>& m, Predicate p) { impl::setOrMapEraseIf(m, p); }
+
+
+template <class T, class Hash, class Keyeq, class Alloc, class Predicate> inline
+void eraseIf(std::unordered_set<T, Hash, Keyeq, Alloc>& s, Predicate p) { impl::setOrMapEraseIf(s, p); }
+
+
+template <class KeyType, class ValueType, class Hash, class Keyeq, class Alloc, class Predicate> inline
+void eraseIf(std::unordered_map<KeyType, ValueType, Hash, Keyeq, Alloc>& m, Predicate p) { impl::setOrMapEraseIf(m, p); }
+
+
 template <class T, class Alloc, class C> inline
 void append(std::vector<T, Alloc>& v, const C& c) { v.insert(v.end(), c.begin(), c.end()); }
 
@@ -249,9 +299,8 @@ void mergeTraversal(Iterator first1, Iterator last1,
 }
 
 
-//FNV-1a: https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
 template <class Num>
-class FNV1aHash
+class FNV1aHash //FNV-1a: https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
 {
 public:
     FNV1aHash() {}
@@ -266,49 +315,12 @@ public:
     Num get() const { return hashVal_; }
 
 private:
-    static_assert(IsUnsignedIntV<Num>);
+    static_assert(isUnsignedInt<Num>);
     static_assert(sizeof(Num) == 4 || sizeof(Num) == 8);
     static constexpr Num base_  = sizeof(Num) == 4 ? 2166136261U : 14695981039346656037ULL;
     static constexpr Num prime_ = sizeof(Num) == 4 ?   16777619U :        1099511628211ULL;
 
     Num hashVal_ = base_;
-};
-
-
-template <class Num, class ByteIterator> inline
-Num hashArray(ByteIterator first, ByteIterator last)
-{
-    using ValType = typename std::iterator_traits<ByteIterator>::value_type;
-    static_assert(sizeof(ValType) <= sizeof(Num));
-    static_assert(IsIntegerV<ValType> || std::is_same_v<ValType, char> || std::is_same_v<ValType, wchar_t>);
-
-    FNV1aHash<Num> hash;
-    std::for_each(first, last, [&hash](ValType v) { hash.add(v); });
-    return hash.get();
-}
-
-
-struct StringHash //support for custom string classes with std::unordered_set/map
-{
-    using is_transparent = int; //allow heterogenous lookup!
-
-    template <class String>
-    size_t operator()(const String& str) const
-    {
-        const auto* const strFirst = strBegin(str);
-        return hashArray<size_t>(strFirst, strFirst + strLength(str));
-    }
-};
-
-struct StringEqual
-{
-    using is_transparent = int; //allow heterogenous lookup!
-
-    template <class String1, class String2>
-    bool operator()(const String1& lhs, const String2& rhs) const
-    {
-        return equalString(lhs, rhs);
-    }
 };
 }
 

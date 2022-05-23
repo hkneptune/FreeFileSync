@@ -8,7 +8,7 @@
 #define FILE_ACCESS_H_8017341345614857
 
 #include <functional>
-#include "zstring.h"
+#include "file_path.h"
 #include "file_error.h"
 #include "serialize.h" //IoCallback
     #include <sys/stat.h>

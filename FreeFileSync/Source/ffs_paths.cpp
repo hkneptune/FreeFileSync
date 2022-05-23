@@ -11,7 +11,6 @@
 
     #include <iostream> //std::cerr
 
-
 using namespace zen;
 
 
@@ -48,26 +47,26 @@ Zstring fff::getInstallDirPath()
 
 
 
-Zstring fff::getResourceDirPf()
+Zstring fff::getResourceDirPath()
 {
-    return getProcessParentFolderPath() + FILE_NAME_SEPARATOR + Zstr("Resources") + FILE_NAME_SEPARATOR;
+    return appendPath(getProcessParentFolderPath(), Zstr("Resources"));
 }
 
 
-Zstring fff::getConfigDirPathPf()
+Zstring fff::getConfigDirPath()
 {
     //note: compiler generates magic-statics code => fine, we don't expect accesses during shutdown
-    static const Zstring ffsConfigPathPf = []
+    static const Zstring ffsConfigPath = []
     {
         /*  Windows:            %AppData%\FreeFileSync
             macOS:              ~/Library/Application Support/FreeFileSync
             Linux (XDG layout): ~/.config/FreeFileSync                        */
-        const Zstring& ffsConfigPath = []
+        const Zstring& configPath = []
         {
             try
             {
                 return
-                appendSeparator(getUserDataPath()) + Zstr("FreeFileSync"); //throw FileError
+                appendPath(getUserDataPath(), Zstr("FreeFileSync")); //throw FileError
             }
             catch (const FileError& e)
             {
@@ -77,16 +76,16 @@ Zstring fff::getConfigDirPathPf()
 
         try //create the config folder if not existing + create "Logs" subfolder while we're at it
         {
-            createDirectoryIfMissingRecursion(appendSeparator(ffsConfigPath) + Zstr("Logs")); //throw FileError
+            createDirectoryIfMissingRecursion(appendPath(configPath, Zstr("Logs"))); //throw FileError
         }
         catch (const FileError& e)
         {
             assert(false);
             std::cerr << utfTo<std::string>(e.toString()) << '\n';
         }
-        return appendSeparator(ffsConfigPath);
+        return configPath;
     }();
-    return ffsConfigPathPf;
+    return ffsConfigPath;
 }
 
 

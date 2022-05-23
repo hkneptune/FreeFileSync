@@ -19,6 +19,7 @@
 #define XBRZ_TOOLS_H_825480175091875
 
 #include <cassert>
+#include <vector>
 #include <algorithm>
 #include <type_traits>
 

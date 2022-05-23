@@ -12,6 +12,8 @@
 
 namespace zen
 {
+    const Zchar FILE_NAME_SEPARATOR = '/';
+
 struct PathComponents
 {
     Zstring rootPath; //itemPath = rootPath + (FILE_NAME_SEPARATOR?) + relPath
@@ -20,6 +22,26 @@ struct PathComponents
 std::optional<PathComponents> parsePathComponents(const Zstring& itemPath); //no value on failure
 
 std::optional<Zstring> getParentFolderPath(const Zstring& itemPath);
+
+Zstring appendSeparator(Zstring path); //support rvalue references!
+
+bool isValidRelPath(const Zstring& relPath);
+
+Zstring appendPath(const Zstring& basePath, const Zstring& relPath);
+
+Zstring getFileExtension(const Zstring& filePath);
+
+//------------------------------------------------------------------------------------------
+/* Compare *local* file paths:
+     Windows: igore case (but distinguish Unicode normalization forms!)
+     Linux:   byte-wise comparison
+     macOS:   ignore case + Unicode normalization forms                    */
+std::weak_ordering compareNativePath(const Zstring& lhs, const Zstring& rhs);
+
+inline bool equalNativePath(const Zstring& lhs, const Zstring& rhs) { return compareNativePath(lhs, rhs) == std::weak_ordering::equivalent; }
+
+struct LessNativePath { bool operator()(const Zstring& lhs, const Zstring& rhs) const { return std::is_lt(compareNativePath(lhs, rhs)); } };
+//------------------------------------------------------------------------------------------
 
 
 }

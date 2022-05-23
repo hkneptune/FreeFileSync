@@ -15,9 +15,9 @@
 //uniform access to string-like types, both classes and character arrays
 namespace zen
 {
-/*  IsStringLikeV<>:
-        IsStringLikeV<const wchar_t*> //equals "true"
-        IsStringLikeV<const int*>     //equals "false"
+/*  isStringLike<>:
+        isStringLike<const wchar_t*> //equals "true"
+        isStringLike<const int*>     //equals "false"
 
     GetCharTypeT<>:
         GetCharTypeT<std::wstring> //equals wchar_t
@@ -51,7 +51,7 @@ template <class Iterator> auto makeStringView(Iterator first, size_t len);
 //---------------------- implementation ----------------------
 namespace impl
 {
-template<class S, class Char> //test if result of S::c_str() can convert to const Char*
+template <class S, class Char> //test if result of S::c_str() can convert to const Char*
 class HasConversion
 {
     using Yes = char[1];
@@ -105,9 +105,9 @@ class StringTraits
 public:
     enum
     {
-        isStringClass = HasMemberTypeV_value_type<CleanType>&&
-                        HasMemberV_c_str         <CleanType>&&
-                        HasMemberV_length        <CleanType>
+        isStringClass = hasMemberType_value_type<CleanType> &&
+                        hasMember_c_str         <CleanType> &&
+                        hasMember_length        <CleanType>
     };
 
     using CharType = typename GetCharTypeImpl<UndecoratedType, isStringClass>::Type;
@@ -121,10 +121,10 @@ public:
 }
 
 
-template<class T>
-constexpr bool IsStringLikeV = impl::StringTraits<T>::isStringLike;
+template <class T>
+constexpr bool isStringLike = impl::StringTraits<T>::isStringLike;
 
-template<class T>
+template <class T>
 using GetCharTypeT = typename impl::StringTraits<T>::CharType;
 
 
@@ -184,7 +184,7 @@ inline size_t strLength(const std::basic_string_view<const wchar_t>& ref) { retu
 template <class S> inline
 auto strBegin(S&& str)
 {
-    static_assert(IsStringLikeV<S>);
+    static_assert(isStringLike<S>);
     return impl::strBegin(std::forward<S>(str));
 }
 
@@ -192,7 +192,7 @@ auto strBegin(S&& str)
 template <class S> inline
 size_t strLength(S&& str)
 {
-    static_assert(IsStringLikeV<S>);
+    static_assert(isStringLike<S>);
     return impl::strLength(std::forward<S>(str));
 }
 

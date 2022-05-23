@@ -7,7 +7,7 @@
 #ifndef IMAGE_RESOURCES_H_8740257825342532457
 #define IMAGE_RESOURCES_H_8740257825342532457
 
-#include <wx/animate.h>
+#include <wx/image.h>
 #include <zen/zstring.h>
 
 

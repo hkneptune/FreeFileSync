@@ -35,7 +35,7 @@ namespace
 class FFSTranslation : public TranslationHandler
 {
 public:
-    FFSTranslation(const std::string& lngStream); //throw lng::ParsingError, plural::ParsingError
+    explicit FFSTranslation(const std::string& lngStream); //throw lng::ParsingError, plural::ParsingError
 
     std::wstring translate(const std::wstring& text) const override
     {
@@ -241,6 +241,7 @@ public:
         canonicalName_(wxLocale::GetLanguageCanonicalName(langId))
     {
         assert(!canonicalName_.empty());
+        static_assert(std::is_same_v<std::remove_cvref_t<decltype(transMapping)>, std::map<std::string, std::wstring>>); //translations *must* be sorted in MO file!
 
         //https://www.gnu.org/software/gettext/manual/html_node/MO-Files.html
         transMapping[""] = L"Content-Type: text/plain; charset=UTF-8\n";

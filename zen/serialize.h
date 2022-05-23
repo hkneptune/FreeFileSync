@@ -8,9 +8,9 @@
 #define SERIALIZE_H_839405783574356
 
 #include <functional>
-#include <cstdint>
-#include <stdexcept>
-#include "string_base.h"
+//#include <cstdint>
+//#include <stdexcept>
+//#include "string_base.h"
 #include "sys_error.h"
 //keep header clean from specific stream implementations! (e.g.file_io.h)! used by abstract.h!
 
@@ -206,7 +206,7 @@ void writeArray(BufferedOutputStream& stream, const void* buffer, size_t len)
 template <class N, class BufferedOutputStream> inline
 void writeNumber(BufferedOutputStream& stream, const N& num)
 {
-    static_assert(IsArithmeticV<N> || std::is_same_v<N, bool> || std::is_enum_v<N>);
+    static_assert(isArithmetic<N> || std::is_same_v<N, bool> || std::is_enum_v<N>);
     writeArray(stream, &num, sizeof(N));
 }
 
@@ -234,7 +234,7 @@ void readArray(BufferedInputStream& stream, void* buffer, size_t len) //throw Sy
 template <class N, class BufferedInputStream> inline
 N readNumber(BufferedInputStream& stream) //throw SysErrorUnexpectedEos
 {
-    static_assert(IsArithmeticV<N> || std::is_same_v<N, bool> || std::is_enum_v<N>);
+    static_assert(isArithmetic<N> || std::is_same_v<N, bool> || std::is_enum_v<N>);
     N num{};
     readArray(stream, &num, sizeof(N)); //throw SysErrorUnexpectedEos
     return num;

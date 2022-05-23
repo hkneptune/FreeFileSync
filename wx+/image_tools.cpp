@@ -6,7 +6,7 @@
 
 #include "image_tools.h"
 #include <zen/string_tools.h>
-#include <zen/zstring.h>
+//#include <zen/zstring.h>
 #include <zen/scope_guard.h>
 #include <wx/app.h>
 #include <xBRZ/src/xbrz_tools.h>

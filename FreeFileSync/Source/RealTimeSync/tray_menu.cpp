@@ -115,7 +115,7 @@ private:
 
         wxString tooltip = L"RealTimeSync";
         if (!jobName_.empty())
-            tooltip += L" | " + jobName_;
+            tooltip += SPACED_DASH + jobName_;
 
         tooltip += L"\n" + statusTxt;
 

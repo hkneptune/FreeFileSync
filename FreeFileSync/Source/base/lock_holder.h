@@ -1,9 +1,8 @@
 #ifndef LOCK_HOLDER_H_489572039485723453425
 #define LOCK_HOLDER_H_489572039485723453425
 
-#include <set>
-#include <zen/zstring.h>
 #include <zen/stl_tools.h>
+#include <zen/file_path.h>
 #include "dir_lock.h"
 #include "process_callback.h"
 
@@ -30,7 +29,7 @@ public:
             try
             {
                 //lock file creation is synchronous and may block noticeably for very slow devices (USB sticks, mapped cloud storage)
-                lockHolder_.emplace_back(appendSeparator(folderPath) + Zstr("sync") + LOCK_FILE_ENDING,
+                lockHolder_.emplace_back(appendPath(folderPath, Zstring(Zstr("sync")) + LOCK_FILE_ENDING),
                 [&](std::wstring&& msg) { pcb.updateStatus(std::move(msg)); /*throw X*/ },
                 UI_UPDATE_INTERVAL / 2); //throw FileError
             }

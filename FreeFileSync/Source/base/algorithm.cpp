@@ -5,13 +5,10 @@
 // *****************************************************************************
 
 #include "algorithm.h"
-#include <set>
-#include <unordered_map>
 #include <zen/perf.h>
 #include <zen/crc.h>
 #include <zen/guid.h>
 #include <zen/file_access.h> //needed for TempFileBuffer only
-#include <zen/serialize.h>
 #include "norm_filter.h"
 #include "db_file.h"
 #include "cmp_filetime.h"
@@ -19,69 +16,8 @@
 #include "../afs/concrete.h"
 #include "../afs/native.h"
 
-
 using namespace zen;
 using namespace fff;
-
-
-namespace
-{
-class RecursiveObjectVisitorImpl
-{
-public:
-    RecursiveObjectVisitorImpl(std::function<void (FolderPair&   folder)> onFolder,
-                               std::function<void (FilePair&       file)> onFile,
-                               std::function<void (SymlinkPair& symlink)> onSymlink) :
-        onFolder_(onFolder), onFile_(onFile), onSymlink_(onSymlink) {}
-
-    void execute(FileSystemObject& fsObj)
-    {
-        visitFSObject(fsObj,
-        [&](const FolderPair&   folder) { visit(const_cast<FolderPair& >(folder )); },  //
-        [&](const FilePair&       file) { visit(const_cast<FilePair&   >(file   )); },  //physical object is not const anyway
-        [&](const SymlinkPair& symlink) { visit(const_cast<SymlinkPair&>(symlink)); }); //
-    }
-
-private:
-    void visit(FolderPair& folder)
-    {
-        if (onFolder_)
-            onFolder_(folder);
-
-        for (FilePair& file : folder.refSubFiles())
-            visit(file);
-        for (SymlinkPair& symlink : folder.refSubLinks())
-            visit(symlink);
-        for (FolderPair& subFolder : folder.refSubFolders())
-            visit(subFolder);
-    }
-
-    void visit(FilePair& file)
-    {
-        if (onFile_)
-            onFile_(file);
-    }
-
-    void visit(SymlinkPair& symlink)
-    {
-        if (onSymlink_)
-            onSymlink_(symlink);
-    }
-
-    std::function<void (FolderPair&   folder)> onFolder_;
-    std::function<void (FilePair&       file)> onFile_;
-    std::function<void (SymlinkPair& symlink)> onSymlink_;
-};
-}
-
-
-void fff::recursiveObjectVisitor(FileSystemObject& fsObj,
-                                 std::function<void (FolderPair&   folder)> onFolder,
-                                 std::function<void (FilePair&       file)> onFile,
-                                 std::function<void (SymlinkPair& symlink)> onSymlink)
-{
-    RecursiveObjectVisitorImpl(onFolder, onFile, onSymlink).execute(fsObj);
-}
 
 
 void fff::swapGrids(const MainConfiguration& mainCfg, FolderComparison& folderCmp,
@@ -97,13 +33,14 @@ void fff::swapGrids(const MainConfiguration& mainCfg, FolderComparison& folderCm
 
 namespace
 {
-class Redetermine
+//visitFSObjectRecursively? nope, see premature end of traversal in processFolder()
+class SetSyncDirectionByConfig
 {
 public:
-    static void execute(const DirectionSet& dirCfgIn, ContainerObject& hierObj) { Redetermine(dirCfgIn).recurse(hierObj); }
+    static void execute(const DirectionSet& dirCfgIn, ContainerObject& hierObj) { SetSyncDirectionByConfig(dirCfgIn).recurse(hierObj); }
 
 private:
-    Redetermine(const DirectionSet& dirCfgIn) : dirCfg_(dirCfgIn) {}
+    SetSyncDirectionByConfig(const DirectionSet& dirCfgIn) : dirCfg_(dirCfgIn) {}
 
     void recurse(ContainerObject& hierObj) const
     {
@@ -234,7 +171,7 @@ bool allItemsCategoryEqual(const ContainerObject& hierObj)
     [](const FilePair& file) { return file.getCategory() == FILE_EQUAL; })&&
 
     std::all_of(hierObj.refSubLinks().begin(), hierObj.refSubLinks().end(),
-    [](const SymlinkPair& link) { return link.getLinkCategory() == SYMLINK_EQUAL; })&&
+    [](const SymlinkPair& symlink) { return symlink.getLinkCategory() == SYMLINK_EQUAL; })&&
 
     std::all_of(hierObj.refSubFolders().begin(), hierObj.refSubFolders().end(), [](const FolderPair& folder)
     {
@@ -260,7 +197,7 @@ bool matchesDbEntry(const FilePair& file, const InSyncFile* dbFile, const std::v
     else if (!dbFile)
         return false;
 
-    const InSyncDescrFile& descrDb = SelectParam<side>::ref(dbFile->left, dbFile->right);
+    const InSyncDescrFile& descrDb = selectParam<side>(dbFile->left, dbFile->right);
 
     return //we're not interested in "fileTimeTolerance" here!
         sameFileTime(file.getLastWriteTime<side>(), descrDb.modTime, FAT_FILE_TIME_PRECISION_SEC, ignoreTimeShiftMinutes) &&
@@ -304,7 +241,7 @@ bool matchesDbEntry(const SymlinkPair& symlink, const InSyncSymlink* dbSymlink, 
     else if (!dbSymlink)
         return false;
 
-    const InSyncDescrLink& descrDb = SelectParam<side>::ref(dbSymlink->left, dbSymlink->right);
+    const InSyncDescrLink& descrDb = selectParam<side>(dbSymlink->left, dbSymlink->right);
 
     return sameFileTime(symlink.getLastWriteTime<side>(), descrDb.modTime, FAT_FILE_TIME_PRECISION_SEC, ignoreTimeShiftMinutes);
 }
@@ -408,7 +345,7 @@ private:
 
         for (FolderPair& folder : hierObj.refSubFolders())
         {
-            auto getDbEntry = [](const InSyncFolder* dbFolder, const Zstring& folderName) -> const InSyncFolder*
+            auto getDbEntry = [](const InSyncFolder* dbFolder, const ZstringNorm& folderName) -> const InSyncFolder*
             {
                 if (dbFolder)
                     if (const auto it = dbFolder->folders.find(folderName);
@@ -416,12 +353,12 @@ private:
                         return &it->second;
                 return nullptr;
             };
-            const InSyncFolder* dbEntryL = getDbEntry(dbFolderL, folder.getItemName<SelectSide::left>());
-            const InSyncFolder* dbEntryR = dbEntryL;
-            if (dbFolderL != dbFolderR ||
-                getUnicodeNormalForm(folder.getItemName<SelectSide::left >()) !=
-                getUnicodeNormalForm(folder.getItemName<SelectSide::right>()))
-                dbEntryR = getDbEntry(dbFolderR, folder.getItemName<SelectSide::right>());
+            const ZstringNorm itemNameL = folder.getItemName<SelectSide::left >();
+            const ZstringNorm itemNameR = folder.getItemName<SelectSide::right>();
+
+            const InSyncFolder* dbEntryL = getDbEntry(dbFolderL, itemNameL);
+            const InSyncFolder* dbEntryR = dbFolderL == dbFolderR && itemNameL == itemNameR ?
+                                           dbEntryL : getDbEntry(dbFolderR, itemNameR);
 
             recurse(folder, dbEntryL, dbEntryR);
         }
@@ -477,7 +414,7 @@ private:
     static bool sameSizeAndDate(const FilePair& file, const InSyncFile& dbFile)
     {
         return file.getFileSize<side>() == dbFile.fileSize &&
-               file.getLastWriteTime<side>() == SelectParam<side>::ref(dbFile.left, dbFile.right).modTime;
+               file.getLastWriteTime<side>() == selectParam<side>(dbFile.left, dbFile.right).modTime;
         /* do NOT consider FAT_FILE_TIME_PRECISION_SEC:
             1. if DB contains file metadata collected during folder comparison we can be as precise as we want here
             2. if DB contains file metadata *estimated* directly after file copy:
@@ -492,8 +429,8 @@ private:
     template <SelectSide side>
     FilePair* getAssocFilePair(const InSyncFile& dbFile) const
     {
-        const std::unordered_map<const InSyncFile*, FilePair*>& exOneSideByPath = SelectParam<side>::ref(exLeftOnlyByPath_, exRightOnlyByPath_);
-        const std::unordered_map<AFS::FingerPrint,  FilePair*>& exOneSideById   = SelectParam<side>::ref(exLeftOnlyById_,   exRightOnlyById_);
+        const std::unordered_map<const InSyncFile*, FilePair*>& exOneSideByPath = selectParam<side>(exLeftOnlyByPath_, exRightOnlyByPath_);
+        const std::unordered_map<AFS::FingerPrint,  FilePair*>& exOneSideById   = selectParam<side>(exLeftOnlyById_,   exRightOnlyById_);
 
         if (const auto it = exOneSideByPath.find(&dbFile);
             it != exOneSideByPath.end())
@@ -501,7 +438,7 @@ private:
         //even if the association by path doesn't match time and size while the association by ID does!
         //there doesn't seem to be (any?) value in allowing this!
 
-        if (const AFS::FingerPrint filePrint = SelectParam<side>::ref(dbFile.left, dbFile.right).filePrint;
+        if (const AFS::FingerPrint filePrint = selectParam<side>(dbFile.left, dbFile.right).filePrint;
             filePrint != 0)
             if (const auto it = exOneSideById.find(filePrint);
                 it != exOneSideById.end())
@@ -570,13 +507,13 @@ private:
 
 //----------------------------------------------------------------------------------------------
 
-class RedetermineTwoWay
+class SetSyncDirectionsTwoWay
 {
 public:
-    static void execute(BaseFolderPair& baseFolder, const InSyncFolder& dbFolder) { RedetermineTwoWay(baseFolder, dbFolder); }
+    static void execute(BaseFolderPair& baseFolder, const InSyncFolder& dbFolder) { SetSyncDirectionsTwoWay(baseFolder, dbFolder); }
 
 private:
-    RedetermineTwoWay(BaseFolderPair& baseFolder, const InSyncFolder& dbFolder) :
+    SetSyncDirectionsTwoWay(BaseFolderPair& baseFolder, const InSyncFolder& dbFolder) :
         cmpVar_                (baseFolder.getCompVariant()),
         fileTimeTolerance_     (baseFolder.getFileTimeTolerance()),
         ignoreTimeShiftMinutes_(baseFolder.getIgnoredTimeShift())
@@ -584,20 +521,20 @@ private:
         //-> considering filter not relevant:
         //  if stricter filter than last time: all ok;
         //  if less strict filter (if file ex on both sides -> conflict, fine; if file ex. on one side: copy to other side: fine)
-        recurse(baseFolder, &dbFolder, &dbFolder);
+        recurse(baseFolder, &dbFolder);
     }
 
-    void recurse(ContainerObject& hierObj, const InSyncFolder* dbFolderL, const InSyncFolder* dbFolderR) const
+    void recurse(ContainerObject& hierObj, const InSyncFolder* dbFolder) const
     {
         for (FilePair& file : hierObj.refSubFiles())
-            processFile(file, dbFolderL, dbFolderR);
-        for (SymlinkPair& link : hierObj.refSubLinks())
-            processSymlink(link, dbFolderL, dbFolderR);
+            processFile(file, dbFolder);
+        for (SymlinkPair& symlink : hierObj.refSubLinks())
+            processSymlink(symlink, dbFolder);
         for (FolderPair& folder : hierObj.refSubFolders())
-            processDir(folder, dbFolderL, dbFolderR);
+            processDir(folder, dbFolder);
     }
 
-    void processFile(FilePair& file, const InSyncFolder* dbFolderL, const InSyncFolder* dbFolderR) const
+    void processFile(FilePair& file, const InSyncFolder* dbFolder) const
     {
         const CompareFileResult cat = file.getCategory();
         if (cat == FILE_EQUAL)
@@ -611,88 +548,72 @@ private:
         //####################################################################################
 
         //try to find corresponding database entry
-        auto getDbEntry = [](const InSyncFolder* dbFolder, const Zstring& fileName) -> const InSyncFile*
+        auto getDbEntry = [dbFolder](const ZstringNorm& fileName) -> const InSyncFile*
         {
             if (dbFolder)
-            {
-                auto it = dbFolder->files.find(fileName);
-                if (it != dbFolder->files.end())
+                if (auto it = dbFolder->files.find(fileName);
+                    it != dbFolder->files.end())
                     return &it->second;
-            }
             return nullptr;
         };
-        const InSyncFile* dbEntryL = getDbEntry(dbFolderL, file.getItemName<SelectSide::left>());
-        const InSyncFile* dbEntryR = dbEntryL;
-        if (dbFolderL != dbFolderR || getUnicodeNormalForm(file.getItemName<SelectSide::left>()) != getUnicodeNormalForm(file.getItemName<SelectSide::right>()))
-            dbEntryR = getDbEntry(dbFolderR, file.getItemName<SelectSide::right>());
+        const ZstringNorm itemNameL = file.getItemName<SelectSide::left >();
+        const ZstringNorm itemNameR = file.getItemName<SelectSide::right>();
 
-        //evaluation
+        const InSyncFile* dbEntryL = getDbEntry(itemNameL);
+        const InSyncFile* dbEntryR = itemNameL == itemNameR ? dbEntryL : getDbEntry(itemNameR);
+
+        if (dbEntryL && dbEntryR && dbEntryL != dbEntryR) //conflict: which db entry to use?
+            return file.setSyncDirConflict(txtDbAmbiguous_);
+
         const bool changeOnLeft  = !matchesDbEntry<SelectSide::left >(file, dbEntryL, ignoreTimeShiftMinutes_);
         const bool changeOnRight = !matchesDbEntry<SelectSide::right>(file, dbEntryR, ignoreTimeShiftMinutes_);
 
-        if (changeOnLeft != changeOnRight)
-        {
-            //if database entry not in sync according to current settings! -> set direction based on sync status only!
-            if ((dbEntryL && !stillInSync(*dbEntryL, cmpVar_, fileTimeTolerance_, ignoreTimeShiftMinutes_)) ||
-                (dbEntryR && !stillInSync(*dbEntryR, cmpVar_, fileTimeTolerance_, ignoreTimeShiftMinutes_)))
-                file.setSyncDirConflict(txtDbNotInSync_);
-            else
-                file.setSyncDir(changeOnLeft ? SyncDirection::right : SyncDirection::left);
-        }
+        if (changeOnLeft == changeOnRight)
+            file.setSyncDirConflict(changeOnLeft ? txtBothSidesChanged_ : txtNoSideChanged_);
+        else if (const InSyncFile* dbEntry = dbEntryL ? dbEntryL : dbEntryR;
+                 dbEntry && !stillInSync(*dbEntry, cmpVar_, fileTimeTolerance_, ignoreTimeShiftMinutes_))
+            file.setSyncDirConflict(txtDbNotInSync_);
         else
-        {
-            if (changeOnLeft)
-                file.setSyncDirConflict(txtBothSidesChanged_);
-            else
-                file.setSyncDirConflict(txtNoSideChanged_);
-        }
+            file.setSyncDir(changeOnLeft ? SyncDirection::right : SyncDirection::left);
     }
 
-    void processSymlink(SymlinkPair& symlink, const InSyncFolder* dbFolderL, const InSyncFolder* dbFolderR) const
+    void processSymlink(SymlinkPair& symlink, const InSyncFolder* dbFolder) const
     {
         const CompareSymlinkResult cat = symlink.getLinkCategory();
         if (cat == SYMLINK_EQUAL)
             return;
 
         //try to find corresponding database entry
-        auto getDbEntry = [](const InSyncFolder* dbFolder, const Zstring& linkName) -> const InSyncSymlink*
+        auto getDbEntry = [dbFolder](const ZstringNorm& linkName) -> const InSyncSymlink*
         {
             if (dbFolder)
-            {
-                auto it = dbFolder->symlinks.find(linkName);
-                if (it != dbFolder->symlinks.end())
+                if (auto it = dbFolder->symlinks.find(linkName);
+                    it != dbFolder->symlinks.end())
                     return &it->second;
-            }
             return nullptr;
         };
-        const InSyncSymlink* dbEntryL = getDbEntry(dbFolderL, symlink.getItemName<SelectSide::left>());
-        const InSyncSymlink* dbEntryR = dbEntryL;
-        if (dbFolderL != dbFolderR || getUnicodeNormalForm(symlink.getItemName<SelectSide::left>()) != getUnicodeNormalForm(symlink.getItemName<SelectSide::right>()))
-            dbEntryR = getDbEntry(dbFolderR, symlink.getItemName<SelectSide::right>());
+        const ZstringNorm itemNameL = symlink.getItemName<SelectSide::left >();
+        const ZstringNorm itemNameR = symlink.getItemName<SelectSide::right>();
 
-        //evaluation
+        const InSyncSymlink* dbEntryL = getDbEntry(itemNameL);
+        const InSyncSymlink* dbEntryR = itemNameL == itemNameR ? dbEntryL : getDbEntry(itemNameR);
+
+        if (dbEntryL && dbEntryR && dbEntryL != dbEntryR) //conflict: which db entry to use?
+            return symlink.setSyncDirConflict(txtDbAmbiguous_);
+
         const bool changeOnLeft  = !matchesDbEntry<SelectSide::left >(symlink, dbEntryL, ignoreTimeShiftMinutes_);
         const bool changeOnRight = !matchesDbEntry<SelectSide::right>(symlink, dbEntryR, ignoreTimeShiftMinutes_);
 
-        if (changeOnLeft != changeOnRight)
-        {
-            //if database entry not in sync according to current settings! -> set direction based on sync status only!
-            if ((dbEntryL && !stillInSync(*dbEntryL, cmpVar_, fileTimeTolerance_, ignoreTimeShiftMinutes_)) ||
-                (dbEntryR && !stillInSync(*dbEntryR, cmpVar_, fileTimeTolerance_, ignoreTimeShiftMinutes_)))
-                symlink.setSyncDirConflict(txtDbNotInSync_);
-            else
-                symlink.setSyncDir(changeOnLeft ? SyncDirection::right : SyncDirection::left);
-        }
+        if (changeOnLeft == changeOnRight)
+            symlink.setSyncDirConflict(changeOnLeft ? txtBothSidesChanged_ : txtNoSideChanged_);
+        else if (const InSyncSymlink* dbEntry = dbEntryL ? dbEntryL : dbEntryR;
+                 dbEntry && !stillInSync(*dbEntry, cmpVar_, fileTimeTolerance_, ignoreTimeShiftMinutes_))
+            symlink.setSyncDirConflict(txtDbNotInSync_);
         else
-        {
-            if (changeOnLeft)
-                symlink.setSyncDirConflict(txtBothSidesChanged_);
-            else
-                symlink.setSyncDirConflict(txtNoSideChanged_);
-        }
+            symlink.setSyncDir(changeOnLeft ? SyncDirection::right : SyncDirection::left);
     }
 
-    void processDir(FolderPair& folder, const InSyncFolder* dbFolderL, const InSyncFolder* dbFolderR) const
+    void processDir(FolderPair& folder, const InSyncFolder* dbFolder) const
     {
         const CompareDirResult cat = folder.getDirCategory();
 
@@ -704,51 +625,53 @@ private:
         //#######################################################################################
 
         //try to find corresponding database entry
-        auto getDbEntry = [](const InSyncFolder* dbFolder, const Zstring& folderName) -> const InSyncFolder*
+        auto getDbEntry = [dbFolder](const ZstringNorm& folderName) -> const InSyncFolder*
         {
             if (dbFolder)
-            {
-                auto it = dbFolder->folders.find(folderName);
-                if (it != dbFolder->folders.end())
+                if (auto it = dbFolder->folders.find(folderName);
+                    it != dbFolder->folders.end())
                     return &it->second;
-            }
             return nullptr;
         };
-        const InSyncFolder* dbEntryL = getDbEntry(dbFolderL, folder.getItemName<SelectSide::left>());
-        const InSyncFolder* dbEntryR = dbEntryL;
-        if (dbFolderL != dbFolderR || getUnicodeNormalForm(folder.getItemName<SelectSide::left>()) != getUnicodeNormalForm(folder.getItemName<SelectSide::right>()))
-            dbEntryR = getDbEntry(dbFolderR, folder.getItemName<SelectSide::right>());
+
+        const ZstringNorm itemNameL = folder.getItemName<SelectSide::left >();
+        const ZstringNorm itemNameR = folder.getItemName<SelectSide::right>();
+
+        const InSyncFolder* dbEntryL = getDbEntry(itemNameL);
+        const InSyncFolder* dbEntryR = itemNameL == itemNameR ? dbEntryL : getDbEntry(itemNameR);
+
+        if (dbEntryL && dbEntryR && dbEntryL != dbEntryR) //conflict: which db entry to use?
+        {
+            auto onFsItem = [&](FileSystemObject& fsObj)
+            {
+                if (fsObj.getCategory() != FILE_EQUAL)
+                    fsObj.setSyncDirConflict(txtDbAmbiguous_);
+            };
+            return visitFSObjectRecursively(static_cast<FileSystemObject&>(folder), onFsItem, onFsItem, onFsItem);
+        }
+        const InSyncFolder* dbEntry = dbEntryL ? dbEntryL : dbEntryR; //exactly one side nullptr? => change in upper/lower case!
 
         if (cat != DIR_EQUAL)
         {
-            //evaluation
             const bool changeOnLeft  = !matchesDbEntry<SelectSide::left >(folder, dbEntryL);
             const bool changeOnRight = !matchesDbEntry<SelectSide::right>(folder, dbEntryR);
 
-            if (changeOnLeft != changeOnRight)
-            {
-                //if database entry not in sync according to current settings! -> set direction based on sync status only!
-                if ((dbEntryL && !stillInSync(*dbEntryL)) ||
-                    (dbEntryR && !stillInSync(*dbEntryR)))
-                    folder.setSyncDirConflict(txtDbNotInSync_);
-                else
-                    folder.setSyncDir(changeOnLeft ? SyncDirection::right : SyncDirection::left);
-            }
+            if (changeOnLeft == changeOnRight)
+                folder.setSyncDirConflict(changeOnLeft ? txtBothSidesChanged_ : txtNoSideChanged_);
+            else if (dbEntry && !stillInSync(*dbEntry))
+                folder.setSyncDirConflict(txtDbNotInSync_);
             else
-            {
-                if (changeOnLeft)
-                    folder.setSyncDirConflict(txtBothSidesChanged_);
-                else
-                    folder.setSyncDirConflict(txtNoSideChanged_);
-            }
+                folder.setSyncDir(changeOnLeft ? SyncDirection::right : SyncDirection::left);
         }
 
-        recurse(folder, dbEntryL, dbEntryR);
+        recurse(folder, dbEntry);
     }
 
+    //need ref-counted strings! see FileSystemObject::syncDirectionConflict_
     const Zstringc txtBothSidesChanged_ = utfTo<Zstringc>(_("Both sides have changed since last synchronization."));
-    const Zstringc txtNoSideChanged_    = utfTo<Zstringc>(_("Cannot determine sync-direction:") + L" \n" + _("No change since last synchronization."));
-    const Zstringc txtDbNotInSync_      = utfTo<Zstringc>(_("Cannot determine sync-direction:") + L" \n" + _("The database entry is not in sync considering current settings."));
+    const Zstringc txtNoSideChanged_    = utfTo<Zstringc>(_("Cannot determine sync-direction:") + L'\n' + _("No change since last synchronization."));
+    const Zstringc txtDbNotInSync_      = utfTo<Zstringc>(_("Cannot determine sync-direction:") + L'\n' + _("The database entry is not in sync considering current settings."));
+    const Zstringc txtDbAmbiguous_      = utfTo<Zstringc>(_("Cannot determine sync-direction:") + L'\n' + _("The database entry is ambiguous."));
 
     const CompareVariant cmpVar_;
     const int fileTimeTolerance_;
@@ -808,7 +731,7 @@ void fff::redetermineSyncDirection(const std::vector<std::pair<BaseFolderPair*, 
                 if (dirCfg.var == SyncVariant::twoWay)
                 {
                     if (lastSyncState)
-                        RedetermineTwoWay::execute(*baseFolder, *lastSyncState);
+                        SetSyncDirectionsTwoWay::execute(*baseFolder, *lastSyncState);
                     else //default fallback
                     {
                         std::wstring msg = _("Setting directions for first synchronization: Old files will be overwritten with newer files.");
@@ -818,11 +741,11 @@ void fff::redetermineSyncDirection(const std::vector<std::pair<BaseFolderPair*, 
 
                         try { callback.logInfo(msg); /*throw X*/} catch (...) {};
 
-                        Redetermine::execute(getTwoWayUpdateSet(), *baseFolder);
+                        SetSyncDirectionByConfig::execute(getTwoWayUpdateSet(), *baseFolder);
                     }
                 }
                 else
-                    Redetermine::execute(extractDirections(dirCfg), *baseFolder);
+                    SetSyncDirectionByConfig::execute(extractDirections(dirCfg), *baseFolder);
 
                 //detect renamed files
                 if (lastSyncState)
@@ -851,88 +774,36 @@ void fff::redetermineSyncDirection(const std::vector<std::pair<BaseFolderPair*, 
 
 //---------------------------------------------------------------------------------------------------------------
 
-namespace
-{
-void setSyncDirectionImpl(FilePair& file, SyncDirection newDirection)
-{
-    if (file.getCategory() != FILE_EQUAL)
-        file.setSyncDir(newDirection);
-}
-
-void setSyncDirectionImpl(SymlinkPair& symlink, SyncDirection newDirection)
-{
-    if (symlink.getLinkCategory() != SYMLINK_EQUAL)
-        symlink.setSyncDir(newDirection);
-}
-
-void setSyncDirectionImpl(FolderPair& folder, SyncDirection newDirection)
-{
-    if (folder.getDirCategory() != DIR_EQUAL)
-        folder.setSyncDir(newDirection);
-
-    for (FilePair& file : folder.refSubFiles())
-        setSyncDirectionImpl(file, newDirection);
-    for (SymlinkPair& link : folder.refSubLinks())
-        setSyncDirectionImpl(link, newDirection);
-    for (FolderPair& subFolder : folder.refSubFolders())
-        setSyncDirectionImpl(subFolder, newDirection);
-}
-}
-
-
 void fff::setSyncDirectionRec(SyncDirection newDirection, FileSystemObject& fsObj)
 {
-    //process subdirectories also!
-    visitFSObject(fsObj,
-    [&](const FolderPair&   folder) { setSyncDirectionImpl(const_cast<FolderPair& >(folder ), newDirection); },  //
-    [&](const FilePair&       file) { setSyncDirectionImpl(const_cast<FilePair&   >(file   ), newDirection); },  //physical object is not const anyway
-    [&](const SymlinkPair& symlink) { setSyncDirectionImpl(const_cast<SymlinkPair&>(symlink), newDirection); }); //
-
+    auto onFsItem = [newDirection](FileSystemObject& fsObj2)
+    {
+        if (fsObj2.getCategory() != FILE_EQUAL)
+            fsObj2.setSyncDir(newDirection);
+    };
+    visitFSObjectRecursively(fsObj, onFsItem, onFsItem, onFsItem);
 }
 
 //--------------- functions related to filtering ------------------------------------------------------------------------------------
 
-namespace
-{
-template <bool include>
-void inOrExcludeAllRows(ContainerObject& hierObj)
-{
-    for (FilePair& file : hierObj.refSubFiles())
-        file.setActive(include);
-    for (SymlinkPair& link : hierObj.refSubLinks())
-        link.setActive(include);
-    for (FolderPair& folder : hierObj.refSubFolders())
-    {
-        folder.setActive(include);
-        inOrExcludeAllRows<include>(folder); //recurse
-    }
-}
-}
-
-
 void fff::setActiveStatus(bool newStatus, FolderComparison& folderCmp)
 {
-    if (newStatus)
-        std::for_each(begin(folderCmp), end(folderCmp), [](BaseFolderPair& baseFolder) { inOrExcludeAllRows<true>(baseFolder); }); //include all rows
-    else
-        std::for_each(begin(folderCmp), end(folderCmp), [](BaseFolderPair& baseFolder) { inOrExcludeAllRows<false>(baseFolder); }); //exclude all rows
+    auto onFsItem = [newStatus](FileSystemObject& fsObj) { fsObj.setActive(newStatus); };
+
+    std::for_each(begin(folderCmp), end(folderCmp), [onFsItem](BaseFolderPair& baseFolder)
+    {
+        visitFSObjectRecursively(baseFolder, onFsItem, onFsItem, onFsItem);
+    });
 }
 
 
 void fff::setActiveStatus(bool newStatus, FileSystemObject& fsObj)
 {
-    fsObj.setActive(newStatus);
+    auto onFsItem = [newStatus](FileSystemObject& fsObj2) { fsObj2.setActive(newStatus); };
 
-    //process subdirectories also!
-    visitFSObject(fsObj, [&](const FolderPair& folder)
-    {
-        if (newStatus)
-            inOrExcludeAllRows<true>(const_cast<FolderPair&>(folder)); //object is not physically const here anyway
-        else
-            inOrExcludeAllRows<false>(const_cast<FolderPair&>(folder)); //
-    },
-    [](const FilePair& file) {}, [](const SymlinkPair& symlink) {});
+    visitFSObjectRecursively(fsObj, onFsItem, onFsItem, onFsItem);
 }
+
 
 namespace
 {
@@ -973,8 +844,8 @@ private:
     {
         for (FilePair& file : hierObj.refSubFiles())
             processFile(file);
-        for (SymlinkPair& link : hierObj.refSubLinks())
-            processLink(link);
+        for (SymlinkPair& symlink : hierObj.refSubLinks())
+            processLink(symlink);
         for (FolderPair& folder : hierObj.refSubFolders())
             processDir(folder);
     }
@@ -1001,7 +872,9 @@ private:
 
         if (!childItemMightMatch) //use same logic like directory traversing here: evaluate filter in subdirs only if objects could match
         {
-            inOrExcludeAllRows<false>(folder); //exclude all files dirs in subfolders => incompatible with STRATEGY_OR!
+            //exclude all files dirs in subfolders => incompatible with STRATEGY_OR!
+            auto onFsItem = [](FileSystemObject& fsObj) { fsObj.setActive(false); };
+            visitFSObjectRecursively(static_cast<ContainerObject&>(folder), onFsItem, onFsItem, onFsItem);
             return;
         }
 
@@ -1025,8 +898,8 @@ private:
     {
         for (FilePair& file : hierObj.refSubFiles())
             processFile(file);
-        for (SymlinkPair& link : hierObj.refSubLinks())
-            processLink(link);
+        for (SymlinkPair& symlink : hierObj.refSubLinks())
+            processLink(symlink);
         for (FolderPair& folder : hierObj.refSubFolders())
             processDir(folder);
     }
@@ -1147,71 +1020,45 @@ void fff::applyFiltering(FolderComparison& folderCmp, const MainConfiguration& m
 }
 
 
-class FilterByTimeSpan
+namespace
 {
-public:
-    static void execute(ContainerObject& hierObj, time_t timeFrom, time_t timeTo) { FilterByTimeSpan(hierObj, timeFrom, timeTo); }
-
-private:
-    FilterByTimeSpan(ContainerObject& hierObj,
-                     time_t timeFrom,
-                     time_t timeTo) :
-        timeFrom_(timeFrom),
-        timeTo_(timeTo) { recurse(hierObj); }
-
-    void recurse(ContainerObject& hierObj) const
-    {
-        for (FilePair& file : hierObj.refSubFiles())
-            processFile(file);
-        for (SymlinkPair& link : hierObj.refSubLinks())
-            processLink(link);
-        for (FolderPair& folder : hierObj.refSubFolders())
-            processDir(folder);
-    }
-
-    void processFile(FilePair& file) const
-    {
-        if (file.isEmpty<SelectSide::left>())
-            file.setActive(matchTime<SelectSide::right>(file));
-        else if (file.isEmpty<SelectSide::right>())
-            file.setActive(matchTime<SelectSide::left>(file));
-        else
-            file.setActive(matchTime<SelectSide::right>(file) ||
-                           matchTime<SelectSide::left>(file));
-    }
-
-    void processLink(SymlinkPair& link) const
-    {
-        if (link.isEmpty<SelectSide::left>())
-            link.setActive(matchTime<SelectSide::right>(link));
-        else if (link.isEmpty<SelectSide::right>())
-            link.setActive(matchTime<SelectSide::left>(link));
-        else
-            link.setActive(matchTime<SelectSide::right>(link) ||
-                           matchTime<SelectSide::left> (link));
-    }
-
-    void processDir(FolderPair& folder) const
-    {
-        folder.setActive(false);
-        recurse(folder);
-    }
-
-    template <SelectSide side, class T>
-    bool matchTime(const T& obj) const
-    {
-        return timeFrom_ <= obj.template getLastWriteTime<side>() &&
-               obj.template getLastWriteTime<side>() <= timeTo_;
-    }
-
-    const time_t timeFrom_;
-    const time_t timeTo_;
-};
+template <SelectSide side, class T> inline
+bool matchesTime(const T& obj, time_t timeFrom, time_t timeTo)
+{
+    return timeFrom <= obj.template getLastWriteTime<side>() &&
+           /**/        obj.template getLastWriteTime<side>() <= timeTo;
+}
+}
 
 
 void fff::applyTimeSpanFilter(FolderComparison& folderCmp, time_t timeFrom, time_t timeTo)
 {
-    std::for_each(begin(folderCmp), end(folderCmp), [&](BaseFolderPair& baseFolder) { FilterByTimeSpan::execute(baseFolder, timeFrom, timeTo); });
+    std::for_each(begin(folderCmp), end(folderCmp), [timeFrom, timeTo](BaseFolderPair& baseFolder)
+    {
+        visitFSObjectRecursively(baseFolder, [](FolderPair& folder) { folder.setActive(false); },
+
+        [timeFrom, timeTo](FilePair& file)
+        {
+            if (file.isEmpty<SelectSide::left>())
+                file.setActive(matchesTime<SelectSide::right>(file, timeFrom, timeTo));
+            else if (file.isEmpty<SelectSide::right>())
+                file.setActive(matchesTime<SelectSide::left>(file, timeFrom, timeTo));
+            else
+                file.setActive(matchesTime<SelectSide::right>(file, timeFrom, timeTo) ||
+                               matchesTime<SelectSide::left>(file, timeFrom, timeTo));
+        },
+
+        [timeFrom, timeTo](SymlinkPair& symlink)
+        {
+            if (symlink.isEmpty<SelectSide::left>())
+                symlink.setActive(matchesTime<SelectSide::right>(symlink, timeFrom, timeTo));
+            else if (symlink.isEmpty<SelectSide::right>())
+                symlink.setActive(matchesTime<SelectSide::left>(symlink, timeFrom, timeTo));
+            else
+                symlink.setActive(matchesTime<SelectSide::right>(symlink, timeFrom, timeTo) ||
+                                  matchesTime<SelectSide::left> (symlink, timeFrom, timeTo));
+        });
+    });
 }
 
 
@@ -1235,7 +1082,7 @@ std::optional<PathDependency> fff::getPathDependency(const AbstractPath& basePat
                 Zstring relDirPath;
                 std::for_each(relPathC.begin() + relPathP.size(), relPathC.end(), [&](const Zstring& itemName)
                 {
-                    relDirPath = nativeAppendPaths(relDirPath, itemName);
+                    relDirPath = appendPath(relDirPath, itemName);
                 });
                 const AbstractPath& basePathP = leftParent ? basePathL : basePathR;
                 const AbstractPath& basePathC = leftParent ? basePathR : basePathL;
@@ -1683,7 +1530,7 @@ TempFileBuffer::~TempFileBuffer()
             removeDirectoryPlainRecursion(tempFolderPath_); //throw FileError
         }
         catch (FileError&) { assert(false); }
-        warn_static("log, maybe?")
+    warn_static("log, maybe?")
 }
 
 
@@ -1694,8 +1541,8 @@ void TempFileBuffer::createTempFolderPath() //throw FileError
         //generate random temp folder path e.g. C:\Users\Zenju\AppData\Local\Temp\FFS-068b2e88
         const uint32_t shortGuid = getCrc32(generateGUID()); //no need for full-blown (pseudo-)random numbers for this one-time invocation
 
-        const Zstring& tempPathTmp = appendSeparator(getTempFolderPath()) + //throw FileError
-                                     Zstr("FFS-") + printNumber<Zstring>(Zstr("%08x"), static_cast<unsigned int>(shortGuid));
+        const Zstring& tempPathTmp = appendPath(getTempFolderPath(), //throw FileError
+                                                Zstr("FFS-") + printNumber<Zstring>(Zstr("%08x"), static_cast<unsigned int>(shortGuid)));
 
         createDirectoryIfMissingRecursion(tempPathTmp); //throw FileError
 
@@ -1757,7 +1604,7 @@ void TempFileBuffer::createTempFiles(const std::set<FileDescriptor>& workLoad, P
         auto it = findLast(fileName.begin(), fileName.end(), Zstr('.')); //gracefully handle case of missing "."
         const Zstring tempFileName = Zstring(fileName.begin(), it) + Zstr('~') + descrHash + Zstring(it, fileName.end());
 
-        const Zstring tempFilePath = appendSeparator(tempFolderPath_) + tempFileName;
+        const Zstring tempFilePath = appendPath(tempFolderPath_, tempFileName);
         const AFS::StreamAttributes sourceAttr{descr.attr.modTime, descr.attr.fileSize, descr.attr.filePrint};
 
         tryReportingError([&]

@@ -11,7 +11,6 @@
 #include <vector>
 #include "time.h"
 #include "i18n.h"
-#include "utf.h"
 #include "zstring.h"
 
 
@@ -37,7 +36,7 @@ std::string formatMessage(const LogEntry& entry);
 class ErrorLog
 {
 public:
-    void logMsg(const std::wstring& msg, MessageType type);
+    void logMsg(const std::wstring& msg, MessageType type, time_t time = std::time(nullptr));
 
     struct Stats
     {
@@ -66,9 +65,9 @@ private:
 
 //######################## implementation ##########################
 inline
-void ErrorLog::logMsg(const std::wstring& msg, MessageType type)
+void ErrorLog::logMsg(const std::wstring& msg, MessageType type, time_t time)
 {
-    entries_.push_back({std::time(nullptr), type, utfTo<Zstringc>(msg)});
+    entries_.push_back({time, type, utfTo<Zstringc>(msg)});
 }
 
 
@@ -119,14 +118,13 @@ std::string formatMessage(const LogEntry& entry)
     const size_t prefixLen = unicodeLength(msgFmt); //consider Unicode!
 
     const Zstringc msg = trimCpy(entry.message);
-    static_assert(std::is_same_v<decltype(msg), const Zstringc>, "don't worry about copying as long as we're using a ref-counted string!");
+    static_assert(std::is_same_v<decltype(msg), const Zstringc>, "no worries about copying as long as we're using a ref-counted string!");
 
     for (auto it = msg.begin(); it != msg.end(); )
         if (*it == '\n')
         {
-            msgFmt += '\n';
+            msgFmt += *it++;
             msgFmt.append(prefixLen, ' ');
-            ++it;
             //skip duplicate newlines
             for (; it != msg.end() && *it == '\n'; ++it)
                 ;

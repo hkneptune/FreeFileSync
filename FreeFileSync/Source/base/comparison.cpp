@@ -163,7 +163,7 @@ public:
     //create comparison result table and fill category except for files existing on both sides: undefinedFiles and undefinedSymlinks are appended!
     std::shared_ptr<BaseFolderPair> compareByTimeSize(const ResolvedFolderPair& fp, const FolderPairCfg& fpConfig) const;
     std::shared_ptr<BaseFolderPair> compareBySize    (const ResolvedFolderPair& fp, const FolderPairCfg& fpConfig) const;
-    std::list<std::shared_ptr<BaseFolderPair>> compareByContent(const std::vector<std::pair<ResolvedFolderPair, FolderPairCfg>>& workLoad) const;
+    std::vector<std::shared_ptr<BaseFolderPair>> compareByContent(const std::vector<std::pair<ResolvedFolderPair, FolderPairCfg>>& workLoad) const;
 
 private:
     ComparisonBuffer           (const ComparisonBuffer&) = delete;
@@ -214,7 +214,7 @@ ComparisonBuffer::ComparisonBuffer(const std::set<DirectoryKey>& folderKeys,
     const int64_t totalTimeSec = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - compareStartTime).count();
 
     callback.logInfo(_("Comparison finished:") + L' ' +
-                     _P("1 item found", "%x items found", itemsReported) + L" | " +
+                     _P("1 item found", "%x items found", itemsReported) + SPACED_DASH +
                      _("Time elapsed:") + L' ' + copyStringTo<std::wstring>(wxTimeSpan::Seconds(totalTimeSec).Format())); //throw X
     //------------------------------------------------------------------
 
@@ -522,7 +522,7 @@ void categorizeFileByContent(FilePair& file, const std::wstring& txtComparingCon
 }
 
 
-std::list<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(const std::vector<std::pair<ResolvedFolderPair, FolderPairCfg>>& workLoad) const
+std::vector<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(const std::vector<std::pair<ResolvedFolderPair, FolderPairCfg>>& workLoad) const
 {
     struct ParallelOps
     {
@@ -546,7 +546,7 @@ std::list<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(co
     };
 
     //PERF_START;
-    std::list<std::shared_ptr<BaseFolderPair>> output;
+    std::vector<std::shared_ptr<BaseFolderPair>> output;
 
     const Zstringc txtConflictSkippedBinaryComparison = getConflictSkippedBinaryComparison(); //avoid premature pess.: save memory via ref-counted string
 
@@ -661,7 +661,7 @@ std::list<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(co
 class MergeSides
 {
 public:
-    MergeSides(const std::map<ZstringNoCase, Zstringc>& errorsByRelPath,
+    MergeSides(const std::unordered_map<ZstringNoCase, Zstringc>& errorsByRelPath,
                std::vector<FilePair*>& undefinedFilesOut,
                std::vector<SymlinkPair*>& undefinedSymlinksOut) :
         errorsByRelPath_(errorsByRelPath),
@@ -685,7 +685,7 @@ private:
 
     const Zstringc* checkFailedRead(FileSystemObject& fsObj, const Zstringc* errorMsg);
 
-    const std::map<ZstringNoCase, Zstringc>& errorsByRelPath_; //base-relative paths or empty if read-error for whole base directory
+    const std::unordered_map<ZstringNoCase, Zstringc>& errorsByRelPath_; //base-relative paths or empty if read-error for whole base directory
     std::vector<FilePair*>&    undefinedFiles_;
     std::vector<SymlinkPair*>& undefinedSymlinks_;
 };
@@ -745,14 +745,15 @@ void matchFolders(const MapType& mapLeft, const MapType& mapRight, ProcessLeftOn
     std::vector<FileRef> fileList;
     fileList.reserve(mapLeft.size() + mapRight.size()); //perf: ~5% shorter runtime
 
-    for (const auto& item : mapLeft ) fileList.push_back({getUpperCase(item.first), &item, true});
+    for (const auto& item : mapLeft ) fileList.push_back({getUpperCase(item.first), &item, true });
     for (const auto& item : mapRight) fileList.push_back({getUpperCase(item.first), &item, false});
 
-    //primary sort: ignore unicode normal form and case
-    //bonus: natural default sequence on file guid UI
+    //primary sort: ignore Unicode normal form and upper/lower case
+    //bonus: natural default sequence on file grid UI
     std::sort(fileList.begin(), fileList.end(), [](const FileRef& lhs, const FileRef& rhs) { return lhs.upperCaseName < rhs.upperCaseName; });
 
-    auto tryMatchRange = [&](auto it, auto itLast)
+    using ItType = typename std::vector<FileRef>::iterator;
+    auto tryMatchRange = [&](ItType it, ItType itLast) //auto? compiler error on VS 17.2...
     {
         const size_t equalCountL = std::count_if(it, itLast, [](const FileRef& fr) { return fr.leftSide; });
         const size_t equalCountR = itLast - it - equalCountL;
@@ -921,7 +922,7 @@ std::shared_ptr<BaseFolderPair> ComparisonBuffer::performComparison(const Resolv
     cb_.updateStatus(_("Generating file list...")); //throw X
     cb_.requestUiUpdate(true /*force*/); //throw X
 
-    std::map<ZstringNoCase, Zstringc> failedReads; //base-relative paths or empty if read-error for whole base directory
+    std::unordered_map<ZstringNoCase, Zstringc> failedReads; //base-relative paths or empty if read-error for whole base directory
 
     auto evalFolderContent = [&](const AbstractPath& folderPath) -> const FolderContainer&
     {
@@ -931,7 +932,7 @@ std::shared_ptr<BaseFolderPair> ComparisonBuffer::performComparison(const Resolv
         //mix failedFolderReads with failedItemReads:
         //associate folder traversing errors with folder (instead of child items only) to show on GUI! See "MergeSides"
         //=> minor pessimization for "excludefilterFailedRead" which needlessly excludes parent folders, too
-        auto append = [&](const std::map<Zstring, Zstringc>& c)
+        auto append = [&](const std::unordered_map<Zstring, Zstringc>& c)
         {
             for (const auto& [relPath, errorMsg] : c)
                 failedReads.emplace(relPath, errorMsg);
@@ -1124,7 +1125,8 @@ FolderComparison fff::compare(WarningDialogs& warnings,
                 if (fpCfg.compareVar == CompareVariant::content)
                     workLoadByContent.push_back({folderPair, fpCfg});
 
-            std::list<std::shared_ptr<BaseFolderPair>> outputByContent = cmpBuff.compareByContent(workLoadByContent);
+            std::vector<std::shared_ptr<BaseFolderPair>> outputByContent = cmpBuff.compareByContent(workLoadByContent);
+            auto itOByC = outputByContent.begin();
 
             //write output in expected order
             for (const auto& [folderPair, fpCfg] : workLoad)
@@ -1137,12 +1139,9 @@ FolderComparison fff::compare(WarningDialogs& warnings,
                         output.push_back(cmpBuff.compareBySize(folderPair, fpCfg));
                         break;
                     case CompareVariant::content:
-                        assert(!outputByContent.empty());
-                        if (!outputByContent.empty())
-                        {
-                            output.push_back(outputByContent.front());
-                            /**/             outputByContent.pop_front();
-                        }
+                        assert(itOByC != outputByContent.end());
+                        if (itOByC != outputByContent.end())
+                            output.push_back(*itOByC++);
                         break;
                 }
         }

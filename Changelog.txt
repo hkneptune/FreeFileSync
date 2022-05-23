@@ -1,3 +1,15 @@
+FreeFileSync 11.21 [2022-05-17]
+-------------------------------
+Support volume GUID as path: \\?\Volume{01234567-89ab-cdef-0123-456789abcdef} (Windows)
+Avoid Two-Way conflict when changing folder name upper/lower-case
+List hidden warning messages in options dialog
+Fixed buffer overflow while receiving SFTP server banner
+Create crash dumps even if FFS-internal crash handling doesn't kick in
+Log time when error occured, not when it is reported
+Swap sides: Require confirmation only after comparison
+Updated translation files
+
+
 FreeFileSync 11.20 [2022-04-17]
 -------------------------------
 Fixed broken icon scaling on high-DPI displays

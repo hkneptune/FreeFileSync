@@ -7,10 +7,7 @@
 #ifndef PARSE_PLURAL_H_180465845670839576
 #define PARSE_PLURAL_H_180465845670839576
 
-#include <memory>
-#include <cstdint>
-#include <functional>
-#include <zen/string_base.h>
+#include <zen/string_tools.h>
 
 
 namespace plural
@@ -65,51 +62,49 @@ private:
 
 
 //--------------------------- implementation ---------------------------
+/*  https://www.gnu.org/software/hello/manual/gettext/Plural-forms.html
+    https://translate.sourceforge.net/wiki/l10n/pluralforms
 
-//https://www.gnu.org/software/hello/manual/gettext/Plural-forms.html
-//https://translate.sourceforge.net/wiki/l10n/pluralforms
-/*
-Grammar for Plural forms parser
--------------------------------
-expression:
-    conditional-expression
+    Grammar for Plural forms parser
+    -------------------------------
+    expression:
+        conditional-expression
 
-conditional-expression:
-    logical-or-expression
-    logical-or-expression ? expression : expression
+    conditional-expression:
+        logical-or-expression
+        logical-or-expression ? expression : expression
 
-logical-or-expression:
-    logical-and-expression
-    logical-or-expression || logical-and-expression
+    logical-or-expression:
+        logical-and-expression
+        logical-or-expression || logical-and-expression
 
-logical-and-expression:
-    equality-expression
-    logical-and-expression && equality-expression
+    logical-and-expression:
+        equality-expression
+        logical-and-expression && equality-expression
 
-equality-expression:
-    relational-expression
-    relational-expression == relational-expression
-    relational-expression != relational-expression
+    equality-expression:
+        relational-expression
+        relational-expression == relational-expression
+        relational-expression != relational-expression
 
-relational-expression:
-    multiplicative-expression
-    multiplicative-expression >  multiplicative-expression
-    multiplicative-expression <  multiplicative-expression
-    multiplicative-expression >= multiplicative-expression
-    multiplicative-expression <= multiplicative-expression
+    relational-expression:
+        multiplicative-expression
+        multiplicative-expression >  multiplicative-expression
+        multiplicative-expression <  multiplicative-expression
+        multiplicative-expression >= multiplicative-expression
+        multiplicative-expression <= multiplicative-expression
 
-multiplicative-expression:
-    pm-expression
-    multiplicative-expression % pm-expression
+    multiplicative-expression:
+        pm-expression
+        multiplicative-expression % pm-expression
 
-pm-expression:
-    variable-number-n-expression
-    constant-number-expression
-    ( expression )
+    pm-expression:
+        variable-number-n-expression
+        constant-number-expression
+        ( expression )
 
 
-.po format,e.g.: (n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2)
-*/
+    .po format,e.g.: (n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2)             */
 
 namespace impl
 {
@@ -174,39 +169,39 @@ private:
 
 //-------------------------------------------------------------------------------
 
+enum class TokenType
+{
+    ternaryQuest,
+    ternaryColon,
+    logicOr,
+    logicAnd,
+    equal,
+    notEqual,
+    less,
+    lessEqual,
+    greater,
+    greaterEqual,
+    modulus,
+    variableN,
+    constNumber,
+    bracketLeft,
+    bracketRight,
+    end,
+};
+
 struct Token
 {
-    enum Type
-    {
-        TK_TERNARY_QUEST,
-        TK_TERNARY_COLON,
-        TK_OR,
-        TK_AND,
-        TK_EQUAL,
-        TK_NOT_EQUAL,
-        TK_LESS,
-        TK_LESS_EQUAL,
-        TK_GREATER,
-        TK_GREATER_EQUAL,
-        TK_MODULUS,
-        TK_VARIABLE_N,
-        TK_CONST_NUMBER,
-        TK_BRACKET_LEFT,
-        TK_BRACKET_RIGHT,
-        TK_END
-    };
-
-    Token(Type t) : type(t) {}
+    Token(TokenType t) : type(t) {}
     Token(int64_t num) : number(num) {}
 
-    Type type = TK_CONST_NUMBER;
-    int64_t number = 0; //if type == TK_CONST_NUMBER
+    TokenType type = TokenType::constNumber;
+    int64_t number = 0; //if type == TokenType::constNumber
 };
 
 class Scanner
 {
 public:
-    Scanner(const std::string& stream) : stream_(stream), pos_(stream_.begin()) {}
+    explicit Scanner(const std::string& stream) : stream_(stream), pos_(stream_.begin()) {}
 
     Token getNextToken() //throw ParsingError
     {
@@ -214,7 +209,7 @@ public:
         pos_ = std::find_if_not(pos_, stream_.end(), zen::isWhiteSpace<char>);
 
         if (pos_ == stream_.end())
-            return Token::TK_END;
+            return TokenType::end;
 
         for (const auto& [tokenString, tokenEnum] : tokens_)
             if (startsWith(tokenString))
@@ -238,24 +233,24 @@ private:
         return zen::startsWith(zen::makeStringView(pos_, stream_.end()), prefix);
     }
 
-    using TokenList = std::vector<std::pair<std::string, Token::Type>>;
+    using TokenList = std::vector<std::pair<std::string, TokenType>>;
     const TokenList tokens_
     {
-        {"?",  Token::TK_TERNARY_QUEST},
-        {":",  Token::TK_TERNARY_COLON},
-        {"||", Token::TK_OR           },
-        {"&&", Token::TK_AND          },
-        {"==", Token::TK_EQUAL        },
-        {"!=", Token::TK_NOT_EQUAL    },
-        {"<=", Token::TK_LESS_EQUAL   },
-        {"<",  Token::TK_LESS         },
-        {">=", Token::TK_GREATER_EQUAL},
-        {">",  Token::TK_GREATER      },
-        {"%",  Token::TK_MODULUS      },
-        {"n",  Token::TK_VARIABLE_N   },
-        {"N",  Token::TK_VARIABLE_N   },
-        {"(",  Token::TK_BRACKET_LEFT },
-        {")",  Token::TK_BRACKET_RIGHT},
+        {"?",  TokenType::ternaryQuest},
+        {":",  TokenType::ternaryColon},
+        {"||", TokenType::logicOr     },
+        {"&&", TokenType::logicAnd    },
+        {"==", TokenType::equal       },
+        {"!=", TokenType::notEqual    },
+        {"<=", TokenType::lessEqual   },
+        {"<",  TokenType::less        },
+        {">=", TokenType::greaterEqual},
+        {">",  TokenType::greater     },
+        {"%",  TokenType::modulus     },
+        {"n",  TokenType::variableN   },
+        {"N",  TokenType::variableN   },
+        {"(",  TokenType::bracketLeft },
+        {")",  TokenType::bracketRight},
     };
 
     const std::string stream_;
@@ -277,7 +272,7 @@ public:
         auto e = std::dynamic_pointer_cast<Expr<int64_t>>(parseExpression()); //throw ParsingError
         if (!e)
             throw ParsingError();
-        expectToken(Token::TK_END); //throw ParsingError
+        expectToken(TokenType::end); //throw ParsingError
         return e;
     }
 
@@ -288,14 +283,14 @@ private:
     {
         std::shared_ptr<Expression> e = parseLogicalOr();
 
-        if (token().type == Token::TK_TERNARY_QUEST)
+        if (token().type == TokenType::ternaryQuest)
         {
             nextToken(); //throw ParsingError
 
             auto ifExp   = std::dynamic_pointer_cast<Expr<bool>>(e);
             auto thenExp = std::dynamic_pointer_cast<Expr<int64_t>>(parseExpression()); //associativity: <-
 
-            consumeToken(Token::TK_TERNARY_COLON); //throw ParsingError
+            consumeToken(TokenType::ternaryColon); //throw ParsingError
 
             auto elseExp = std::dynamic_pointer_cast<Expr<int64_t>>(parseExpression()); //
             if (!ifExp || !thenExp || !elseExp)
@@ -308,7 +303,7 @@ private:
     std::shared_ptr<Expression> parseLogicalOr()
     {
         std::shared_ptr<Expression> e = parseLogicalAnd();
-        while (token().type == Token::TK_OR) //associativity: ->
+        while (token().type == TokenType::logicOr) //associativity: ->
         {
             nextToken(); //throw ParsingError
 
@@ -321,7 +316,7 @@ private:
     std::shared_ptr<Expression> parseLogicalAnd()
     {
         std::shared_ptr<Expression> e = parseEquality();
-        while (token().type == Token::TK_AND) //associativity: ->
+        while (token().type == TokenType::logicAnd) //associativity: ->
         {
             nextToken(); //throw ParsingError
             std::shared_ptr<Expression> rhs = parseEquality();
@@ -335,15 +330,15 @@ private:
     {
         std::shared_ptr<Expression> e = parseRelational();
 
-        Token::Type t = token().type;
-        if (t == Token::TK_EQUAL || //associativity: n/a
-            t == Token::TK_NOT_EQUAL)
+        TokenType t = token().type;
+        if (t == TokenType::equal || //associativity: n/a
+            t == TokenType::notEqual)
         {
             nextToken(); //throw ParsingError
             std::shared_ptr<Expression> rhs = parseRelational();
 
-            if (t == Token::TK_EQUAL)     return makeBiExp<std::    equal_to<>, int64_t>(e, rhs); //throw ParsingError
-            if (t == Token::TK_NOT_EQUAL) return makeBiExp<std::not_equal_to<>, int64_t>(e, rhs); //
+            if (t == TokenType::equal)    return makeBiExp<std::    equal_to<>, int64_t>(e, rhs); //throw ParsingError
+            if (t == TokenType::notEqual) return makeBiExp<std::not_equal_to<>, int64_t>(e, rhs); //
         }
         return e;
     }
@@ -352,19 +347,19 @@ private:
     {
         std::shared_ptr<Expression> e = parseMultiplicative();
 
-        Token::Type t = token().type;
-        if (t == Token::TK_LESS       || //associativity: n/a
-            t == Token::TK_LESS_EQUAL ||
-            t == Token::TK_GREATER    ||
-            t == Token::TK_GREATER_EQUAL)
+        TokenType t = token().type;
+        if (t == TokenType::less      || //associativity: n/a
+            t == TokenType::lessEqual ||
+            t == TokenType::greater   ||
+            t == TokenType::greaterEqual)
         {
             nextToken(); //throw ParsingError
             std::shared_ptr<Expression> rhs = parseMultiplicative();
 
-            if (t == Token::TK_LESS)          return makeBiExp<std::less         <>, int64_t>(e, rhs); //
-            if (t == Token::TK_LESS_EQUAL)    return makeBiExp<std::less_equal   <>, int64_t>(e, rhs); //throw ParsingError
-            if (t == Token::TK_GREATER)       return makeBiExp<std::greater      <>, int64_t>(e, rhs); //
-            if (t == Token::TK_GREATER_EQUAL) return makeBiExp<std::greater_equal<>, int64_t>(e, rhs); //
+            if (t == TokenType::less)         return makeBiExp<std::less         <>, int64_t>(e, rhs); //
+            if (t == TokenType::lessEqual)    return makeBiExp<std::less_equal   <>, int64_t>(e, rhs); //throw ParsingError
+            if (t == TokenType::greater)      return makeBiExp<std::greater      <>, int64_t>(e, rhs); //
+            if (t == TokenType::greaterEqual) return makeBiExp<std::greater_equal<>, int64_t>(e, rhs); //
         }
         return e;
     }
@@ -373,7 +368,7 @@ private:
     {
         std::shared_ptr<Expression> e = parsePrimary();
 
-        while (token().type == Token::TK_MODULUS) //associativity: ->
+        while (token().type == TokenType::modulus) //associativity: ->
         {
             nextToken(); //throw ParsingError
             std::shared_ptr<Expression> rhs = parsePrimary();
@@ -390,23 +385,23 @@ private:
 
     std::shared_ptr<Expression> parsePrimary()
     {
-        if (token().type == Token::TK_VARIABLE_N)
+        if (token().type == TokenType::variableN)
         {
             nextToken(); //throw ParsingError
             return std::make_shared<VariableNumberNExp>(n_);
         }
-        else if (token().type == Token::TK_CONST_NUMBER)
+        else if (token().type == TokenType::constNumber)
         {
             const int64_t number = token().number;
             nextToken(); //throw ParsingError
             return std::make_shared<ConstNumberExp>(number);
         }
-        else if (token().type == Token::TK_BRACKET_LEFT)
+        else if (token().type == TokenType::bracketLeft)
         {
             nextToken(); //throw ParsingError
             std::shared_ptr<Expression> e = parseExpression();
 
-            expectToken(Token::TK_BRACKET_RIGHT); //throw ParsingError
+            expectToken(TokenType::bracketRight); //throw ParsingError
             nextToken();                          //
             return e;
         }
@@ -418,13 +413,13 @@ private:
 
     void nextToken() { tk_ = scn_.getNextToken(); } //throw ParsingError
 
-    void expectToken(Token::Type t) //throw ParsingError
+    void expectToken(TokenType t) //throw ParsingError
     {
         if (token().type != t)
             throw ParsingError();
     }
 
-    void consumeToken(Token::Type t) //throw ParsingError
+    void consumeToken(TokenType t) //throw ParsingError
     {
         expectToken(t); //throw ParsingError
         nextToken();

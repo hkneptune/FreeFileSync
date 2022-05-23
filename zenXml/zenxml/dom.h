@@ -9,7 +9,7 @@
 
 #include <string>
 #include <list>
-#include <map>
+#include <unordered_map>
 #include "cvrt_text.h" //"readText/writeText"
 
 
@@ -59,11 +59,11 @@ public:
     template <class T>
     bool getAttribute(const std::string& name, T& value) const
     {
-        auto it = attributesSorted_.find(name);
-        return it == attributesSorted_.end() ? false : readText(it->second->value, value);
+        auto it = attributesByName.find(name);
+        return it == attributesByName.end() ? false : readText(it->second->value, value);
     }
 
-    bool hasAttribute(const std::string& name) const { return attributesSorted_.contains(name); }
+    bool hasAttribute(const std::string& name) const { return attributesByName.contains(name); }
 
     ///Create or update an XML attribute.
     /**
@@ -77,24 +77,25 @@ public:
         std::string attrValue;
         writeText(value, attrValue);
 
-        auto it = attributesSorted_.find(name);
-        if (it != attributesSorted_.end())
+        auto it = attributesByName.find(name);
+        if (it != attributesByName.end())
             it->second->value = std::move(attrValue);
         else
         {
             auto itBack = attributes_.insert(attributes_.end(), {name, std::move(attrValue)});
-            attributesSorted_.emplace(std::move(name), itBack);
+            attributesByName.emplace(std::move(name), itBack);
         }
+        static_assert(std::is_same_v<decltype(attributes_), std::list<Attribute>>); //must NOT invalidate references used in "attributesByName"!
     }
 
     ///Remove the attribute with the given name.
     void removeAttribute(const std::string& name)
     {
-        auto it = attributesSorted_.find(name);
-        if (it != attributesSorted_.end())
+        auto it = attributesByName.find(name);
+        if (it != attributesByName.end())
         {
             attributes_.erase(it->second);
-            attributesSorted_.erase(it);
+            attributesByName.erase(it);
         }
     }
 
@@ -106,7 +107,9 @@ public:
     {
         childElements_.emplace_back(name, this);
         XmlElement& newElement = childElements_.back();
-        childElementsSorted_.emplace(std::move(name), &newElement);
+        childElementsByName_.emplace(std::move(name), &newElement);
+
+        static_assert(std::is_same_v<decltype(childElements_), std::list<XmlElement>>); //must NOT invalidate references used in "childElementsByName_"!
         return newElement;
     }
 
@@ -117,8 +120,8 @@ public:
     */
     const XmlElement* getChild(const std::string& name) const
     {
-        auto it = childElementsSorted_.find(name);
-        return it == childElementsSorted_.end() ? nullptr : it->second;
+        auto it = childElementsByName_.find(name);
+        return it == childElementsByName_.end() ? nullptr : it->second;
     }
 
     ///\sa getChild
@@ -156,8 +159,8 @@ public:
         T& objectRef(const IterTy& it) const { return *(it->second); }
     };
 
-    using ChildIter2      = PtrIter<std::multimap<std::string, XmlElement*>::iterator,             XmlElement, AccessMapElement>;
-    using ChildIterConst2 = PtrIter<std::multimap<std::string, XmlElement*>::const_iterator, const XmlElement, AccessMapElement>;
+    using ChildIter2      = PtrIter<std::unordered_multimap<std::string, XmlElement*>::iterator,             XmlElement, AccessMapElement>;
+    using ChildIterConst2 = PtrIter<std::unordered_multimap<std::string, XmlElement*>::const_iterator, const XmlElement, AccessMapElement>;
 
     ///Access all child elements with the given name via STL iterators.
     /**
@@ -169,10 +172,10 @@ public:
       \param name The name of the child elements to be retrieved.
       \return A pair of STL begin/end iterators to access the child elements sequentially.
     */
-    std::pair<ChildIterConst2, ChildIterConst2> getChildren(const std::string& name) const { return childElementsSorted_.equal_range(name); }
+    std::pair<ChildIterConst2, ChildIterConst2> getChildren(const std::string& name) const { return childElementsByName_.equal_range(name); }
 
     ///\sa getChildren
-    std::pair<ChildIter2, ChildIter2> getChildren(const std::string& name) { return childElementsSorted_.equal_range(name); }
+    std::pair<ChildIter2, ChildIter2> getChildren(const std::string& name) { return childElementsByName_.equal_range(name); }
 
     struct AccessListElement
     {
@@ -225,9 +228,9 @@ public:
         name_               .swap(other.name_);
         value_              .swap(other.value_);
         attributes_         .swap(other.attributes_);
-        attributesSorted_   .swap(other.attributesSorted_);
+        attributesByName    .swap(other.attributesByName);
         childElements_      .swap(other.childElements_);
-        childElementsSorted_.swap(other.childElementsSorted_);
+        childElementsByName_.swap(other.childElementsByName_);
 
         for (XmlElement& child : childElements_)
             child.parent_ = this;
@@ -242,11 +245,11 @@ private:
     std::string name_;
     std::string value_;
 
-    std::list<Attribute>                                  attributes_;       //attributes in order of creation
-    std::map<std::string, std::list<Attribute>::iterator> attributesSorted_; //alternate view: sorted by attribute name
+    std::list<Attribute>                                            attributes_;      //attributes in order of creation
+    std::unordered_map<std::string, std::list<Attribute>::iterator> attributesByName; //alternate view for lookup
 
-    std::list<XmlElement>                   childElements_;       //child elements in order of creation
-    std::multimap<std::string, XmlElement*> childElementsSorted_; //alternate view: sorted by element name
+    std::list<XmlElement>                             childElements_;       //child elements in order of creation
+    std::unordered_multimap<std::string, XmlElement*> childElementsByName_; //alternate view for lookup
     XmlElement* parent_ = nullptr;
 };
 

@@ -46,10 +46,10 @@ size_t zen::impl::zlib_compressBound(size_t len)
 size_t zen::impl::zlib_compress(const void* src, size_t srcLen, void* trg, size_t trgLen, int level) //throw SysError
 {
     uLongf bufSize = static_cast<uLong>(trgLen);
-    const int rv = ::compress2(static_cast<Bytef*>(trg),       //Bytef* dest,
-                               &bufSize,                       //uLongf* destLen,
-                               static_cast<const Bytef*>(src), //const Bytef* source,
-                               static_cast<uLong>(srcLen),     //uLong sourceLen,
+    const int rv = ::compress2(static_cast<Bytef*>(trg),       //Bytef* dest
+                               &bufSize,                       //uLongf* destLen
+                               static_cast<const Bytef*>(src), //const Bytef* source
+                               static_cast<uLong>(srcLen),     //uLong sourceLen
                                level);                         //int level
     // Z_OK: success
     // Z_MEM_ERROR: not enough memory
@@ -64,9 +64,9 @@ size_t zen::impl::zlib_compress(const void* src, size_t srcLen, void* trg, size_
 size_t zen::impl::zlib_decompress(const void* src, size_t srcLen, void* trg, size_t trgLen) //throw SysError
 {
     uLongf bufSize = static_cast<uLong>(trgLen);
-    const int rv = ::uncompress(static_cast<Bytef*>(trg),       //Bytef* dest,
-                                &bufSize,                       //uLongf* destLen,
-                                static_cast<const Bytef*>(src), //const Bytef* source,
+    const int rv = ::uncompress(static_cast<Bytef*>(trg),       //Bytef* dest
+                                &bufSize,                       //uLongf* destLen
+                                static_cast<const Bytef*>(src), //const Bytef* source
                                 static_cast<uLong>(srcLen));    //uLong sourceLen
     // Z_OK: success
     // Z_MEM_ERROR: not enough memory

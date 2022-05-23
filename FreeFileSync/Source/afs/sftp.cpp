@@ -910,7 +910,7 @@ private:
 
             lastCleanupTime = std::chrono::steady_clock::now();
 
-            std::vector<Protected<IdleSshSessions>*> sessionStores; //pointers remain stable, thanks to std::map<>
+            std::vector<Protected<IdleSshSessions>*> sessionStores; //pointers remain stable, thanks to std::unordered_map<>
 
             globalSessionStore_.access([&](GlobalSshSessions& sessionsById)
             {
@@ -1061,7 +1061,7 @@ std::vector<SftpItem> getDirContentFlat(const SftpLogin& login, const AfsPath& d
             continue;
 
         const Zstring& itemName = utfTo<Zstring>(sftpItemName);
-        const AfsPath itemPath(nativeAppendPaths(dirPath.value, itemName));
+        const AfsPath itemPath(appendPath(dirPath.value, itemName));
 
         if ((attribs.flags & LIBSSH2_SFTP_ATTR_PERMISSIONS) == 0) //server probably does not support these attributes => fail at folder level
             throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login, itemPath))), L"File attributes not available.");
@@ -1145,7 +1145,7 @@ private:
     {
         for (const SftpItem& item : getDirContentFlat(login_, dirPath)) //throw FileError
         {
-            const AfsPath itemPath(nativeAppendPaths(dirPath.value, item.itemName));
+            const AfsPath itemPath(appendPath(dirPath.value, item.itemName));
 
             switch (item.details.type)
             {
@@ -1515,6 +1515,23 @@ public:
 
 private:
     Zstring getInitPathPhrase(const AfsPath& afsPath) const override { return concatenateSftpFolderPathPhrase(login_, afsPath); }
+
+    std::vector<Zstring> getPathPhraseAliases(const AfsPath& afsPath) const override
+    {
+        std::vector<Zstring> pathAliases;
+
+        if (login_.authType != SftpAuthType::keyFile || login_.privateKeyFilePath.empty())
+            pathAliases.push_back(concatenateSftpFolderPathPhrase(login_, afsPath));
+        else //why going crazy with key path aliases!? because we can...
+            for (const Zstring& pathPhrase : ::getPathPhraseAliases(login_.privateKeyFilePath))
+            {
+                auto loginTmp = login_;
+                loginTmp.privateKeyFilePath = pathPhrase;
+
+                pathAliases.push_back(concatenateSftpFolderPathPhrase(loginTmp, afsPath));
+            }
+        return pathAliases;
+    }
 
     std::wstring getDisplayPath(const AfsPath& afsPath) const override { return getSftpDisplayPath(login_, afsPath); }
 
@@ -2021,7 +2038,7 @@ AbstractPath fff::createItemPathSftp(const Zstring& itemPathPhrase) //noexcept
         else if (startsWith(optPhrase, Zstr("keyfile=")))
         {
             login.authType = SftpAuthType::keyFile;
-            login.privateKeyFilePath = afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none);
+            login.privateKeyFilePath = getResolvedFilePath(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
         }
         else if (optPhrase == Zstr("agent"))
             login.authType = SftpAuthType::agent;

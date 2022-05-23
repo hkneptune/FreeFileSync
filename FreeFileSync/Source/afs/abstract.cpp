@@ -15,18 +15,6 @@ using namespace fff;
 using AFS = AbstractFileSystem;
 
 
-bool fff::isValidRelPath(const Zstring& relPath)
-{
-    //relPath is expected to use FILE_NAME_SEPARATOR!
-    if constexpr (FILE_NAME_SEPARATOR != Zstr('/' )) if (contains(relPath, Zstr('/' ))) return false;
-    if constexpr (FILE_NAME_SEPARATOR != Zstr('\\')) if (contains(relPath, Zstr('\\'))) return false;
-
-    const Zchar doubleSep[] = {FILE_NAME_SEPARATOR, FILE_NAME_SEPARATOR, 0};
-    return !startsWith(relPath, FILE_NAME_SEPARATOR)&& !endsWith(relPath, FILE_NAME_SEPARATOR)&&
-           !contains(relPath, doubleSep);
-}
-
-
 AfsPath fff::sanitizeDeviceRelativePath(Zstring relPath)
 {
     if constexpr (FILE_NAME_SEPARATOR != Zstr('/' )) replace(relPath, Zstr('/'),  FILE_NAME_SEPARATOR);
@@ -339,7 +327,7 @@ void AFS::removeFolderIfExistsRecursion(const AfsPath& afsPath, //throw FileErro
 
         for (const Zstring& fileName : fileNames)
         {
-            const AfsPath filePath(nativeAppendPaths(folderPath.value, fileName));
+            const AfsPath filePath(appendPath(folderPath.value, fileName));
             if (onBeforeFileDeletion)
                 onBeforeFileDeletion(getDisplayPath(filePath)); //throw X
 
@@ -348,7 +336,7 @@ void AFS::removeFolderIfExistsRecursion(const AfsPath& afsPath, //throw FileErro
 
         for (const Zstring& symlinkName : symlinkNames)
         {
-            const AfsPath linkPath(nativeAppendPaths(folderPath.value, symlinkName));
+            const AfsPath linkPath(appendPath(folderPath.value, symlinkName));
             if (onBeforeFileDeletion)
                 onBeforeFileDeletion(getDisplayPath(linkPath)); //throw X
 
@@ -356,7 +344,7 @@ void AFS::removeFolderIfExistsRecursion(const AfsPath& afsPath, //throw FileErro
         }
 
         for (const Zstring& folderName : folderNames)
-            removeFolderRecursionImpl(AfsPath(nativeAppendPaths(folderPath.value, folderName))); //throw FileError
+            removeFolderRecursionImpl(AfsPath(appendPath(folderPath.value, folderName))); //throw FileError
 
         if (onBeforeFolderDeletion)
             onBeforeFolderDeletion(getDisplayPath(folderPath)); //throw X

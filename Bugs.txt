@@ -5,7 +5,7 @@ the ones mentioned below. The remaining issues that are yet to be fixed are list
 
 
 ----------------
-| libcurl 7.74 |
+| libcurl 7.83|
 ----------------
 __________________________________________________________________________________________________________
 /lib/ftp.c
@@ -60,6 +60,19 @@ ________________________________________________________________________________
 move the following constants from src/sftp.h to include/libssh2_sftp.h:
 	#define MAX_SFTP_OUTGOING_SIZE 30000
 	#define MAX_SFTP_READ_SIZE 30000
+
+__________________________________________________________________________________________________________
+src/userauth.c
+buffer overflow: https://github.com/libssh2/libssh2/pull/693
+
+-if (banner_len >= session->userauth_list_data_len - 5) {
++if (banner_len > session->userauth_list_data_len - 5) {
+
+-session->userauth_banner = LIBSSH2_ALLOC(session, banner_len);
++session->userauth_banner = LIBSSH2_ALLOC(session, banner_len + 1);
+
+-memmove(session->userauth_banner, session->userauth_list_data + 5,
++memcpy(session->userauth_banner, session->userauth_list_data + 5,
 
 __________________________________________________________________________________________________________
 

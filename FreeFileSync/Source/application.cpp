@@ -7,7 +7,6 @@
 #include "application.h"
 #include <memory>
 #include <zen/file_access.h>
-#include <zen/file_path.h>
 #include <zen/perf.h>
 #include <zen/shutdown.h>
 #include <zen/process_exec.h>
@@ -66,13 +65,13 @@ bool Application::OnInit()
     };
 
     //parallel xBRZ-scaling! => run as early as possible
-    try { imageResourcesInit(getResourceDirPf() + Zstr("Icons.zip")); }
+    try { imageResourcesInit(appendPath(getResourceDirPath(), Zstr("Icons.zip"))); }
     catch (const FileError& e) { logInitError(e.toString()); }
     //errors are not really critical in this context
 
     //GTK should already have been initialized by wxWidgets (see \src\gtk\app.cpp:wxApp::Initialize)
 #if GTK_MAJOR_VERSION == 2
-    ::gtk_rc_parse((getResourceDirPf() + "Gtk2Styles.rc").c_str());
+    ::gtk_rc_parse(appendPath(getResourceDirPath(), "Gtk2Styles.rc").c_str());
 
     //hang on Ubuntu 19.10 (GLib 2.62) caused by ibus initialization: https://freefilesync.org/forum/viewtopic.php?t=6704
     //=> work around 1: bonus: avoid needless DBus calls: https://developer.gnome.org/gio/stable/running-gio-apps.html
@@ -140,10 +139,10 @@ bool Application::OnInit()
     SetAppName(L"FreeFileSync"); //if not set, the default is the executable's name!
 
     //tentatively set program language to OS default until GlobalSettings.xml is read later
-    try { localizationInit(getResourceDirPf() + Zstr("Languages.zip")); } //throw FileError
+    try { localizationInit(appendPath(getResourceDirPath(), Zstr("Languages.zip"))); } //throw FileError
     catch (const FileError& e) { logInitError(e.toString()); }
 
-    initAfs({getResourceDirPf(), getConfigDirPathPf()}); //bonus: using FTP Gdrive implicitly inits OpenSSL (used in runSanityChecks() on Linux) already during globals init
+    initAfs({getResourceDirPath(), getConfigDirPath()}); //bonus: using FTP Gdrive implicitly inits OpenSSL (used in runSanityChecks() on Linux) already during globals init
 
 
 

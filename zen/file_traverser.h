@@ -7,10 +7,8 @@
 #ifndef FILER_TRAVERSER_H_127463214871234
 #define FILER_TRAVERSER_H_127463214871234
 
-#include <cstdint>
 #include <functional>
-#include "zstring.h"
-
+#include "file_path.h"
 
 namespace zen
 {

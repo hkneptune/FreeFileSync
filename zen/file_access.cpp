@@ -7,7 +7,6 @@
 #include "file_access.h"
 #include <map>
 #include <algorithm>
-#include <stdexcept>
 #include <chrono>
 #include "file_traverser.h"
 #include "scope_guard.h"
@@ -17,7 +16,6 @@
 #include "guid.h"
 
     #include <sys/vfs.h> //statfs
-    //#include <sys/time.h> //lutimes
     #ifdef HAVE_SELINUX
         #include <selinux/selinux.h>
     #endif

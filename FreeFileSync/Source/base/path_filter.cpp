@@ -5,12 +5,8 @@
 // *****************************************************************************
 
 #include "path_filter.h"
-#include <set>
-#include <stdexcept>
-#include <vector>
-#include <typeinfo>
-#include <iterator>
 #include <typeindex>
+#include <zen/file_path.h>
 
 using namespace zen;
 using namespace fff;

@@ -9,9 +9,7 @@
 
 #include <vector>
 #include <string>
-#include <map>
 #include <wx/combobox.h>
-#include <zen/string_tools.h>
 #include <zen/zstring.h>
 
 

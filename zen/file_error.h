@@ -7,7 +7,6 @@
 #ifndef FILE_ERROR_H_839567308565656789
 #define FILE_ERROR_H_839567308565656789
 
-#include "zstring.h"
 #include "sys_error.h" //we'll need this later anyway!
 
 

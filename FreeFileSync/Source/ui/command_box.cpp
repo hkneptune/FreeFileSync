@@ -181,7 +181,7 @@ void CommandBox::onKeyEvent(wxKeyEvent& event)
                     //this->SetSelection(wxNOT_FOUND);
 
                     //delete selected row
-                    std::erase_if(history_, [&](const Zstring& item) { return item == selValue; });
+                    std::erase(history_, selValue);
 
                     SetString(pos, wxString()); //in contrast to Delete(), this one does not kill the drop-down list and gives a nice visual feedback!
                     //Delete(pos);

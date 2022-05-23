@@ -23,7 +23,7 @@ using namespace fff; //functionally needed for correct overload resolution!!!
 namespace
 {
 //-------------------------------------------------------------------------------------------------------------------------------
-const int XML_FORMAT_GLOBAL_CFG = 23; //2021-12-02
+const int XML_FORMAT_GLOBAL_CFG = 24; //2022-04-29
 const int XML_FORMAT_SYNC_CFG   = 17; //2020-10-14
 //-------------------------------------------------------------------------------------------------------------------------------
 }
@@ -31,16 +31,15 @@ const int XML_FORMAT_SYNC_CFG   = 17; //2020-10-14
 
 const ExternalApp fff::extCommandFileBrowse
 //"xdg-open \"%parent_path%\"" -> not good enough: we need %local_path% for proper MTP/Google Drive handling
-{L"Browse directory", "xdg-open \"$(dirname \"%local_path%\")\""};
-//mark for extraction: _("Browse directory") Linux doesn't use the term "folder"
+{L"Show in file manager", "xdg-open \"$(dirname \"%local_path%\")\""};
+//mark for extraction: _("Show in file manager") Linux doesn't use the term "folder"
 
 
 const ExternalApp fff::extCommandOpenDefault
-//"xdg-open \"%parent_path%\"" -> not good enough: we need %local_path% for proper MTP/Google Drive handling
 {L"Open with default application", "xdg-open \"%local_path%\""};
 
 
-XmlType getXmlTypeNoThrow(const XmlDoc& doc) //throw()
+XmlType getXmlTypeNoThrow(const XmlDoc& doc) //noexcept
 {
     if (doc.root().getName() == "FreeFileSync")
     {
@@ -90,8 +89,8 @@ void setXmlType(XmlDoc& doc, XmlType type) //throw()
 
 
 XmlGlobalSettings::XmlGlobalSettings() :
-    soundFileSyncFinished(getResourceDirPf() + Zstr("bell.wav")),
-    soundFileAlertPending(getResourceDirPf() + Zstr("remind.wav"))
+    soundFileSyncFinished(appendPath(getResourceDirPath(), Zstr("bell.wav"))),
+    soundFileAlertPending(appendPath(getResourceDirPath(), Zstr("remind.wav")))
 {
 }
 
@@ -99,7 +98,7 @@ XmlGlobalSettings::XmlGlobalSettings() :
 
 Zstring fff::getGlobalConfigFile()
 {
-    return getConfigDirPathPf() + Zstr("GlobalSettings.xml");
+    return appendPath(getConfigDirPath(), Zstr("GlobalSettings.xml"));
 }
 
 
@@ -366,32 +365,32 @@ bool readText(const std::string& input, PostSyncAction& value)
 
 
 template <> inline
-void writeText(const FileIconSize& value, std::string& output)
+void writeText(const GridIconSize& value, std::string& output)
 {
     switch (value)
     {
-        case FileIconSize::small:
+        case GridIconSize::small:
             output = "Small";
             break;
-        case FileIconSize::medium:
+        case GridIconSize::medium:
             output = "Medium";
             break;
-        case FileIconSize::large:
+        case GridIconSize::large:
             output = "Large";
             break;
     }
 }
 
 template <> inline
-bool readText(const std::string& input, FileIconSize& value)
+bool readText(const std::string& input, GridIconSize& value)
 {
     const std::string tmp = trimCpy(input);
     if (tmp == "Small")
-        value = FileIconSize::small;
+        value = GridIconSize::small;
     else if (tmp == "Medium")
-        value = FileIconSize::medium;
+        value = GridIconSize::medium;
     else if (tmp == "Large")
-        value = FileIconSize::large;
+        value = GridIconSize::large;
     else
         return false;
     return true;
@@ -942,16 +941,16 @@ Zstring resolveFreeFileSyncDriveMacro(const Zstring& cfgFilePhrase)
 
 Zstring substituteFfsResourcePath(const Zstring& filePath)
 {
-    const Zstring resPathPf = getResourceDirPf();
+    const Zstring resPathPf = appendSeparator(getResourceDirPath());
     if (startsWith(trimCpy(filePath, true, false), resPathPf))
-        return Zstring(Zstr("%ffs_resource%")) + FILE_NAME_SEPARATOR + afterFirst(filePath, resPathPf, IfNotFoundReturn::none);
+        return Zstring(Zstr("%ffs_resource%")) + FILE_NAME_SEPARATOR + (filePath.c_str() + resPathPf.size());
     return filePath;
 }
 
 Zstring resolveFfsResourceMacro(const Zstring& filePhrase)
 {
     if (startsWith(trimCpy(filePhrase, true, false), Zstring(Zstr("%ffs_resource%")) + FILE_NAME_SEPARATOR))
-        return getResourceDirPf() + afterFirst(filePhrase, FILE_NAME_SEPARATOR, IfNotFoundReturn::none);
+        return appendSeparator(getResourceDirPath()) + afterFirst(filePhrase, FILE_NAME_SEPARATOR, IfNotFoundReturn::none);
     return filePhrase;
 }
 }
@@ -1197,7 +1196,7 @@ void readConfig(const XmlIn& in, LocalPairConfig& lpc, std::map<AfsDevice, size_
     setParallelOps(lpc.folderPathPhraseRight, parallelOpsR);
 
     //TODO: remove after migration - 2016-07-24
-    auto ciReplace = [](Zstring& pathPhrase, const Zstring& oldTerm, const Zstring& newTerm) { pathPhrase = replaceCpyAsciiNoCase(pathPhrase, oldTerm, newTerm); };
+    auto ciReplace = [](Zstring& pathPhrase, const Zstring& oldTerm, const Zstring& newTerm) { replaceAsciiNoCase(pathPhrase, oldTerm, newTerm); };
     ciReplace(lpc.folderPathPhraseLeft,  Zstr("%csidl_MyDocuments%"), Zstr("%csidl_Documents%"));
     ciReplace(lpc.folderPathPhraseLeft,  Zstr("%csidl_MyMusic%"    ), Zstr("%csidl_Music%"));
     ciReplace(lpc.folderPathPhraseLeft,  Zstr("%csidl_MyPictures%" ), Zstr("%csidl_Pictures%"));
@@ -1230,8 +1229,8 @@ void readConfig(const XmlIn& in, LocalPairConfig& lpc, std::map<AfsDevice, size_
     //TODO: remove after migration! 2020-04-24
     if (formatVer < 16)
     {
-        lpc.folderPathPhraseLeft  = replaceCpyAsciiNoCase(lpc.folderPathPhraseLeft,  Zstr("%weekday%"), Zstr("%WeekDayName%"));
-        lpc.folderPathPhraseRight = replaceCpyAsciiNoCase(lpc.folderPathPhraseRight, Zstr("%weekday%"), Zstr("%WeekDayName%"));
+        replaceAsciiNoCase(lpc.folderPathPhraseLeft,  Zstr("%weekday%"), Zstr("%WeekDayName%"));
+        replaceAsciiNoCase(lpc.folderPathPhraseRight, Zstr("%weekday%"), Zstr("%WeekDayName%"));
     }
 
     //###########################################################
@@ -1333,7 +1332,7 @@ void readConfig(const XmlIn& in, MainConfiguration& mainCfg, int formatVer)
 
     //TODO: remove after migration! 2020-04-24
     if (formatVer < 16)
-        mainCfg.altLogFolderPathPhrase= replaceCpyAsciiNoCase(mainCfg.altLogFolderPathPhrase,  Zstr("%weekday%"), Zstr("%WeekDayName%"));
+        replaceAsciiNoCase(mainCfg.altLogFolderPathPhrase,  Zstr("%weekday%"), Zstr("%WeekDayName%"));
 
     //TODO: remove if parameter migration after some time! 2020-01-30
     if (formatVer < 15)
@@ -1566,6 +1565,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
         XmlIn inOpt = in2["OptionalDialogs"];
         inOpt["ConfirmStartSync"                ].attribute("Show", cfg.confirmDlgs.confirmSyncStart);
         inOpt["ConfirmSaveConfig"               ].attribute("Show", cfg.confirmDlgs.confirmSaveConfig);
+        inOpt["ConfirmSwapSides"                ].attribute("Show", cfg.confirmDlgs.confirmSwapSides);
         if (formatVer < 12) //TODO: remove old parameter after migration! 2019-02-09
             inOpt["ConfirmExternalCommandMassInvoke"].attribute("Show", cfg.confirmDlgs.confirmCommandMassInvoke);
         else
@@ -1600,8 +1600,8 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     //TODO: remove if parameter migration after some time! 2019-05-29
     if (formatVer < 13)
     {
-        if (!cfg.soundFileCompareFinished.empty()) cfg.soundFileCompareFinished = getResourceDirPf() + cfg.soundFileCompareFinished;
-        if (!cfg.soundFileSyncFinished   .empty()) cfg.soundFileSyncFinished    = getResourceDirPf() + cfg.soundFileSyncFinished;
+        if (!cfg.soundFileCompareFinished.empty()) cfg.soundFileCompareFinished = appendPath(getResourceDirPath(), cfg.soundFileCompareFinished);
+        if (!cfg.soundFileSyncFinished   .empty()) cfg.soundFileSyncFinished    = appendPath(getResourceDirPath(), cfg.soundFileSyncFinished);
     }
     else
     {
@@ -1695,7 +1695,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     //TODO: remove after migration! 2019-11-30
     if (formatVer < 15)
     {
-        const Zstring lastRunConfigPath = getConfigDirPathPf() + Zstr("LastRun.ffs_gui");
+        const Zstring lastRunConfigPath = appendPath(getConfigDirPath(), Zstr("LastRun.ffs_gui"));
         for (ConfigFileItem& item : cfg.mainDlg.config.fileHistory)
             if (equalNativePath(item.cfgFilePath, lastRunConfigPath))
                 item.backColor = wxColor(0xdd, 0xdd, 0xdd); //light grey from onCfgGridContext()
@@ -1997,6 +1997,12 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
             if (item.cmdLine == "xdg-open \"%parent_path%\"")
                 item.cmdLine = "xdg-open \"$(dirname \"%local_path%\")\"";
         }
+
+    //TODO: remove after migration! 2022-04-29
+    if (formatVer < 24)
+        for (ExternalApp& item : cfg.externalApps)
+            if (item.description == L"Browse directory")
+                item.description = L"Show in file manager";
 
     if (formatVer < 20) //TODO: remove old parameter after migration! 2020-12-03
     {
@@ -2371,6 +2377,7 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
     XmlOut outOpt = out["OptionalDialogs"];
     outOpt["ConfirmStartSync"              ].attribute("Show", cfg.confirmDlgs.confirmSyncStart);
     outOpt["ConfirmSaveConfig"             ].attribute("Show", cfg.confirmDlgs.confirmSaveConfig);
+    outOpt["ConfirmSwapSides"              ].attribute("Show", cfg.confirmDlgs.confirmSwapSides);
     outOpt["ConfirmCommandMassInvoke"      ].attribute("Show", cfg.confirmDlgs.confirmCommandMassInvoke);
     outOpt["WarnFolderNotExisting"         ].attribute("Show", cfg.warnDlgs.warnFolderNotExisting);
     outOpt["WarnFoldersDifferInCase"       ].attribute("Show", cfg.warnDlgs.warnFoldersDifferInCase);

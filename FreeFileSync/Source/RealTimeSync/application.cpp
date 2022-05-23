@@ -47,13 +47,13 @@ bool Application::OnInit()
         std::cerr << utfTo<std::string>(titleFmt + SPACED_DASH + msg) << '\n';
     };
 
-    try { imageResourcesInit(fff::getResourceDirPf() + Zstr("Icons.zip")); }
+    try { imageResourcesInit(appendPath(fff::getResourceDirPath(), Zstr("Icons.zip"))); }
     catch (const FileError& e) { logInitError(e.toString()); }
     //errors are not really critical in this context
 
     //GTK should already have been initialized by wxWidgets (see \src\gtk\app.cpp:wxApp::Initialize)
 #if GTK_MAJOR_VERSION == 2
-    ::gtk_rc_parse((fff::getResourceDirPf() + "Gtk2Styles.rc").c_str());
+    ::gtk_rc_parse(appendPath(fff::getResourceDirPath(), "Gtk2Styles.rc").c_str());
 
     //fix hang on Ubuntu 19.10 (see FFS's application.cpp)
     g_vfs_get_default(); //returns unowned GVfs*
@@ -115,7 +115,7 @@ bool Application::OnInit()
 
     try
     {
-        fff::localizationInit(fff::getResourceDirPf() + Zstr("Languages.zip")); //throw FileError
+        fff::localizationInit(appendPath(fff::getResourceDirPath(), Zstr("Languages.zip"))); //throw FileError
         fff::setLanguage(getProgramLanguage()); //throw FileError
     }
     catch (const FileError& e) { logInitError(e.toString()); }

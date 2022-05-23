@@ -19,14 +19,14 @@ namespace fff
 class IconBuffer
 {
 public:
-    enum IconSize
+    enum class IconSize
     {
-        SIZE_SMALL,
-        SIZE_MEDIUM,
-        SIZE_LARGE
+        small,
+        medium,
+        large
     };
 
-    IconBuffer(IconSize sz);
+    explicit IconBuffer(IconSize sz);
     ~IconBuffer();
 
     static int getSize(IconSize sz); //expected and *maximum* icon size in pixel

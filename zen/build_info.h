@@ -8,25 +8,25 @@
 #define BUILD_INFO_H_5928539285603428657
 
 
-#define ZEN_ARCH_32BIT 32
-#define ZEN_ARCH_64BIT 64
-
-    #ifdef __LP64__
-        #define ZEN_BUILD_ARCH ZEN_ARCH_64BIT
-    #else
-        #define ZEN_BUILD_ARCH ZEN_ARCH_32BIT
-    #endif
-
-static_assert(ZEN_BUILD_ARCH == sizeof(void*) * 8);
-
 
 namespace zen
 {
-    #if ZEN_BUILD_ARCH == ZEN_ARCH_32BIT
-        const char cpuArchName[] = "i686";
-    #else
-        const char cpuArchName[] = "x86-64";
-    #endif
+enum class BuildArch
+{
+    bit32,
+    bit64,
+
+#ifdef __LP64__
+    program = bit64
+#else
+    program = bit32
+#endif
+};
+
+static_assert((BuildArch::program == BuildArch::bit32 ? 32 : 64) == sizeof(void*) * 8);
+
+
+constexpr const char* cpuArchName = BuildArch::program == BuildArch::bit32 ? "i686": "x86-64";
 
 }
 

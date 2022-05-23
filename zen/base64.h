@@ -7,6 +7,7 @@
 #ifndef BASE64_H_08473021856321840873021487213453214
 #define BASE64_H_08473021856321840873021487213453214
 
+#include <cassert>
 #include <iterator>
 #include "type_traits.h"
 
@@ -55,7 +56,7 @@ constexpr signed char DECODING_MIME[] =
         -1, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
         41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, -1, -1, -1, -1, -1
     };
-const unsigned char INDEX_PAD = 64; //"="
+const unsigned char INDEX_PAD = 64; //index of "="
 }
 
 
@@ -64,8 +65,8 @@ OutputIterator encodeBase64(InputIterator first, InputIterator last, OutputItera
 {
     using namespace impl;
     static_assert(sizeof(typename std::iterator_traits<InputIterator>::value_type) == 1);
-    static_assert(arraySize(ENCODING_MIME) == 64 + 1 + 1);
-    static_assert(arrayAccumulate<int>(ENCODING_MIME) + INDEX_PAD == 5602);
+    static_assert(std::size(ENCODING_MIME) == 64 + 1 + 1);
+    static_assert(arrayHash(ENCODING_MIME) == 1616767125);
 
     while (first != last)
     {
@@ -101,8 +102,8 @@ OutputIterator decodeBase64(InputIterator first, InputIterator last, OutputItera
 {
     using namespace impl;
     static_assert(sizeof(typename std::iterator_traits<InputIterator>::value_type) == 1);
-    static_assert(arraySize(DECODING_MIME) == 128);
-    static_assert(arrayAccumulate<int>(DECODING_MIME) + INDEX_PAD == 2081);
+    static_assert(std::size(DECODING_MIME) == 128);
+    static_assert(arrayHash(DECODING_MIME)== 1169145114);
 
     const unsigned char INDEX_END = INDEX_PAD + 1;
 
@@ -114,7 +115,7 @@ OutputIterator decodeBase64(InputIterator first, InputIterator last, OutputItera
                 return INDEX_END;
 
             const unsigned char ch = static_cast<unsigned char>(*first++);
-            if (ch < arraySize(DECODING_MIME)) //we're in lower ASCII table half
+            if (ch < std::size(DECODING_MIME)) //we're in lower ASCII table half
             {
                 const int index = DECODING_MIME[ch];
                 if (0 <= index && index <= static_cast<int>(INDEX_PAD)) //skip all unknown characters (including carriage return, line-break, tab)

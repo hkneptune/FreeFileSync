@@ -8,7 +8,6 @@
 #include "time.h"
 #include "thread.h"
 #include "file_access.h"
-#include "file_path.h"
 
     #include <stdlib.h> //getenv()
     #include <unistd.h> //getcwd()
@@ -18,11 +17,11 @@ using namespace zen;
 
 namespace
 {
-std::optional<Zstring> getEnvironmentVar(const Zstring& name)
+std::optional<Zstring> getEnvironmentVar(const Zchar* name)
 {
     assert(runningOnMainThread()); //getenv() is not thread-safe!
 
-    const char* buffer = ::getenv(name.c_str()); //no extended error reporting
+    const char* buffer = ::getenv(name); //no extended error reporting
     if (!buffer)
         return {};
     Zstring value(buffer);
@@ -69,7 +68,7 @@ Zstring resolveRelativePath(const Zstring& relativePath)
             if (const std::optional<Zstring> homeDir = getEnvironmentVar("HOME"))
             {
                 if (startsWith(pathTmp, "~/"))
-                    pathTmp = appendSeparator(*homeDir) + afterFirst(pathTmp, '/', IfNotFoundReturn::none);
+                    pathTmp = appendPath(*homeDir, pathTmp.c_str() + 2);
                 else //pathTmp == "~"
                     pathTmp = *homeDir;
             }
@@ -81,7 +80,7 @@ Zstring resolveRelativePath(const Zstring& relativePath)
             if (char* dirPath = ::getcwd(nullptr, 0))
             {
                 ZEN_ON_SCOPE_EXIT(::free(dirPath));
-                pathTmp = appendSeparator(dirPath) + pathTmp;
+                pathTmp = appendPath(dirPath, pathTmp);
             }
         }
     }
@@ -142,7 +141,7 @@ std::optional<Zstring> tryResolveMacro(const Zstring& macro) //macro without %-c
     }
 
     //try to resolve as environment variables
-    if (std::optional<Zstring> value = getEnvironmentVar(macro))
+    if (std::optional<Zstring> value = getEnvironmentVar(macro.c_str()))
         return *value;
 
     return {};
@@ -190,57 +189,45 @@ Zstring expandVolumeName(Zstring pathPhrase)  // [volname]:\folder    [volname]\
     }
     return pathPhrase;
 }
+}
 
 
-void getFolderAliasesRecursive(const Zstring& pathPhrase, std::set<Zstring, LessNativePath>& output)
+std::vector<Zstring> zen::getPathPhraseAliases(const Zstring& itemPath)
 {
+    assert(!itemPath.empty());
+    std::vector<Zstring> pathAliases{makePathPhrase(itemPath)};
 
-    //3. environment variables: C:\Users\<user> -> %UserProfile%
     {
-        std::vector<std::pair<Zstring, Zstring>> macroList;
 
-        //get list of useful variables
-        auto addEnvVar = [&](const Zstring& envName)
-        {
-            if (std::optional<Zstring> value = getEnvironmentVar(envName))
-                macroList.emplace_back(envName, *value);
-        };
-        addEnvVar("HOME"); //Linux: /home/<user>  Mac: /Users/<user>
-        //addEnvVar("USER");  -> any benefit?
-        //substitute paths by symbolic names
-        for (const auto& [macroName, macroPath] : macroList)
+        //environment variables: C:\Users\<user> -> %UserProfile%
+        auto substByMacro = [&](const Zchar* macroName, const Zstring& macroPath)
         {
             //should use a replaceCpy() that considers "local path" case-sensitivity (if only we had one...)
-            const Zstring pathSubst = replaceCpyAsciiNoCase(pathPhrase, macroPath, MACRO_SEP + macroName + MACRO_SEP);
-            if (pathSubst != pathPhrase)
-                output.insert(pathSubst);
-        }
+            if (contains(itemPath, macroPath))
+                pathAliases.push_back(makePathPhrase(replaceCpyAsciiNoCase(itemPath, macroPath, MACRO_SEP + Zstring(macroName) + MACRO_SEP)));
+        };
+
+        for (const Zchar* envName :
+             {
+                 "HOME", //Linux: /home/<user>  Mac: /Users/<user>
+                 //"USER",  -> any benefit?
+             })
+            if (const std::optional<Zstring> envPath = getEnvironmentVar(envName))
+                substByMacro(envName, *envPath);
+
     }
+    //removeDuplicates()? should not be needed...
 
-    //4. replace (all) macros: %UserProfile% -> C:\Users\<user>
-    {
-        const Zstring pathExp = expandMacros(pathPhrase);
-        if (pathExp != pathPhrase)
-            if (output.insert(pathExp).second)
-                getFolderAliasesRecursive(pathExp, output); //recurse!
-    }
-}
+    std::sort(pathAliases.begin(), pathAliases.end(), LessNaturalSort() /*even on Linux*/);
+    return pathAliases;
 }
 
 
-std::vector<Zstring> zen::getFolderPathAliases(const Zstring& folderPathPhrase)
+Zstring zen::makePathPhrase(const Zstring& itemPath)
 {
-    const Zstring dirPath = trimCpy(folderPathPhrase);
-    if (dirPath.empty())
-        return {};
-
-    std::set<Zstring, LessNativePath> tmp;
-    getFolderAliasesRecursive(dirPath, tmp);
-
-    tmp.erase(dirPath);
-    tmp.erase(Zstring());
-
-    return {tmp.begin(), tmp.end()};
+    if (endsWith(itemPath, Zstr(' '))) //path phrase concept must survive trimming!
+        return itemPath + FILE_NAME_SEPARATOR;
+    return itemPath;
 }
 
 
@@ -254,26 +241,22 @@ Zstring zen::getResolvedFilePath(const Zstring& pathPhrase) //noexcept
     //remove leading/trailing whitespace before allowing misinterpretation in applyLongPathPrefix()
     trim(path); //attention: don't remove all whitespace from right, e.g. 0xa0 may be used as part of a folder name
 
+    {
+        path = expandVolumeName(path); //may block for slow USB sticks and idle HDDs!
 
-    path = expandVolumeName(path); //may block for slow USB sticks and idle HDDs!
-
-    /* need to resolve relative paths:
-         WINDOWS:
-          - \\?\-prefix requires absolute names
-          - Volume Shadow Copy: volume name needs to be part of each file path
-          - file icon buffer (at least for extensions that are actually read from disk, like "exe")
-         WINDOWS/LINUX:
-          - detection of dependent directories, e.g. "\" and "C:\test"                       */
-    path = resolveRelativePath(path);
+        /* need to resolve relative paths:
+             WINDOWS:
+              - \\?\-prefix requires absolute names
+              - Volume Shadow Copy: volume name needs to be part of each file path
+              - file icon buffer (at least for extensions that are actually read from disk, like "exe")
+             WINDOWS/LINUX:
+              - detection of dependent directories, e.g. "\" and "C:\test"                       */
+        path = resolveRelativePath(path);
+    }
 
     //remove trailing slash, unless volume root:
-    if (std::optional<PathComponents> pc = parsePathComponents(path))
-    {
-        if (pc->relPath.empty())
-            path = pc->rootPath;
-        else
-            path = appendSeparator(pc->rootPath) + pc->relPath;
-    } //keep this brace for GCC: -Wparentheses
+    if (const std::optional<PathComponents> pc = parsePathComponents(path))
+        path = appendPath(pc->rootPath, pc->relPath);
 
     return path;
 }

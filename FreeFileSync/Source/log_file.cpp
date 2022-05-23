@@ -543,7 +543,7 @@ void limitLogfileCount(const AbstractPath& logFolderPath, //throw FileError, X
 }
 
 
-Zstring fff::getLogFolderDefaultPath() { return getConfigDirPathPf() + Zstr("Logs") ; }
+Zstring fff::getLogFolderDefaultPath() { return appendPath(getConfigDirPath(), Zstr("Logs")); }
 
 
 //"Backup FreeFileSync 2013-09-15 015052.123.html"

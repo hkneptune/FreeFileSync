@@ -84,6 +84,7 @@ void setImage(wxAnyButton& button, const wxImage& img)
         return;
     }
 
+
     button.SetBitmapLabel(toBitmapBundle(img));
 
     //wxWidgets excels at screwing up consistently once again:

@@ -12,7 +12,6 @@
 #include <wx+/popup_dlg.h>
 #include <wx+/image_resources.h>
 #include <zen/file_access.h>
-#include <zen/file_path.h>
 #include <zen/build_info.h>
 #include <zen/shutdown.h>
 #include <zen/time.h>
@@ -72,7 +71,7 @@ void MainDialog::create(const Zstring& cfgFile)
 
 MainDialog::MainDialog(const Zstring& cfgFileName) :
     MainDlgGenerated(nullptr),
-    lastRunConfigPath_(fff::getConfigDirPathPf() + Zstr("LastRun.ffs_real"))
+    lastRunConfigPath_(appendPath(fff::getConfigDirPath(), Zstr("LastRun.ffs_real")))
 {
     SetIcon(getRtsIcon()); //set application icon
 
@@ -88,7 +87,7 @@ MainDialog::MainDialog(const Zstring& cfgFileName) :
     m_panelMainFolder->Layout();
 
     setImage(*m_bitmapBatch,   loadImage("cfg_batch_sicon"));
-    setImage(*m_bitmapFolders, fff::IconBuffer::genericDirIcon(fff::IconBuffer::SIZE_SMALL));
+    setImage(*m_bitmapFolders, fff::IconBuffer::genericDirIcon(fff::IconBuffer::IconSize::small));
     setImage(*m_bitmapConsole, loadImage("command_line", fastFromDIP(20)));
 
     setImage(*m_bpButtonAddFolder, loadImage("item_add"));

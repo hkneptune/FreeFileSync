@@ -130,8 +130,8 @@ enum class TextType
 template <class T>
 struct GetTextType : std::integral_constant<TextType,
     std::is_same_v<T, bool>    ? TextType::boolean :
-    IsStringLikeV<T>           ? TextType::string : //string before number to correctly handle char/wchar_t -> this was an issue with Loki only!
-    IsArithmeticV<T>           ? TextType::number : //
+    isStringLike<T>           ? TextType::string : //string before number to correctly handle char/wchar_t -> this was an issue with Loki only!
+    isArithmetic<T>           ? TextType::number : //
     IsChronoDuration<T>::value ? TextType::chrono :
     TextType::other> {};
 

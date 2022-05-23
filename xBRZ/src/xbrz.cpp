@@ -1222,7 +1222,7 @@ bool xbrz::equalColorTest2(uint32_t col1, uint32_t col2, ColorFormat colFmt, dou
 void xbrz::bilinearScale(const uint32_t* src, int srcWidth, int srcHeight,
                          /**/  uint32_t* trg, int trgWidth, int trgHeight)
 {
-    const auto imgReader = [src, srcWidth](int x, int y, BytePixel& pix)
+    const auto pixReader = [src, srcWidth](int x, int y, BytePixel& pix)
     {
         static_assert(sizeof(pix) == sizeof(uint32_t));
         const uint32_t pixSrc = src[y * srcWidth + x];
@@ -1234,17 +1234,17 @@ void xbrz::bilinearScale(const uint32_t* src, int srcWidth, int srcHeight,
         pix[3] = xbrz::premultiply(getBlue (pixSrc), a); //b
     };
 
-    const auto imgWriter = [trg](const xbrz::BytePixel& pix) mutable
+    const auto pixWriter = [trg](const xbrz::BytePixel& pix) mutable
     {
         const unsigned char a = pix[0];
-        * trg++ = makePixel(a,
+        *trg++ = makePixel(a,
                             xbrz::demultiply(pix[1], a),  //r
                             xbrz::demultiply(pix[2], a),  //g
                             xbrz::demultiply(pix[3], a)); //b
     };
 
-    bilinearScaleSimple(imgReader, srcWidth, srcHeight,
-                        imgWriter, trgWidth, trgHeight, 0, trgHeight);
+    bilinearScaleSimple(pixReader, srcWidth, srcHeight,
+                        pixWriter, trgWidth, trgHeight, 0, trgHeight);
 }
 
 

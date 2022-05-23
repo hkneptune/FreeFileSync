@@ -628,8 +628,8 @@ struct LessFullPath
             const auto& [baseObjA, basePathLA, basePathRA] = a;
             const auto& [baseObjB, basePathLB, basePathRB] = b;
 
-            const AbstractPath& basePathA = SelectParam<side>::ref(basePathLA, basePathRA);
-            const AbstractPath& basePathB = SelectParam<side>::ref(basePathLB, basePathRB);
+            const AbstractPath& basePathA = selectParam<side>(basePathLA, basePathRA);
+            const AbstractPath& basePathB = selectParam<side>(basePathLB, basePathRB);
 
             return LessNaturalSort()/*even on Linux*/(zen::utfTo<Zstring>(AFS::getDisplayPath(basePathA)),
                                                       zen::utfTo<Zstring>(AFS::getDisplayPath(basePathB)));

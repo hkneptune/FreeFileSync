@@ -31,10 +31,10 @@ inline
 void logFatalError(const std::wstring& msg) //noexcept
 {
     warn_static("new semantics: logErrorWhileBusy or logErrorShowLater + show upon next FFS start!?")
-        warn_static("this really should append!")
-        //create time-stamped file path + show if newer than last FFS run? (save in GlobalSettings.xml)
-        //replace calls to  ::MessageBox() and std::cerr ?
-        //save std::time()
+    warn_static("this really should append!")
+    //create time-stamped file path + show if newer than last FFS run? (save in GlobalSettings.xml)
+    //replace calls to  ::MessageBox() and std::cerr ?
+    //save std::time()
 
     using namespace zen;
 
@@ -42,7 +42,7 @@ void logFatalError(const std::wstring& msg) //noexcept
     const std::string logEntry = '[' + utfTo<std::string>(formatTime(formatDateTimeTag)) + "] " + utfTo<std::string>(msg);
     try
     {
-        setFileContent(getConfigDirPathPf() + Zstr("LastError.log"), logEntry, nullptr /*notifyUnbufferedIO*/); //throw FileError
+        setFileContent(appendPath(getConfigDirPath(), Zstr("LastError.log")), logEntry, nullptr /*notifyUnbufferedIO*/); //throw FileError
     }
     catch (FileError&) { assert(false); }
 }

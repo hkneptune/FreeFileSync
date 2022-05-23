@@ -47,7 +47,7 @@ public:
             throw SysError(L"URL uses unexpected protocol.");
         }();
 
-        std::map<std::string, std::string, LessAsciiNoCase> headers;
+        std::unordered_map<std::string, std::string, StringHashAsciiNoCase, StringEqualAsciiNoCase> headers;
 
         assert(postBuf || contentType.empty());
         if (postBuf && !contentType.empty())
@@ -196,7 +196,7 @@ private:
     InterruptibleThread worker_;
     int64_t totalBytesReported_ = 0;
     int statusCode_ = 0;
-    std::map<std::string, std::string, LessAsciiNoCase> responseHeaders_;
+    std::unordered_map<std::string, std::string, StringHashAsciiNoCase, StringEqualAsciiNoCase> responseHeaders_;
 
     const IoCallback notifyUnbufferedIO_; //throw X
 };

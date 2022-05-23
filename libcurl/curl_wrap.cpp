@@ -9,6 +9,7 @@
 #include <zen/http.h>
 #include <zen/open_ssl.h>
 #include <zen/thread.h>
+#include <zen/file_path.h>
     #include <fcntl.h>
 
 using namespace zen;

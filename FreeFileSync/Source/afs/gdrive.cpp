@@ -170,7 +170,7 @@ AFS::FingerPrint getGdriveFilePrint(const std::string& itemId)
 {
     assert(!itemId.empty());
     //Google Drive item ID is persistent and globally unique! :)
-    return hashArray<AFS::FingerPrint>(itemId.begin(), itemId.end());
+    return hashString<AFS::FingerPrint>(itemId);
 }
 
 //----------------------------------------------------------------------------------------------------------------
@@ -264,7 +264,7 @@ private:
 
             lastCleanupTime = std::chrono::steady_clock::now();
 
-            std::vector<Protected<IdleHttpSessions>*> sessionStores; //pointers remain stable, thanks to std::map<>
+            std::vector<Protected<IdleHttpSessions>*> sessionStores; //pointers remain stable, thanks to std::unordered_map<>
 
             globalSessionStore_.access([&](GlobalHttpSessions& sessionsById)
             {
@@ -1956,7 +1956,7 @@ public:
         if (ps.relPath.empty())
             return ps.existingItemId;
 
-        const AfsPath afsPathMissingChild(nativeAppendPaths(ps.existingPath.value, ps.relPath.front()));
+        const AfsPath afsPathMissingChild(appendPath(ps.existingPath.value, ps.relPath.front()));
         throw SysError(replaceCpy(_("Cannot find %x."), L"%x", fmtPath(getShortDisplayPath(afsPathMissingChild))));
     }
 
@@ -2080,7 +2080,7 @@ public:
         if (auto it = itemDetails_.find(itemId); it != itemDetails_.end())
         {
             GdriveItemDetails detailsNew = it->second;
-            std::erase_if(detailsNew.parentIds, [&](const std::string& id) { return id == parentIdOld; });
+            std::erase(detailsNew.parentIds, parentIdOld);
             notifyItemUpdated(stateDelta, itemId, &detailsNew);
         }
         else //conflict!!!
@@ -2176,7 +2176,7 @@ private:
             {
                 if (itFound != itemDetails_.end())
                     throw SysError(replaceCpy(_("Cannot find %x."), L"%x",
-                                              fmtPath(getShortDisplayPath(AfsPath(nativeAppendPaths(folderPath.value, relPath.front()))))) + L' ' +
+                                              fmtPath(getShortDisplayPath(AfsPath(appendPath(folderPath.value, relPath.front()))))) + L' ' +
                                    replaceCpy(_("The name %x is used by more than one item in the folder."), L"%x", fmtPath(relPath.front())));
 
                 itFound = itChild;
@@ -2200,7 +2200,7 @@ private:
             };
 
             const auto& [childId, childDetails] = *itFound;
-            const AfsPath              childItemPath(nativeAppendPaths(folderPath.value, relPath.front()));
+            const AfsPath              childItemPath(appendPath(folderPath.value, relPath.front()));
             const std::vector<Zstring> childRelPath(relPath.begin() + 1, relPath.end());
 
             if (childRelPath.empty())
@@ -2230,7 +2230,7 @@ private:
 
                         case GdriveItemType::shortcut: //should never happen: creating shortcuts to shortcuts fails with "Internal Error"
                             throw SysError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x",
-                                                      fmtPath(getShortDisplayPath(AfsPath(nativeAppendPaths(folderPath.value, relPath.front()))))) + L' ' +
+                                                      fmtPath(getShortDisplayPath(AfsPath(appendPath(folderPath.value, relPath.front()))))) + L' ' +
                                            L"Google Drive Shortcut points to another Shortcut.");
                     }
                     break;
@@ -2276,7 +2276,7 @@ private:
 
                 for (const std::string& parentId : parentIdsRemoved)
                     if (auto itP = folderContents_.find(parentId); itP != folderContents_.end())
-                        std::erase_if(itP->second.childItems, [&](auto itChild) { return itChild == it; });
+                        std::erase(itP->second.childItems, it);
                 //if all parents are removed, Google Drive will (recursively) delete the item => don't prematurely do this now: wait for change notifications!
                 //OR: item without parents located in "Shared with me", but referenced via Shortcut => don't remove!!!
 
@@ -2296,7 +2296,7 @@ private:
             {
                 for (const std::string& parentId : it->second.parentIds) //1. delete from parent folders
                     if (auto itP = folderContents_.find(parentId); itP != folderContents_.end())
-                        std::erase_if(itP->second.childItems, [&](auto itChild) { return itChild == it; });
+                        std::erase(itP->second.childItems, it);
 
                 itemDetails_.erase(it);
             }
@@ -2308,7 +2308,7 @@ private:
                 //  and no notifications for child items: possible with Google drive!?
                 //  => no problem: FolderContent::isKnownFolder will be false for this restored folder => only a rescan needed
                 for (auto itChild : itP->second.childItems)
-                    std::erase_if(itChild->second.parentIds, [&](const std::string& id) { return id == itemId; });
+                    std::erase(itChild->second.parentIds, itemId);
                 folderContents_.erase(itP);
             }
         }
@@ -2542,7 +2542,7 @@ public:
 
     void saveActiveSessions() //throw FileError
     {
-        std::vector<Protected<SessionHolder>*> protectedSessions; //pointers remain stable, thanks to std::map<>
+        std::vector<Protected<SessionHolder>*> protectedSessions; //pointers remain stable, thanks to std::unordered_map<>
         globalSessions_.access([&](GlobalSessions& sessions)
         {
             for (auto& [accountEmail, protectedSession] : sessions)
@@ -2634,7 +2634,7 @@ public:
     {
         std::vector<std::string> emails;
 
-        std::vector<Protected<SessionHolder>*> protectedSessions; //pointers remain stable, thanks to std::map<>
+        std::vector<Protected<SessionHolder>*> protectedSessions; //pointers remain stable, thanks to std::unordered_map<>
         globalSessions_.access([&](GlobalSessions& sessions)
         {
             for (auto& [accountEmail, protectedSession] : sessions)
@@ -2717,13 +2717,13 @@ private:
     {
         for (char& c : accountEmail)
             c = asciiToLower(c);
-        //return appendSeparator(configDirPath_) + utfTo<Zstring>(formatAsHexString(getMd5(utfTo<std::string>(accountEmail)))) + Zstr(".db");
-        return appendSeparator(configDirPath_) + utfTo<Zstring>(accountEmail) + Zstr(".db");
+        //return appendPath(configDirPath_, utfTo<Zstring>(formatAsHexString(getMd5(utfTo<std::string>(accountEmail)))) + Zstr(".db"));
+        return appendPath(configDirPath_, utfTo<Zstring>(accountEmail) + Zstr(".db"));
     }
 
     void accessUserSession(const std::string& accountEmail, int timeoutSec, const std::function<void(std::optional<UserSession>& userSession)>& useSession /*throw X*/) //throw SysError, X
     {
-        Protected<SessionHolder>* protectedSession = nullptr; //pointers remain stable, thanks to std::map<>
+        Protected<SessionHolder>* protectedSession = nullptr; //pointers remain stable, thanks to std::unordered_map<>
         globalSessions_.access([&](GlobalSessions& sessions) { protectedSession = &sessions[accountEmail]; });
 
         protectedSession->access([&](SessionHolder& holder)
@@ -2854,7 +2854,7 @@ private:
         bool dbWasLoaded = false;
         std::optional<UserSession> session;
     };
-    using GlobalSessions = std::map<std::string /*Google account email*/, Protected<SessionHolder>, LessAsciiNoCase>;
+    using GlobalSessions = std::unordered_map<std::string /*Google account email*/, Protected<SessionHolder>, StringHashAsciiNoCase, StringEqualAsciiNoCase>;
 
     Protected<GlobalSessions> globalSessions_;
     const Zstring configDirPath_;
@@ -3017,7 +3017,7 @@ private:
                 case GdriveItemType::folder:
                     if (std::shared_ptr<AFS::TraverserCallback> cbSub = cb.onFolder({itemName, false /*isFollowedSymlink*/})) //throw X
                     {
-                        const AfsPath afsItemPath(nativeAppendPaths(folderPath.value, itemName));
+                        const AfsPath afsItemPath(appendPath(folderPath.value, itemName));
                         workload_.push_back({afsItemPath, std::move(cbSub)});
                     }
                     break;
@@ -3027,7 +3027,7 @@ private:
                     {
                         case AFS::TraverserCallback::HandleLink::follow:
                         {
-                            const AfsPath afsItemPath(nativeAppendPaths(folderPath.value, itemName));
+                            const AfsPath afsItemPath(appendPath(folderPath.value, itemName));
 
                             GdriveItemDetails targetDetails = {};
                             if (!tryReportingItemError([&] //throw X
@@ -3179,7 +3179,7 @@ struct OutputStreamGdrive : public AFS::OutputStreamImpl
 
             if (ps.relPath.size() > 1) //parent folder missing
                 throw SysError(replaceCpy(_("Cannot find %x."), L"%x",
-                                          fmtPath(getGdriveDisplayPath({gdrivePath.gdriveLogin, AfsPath(nativeAppendPaths(ps.existingPath.value, ps.relPath.front()))}))));
+                                          fmtPath(getGdriveDisplayPath({gdrivePath.gdriveLogin, AfsPath(appendPath(ps.existingPath.value, ps.relPath.front()))}))));
             parentId = ps.existingItemId;
         });
 
@@ -3328,6 +3328,8 @@ private:
 
     Zstring getInitPathPhrase(const AfsPath& afsPath) const override { return concatenateGdriveFolderPathPhrase(getGdrivePath(afsPath)); }
 
+    std::vector<Zstring> getPathPhraseAliases(const AfsPath& afsPath) const override { return {getInitPathPhrase(afsPath)}; }
+
     std::wstring getDisplayPath(const AfsPath& afsPath) const override { return getGdriveDisplayPath(getGdrivePath(afsPath)); }
 
     bool isNullFileSystem() const override { return gdriveLogin_.email.empty(); }
@@ -3393,7 +3395,7 @@ private:
                     throw SysError(replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(folderName)));
 
                 if (ps.relPath.size() > 1) //parent folder missing
-                    throw SysError(replaceCpy(_("Cannot find %x."), L"%x", fmtPath(getDisplayPath(AfsPath(nativeAppendPaths(ps.existingPath.value, ps.relPath.front()))))));
+                    throw SysError(replaceCpy(_("Cannot find %x."), L"%x", fmtPath(getDisplayPath(AfsPath(appendPath(ps.existingPath.value, ps.relPath.front()))))));
                 parentId = ps.existingItemId;
             });
 
@@ -3599,7 +3601,7 @@ private:
 
                 if (psTo.relPath.size() > 1) //parent folder missing
                     throw SysError(replaceCpy(_("Cannot find %x."), L"%x",
-                                              fmtPath(fsTarget.getDisplayPath(AfsPath(nativeAppendPaths(psTo.existingPath.value, psTo.relPath.front()))))));
+                                              fmtPath(fsTarget.getDisplayPath(AfsPath(appendPath(psTo.existingPath.value, psTo.relPath.front()))))));
                 parentIdTrg = psTo.existingItemId;
             });
 
@@ -3676,7 +3678,7 @@ private:
                     throw SysError(replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(shortcutName)));
 
                 if (ps.relPath.size() > 1) //parent folder missing
-                    throw SysError(replaceCpy(_("Cannot find %x."), L"%x", fmtPath(fsTarget.getDisplayPath(AfsPath(nativeAppendPaths(ps.existingPath.value, ps.relPath.front()))))));
+                    throw SysError(replaceCpy(_("Cannot find %x."), L"%x", fmtPath(fsTarget.getDisplayPath(AfsPath(appendPath(ps.existingPath.value, ps.relPath.front()))))));
                 parentId = ps.existingItemId;
             });
 
@@ -3747,7 +3749,7 @@ private:
 
                     if (psTo.relPath.size() > 1) //parent folder missing
                         throw SysError(replaceCpy(_("Cannot find %x."), L"%x",
-                                                  fmtPath(fsTarget.getDisplayPath(AfsPath(nativeAppendPaths(psTo.existingPath.value, psTo.relPath.front()))))));
+                                                  fmtPath(fsTarget.getDisplayPath(AfsPath(appendPath(psTo.existingPath.value, psTo.relPath.front()))))));
                     parentIdTo = psTo.existingItemId;
                 }
             });
@@ -3974,7 +3976,7 @@ Zstring fff::getGoogleDriveFolderUrl(const AbstractPath& folderPath) //throw Fil
 {
     if (const auto gdriveDevice = dynamic_cast<const GdriveFileSystem*>(&folderPath.afsDevice.ref()))
         return gdriveDevice->getFolderUrl(folderPath.afsPath); //throw FileError
-    assert(false);
+    //assert(false);
     return {};
 }
 

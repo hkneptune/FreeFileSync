@@ -17,11 +17,6 @@
 
 namespace fff
 {
-void recursiveObjectVisitor(FileSystemObject& fsObj,
-                            std::function<void (FolderPair&   folder)> onFolder,
-                            std::function<void (FilePair&       file)> onFile,
-                            std::function<void (SymlinkPair& symlink)> onSymlink);
-
 void swapGrids(const MainConfiguration& mainCfg, FolderComparison& folderCmp,
                PhaseCallback& callback /*throw X*/); //throw X
 

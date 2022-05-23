@@ -7,8 +7,8 @@
 #ifndef STRING_BASE_H_083217454562342526
 #define STRING_BASE_H_083217454562342526
 
-#include <algorithm>
 #include <atomic>
+#include <utility> //std::exchange
 #include "string_tools.h"
 
 
@@ -377,8 +377,8 @@ Zbase<Char, SP>::Zbase(const Zbase<Char, SP>& str)
 template <class Char, template <class> class SP> inline
 Zbase<Char, SP>::Zbase(Zbase<Char, SP>&& tmp) noexcept
 {
-    rawStr_ = tmp.rawStr_;
-    tmp.rawStr_ = nullptr; //usually nullptr would violate the class invarants, but it is good enough for the destructor!
+    rawStr_ = std::exchange(tmp.rawStr_, nullptr);
+    //usually nullptr would violate the class invarants, but it is good enough for the destructor!
     //caveat: do not increment ref-count of an unshared string! We'd lose optimization opportunity of reusing its memory!
 }
 
@@ -637,8 +637,8 @@ Zbase<Char, SP>& Zbase<Char, SP>::operator=(Zbase<Char, SP>&& tmp) noexcept
 {
     //don't use swap() but end rawStr_ life time immediately
     this->destroy(rawStr_);
-    rawStr_ = tmp.rawStr_;
-    tmp.rawStr_ = nullptr;
+
+    rawStr_ = std::exchange(tmp.rawStr_, nullptr);
     return *this;
 }
 
@@ -652,5 +652,13 @@ void Zbase<Char, SP>::pop_back()
         resize(len - 1);
 }
 }
+
+
+//std::hash specialization in global namespace
+template <class Char, template <class> class SP>
+struct std::hash<zen::Zbase<Char, SP>>
+{
+    size_t operator()(const zen::Zbase<Char, SP>& str) const { return zen::hashString<size_t>(str); }
+};
 
 #endif //STRING_BASE_H_083217454562342526

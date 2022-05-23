@@ -44,8 +44,8 @@ namespace
 std::pair<int /*exit code*/, std::string> processExecuteImpl(const Zstring& filePath, const std::vector<Zstring>& arguments,
                                                              std::optional<int> timeoutMs) //throw SysError, SysErrorTimeOut
 {
-    const Zstring tempFilePath = appendSeparator(getTempFolderPath()) + //throw FileError
-                                 Zstr("FFS-") + utfTo<Zstring>(formatAsHexString(generateGUID()));
+    const Zstring tempFilePath = appendPath(getTempFolderPath(), //throw FileError
+                                            Zstr("FFS-") + utfTo<Zstring>(formatAsHexString(generateGUID())));
     /*  can't use popen(): does NOT return the exit code on Linux (despite the documentation!), although it works correctly on macOS
           => use pipes instead: https://linux.die.net/man/2/waitpid
              bonus: no need for "2>&1" to redirect STDERR to STDOUT

@@ -204,7 +204,7 @@ FileIconHolder fff::getFileIcon(const Zstring& filePath, int maxSize) //throw Sy
         throw SysError(formatGlibError("g_file_query_info", error));
     ZEN_ON_SCOPE_EXIT(::g_object_unref(fileInfo));
 
-    GIcon* const gicon = ::g_file_info_get_icon(fileInfo); //not owned!
+    GIcon* const gicon = ::g_file_info_get_icon(fileInfo); //no ownership transfer!
     if (!gicon)
         throw SysError(formatSystemError("g_file_info_get_icon", L"", L"Icon not available."));
 
@@ -216,7 +216,8 @@ FileIconHolder fff::getFileIcon(const Zstring& filePath, int maxSize) //throw Sy
     //the remaining icon types won't block!
     assert(GDK_IS_PIXBUF(gicon) || G_IS_THEMED_ICON(gicon) || G_IS_EMBLEMED_ICON(gicon));
 
-    return FileIconHolder(static_cast<GIcon*>(::g_object_ref(gicon)) /*pass ownership*/, maxSize);
+    ::g_object_ref(gicon);                 //pass ownership
+    return FileIconHolder(gicon, maxSize); //
 
 }
 

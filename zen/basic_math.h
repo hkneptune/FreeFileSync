@@ -8,7 +8,6 @@
 #define BASIC_MATH_H_3472639843265675
 
 #include <cassert>
-#include <algorithm>
 #include <cmath>
 #include <numbers>
 #include "type_traits.h"
@@ -152,10 +151,10 @@ template <class N, class D> inline
 auto intDivRound(N num, D den)
 {
     using namespace zen;
-    static_assert(IsIntegerV<N>&& IsIntegerV<D>);
-    static_assert(IsSignedIntV<N> == IsSignedIntV<D>); //until further
+    static_assert(isInteger<N>&& isInteger<D>);
+    static_assert(isSignedInt<N> == isSignedInt<D>); //until further
     assert(den != 0);
-    if constexpr (IsSignedIntV<N>)
+    if constexpr (isSignedInt<N>)
     {
         if ((num < 0) != (den < 0))
             return (num - den / 2) / den;
@@ -168,10 +167,10 @@ template <class N, class D> inline
 auto intDivCeil(N num, D den)
 {
     using namespace zen;
-    static_assert(IsIntegerV<N>&& IsIntegerV<D>);
-    static_assert(IsSignedIntV<N> == IsSignedIntV<D>); //until further
+    static_assert(isInteger<N>&& isInteger<D>);
+    static_assert(isSignedInt<N> == isSignedInt<D>); //until further
     assert(den != 0);
-    if constexpr (IsSignedIntV<N>)
+    if constexpr (isSignedInt<N>)
     {
         if ((num < 0) != (den < 0))
             return num / den;
@@ -187,10 +186,10 @@ template <class N, class D> inline
 auto intDivFloor(N num, D den)
 {
     using namespace zen;
-    static_assert(IsIntegerV<N>&& IsIntegerV<D>);
-    static_assert(IsSignedIntV<N> == IsSignedIntV<D>); //until further
+    static_assert(isInteger<N>&& isInteger<D>);
+    static_assert(isSignedInt<N> == isSignedInt<D>); //until further
     assert(den != 0);
-    if constexpr (IsSignedIntV<N>)
+    if constexpr (isSignedInt<N>)
     {
         if ((num < 0) != (den < 0))
         {

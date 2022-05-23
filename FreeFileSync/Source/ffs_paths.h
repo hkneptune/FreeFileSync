@@ -15,8 +15,8 @@ namespace fff
 //------------------------------------------------------------------------------
 //global program directories
 //------------------------------------------------------------------------------
-Zstring getResourceDirPf  (); //resource directory WITH trailing path separator
-Zstring getConfigDirPathPf(); //  config directory WITH trailing path separator
+Zstring getResourceDirPath();
+Zstring getConfigDirPath();
 //------------------------------------------------------------------------------
 
 

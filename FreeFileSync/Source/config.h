@@ -83,12 +83,13 @@ struct ConfirmationDialogs
     bool confirmSaveConfig        = true;
     bool confirmSyncStart         = true;
     bool confirmCommandMassInvoke = true;
+    bool confirmSwapSides         = true;
 
     bool operator==(const ConfirmationDialogs&) const = default;
 };
 
 
-enum class FileIconSize
+enum class GridIconSize
 {
     small,
     medium,
@@ -211,7 +212,7 @@ struct XmlGlobalSettings
         Zstring folderLastSelectedRight;
 
         bool showIcons = true;
-        FileIconSize iconSize = FileIconSize::small;
+        GridIconSize iconSize = GridIconSize::small;
         int sashOffset = 0;
 
         ItemPathFormat itemPathFormatLeftGrid  = defaultItemPathFormatLeftGrid;

@@ -5,14 +5,13 @@
 // *****************************************************************************
 
 #include "folder_history_box.h"
-#include <list>
-#include <zen/scope_guard.h>
-#include <zen/resolve_path.h>
 #include <wx+/dc.h>
     #include <gtk/gtk.h>
+#include "../afs/concrete.h"
 
 using namespace zen;
 using namespace fff;
+using AFS = AbstractFileSystem;
 
 
 FolderHistoryBox::FolderHistoryBox(wxWindow* parent,
@@ -56,18 +55,20 @@ void FolderHistoryBox::onRequireHistoryUpdate(wxEvent& event)
     event.Skip();
 }
 
+
 //set value and update list are technically entangled: see potential bug description below
 void FolderHistoryBox::setValueAndUpdateList(const wxString& folderPathPhrase)
 {
     //populate selection list....
     std::vector<wxString> items;
-    {
-        //allow user changing to volume name and back, if possible
-        std::vector<Zstring> aliases = getFolderPathAliases(utfTo<Zstring>(folderPathPhrase)); //may block when resolving [<volume name>]
 
-        for (const Zstring& str : aliases)
-            items.push_back(utfTo<wxString>(str));
-    }
+    const Zstring& pathPhraseTrimmed = utfTo<Zstring>(trimCpy(folderPathPhrase));
+
+    //path phrase aliases: allow user changing to volume name and back
+    for (const Zstring& pathPhrase : AFS::getPathPhraseAliases(createAbstractPath(pathPhraseTrimmed))) //may block when resolving [<volume name>]
+        if (!equalNoCase(appendSeparator(pathPhraseTrimmed), appendSeparator(pathPhrase))) //don't add redundant aliases
+            items.push_back(utfTo<wxString>(pathPhrase));
+
     if (sharedHistory_.get())
     {
         std::vector<Zstring> tmp = sharedHistory_->getList();

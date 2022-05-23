@@ -8,7 +8,7 @@
 #define SCOPE_GUARD_H_8971632487321434
 
 #include <cassert>
-#include <exception>
+//#include <exception>
 #include "type_traits.h"
 #include "legacy_compiler.h" //std::uncaught_exceptions
 
@@ -91,7 +91,7 @@ private:
     ScopeGuard           (const ScopeGuard&) = delete;
     ScopeGuard& operator=(const ScopeGuard&) = delete;
 
-    F fun_;
+    const F fun_;
     const int exeptionCount_ = std::uncaught_exceptions();
     bool dismissed_ = false;
 };

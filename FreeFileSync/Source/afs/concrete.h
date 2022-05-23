@@ -13,8 +13,8 @@ namespace fff
 {
 struct AfsConfig
 {
-    Zstring resourceDirPathPf; //directory to read AFS-specific files
-    Zstring configDirPathPf;   //directory to store AFS-specific files
+    Zstring resourceDirPath; //directory to read AFS-specific files
+    Zstring configDirPath;   //directory to store AFS-specific files
 };
 void initAfs(const AfsConfig& cfg);
 [[nodiscard]] std::wstring /*warningMsg*/ teardownAfs();

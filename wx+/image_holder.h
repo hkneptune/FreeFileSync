@@ -56,8 +56,8 @@ struct FileIconHolder
     //- what about G_IS_FILE_ICON(gicon), G_IS_LOADABLE_ICON(gicon)? => may block! => do NOT convert on main thread! (no big deal: doesn't seem to occur in practice)
     FileIconHolder() {};
 
-    FileIconHolder(GIcon* gi, int maxSz) : //takes ownership!
-        gicon(gi),
+    FileIconHolder(GIcon* icon, int maxSz) : //takes ownership!
+        gicon(icon),
         maxSize(maxSz) {}
 
     struct GiconFree { void operator()(GIcon* icon) const { ::g_object_unref(icon); } };

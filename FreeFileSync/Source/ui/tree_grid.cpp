@@ -686,7 +686,7 @@ class GridDataTree : private wxEvtHandler, public GridData
 {
 public:
     GridDataTree(Grid& grid) :
-        widthNodeIcon_(IconBuffer::getSize(IconBuffer::SIZE_SMALL)),
+        widthNodeIcon_(IconBuffer::getSize(IconBuffer::IconSize::small)),
         widthLevelStep_(widthNodeIcon_),
         widthNodeStatus_(loadImage("node_expanded").GetWidth()),
         rootIcon_(loadImage("root_folder", widthNodeIcon_)),
@@ -1169,8 +1169,8 @@ private:
     const int gapSize_            = fastFromDIP(TREE_GRID_GAP_SIZE_DIP);
     const int percentageBarWidth_ = fastFromDIP(PERCENTAGE_BAR_WIDTH_DIP);
 
-    const wxImage fileIcon_ = IconBuffer::genericFileIcon(IconBuffer::SIZE_SMALL);
-    const wxImage dirIcon_  = IconBuffer::genericDirIcon (IconBuffer::SIZE_SMALL);
+    const wxImage fileIcon_ = IconBuffer::genericFileIcon(IconBuffer::IconSize::small);
+    const wxImage dirIcon_  = IconBuffer::genericDirIcon (IconBuffer::IconSize::small);
 
     const int widthNodeIcon_;
     const int widthLevelStep_;
@@ -1189,7 +1189,7 @@ void treegrid::init(Grid& grid)
     grid.setDataProvider(std::make_shared<GridDataTree>(grid));
     grid.showRowLabel(false);
 
-    const int rowHeight = std::max(IconBuffer::getSize(IconBuffer::SIZE_SMALL) + 2, //1 extra pixel on top/bottom; dearly needed on OS X!
+    const int rowHeight = std::max(IconBuffer::getSize(IconBuffer::IconSize::small) + 2, //1 extra pixel on top/bottom; dearly needed on OS X!
                                    grid.getMainWin().GetCharHeight()); //seems to already include 3 margin pixels on top/bottom (consider percentage area)
     grid.setRowHeight(rowHeight);
 }

@@ -5,15 +5,14 @@
 // *****************************************************************************
 
 #include "dir_lock.h"
-#include <map>
 #include <memory>
+#include <unordered_map>
 #include <zen/crc.h>
 #include <zen/sys_error.h>
 #include <zen/thread.h>
 #include <zen/scope_guard.h>
 #include <zen/guid.h>
 #include <zen/file_access.h>
-#include <zen/file_path.h>
 #include <zen/file_io.h>
 #include <zen/sys_info.h>
 
@@ -175,14 +174,14 @@ LockInformation getLockInfoFromCurrentProcess() //throw FileError
     const std::string osName = "Linux";
 
     //wxGetFullHostName() is a performance killer and can hang for some users, so don't touch!
-    std::vector<char> buffer(10000);
-    if (::gethostname(&buffer[0], buffer.size()) != 0)
+    std::vector<char> buf(10000);
+    if (::gethostname(&buf[0], buf.size()) != 0)
         THROW_LAST_FILE_ERROR(_("Cannot get process information."), "gethostname");
-    lockInfo.computerName = osName + ' ' + &buffer[0] + '.';
+    lockInfo.computerName = osName + ' ' + &buf[0] + '.';
 
-    if (::getdomainname(&buffer[0], buffer.size()) != 0)
+    if (::getdomainname(&buf[0], buf.size()) != 0)
         THROW_LAST_FILE_ERROR(_("Cannot get process information."), "getdomainname");
-    lockInfo.computerName += &buffer[0]; //can be "(none)"!
+    lockInfo.computerName += &buf[0]; //can be "(none)"!
 
     lockInfo.processId = ::getpid(); //never fails
 
@@ -328,7 +327,7 @@ void waitOnDirLock(const Zstring& lockFilePath, const DirLockCallback& notifySta
     {
         const LockInformation& lockInfo = retrieveLockInfo(lockFilePath); //throw FileError
 
-        infoMsg += L" | " + _("User name:") +  L' ' + utfTo<std::wstring>(lockInfo.userId);
+        infoMsg += SPACED_DASH + _("User name:") +  L' ' + utfTo<std::wstring>(lockInfo.userId);
 
         originalLockId = lockInfo.lockId;
         switch (getProcessStatus(lockInfo)) //throw FileError
@@ -399,7 +398,7 @@ void waitOnDirLock(const Zstring& lockFilePath, const DirLockCallback& notifySta
                 if (lastCheckTime >= lastLifeSign + EMIT_LIFE_SIGN_INTERVAL + std::chrono::seconds(1))
                 {
                     const int remainingSeconds = std::max(0, static_cast<int>(std::chrono::duration_cast<std::chrono::seconds>(DETECT_ABANDONED_INTERVAL - (now - lastLifeSign)).count()));
-                    notifyStatus(infoMsg + L" | " + _("Detecting abandoned lock...") + L' ' + _P("1 sec", "%x sec", remainingSeconds)); //throw X
+                    notifyStatus(infoMsg + SPACED_DASH + _("Detecting abandoned lock...") + L' ' + _P("1 sec", "%x sec", remainingSeconds)); //throw X
                 }
                 else
                     notifyStatus(std::wstring(infoMsg)); //throw X; emit a message in any case (might clear other one)
@@ -547,8 +546,8 @@ private:
         std::erase_if(guidByPath_, [&](const auto& v) { return !locksByGuid_.contains(v.second); });
     }
 
-    std::map<Zstring, UniqueId> guidByPath_;                      //lockFilePath |-> GUID; n:1; locks can be referenced by a lockFilePath or alternatively a GUID
-    std::map<UniqueId, std::weak_ptr<SharedDirLock>> locksByGuid_; //GUID |-> "shared lock ownership"; 1:1
+    std::unordered_map<Zstring, UniqueId> guidByPath_;                      //lockFilePath |-> GUID; n:1; locks can be referenced by a lockFilePath or alternatively a GUID
+    std::unordered_map<UniqueId, std::weak_ptr<SharedDirLock>> locksByGuid_; //GUID |-> "shared lock ownership"; 1:1
 };
 
 

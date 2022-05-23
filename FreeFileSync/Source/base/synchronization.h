@@ -15,28 +15,28 @@
 
 namespace fff
 {
-class SyncStatistics //this class counts *logical* operations, (create, update, delete + bytes), *not* disk accesses!
+class SyncStatistics //count *logical* operations, (create, update, delete + bytes), *not* disk accesses!
 {
     //-> note the fundamental difference compared to counting disk accesses!
 public:
-    SyncStatistics(const FolderComparison& folderCmp);
-    SyncStatistics(const ContainerObject& hierObj);
-    SyncStatistics(const FilePair& file);
+    explicit SyncStatistics(const FolderComparison& folderCmp);
+    explicit SyncStatistics(const ContainerObject& hierObj);
+    explicit SyncStatistics(const FilePair& file);
 
     template <SelectSide side>
-    int createCount() const { return SelectParam<side>::ref(createLeft_, createRight_); }
+    int createCount() const { return selectParam<side>(createLeft_, createRight_); }
     int createCount() const { return createLeft_ + createRight_; }
 
     template <SelectSide side>
-    int updateCount() const { return SelectParam<side>::ref(updateLeft_, updateRight_); }
+    int updateCount() const { return selectParam<side>(updateLeft_, updateRight_); }
     int updateCount() const { return updateLeft_ + updateRight_; }
 
     template <SelectSide side>
-    int deleteCount() const { return SelectParam<side>::ref(deleteLeft_, deleteRight_); }
+    int deleteCount() const { return selectParam<side>(deleteLeft_, deleteRight_); }
     int deleteCount() const { return deleteLeft_ + deleteRight_; }
 
     template <SelectSide side>
-    bool expectPhysicalDeletion() const { return SelectParam<side>::ref(physicalDeleteLeft_, physicalDeleteRight_); }
+    bool expectPhysicalDeletion() const { return selectParam<side>(physicalDeleteLeft_, physicalDeleteRight_); }
 
     int64_t getBytesToProcess() const { return bytesToProcess_; }
     size_t  rowCount         () const { return rowsTotal_; }
@@ -53,7 +53,7 @@ private:
     void recurse(const ContainerObject& hierObj);
 
     void processFile  (const FilePair& file);
-    void processLink  (const SymlinkPair& link);
+    void processLink  (const SymlinkPair& symlink);
     void processFolder(const FolderPair& folder);
 
     int createLeft_  = 0;

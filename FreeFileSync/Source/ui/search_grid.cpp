@@ -7,6 +7,7 @@
 #include "search_grid.h"
 #include <zen/zstring.h>
 #include <zen/utf.h>
+//#include <zen/perf.h>
 
 using namespace zen;
 using namespace fff;
@@ -24,7 +25,7 @@ void normalizeForSeach<true /*respectCase*/>(std::wstring& str)
         if (!isAsciiChar(c))
         {
             str = utfTo<std::wstring>(getUnicodeNormalForm(utfTo<Zstring>(str)));
-            std::replace(str.begin(), str.end(), L'\\', L'/');
+            replace(str, L'\\', L'/');
             return;
         }
         else if (c == L'\\')
@@ -38,7 +39,7 @@ void normalizeForSeach<false /*respectCase*/>(std::wstring& str)
         if (!isAsciiChar(c))
         {
             str = utfTo<std::wstring>(getUpperCase(utfTo<Zstring>(str))); //getUnicodeNormalForm() is implied by getUpperCase()
-            std::replace(str.begin(), str.end(), L'\\', L'/');
+            replace(str, L'\\', L'/');
             return;
         }
         else if (c == L'\\')

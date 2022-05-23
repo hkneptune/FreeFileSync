@@ -90,14 +90,14 @@ AbstractFolderPickerDlg::AbstractFolderPickerDlg(wxWindow* parent, AbstractPath&
     m_staticTextStatus->SetLabel(L"");
     m_treeCtrlFileSystem->SetMinSize({fastFromDIP(350), fastFromDIP(400)});
 
-    const int iconSize = IconBuffer::getSize(IconBuffer::SIZE_SMALL);
+    const int iconSize = IconBuffer::getSize(IconBuffer::IconSize::small);
     auto imgList = std::make_unique<wxImageList>(iconSize, iconSize);
 
     //add images in same sequence like TreeNodeImage enum!!!
     imgList->Add(loadImage("server", iconSize));
-    imgList->Add(        IconBuffer::genericDirIcon(IconBuffer::SIZE_SMALL));
-    imgList->Add(layOver(IconBuffer::genericDirIcon(IconBuffer::SIZE_SMALL),
-                         IconBuffer::linkOverlayIcon(IconBuffer::SIZE_SMALL)));
+    imgList->Add(        IconBuffer::genericDirIcon (IconBuffer::IconSize::small));
+    imgList->Add(layOver(IconBuffer::genericDirIcon (IconBuffer::IconSize::small),
+                         IconBuffer::linkOverlayIcon(IconBuffer::IconSize::small)));
     imgList->Add(loadImage("msg_error", iconSize));
     assert(imgList->GetImageCount() == static_cast<int>(TreeNodeImage::error) + 1);
 
@@ -148,7 +148,7 @@ struct FlatTraverserCallback : public AFS::TraverserCallback
 {
     struct Result
     {
-        std::map<Zstring, bool /*is symlink*/> folderNames;
+        std::unordered_map<Zstring, bool /*is symlink*/> folderNames;
         std::wstring errorMsg;
     };
 

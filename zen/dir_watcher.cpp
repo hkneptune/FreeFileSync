@@ -24,7 +24,7 @@ using namespace zen;
 struct DirWatcher::Impl
 {
     int notifDescr = 0;
-    std::map<int, Zstring> watchedPaths; //watch descriptor and (sub-)directory paths -> owned by "notifDescr"
+    std::unordered_map<int, Zstring> watchedPaths; //watch descriptor and (sub-)directory paths -> owned by "notifDescr"
 };
 
 
@@ -133,7 +133,7 @@ std::vector<DirWatcher::Change> DirWatcher::fetchChanges(const std::function<voi
             {
                 //Note: evt.len is NOT the size of the evt.name c-string, but the array size including all padding 0 characters!
                 //It may be even 0 in which case evt.name must not be used!
-                const Zstring itemPath = appendSeparator(it->second) + evt.name;
+                const Zstring itemPath = appendPath(it->second, evt.name);
 
                 if ((evt.mask & IN_CREATE) ||
                     (evt.mask & IN_MOVED_TO))

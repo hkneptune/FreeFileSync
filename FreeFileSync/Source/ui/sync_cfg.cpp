@@ -1335,7 +1335,7 @@ void ConfigDialog::updateMiscGui()
     const MiscSyncConfig miscCfg = getMiscSyncOptions();
 
     setImage(*m_bitmapIgnoreErrors, greyScaleIfDisabled(loadImage("error_ignore_active"), miscCfg.ignoreErrors));
-    setImage(*m_bitmapRetryErrors , greyScaleIfDisabled(loadImage("error_retry"), miscCfg.autoRetryCount > 0 ));
+    setImage(*m_bitmapRetryErrors, greyScaleIfDisabled(loadImage("error_retry"), miscCfg.autoRetryCount > 0 ));
 
     fgSizerAutoRetry->Show(miscCfg.autoRetryCount > 0);
 

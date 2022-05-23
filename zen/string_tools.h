@@ -11,9 +11,6 @@
 #include <cwctype> //iswspace
 #include <cstdio>  //sprintf
 #include <cwchar>  //swprintf
-#include <algorithm>
-#include <cassert>
-#include <vector>
 #include "stl_tools.h"
 #include "string_traits.h"
 #include "legacy_compiler.h" //<charconv> but without the compiler crashes :>
@@ -33,25 +30,30 @@ template <class Char> Char asciiToLower(Char c);
 template <class Char> Char asciiToUpper(Char c);
 
 //both S and T can be strings or char/wchar_t arrays or single char/wchar_t
-template <class S, class T, typename = std::enable_if_t<IsStringLikeV<S>>> bool contains(const S& str, const T& term);
+template <class S, class T, typename = std::enable_if_t<isStringLike<S>/*Astyle hates tripe >*/ >> bool contains(const S& str, const T& term);
 
-          template <class S, class T> bool startsWith           (const S& str, const T& prefix);
-          template <class S, class T> bool startsWithAsciiNoCase(const S& str, const T& prefix);
+template <class S, class T> bool startsWith           (const S& str, const T& prefix);
+template <class S, class T> bool startsWithAsciiNoCase(const S& str, const T& prefix);
 
-          template <class S, class T> bool endsWith           (const S& str, const T& postfix);
-          template <class S, class T> bool endsWithAsciiNoCase(const S& str, const T& postfix);
+template <class S, class T> bool endsWith           (const S& str, const T& postfix);
+template <class S, class T> bool endsWithAsciiNoCase(const S& str, const T& postfix);
 
-          template <class S, class T> bool equalString     (const S& lhs, const T& rhs);
-          template <class S, class T> bool equalAsciiNoCase(const S& lhs, const T& rhs);
+template <class S, class T> bool equalString     (const S& lhs, const T& rhs);
+template <class S, class T> bool equalAsciiNoCase(const S& lhs, const T& rhs);
 
-          //          template <class S, class T> std::strong_ordering compareString   (const S& lhs, const T& rhs);
-          template <class S, class T> std::weak_ordering compareAsciiNoCase(const S& lhs, const T& rhs); //basic case-insensitive comparison (considering A-Z only!)
+//template <class S, class T> std::strong_ordering compareString(const S& lhs, const T& rhs);
+template <class S, class T> std::weak_ordering compareAsciiNoCase(const S& lhs, const T& rhs); //basic case-insensitive comparison (considering A-Z only!)
 
-          struct LessAsciiNoCase //STL container predicate
-{
-    template <class S> bool operator()(const S& lhs, const S& rhs) const { return std::is_lt(compareAsciiNoCase(lhs, rhs)); }
-};
+//STL container predicates for std::map, std::unordered_set/map
+struct StringHash;
+struct StringEqual;
 
+struct LessAsciiNoCase;
+struct StringHashAsciiNoCase;
+struct StringEqualAsciiNoCase;
+
+template <class Num, class S> Num hashString(const S& str);
+template <class Num, class S> Num appendHashString(Num hashVal, const S& str);
 
 enum class IfNotFoundReturn
 {
@@ -77,8 +79,11 @@ template <class S>                 void trim   (S& str, bool fromLeft = true, bo
 template <class S, class Function> void trim(S& str, bool fromLeft, bool fromRight, Function trimThisChar);
 
 
-template <class S, class T, class U> [[nodiscard]] S replaceCpy(S  str, const T& oldTerm, const U& newTerm, bool replaceAll = true);
-template <class S, class T, class U>            void replace   (S& str, const T& oldTerm, const U& newTerm, bool replaceAll = true);
+template <class S, class T, class U> [[nodiscard]] S replaceCpy(S  str, const T& oldTerm, const U& newTerm);
+template <class S, class T, class U>            void replace   (S& str, const T& oldTerm, const U& newTerm);
+
+template <class S, class T, class U> [[nodiscard]] S replaceCpyAsciiNoCase(S  str, const T& oldTerm, const U& newTerm);
+template <class S, class T, class U>            void replaceAsciiNoCase   (S& str, const T& oldTerm, const U& newTerm);
 
 //high-performance conversion between numbers and strings
 template <class S,   class Num> S   numberTo(const Num& number);
@@ -173,25 +178,28 @@ template <class Char> inline
 Char asciiToLower(Char c)
 {
     if (static_cast<Char>('A') <= c && c <= static_cast<Char>('Z'))
-                                    return static_cast<Char>(c - static_cast<Char>('A') + static_cast<Char>('a'));
-        return c;
+        return static_cast<Char>(c - static_cast<Char>('A') + static_cast<Char>('a'));
+    return c;
 }
 
 
-    template <class Char> inline
-    Char asciiToUpper(Char c)
+template <class Char> inline
+Char asciiToUpper(Char c)
 {
     if (static_cast<Char>('a') <= c && c <= static_cast<Char>('z'))
-                                    return static_cast<Char>(c - static_cast<Char>('a') + static_cast<Char>('A'));
-        return c;
+        return static_cast<Char>(c - static_cast<Char>('a') + static_cast<Char>('A'));
+    return c;
 }
 
 
-    namespace impl
+namespace impl
 {
-//support embedded 0, unlike strncmp/wcsncmp:
-inline std::strong_ordering strcmpWithNulls(const char*    ptr1, const char*    ptr2, size_t num) { return std:: memcmp(ptr1, ptr2, num) <=> 0; }
-inline std::strong_ordering strcmpWithNulls(const wchar_t* ptr1, const wchar_t* ptr2, size_t num) { return std::wmemcmp(ptr1, ptr2, num) <=> 0; }
+template <class Char> inline
+bool equalSubstring(const Char* lhs, const Char* rhs, size_t len)
+{
+    //support embedded 0, unlike strncmp/wcsncmp:
+    return std::equal(lhs, lhs + len, rhs);
+}
 
 
 template <class Char1, class Char2> inline
@@ -213,13 +221,14 @@ template <class S, class T> inline
 bool startsWith(const S& str, const T& prefix)
 {
     const size_t pfLen = strLength(prefix);
-    return strLength(str) >= pfLen && impl::strcmpWithNulls(strBegin(str), strBegin(prefix), pfLen) == std::strong_ordering::equal;
+    return strLength(str) >= pfLen && impl::equalSubstring(strBegin(str), strBegin(prefix), pfLen);
 }
 
 
 template <class S, class T> inline
 bool startsWithAsciiNoCase(const S& str, const T& prefix)
 {
+    assert(isAsciiString(str) || isAsciiString(prefix));
     const size_t pfLen = strLength(prefix);
     return strLength(str) >= pfLen && impl::strcmpAsciiNoCase(strBegin(str), strBegin(prefix), pfLen) == std::weak_ordering::equivalent;
 }
@@ -230,7 +239,7 @@ bool endsWith(const S& str, const T& postfix)
 {
     const size_t strLen = strLength(str);
     const size_t pfLen  = strLength(postfix);
-    return strLen >= pfLen && impl::strcmpWithNulls(strBegin(str) + strLen - pfLen, strBegin(postfix), pfLen) == std::strong_ordering::equal;
+    return strLen >= pfLen && impl::equalSubstring(strBegin(str) + strLen - pfLen, strBegin(postfix), pfLen);
 }
 
 
@@ -247,19 +256,24 @@ template <class S, class T> inline
 bool equalString(const S& lhs, const T& rhs)
 {
     const size_t lhsLen = strLength(lhs);
-    return lhsLen == strLength(rhs) && impl::strcmpWithNulls(strBegin(lhs), strBegin(rhs), lhsLen) == std::strong_ordering::equal;
+    return lhsLen == strLength(rhs) && impl::equalSubstring(strBegin(lhs), strBegin(rhs), lhsLen);
 }
 
 
 template <class S, class T> inline
 bool equalAsciiNoCase(const S& lhs, const T& rhs)
 {
+    assert(isAsciiString(lhs) || isAsciiString(rhs));
     const size_t lhsLen = strLength(lhs);
     return lhsLen == strLength(rhs) && impl::strcmpAsciiNoCase(strBegin(lhs), strBegin(rhs), lhsLen) == std::weak_ordering::equivalent;
 }
 
 
 #if 0
+//support embedded 0, unlike strncmp/wcsncmp:
+inline std::strong_ordering strcmpWithNulls(const char*    ptr1, const char*    ptr2, size_t num) { return std:: memcmp(ptr1, ptr2, num) <=> 0; }
+inline std::strong_ordering strcmpWithNulls(const wchar_t* ptr1, const wchar_t* ptr2, size_t num) { return std::wmemcmp(ptr1, ptr2, num) <=> 0; }
+
 template <class S, class T> inline
 std::strong_ordering compareString(const S& lhs, const T& rhs)
 {
@@ -427,29 +441,22 @@ namespace impl
 ZEN_INIT_DETECT_MEMBER(append)
 
 //either call operator+=(S(str, len)) or append(str, len)
-template <class S, class InputIterator, typename = std::enable_if_t<HasMemberV_append<S>>> inline
+template <class S, class InputIterator, typename = std::enable_if_t<hasMember_append<S>>> inline
 void stringAppend(S& str, InputIterator first, InputIterator last) { str.append(first, last);  }
 
 //inefficient append: keep disabled until really needed
-//template <class S, class InputIterator, typename = std::enable_if_t<!HasMemberV_append<S>>> inline
+//template <class S, class InputIterator, typename = std::enable_if_t<!hasMember_append<S>>> inline
 //void stringAppend(S& str, InputIterator first, InputIterator last) { str += S(first, last); }
-}
 
 
-template <class S, class T, class U> inline
-S replaceCpy(S str, const T& oldTerm, const U& newTerm, bool replaceAll)
-{
-    replace(str, oldTerm, newTerm, replaceAll);
-    return str;
-}
-
-
-template <class S, class T, class U> inline
-void replace(S& str, const T& oldTerm, const U& newTerm, bool replaceAll)
+template <class S, class T, class U, class CharEq> inline
+void replace(S& str, const T& oldTerm, const U& newTerm, CharEq charEqual)
 {
     static_assert(std::is_same_v<GetCharTypeT<S>, GetCharTypeT<T>>);
     static_assert(std::is_same_v<GetCharTypeT<T>, GetCharTypeT<U>>);
     const size_t oldLen = strLength(oldTerm);
+    const size_t newLen = strLength(newTerm);
+    //assert(oldLen != 0); -> reasonable check, but challenged by unit-test
     if (oldLen == 0)
         return;
 
@@ -457,13 +464,17 @@ void replace(S& str, const T& oldTerm, const U& newTerm, bool replaceAll)
     const auto* const oldEnd   = oldBegin + oldLen;
 
     const auto* const newBegin = strBegin(newTerm);
-    const auto* const newEnd   = newBegin + strLength(newTerm);
+    const auto* const newEnd   = newBegin + newLen;
 
-    auto it = strBegin(str); //don't use str.begin() or wxString will return this wxUni* nonsense!
-    const auto* const strEnd = it + strLength(str);
+    using CharType = GetCharTypeT<S>;
+    if (oldLen == 1 && newLen == 1) //don't use expensive std::search unless required!
+        return std::replace_if(str.begin(), str.end(), [charEqual, charOld = *oldBegin](CharType c) { return charEqual(c, charOld); }, *newBegin);
+
+    auto* it = strBegin(str); //don't use str.begin() or wxString will return this wxUni* nonsense!
+    auto* const strEnd = it + strLength(str);
 
     auto itFound = std::search(it, strEnd,
-                               oldBegin, oldEnd);
+                               oldBegin, oldEnd, charEqual);
     if (itFound == strEnd)
         return; //optimize "oldTerm not found"
 
@@ -472,18 +483,50 @@ void replace(S& str, const T& oldTerm, const U& newTerm, bool replaceAll)
     {
         impl::stringAppend(output, newBegin, newEnd);
         it = itFound + oldLen;
-
+#if 0
         if (!replaceAll)
             itFound = strEnd;
         else
+#endif
             itFound = std::search(it, strEnd,
-                                  oldBegin, oldEnd);
+                                  oldBegin, oldEnd, charEqual);
 
         impl::stringAppend(output, it, itFound);
     }
     while (itFound != strEnd);
 
     str = std::move(output);
+}
+}
+
+
+template <class S, class T, class U> inline
+void replace(S& str, const T& oldTerm, const U& newTerm)
+{ impl::replace(str, oldTerm, newTerm, std::equal_to()); }
+
+
+template <class S, class T, class U> inline
+S replaceCpy(S str, const T& oldTerm, const U& newTerm)
+{
+    replace(str, oldTerm, newTerm);
+    return str;
+}
+
+
+template <class S, class T, class U> inline
+void replaceAsciiNoCase(S& str, const T& oldTerm, const U& newTerm)
+{
+    using CharType = GetCharTypeT<S>;
+    impl::replace(str, oldTerm, newTerm,
+    [](CharType charL, CharType charR) { return asciiToLower(charL) == asciiToLower(charR); });
+}
+
+
+template <class S, class T, class U> inline
+S replaceCpyAsciiNoCase(S str, const T& oldTerm, const U& newTerm)
+{
+    replaceAsciiNoCase(str, oldTerm, newTerm);
+    return str;
 }
 
 
@@ -813,9 +856,9 @@ template <class S, class Num> inline
 S numberTo(const Num& number)
 {
     using TypeTag = std::integral_constant<impl::NumberType,
-                                           IsSignedIntV  <Num> ? impl::NumberType::signedInt :
-                                           IsUnsignedIntV<Num> ? impl::NumberType::unsignedInt :
-                                           IsFloatV      <Num> ? impl::NumberType::floatingPoint :
+                                           isSignedInt  <Num> ? impl::NumberType::signedInt :
+                                           isUnsignedInt<Num> ? impl::NumberType::unsignedInt :
+                                           isFloat      <Num> ? impl::NumberType::floatingPoint :
                                            impl::NumberType::other>;
 
     return impl::numberTo<S>(number, TypeTag());
@@ -826,9 +869,9 @@ template <class Num, class S> inline
 Num stringTo(const S& str)
 {
     using TypeTag = std::integral_constant<impl::NumberType,
-                                           IsSignedIntV  <Num> ? impl::NumberType::signedInt :
-                                           IsUnsignedIntV<Num> ? impl::NumberType::unsignedInt :
-                                           IsFloatV      <Num> ? impl::NumberType::floatingPoint :
+                                           isSignedInt  <Num> ? impl::NumberType::signedInt :
+                                           isUnsignedInt<Num> ? impl::NumberType::unsignedInt :
+                                           isFloat      <Num> ? impl::NumberType::floatingPoint :
                                            impl::NumberType::other>;
 
     return impl::stringTo<Num>(str, TypeTag());
@@ -885,6 +928,72 @@ std::string formatAsHexString(const std::string_view& blob)
 }
 
 
+
+
+template <class Num, class S> inline
+Num hashString(const S& str)
+{
+    using CharType = GetCharTypeT<S>;
+    const auto* const strFirst = strBegin(str);
+
+    FNV1aHash<Num> hash;
+    std::for_each(strFirst, strFirst + strLength(str), [&hash](CharType c) { hash.add(c); });
+    return hash.get();
+}
+
+
+struct StringHash
+{
+    using is_transparent = int; //allow heterogenous lookup!
+
+    template <class String>
+    size_t operator()(const String& str) const { return hashString<size_t>(str); }
+};
+
+
+struct StringEqual
+{
+    using is_transparent = int; //allow heterogenous lookup!
+
+    template <class String1, class String2>
+    bool operator()(const String1& lhs, const String2& rhs) const { return equalString(lhs, rhs); }
+};
+
+
+struct LessAsciiNoCase
+{
+    template <class String>
+    bool operator()(const String& lhs, const String& rhs) const { return std::is_lt(compareAsciiNoCase(lhs, rhs)); }
+};
+
+
+struct StringHashAsciiNoCase
+{
+    using is_transparent = int; //allow heterogenous lookup!
+
+    template <class String>
+    size_t operator()(const String& str) const
+    {
+        using CharType = GetCharTypeT<String>;
+        const auto* const strFirst = strBegin(str);
+
+        FNV1aHash<size_t> hash;
+        std::for_each(strFirst, strFirst + strLength(str), [&hash](CharType c) { hash.add(asciiToLower(c)); });
+        return hash.get();
+    }
+};
+
+
+struct StringEqualAsciiNoCase
+{
+    using is_transparent = int; //allow heterogenous lookup!
+
+    template <class String1, class String2>
+    bool operator()(const String1& lhs, const String2& rhs) const
+    {
+        return equalAsciiNoCase(lhs, rhs);
+    }
+};
 }
 
 #endif //STRING_TOOLS_H_213458973046

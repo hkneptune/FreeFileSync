@@ -13,18 +13,18 @@ std::optional<PathComponents> zen::parsePathComponents(const Zstring& itemPath)
 {
     auto doParse = [&](int sepCountVolumeRoot, bool rootWithSep) -> std::optional<PathComponents>
     {
-        const Zstring itemPathFmt = appendSeparator(itemPath); //simplify analysis of root without separator, e.g. \\server-name\share
+        const Zstring itemPathPf = appendSeparator(itemPath); //simplify analysis of root without separator, e.g. \\server-name\share
         int sepCount = 0;
-        for (auto it = itemPathFmt.begin(); it != itemPathFmt.end(); ++it)
+        for (auto it = itemPathPf.begin(); it != itemPathPf.end(); ++it)
             if (*it == FILE_NAME_SEPARATOR)
                 if (++sepCount == sepCountVolumeRoot)
                 {
-                    Zstring rootPath(itemPathFmt.begin(), rootWithSep ? it + 1 : it);
+                    Zstring rootPath(itemPathPf.begin(), rootWithSep ? it + 1 : it);
 
-                    Zstring relPath(it + 1, itemPathFmt.end());
+                    Zstring relPath(it + 1, itemPathPf.end());
                     trim(relPath, true, true, [](Zchar c) { return c == FILE_NAME_SEPARATOR; });
 
-                    return PathComponents({rootPath, relPath});
+                    return PathComponents{std::move(rootPath), std::move(relPath)};
                 }
         return {};
     };
@@ -62,18 +62,103 @@ std::optional<PathComponents> zen::parsePathComponents(const Zstring& itemPath)
 
 std::optional<Zstring> zen::getParentFolderPath(const Zstring& itemPath)
 {
-    if (const std::optional<PathComponents> comp = parsePathComponents(itemPath))
+    if (const std::optional<PathComponents> pc = parsePathComponents(itemPath))
     {
-        if (comp->relPath.empty())
+        if (pc->relPath.empty())
             return std::nullopt;
 
-        const Zstring parentRelPath = beforeLast(comp->relPath, FILE_NAME_SEPARATOR, IfNotFoundReturn::none);
-        if (parentRelPath.empty())
-            return comp->rootPath;
-        return appendSeparator(comp->rootPath) + parentRelPath;
+        return appendPath(pc->rootPath, beforeLast(pc->relPath, FILE_NAME_SEPARATOR, IfNotFoundReturn::none));
     }
     assert(false);
     return std::nullopt;
+}
+
+
+Zstring zen::appendSeparator(Zstring path) //support rvalue references!
+{
+    if (!endsWith(path, FILE_NAME_SEPARATOR))
+        path += FILE_NAME_SEPARATOR;
+    return path; //returning a by-value parameter => RVO if possible, r-value otherwise!
+}
+
+
+bool zen::isValidRelPath(const Zstring& relPath)
+{
+    //relPath is expected to use FILE_NAME_SEPARATOR!
+    if constexpr (FILE_NAME_SEPARATOR != Zstr('/' )) if (contains(relPath, Zstr('/' ))) return false;
+    if constexpr (FILE_NAME_SEPARATOR != Zstr('\\')) if (contains(relPath, Zstr('\\'))) return false;
+
+    const Zchar doubleSep[] = {FILE_NAME_SEPARATOR, FILE_NAME_SEPARATOR, 0};
+    return !startsWith(relPath, FILE_NAME_SEPARATOR)&& !endsWith(relPath, FILE_NAME_SEPARATOR)&&
+           !contains(relPath, doubleSep);
+}
+
+
+Zstring zen::appendPath(const Zstring& basePath, const Zstring& relPath)
+{
+    assert(isValidRelPath(relPath));
+    if (relPath.empty())
+        return basePath; //with or without path separator, e.g. C:\ or C:\folder
+
+    if (basePath.empty()) //basePath might be a relative path, too!
+        return relPath;
+
+    if (endsWith(basePath, FILE_NAME_SEPARATOR))
+        return basePath + relPath;
+
+    Zstring output = basePath;
+    output.reserve(basePath.size() + 1 + relPath.size());     //append all three strings using a single memory allocation
+    return std::move(output) + FILE_NAME_SEPARATOR + relPath; //
+}
+
+
+Zstring zen::getFileExtension(const Zstring& filePath)
+{
+    //const Zstring fileName = afterLast(filePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
+    //return afterLast(fileName, Zstr('.'), IfNotFoundReturn::none);
+
+    auto it = zen::findLast(filePath.begin(), filePath.end(), FILE_NAME_SEPARATOR);
+    if (it == filePath.end())
+        it = filePath.begin();
+    else
+        ++it;
+
+    auto it2 = zen::findLast(it, filePath.end(), Zstr('.'));
+    if (it2 != filePath.end())
+        ++it2;
+
+    return Zstring(it2, filePath.end());
+}
+
+
+/* https://docs.microsoft.com/de-de/windows/desktop/Intl/handling-sorting-in-your-applications
+
+    Perf test: compare strings 10 mio times; 64 bit build
+    -----------------------------------------------------
+        string a = "Fjk84$%kgfj$%T\\\\Gffg\\gsdgf\\fgsx----------d-"
+        string b = "fjK84$%kgfj$%T\\\\gfFg\\gsdgf\\fgSy----------dfdf"
+
+    Windows (UTF16 wchar_t)
+      4 ns | wcscmp
+     67 ns | CompareStringOrdinalFunc+ + bIgnoreCase
+    314 ns | LCMapString + wmemcmp
+
+    OS X (UTF8 char)
+       6 ns | strcmp
+      98 ns | strcasecmp
+     120 ns | strncasecmp + std::min(sizeLhs, sizeRhs);
+     856 ns | CFStringCreateWithCString       + CFStringCompare(kCFCompareCaseInsensitive)
+    1110 ns | CFStringCreateWithCStringNoCopy + CFStringCompare(kCFCompareCaseInsensitive)
+    ________________________
+    time per call | function                                                   */
+
+std::weak_ordering zen::compareNativePath(const Zstring& lhs, const Zstring& rhs)
+{
+    assert(lhs.find(Zchar('\0')) == Zstring::npos); //don't expect embedded nulls!
+    assert(rhs.find(Zchar('\0')) == Zstring::npos); //
+
+    return lhs <=> rhs;
+
 }
 
 

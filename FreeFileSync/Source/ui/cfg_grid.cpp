@@ -24,7 +24,7 @@ using AFS = AbstractFileSystem;
 
 Zstring fff::getLastRunConfigPath()
 {
-    return getConfigDirPathPf() + Zstr("LastRun.ffs_gui");
+    return appendPath(getConfigDirPath(), Zstr("LastRun.ffs_gui"));
 }
 
 
@@ -114,7 +114,7 @@ void ConfigView::removeItems(const std::vector<Zstring>& filePaths)
 {
     const std::set<Zstring, LessNativePath> pathsSorted(filePaths.begin(), filePaths.end());
 
-    std::erase_if(cfgListView_, [&](auto it) { return pathsSorted.find(it->first) != pathsSorted.end(); });
+    std::erase_if(cfgListView_, [&](auto it) { return pathsSorted.contains(it->first); });
 
     for (const Zstring& filePath : filePaths)
         cfgList_.erase(filePath);

@@ -33,7 +33,7 @@ std::wstring fff::getShortDisplayNameForFolderPair(const AbstractPath& itemPathL
         tmpPathL = *parentPathL;
         tmpPathR = *parentPathR;
 
-        commonTrail = nativeAppendPaths(itemNameL, commonTrail);
+        commonTrail = appendPath(itemNameL, commonTrail);
     }
     if (!commonTrail.empty())
         return utfTo<std::wstring>(commonTrail);

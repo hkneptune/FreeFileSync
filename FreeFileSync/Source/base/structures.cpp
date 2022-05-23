@@ -6,7 +6,6 @@
 
 #include "structures.h"
 #include <iterator>
-#include <stdexcept>
 #include <ctime>
 #include <zen/i18n.h>
 #include <zen/time.h>

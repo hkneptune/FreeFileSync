@@ -260,7 +260,7 @@ private:
         writeNumber<uint32_t>(streamOutSmallNum_, static_cast<uint32_t>(container.files.size()));
         for (const auto& [itemName, inSyncData] : container.files)
         {
-            writeItemName(itemName);
+            writeItemName(itemName.normStr);
             writeNumber(streamOutSmallNum_, static_cast<int32_t>(inSyncData.cmpVar));
             writeNumber<uint64_t>(streamOutSmallNum_, inSyncData.fileSize);
 
@@ -271,7 +271,7 @@ private:
         writeNumber<uint32_t>(streamOutSmallNum_, static_cast<uint32_t>(container.symlinks.size()));
         for (const auto& [itemName, inSyncData] : container.symlinks)
         {
-            writeItemName(itemName);
+            writeItemName(itemName.normStr);
             writeNumber(streamOutSmallNum_, static_cast<int32_t>(inSyncData.cmpVar));
 
             writeNumber<int64_t>(streamOutBigNum_, inSyncData.left .modTime);
@@ -281,7 +281,7 @@ private:
         writeNumber<uint32_t>(streamOutSmallNum_, static_cast<uint32_t>(container.folders.size()));
         for (const auto& [itemName, inSyncData] : container.folders)
         {
-            writeItemName(itemName);
+            writeItemName(itemName.normStr);
             writeNumber<int32_t>(streamOutSmallNum_, inSyncData.status);
 
             recurse(inSyncData);
@@ -422,8 +422,8 @@ private:
             const InSyncDescrFile dataT = readFileDescr(); //
 
             container.addFile(itemName,
-                              SelectParam<leadSide>::ref(dataL, dataT),
-                              SelectParam<leadSide>::ref(dataT, dataL), cmpVar, fileSize);
+                              selectParam<leadSide>(dataL, dataT),
+                              selectParam<leadSide>(dataT, dataL), cmpVar, fileSize);
         }
 
         size_t linkCount = readNumber<uint32_t>(streamInSmallNum_);
@@ -436,8 +436,8 @@ private:
             const InSyncDescrLink dataT(readNumber<int64_t>(streamInBigNum_)); //
 
             container.addSymlink(itemName,
-                                 SelectParam<leadSide>::ref(dataL, dataT),
-                                 SelectParam<leadSide>::ref(dataT, dataL), cmpVar);
+                                 selectParam<leadSide>(dataL, dataT),
+                                 selectParam<leadSide>(dataT, dataL), cmpVar);
         }
 
         size_t dirCount = readNumber<uint32_t>(streamInSmallNum_); //
@@ -563,7 +563,7 @@ private:
 
     void process(const ContainerObject::FileList& currentFiles, const Zstring& parentRelPath, InSyncFolder::FileList& dbFiles)
     {
-        std::set<Zstring, LessUnicodeNormal> toPreserve;
+        std::unordered_set<ZstringNorm> toPreserve;
 
         for (const FilePair& file : currentFiles)
             if (!file.isPairEmpty())
@@ -598,7 +598,7 @@ private:
             if (toPreserve.contains(v.first))
                 return false;
             //all items not existing in "currentFiles" have either been deleted meanwhile or been excluded via filter:
-            const Zstring& itemRelPath = nativeAppendPaths(parentRelPath, v.first);
+            const Zstring& itemRelPath = appendPath(parentRelPath, v.first.normStr);
             return filter_.passFileFilter(itemRelPath);
             //note: items subject to traveral errors are also excluded by this file filter here! see comparison.cpp, modified file filter for read errors
         });
@@ -606,7 +606,7 @@ private:
 
     void process(const ContainerObject::SymlinkList& currentSymlinks, const Zstring& parentRelPath, InSyncFolder::SymlinkList& dbSymlinks)
     {
-        std::set<Zstring, LessUnicodeNormal> toPreserve;
+        std::unordered_set<ZstringNorm> toPreserve;
 
         for (const SymlinkPair& symlink : currentSymlinks)
             if (!symlink.isPairEmpty())
@@ -635,14 +635,14 @@ private:
             if (toPreserve.contains(v.first))
                 return false;
             //all items not existing in "currentSymlinks" have either been deleted meanwhile or been excluded via filter:
-            const Zstring& itemRelPath = nativeAppendPaths(parentRelPath, v.first);
+            const Zstring& itemRelPath = appendPath(parentRelPath, v.first.normStr);
             return filter_.passFileFilter(itemRelPath);
         });
     }
 
     void process(const ContainerObject::FolderList& currentFolders, const Zstring& parentRelPath, InSyncFolder::FolderList& dbFolders)
     {
-        std::map<Zstring, const FolderPair*, LessUnicodeNormal> toPreserve;
+        std::unordered_map<ZstringNorm, const FolderPair*> toPreserve;
 
         for (const FolderPair& folder : currentFolders)
             if (!folder.isPairEmpty())
@@ -665,7 +665,7 @@ private:
             }
 
         //delete removed items (= "in-sync") from database
-        std::erase_if(dbFolders, [&](InSyncFolder::FolderList::value_type& v)
+        eraseIf(dbFolders, [&](InSyncFolder::FolderList::value_type& v)
         {
             if (auto it = toPreserve.find(v.first); it != toPreserve.end())
             {
@@ -674,7 +674,7 @@ private:
                 return false;
             }
 
-            const Zstring& itemRelPath = nativeAppendPaths(parentRelPath, v.first);
+            const Zstring& itemRelPath = appendPath(parentRelPath, v.first.normStr);
             //if folder is not included in "current folders", it is either not existing anymore, in which case it should be deleted from database
             //or it was excluded via filter and the database entry should be preserved
 
@@ -689,12 +689,12 @@ private:
     //delete all entries for removed folder (= "in-sync") from database
     void dbSetEmptyState(InSyncFolder& dbFolder, const Zstring& parentRelPathPf)
     {
-        std::erase_if(dbFolder.files,    [&](const InSyncFolder::FileList   ::value_type& v) { return filter_.passFileFilter(parentRelPathPf + v.first); });
-        std::erase_if(dbFolder.symlinks, [&](const InSyncFolder::SymlinkList::value_type& v) { return filter_.passFileFilter(parentRelPathPf + v.first); });
+        std::erase_if(dbFolder.files,    [&](const InSyncFolder::FileList   ::value_type& v) { return filter_.passFileFilter(parentRelPathPf + v.first.normStr); });
+        std::erase_if(dbFolder.symlinks, [&](const InSyncFolder::SymlinkList::value_type& v) { return filter_.passFileFilter(parentRelPathPf + v.first.normStr); });
 
-        std::erase_if(dbFolder.folders, [&](InSyncFolder::FolderList::value_type& v)
+        eraseIf(dbFolder.folders, [&](InSyncFolder::FolderList::value_type& v)
         {
-            const Zstring& itemRelPath = parentRelPathPf + v.first;
+            const Zstring& itemRelPath = parentRelPathPf + v.first.normStr;
 
             bool childItemMightMatch = true;
             const bool passFilter = filter_.passDirFilter(itemRelPath, &childItemMightMatch);

@@ -16,9 +16,9 @@ using namespace zen;
 
 void zen::shutdownSystem() //throw FileError
 {
-        assert(runningOnMainThread());
-        if (runningOnMainThread())
-            onSystemShutdownRunTasks();
+    assert(runningOnMainThread());
+    if (runningOnMainThread())
+        onSystemShutdownRunTasks();
     try
     {
         //https://linux.die.net/man/2/reboot => needs admin rights!

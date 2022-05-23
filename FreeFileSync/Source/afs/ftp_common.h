@@ -58,6 +58,7 @@ Zstring decodeFtpUsername(Zstring name)
 inline
 Zstring getServerRelPath(const AfsPath& afsPath)
 {
+    using namespace zen;
     if constexpr (FILE_NAME_SEPARATOR != Zstr('/' ))
         return Zstr('/') + replaceCpy(afsPath.value, FILE_NAME_SEPARATOR, Zstr('/'));
     else

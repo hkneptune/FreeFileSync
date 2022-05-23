@@ -7,18 +7,19 @@
 #ifndef TYPE_TRAITS_H_3425628658765467
 #define TYPE_TRAITS_H_3425628658765467
 
+#include <algorithm>
 #include <type_traits>
 
 //https://en.cppreference.com/w/cpp/header/type_traits
 
 namespace zen
 {
-template<class T, class...>
+template <class T, class...>
 struct GetFirstOf
 {
     using Type = T;
 };
-template<class... T> using GetFirstOfT = typename GetFirstOf<T...>::Type;
+template <class... T> using GetFirstOfT = typename GetFirstOf<T...>::Type;
 
 
 template <class F>
@@ -28,61 +29,64 @@ class FunctionReturnType
 public:
     using Type = decltype(dummyFun(F()));
 };
-template<class F> using FunctionReturnTypeT = typename FunctionReturnType<F>::Type;
+template <class F> using FunctionReturnTypeT = typename FunctionReturnType<F>::Type;
 
 //=============================================================================
 
-template<class T, size_t N>
-constexpr size_t arraySize(T (&)[N]) { return N; }
-
-template<class S, class T, size_t N>
-constexpr S arrayAccumulate(T (&arr)[N])
+template <class T, size_t N>
+constexpr uint32_t arrayHash(T (&arr)[N]) //don't bother making FNV1aHash constexpr instead
 {
-    S sum = 0;
-    for (size_t i = 0; i < N; ++i)
-        sum += arr[i];
-    return sum;
+    uint32_t hashVal = 2166136261U; //FNV-1a base
+
+    std::for_each(&arr[0], &arr[N], [&hashVal](T n)
+    {
+        //static_assert(isInteger<T> || std::is_same_v<T, char> || std::is_same_v<T, wchar_t>);
+        static_assert(sizeof(T) <= sizeof(hashVal));
+        hashVal ^= static_cast<uint32_t>(n);
+        hashVal *= 16777619U; //prime
+    });
+    return hashVal;
 }
 
 //Herb Sutter's signedness conversion helpers: https://herbsutter.com/2013/06/13/gotw-93-solution-auto-variables-part-2/
-template<class T> inline auto makeSigned  (T t) { return static_cast<std::make_signed_t  <T>>(t); }
-template<class T> inline auto makeUnsigned(T t) { return static_cast<std::make_unsigned_t<T>>(t); }
+template <class T> inline auto makeSigned  (T t) { return static_cast<std::make_signed_t  <T>>(t); }
+template <class T> inline auto makeUnsigned(T t) { return static_cast<std::make_unsigned_t<T>>(t); }
 
 //################# Built-in Types  ########################
 //unfortunate standardized nonsense: std::is_integral<> includes bool, char, wchar_t! => roll our own:
-template<class T> constexpr bool IsUnsignedIntV = std::is_same_v<std::remove_cv_t<T>, unsigned char>      ||
+template <class T> constexpr bool isUnsignedInt = std::is_same_v<std::remove_cv_t<T>, unsigned char>      ||
                                                   std::is_same_v<std::remove_cv_t<T>, unsigned short int> ||
                                                   std::is_same_v<std::remove_cv_t<T>, unsigned int>       ||
                                                   std::is_same_v<std::remove_cv_t<T>, unsigned long int>  ||
                                                   std::is_same_v<std::remove_cv_t<T>, unsigned long long int>;
 
-template<class T> constexpr bool IsSignedIntV = std::is_same_v<std::remove_cv_t<T>, signed char> ||
+template <class T> constexpr bool isSignedInt = std::is_same_v<std::remove_cv_t<T>, signed char> ||
                                                 std::is_same_v<std::remove_cv_t<T>, short int>   ||
                                                 std::is_same_v<std::remove_cv_t<T>, int>         ||
                                                 std::is_same_v<std::remove_cv_t<T>, long int>    ||
                                                 std::is_same_v<std::remove_cv_t<T>, long long int>;
 
-template<class T> constexpr bool IsIntegerV    = IsUnsignedIntV<T> || IsSignedIntV<T>;
-template<class T> constexpr bool IsFloatV      = std::is_floating_point_v<T>;
-template<class T> constexpr bool IsArithmeticV = IsIntegerV<T> || IsFloatV<T>;
+template <class T> constexpr bool isInteger    = isUnsignedInt<T> || isSignedInt<T>;
+template <class T> constexpr bool isFloat      = std::is_floating_point_v<T>;
+template <class T> constexpr bool isArithmetic = isInteger<T> || isFloat<T>;
 
 //################# Class Members ########################
 
-/*  Detect data or function members of a class by name: ZEN_INIT_DETECT_MEMBER + HasMember_
+/*  Detect data or function members of a class by name: ZEN_INIT_DETECT_MEMBER + hasMember_
     Example: 1. ZEN_INIT_DETECT_MEMBER(c_str);
-             2. HasMemberV_c_str<T>    -> use boolean
+             2. hasMember_c_str<T>    -> use boolean
 
 
     Detect data or function members of a class by name *and* type: ZEN_INIT_DETECT_MEMBER2 + HasMember_
 
     Example: 1. ZEN_INIT_DETECT_MEMBER2(size, size_t (T::*)() const);
-             2. HasMember_size<T>::value    -> use as boolean
+             2. hasMember_size<T>::value    -> use as boolean
 
 
-    Detect member type of a class: ZEN_INIT_DETECT_MEMBER_TYPE + HasMemberType_
+    Detect member type of a class: ZEN_INIT_DETECT_MEMBER_TYPE + hasMemberType_
 
     Example: 1. ZEN_INIT_DETECT_MEMBER_TYPE(value_type);
-             2. HasMemberTypeV_value_type<T>    -> use as boolean                       */
+             2. hasMemberType_value_type<T>    -> use as boolean                       */
 
 //########## Sorting ##############################
 /*
@@ -103,7 +107,7 @@ private:
 };
 
 template <class Predicate> inline
-/**/           Predicate  makeSortDirection(Predicate pred, std::true_type) { return pred; }
+/**/            Predicate makeSortDirection(Predicate pred, std::true_type) { return pred; }
 
 template <class Predicate> inline
 LessDescending<Predicate> makeSortDirection(Predicate pred, std::false_type) { return pred; }
@@ -138,10 +142,10 @@ LessDescending<Predicate> makeSortDirection(Predicate pred, std::false_type) { r
         enum { value = sizeof(hasMember<T>(nullptr)) == sizeof(Yes) };                          \
     };                                                                                          \
     \
-    template<class T>                                           \
+    template <class T>                                          \
     struct HasMemberImpl_##NAME<false, T> : std::false_type {}; \
     \
-    template<class T> constexpr bool HasMemberV_##NAME = HasMemberImpl_##NAME<std::is_class_v<T>, T>::value;
+    template <class T> constexpr bool hasMember_##NAME = HasMemberImpl_##NAME<std::is_class_v<T>, T>::value;
 
 //####################################################################
 
@@ -161,7 +165,7 @@ LessDescending<Predicate> makeSortDirection(Predicate pred, std::false_type) { r
         enum { value = sizeof(hasMember<U>(nullptr)) == sizeof(Yes) };      \
     };                                                                      \
     \
-    template<class T> constexpr bool HasMemberV_##NAME = HasMember_##NAME<T>::value;
+    template <class T> constexpr bool hasMember_##NAME = HasMember_##NAME<T>::value;
 
 //####################################################################
 
@@ -181,7 +185,7 @@ LessDescending<Predicate> makeSortDirection(Predicate pred, std::false_type) { r
         enum { value = sizeof(hasMemberType<T>(nullptr)) == sizeof(Yes) };           \
     };                                                                               \
     \
-    template<class T> constexpr bool HasMemberTypeV_##TYPENAME = HasMemberType_##TYPENAME<T>::value;
+    template <class T> constexpr bool hasMemberType_##TYPENAME = HasMemberType_##TYPENAME<T>::value;
 }
 
 

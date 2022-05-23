@@ -257,7 +257,7 @@ void FileVersioner::revisionFolder(const AbstractPath& folderPath, const Zstring
 }
 
 
-void FileVersioner::revisionFolderImpl(const AbstractPath& folderPath, const Zstring& relativePath, //throw FileError, X
+void FileVersioner::revisionFolderImpl(const AbstractPath& folderPath, const Zstring& relPath, //throw FileError, X
                                        const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeFileMove,
                                        const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeFolderMove,
                                        const IoCallback& notifyUnbufferedIO /*throw X*/) const
@@ -273,28 +273,26 @@ void FileVersioner::revisionFolderImpl(const AbstractPath& folderPath, const Zst
     [&](const AFS::FolderInfo&  fi) { folders .push_back(fi); },
     [&](const AFS::SymlinkInfo& si) { symlinks.push_back(si); });
 
-    const Zstring relPathPf = appendSeparator(relativePath);
-
     for (const AFS::FileInfo& fileInfo : files)
     {
         const FileDescriptor fileDescr{AFS::appendRelPath(folderPath, fileInfo.itemName),
                                        FileAttributes(fileInfo.modTime, fileInfo.fileSize, fileInfo.filePrint, false /*isFollowedSymlink*/)};
 
-        revisionFileImpl(fileDescr, relPathPf + fileInfo.itemName, onBeforeFileMove, notifyUnbufferedIO); //throw FileError, X
+        revisionFileImpl(fileDescr, appendPath(relPath, fileInfo.itemName), onBeforeFileMove, notifyUnbufferedIO); //throw FileError, X
     }
 
     for (const AFS::SymlinkInfo& linkInfo : symlinks)
         revisionSymlinkImpl(AFS::appendRelPath(folderPath, linkInfo.itemName),
-                            relPathPf + linkInfo.itemName, onBeforeFileMove); //throw FileError
+                            appendPath(relPath, linkInfo.itemName), onBeforeFileMove); //throw FileError
 
     //move folders recursively
     for (const AFS::FolderInfo& folderInfo : folders)
         revisionFolderImpl(AFS::appendRelPath(folderPath, folderInfo.itemName), //throw FileError, X
-                           relPathPf + folderInfo.itemName,
+                           appendPath(relPath, folderInfo.itemName),
                            onBeforeFileMove, onBeforeFolderMove, notifyUnbufferedIO);
     //delete source
     if (onBeforeFolderMove)
-        onBeforeFolderMove(AFS::getDisplayPath(folderPath), AFS::getDisplayPath(AFS::appendRelPath(versioningFolderPath_, relativePath)));
+        onBeforeFolderMove(AFS::getDisplayPath(folderPath), AFS::getDisplayPath(AFS::appendRelPath(versioningFolderPath_, relPath)));
 
     AFS::removeFolderPlain(folderPath); //throw FileError
 }
@@ -309,7 +307,7 @@ struct VersionInfo
     AbstractPath filePath;
     bool         isSymlink = false;
 };
-using VersionInfoMap = std::map<Zstring, std::vector<VersionInfo>>; //relPathOrig => <version infos>
+using VersionInfoMap = std::unordered_map<Zstring, std::vector<VersionInfo>>; //relPathOrig => <version infos>
 
 //subfolder\Sample.txt 2012-05-15 131513.txt  =>  subfolder\Sample.txt     version:2012-05-15 131513
 //2012-05-15 131513\subfolder\Sample.txt      =>          "                          "
@@ -322,7 +320,7 @@ void findFileVersions(VersionInfoMap& versions,
 {
     auto addVersion = [&](const Zstring& fileName, const Zstring& fileNameOrig, time_t versionTime, bool isSymlink)
     {
-        const Zstring& relPathOrig   = nativeAppendPaths(relPathOrigParent, fileNameOrig);
+        const Zstring& relPathOrig   = appendPath(relPathOrigParent, fileNameOrig);
         const AbstractPath& filePath = AFS::appendRelPath(parentFolderPath, fileName);
 
         versions[relPathOrig].push_back(VersionInfo{versionTime, filePath, isSymlink});
@@ -364,7 +362,7 @@ void findFileVersions(VersionInfoMap& versions,
 
         findFileVersions(versions, attrAndSub.second,
                          AFS::appendRelPath(parentFolderPath, folderName),
-                         nativeAppendPaths(relPathOrigParent, folderName),
+                         appendPath(relPathOrigParent, folderName),
                          versionTimeParent);
     }
 }

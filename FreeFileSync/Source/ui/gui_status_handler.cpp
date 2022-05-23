@@ -232,20 +232,23 @@ ProcessCallback::Response StatusHandlerTemporaryPanel::reportError(const ErrorIn
 {
     PauseTimers dummy(*mainDlg_.compareStatus_);
 
+    //log actual fail time (not "now"!)
+    const time_t failTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now() -
+                                                                 std::chrono::duration_cast<std::chrono::system_clock::duration>(std::chrono::steady_clock::now() - errorInfo.failTime));
     //auto-retry
     if (errorInfo.retryNumber < autoRetryCount_)
     {
-        errorLog_.logMsg(errorInfo.msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO);
+        errorLog_.logMsg(errorInfo.msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO, failTime);
         delayAndCountDown(errorInfo.failTime + autoRetryDelay_,
                           [&, statusPrefix  = _("Automatic retry") +
-                                              (errorInfo.retryNumber == 0 ? L"" : L' ' + formatNumber(errorInfo.retryNumber + 1)) + L" | ",
-                              statusPostfix = L" | " + _("Error") + L": " + replaceCpy(errorInfo.msg, L'\n', L' ')](const std::wstring& timeRemMsg)
+                                              (errorInfo.retryNumber == 0 ? L"" : L' ' + formatNumber(errorInfo.retryNumber + 1)) + SPACED_DASH,
+                              statusPostfix = SPACED_DASH + _("Error") + L": " + replaceCpy(errorInfo.msg, L'\n', L' ')](const std::wstring& timeRemMsg)
         { this->updateStatus(statusPrefix + timeRemMsg + statusPostfix); }); //throw AbortProcess
         return ProcessCallback::retry;
     }
 
     //always, except for "retry":
-    auto guardWriteLog = zen::makeGuard<ScopeGuardRunMode::onExit>([&] { errorLog_.logMsg(errorInfo.msg, MSG_TYPE_ERROR); });
+    auto guardWriteLog = makeGuard<ScopeGuardRunMode::onExit>([&] { errorLog_.logMsg(errorInfo.msg, MSG_TYPE_ERROR, failTime); });
 
     if (!mainDlg_.compareStatus_->getOptionIgnoreErrors())
     {
@@ -266,7 +269,7 @@ ProcessCallback::Response StatusHandlerTemporaryPanel::reportError(const ErrorIn
             case ConfirmationButton3::decline: //retry
                 guardWriteLog.dismiss();
                 errorLog_.logMsg(errorInfo.msg + L"\n-> " + _("Retrying operation..."), //explain why there are duplicate "doing operation X" info messages in the log!
-                                 MSG_TYPE_INFO);
+                                 MSG_TYPE_INFO, failTime);
                 return ProcessCallback::retry;
 
             case ConfirmationButton3::cancel:
@@ -451,7 +454,7 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(c
                 try
                 {
                     sendLogAsEmail(notifyEmail, summary, errorLog_, logFilePath, notifyStatusNoThrow); //throw FileError
-                    errorLog_.logMsg(replaceCpy(_("Sending email notification to %x..."), L"%x", utfTo<std::wstring>(notifyEmail)), MSG_TYPE_INFO);
+                    errorLog_.logMsg(replaceCpy(_("Sending email notification to %x"), L"%x", utfTo<std::wstring>(notifyEmail)), MSG_TYPE_INFO);
                 }
                 catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); }
 
@@ -600,22 +603,23 @@ ProcessCallback::Response StatusHandlerFloatingDialog::reportError(const ErrorIn
 {
     PauseTimers dummy(*progressDlg_);
 
+    //log actual fail time (not "now"!)
+    const time_t failTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now() -
+                                                                 std::chrono::duration_cast<std::chrono::system_clock::duration>(std::chrono::steady_clock::now() - errorInfo.failTime));
     //auto-retry
     if (errorInfo.retryNumber < autoRetryCount_)
     {
-        warn_static("maybe we should consider errorInfo.failTime, and not 'now' when logging the error?")
-
-        errorLog_.logMsg(errorInfo.msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO);
+        errorLog_.logMsg(errorInfo.msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO, failTime);
         delayAndCountDown(errorInfo.failTime + autoRetryDelay_,
                           [&, statusPrefix  = _("Automatic retry") +
-                                              (errorInfo.retryNumber == 0 ? L"" : L' ' + formatNumber(errorInfo.retryNumber + 1)) + L" | ",
-                              statusPostfix = L" | " + _("Error") + L": " + replaceCpy(errorInfo.msg, L'\n', L' ')](const std::wstring& timeRemMsg)
+                                              (errorInfo.retryNumber == 0 ? L"" : L' ' + formatNumber(errorInfo.retryNumber + 1)) + SPACED_DASH,
+                              statusPostfix = SPACED_DASH + _("Error") + L": " + replaceCpy(errorInfo.msg, L'\n', L' ')](const std::wstring& timeRemMsg)
         { this->updateStatus(statusPrefix + timeRemMsg + statusPostfix); }); //throw AbortProcess
         return ProcessCallback::retry;
     }
 
     //always, except for "retry":
-    auto guardWriteLog = zen::makeGuard<ScopeGuardRunMode::onExit>([&] { errorLog_.logMsg(errorInfo.msg, MSG_TYPE_ERROR); });
+    auto guardWriteLog = makeGuard<ScopeGuardRunMode::onExit>([&] { errorLog_.logMsg(errorInfo.msg, MSG_TYPE_ERROR, failTime); });
 
     if (!progressDlg_->getOptionIgnoreErrors())
     {
@@ -636,7 +640,7 @@ ProcessCallback::Response StatusHandlerFloatingDialog::reportError(const ErrorIn
             case ConfirmationButton3::decline: //retry
                 guardWriteLog.dismiss();
                 errorLog_.logMsg(errorInfo.msg + L"\n-> " + _("Retrying operation..."), //explain why there are duplicate "doing operation X" info messages in the log!
-                                 MSG_TYPE_INFO);
+                                 MSG_TYPE_INFO, failTime);
                 return ProcessCallback::retry;
 
             case ConfirmationButton3::cancel:

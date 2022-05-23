@@ -7,8 +7,7 @@
 #ifndef RESOLVE_PATH_H_817402834713454
 #define RESOLVE_PATH_H_817402834713454
 
-#include <vector>
-#include "zstring.h"
+#include "file_error.h"
 
 
 namespace zen
@@ -24,7 +23,8 @@ Zstring getResolvedFilePath(const Zstring& pathPhrase); //noexcept
 //macro substitution only
 Zstring expandMacros(const Zstring& text);
 
-std::vector<Zstring> getFolderPathAliases(const Zstring& folderPathPhrase); //may block for slow USB sticks when resolving [<volume name>]
+std::vector<Zstring> getPathPhraseAliases(const Zstring& itemPath);
+Zstring makePathPhrase(const Zstring& itemPath);
 
 }
 

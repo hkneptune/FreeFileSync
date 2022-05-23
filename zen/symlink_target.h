@@ -7,9 +7,7 @@
 #ifndef SYMLINK_TARGET_H_801783470198357483
 #define SYMLINK_TARGET_H_801783470198357483
 
-#include "scope_guard.h"
 #include "file_error.h"
-#include "file_path.h"
 
     #include <unistd.h>
     #include <stdlib.h> //realpath

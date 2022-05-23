@@ -51,7 +51,7 @@ void zen::traverseFolder(const Zstring& dirPath,
             if (itemName.empty()) //checks result of normalizeUtfForPosix, too!
                 throw FileError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(dirPath)), formatSystemError("readdir", L"", L"Folder contains an item without name."));
 
-            const Zstring& itemPath = appendSeparator(dirPath) + itemName;
+            const Zstring& itemPath = appendPath(dirPath, itemName);
 
             struct stat statData = {};
             try

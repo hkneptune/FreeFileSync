@@ -13,6 +13,7 @@
 #include <wx+/dc.h>
 #include <wx+/image_resources.h>
 #include <wx+/image_tools.h>
+#include <wx+/std_button_layout.h>
 #include "base/icon_loader.h"
 
 

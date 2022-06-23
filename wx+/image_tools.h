@@ -61,13 +61,6 @@ wxImage resizeCanvas(const wxImage& img, wxSize newSize, int alignment);
 
 
 
-inline
-int getDefaultMenuIconSize()
-{
-    return fastFromDIP(20);
-}
-
-
 
 
 

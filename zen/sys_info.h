@@ -35,6 +35,7 @@ Zstring getRealProcessPath(); //throw FileError
 Zstring getUserDownloadsPath(); //throw FileError
 Zstring getUserDataPath(); //throw FileError
 
+Zstring getUserHome(); //throw FileError
 }
 
 #endif //SYSTEM_H_4189731847832147508915

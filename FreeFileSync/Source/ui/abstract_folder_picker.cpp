@@ -6,7 +6,7 @@
 
 #include "abstract_folder_picker.h"
 #include <wx+/async_task.h>
-#include <wx+/std_button_layout.h>
+//#include <wx+/std_button_layout.h>
 #include <wx+/image_resources.h>
 #include <wx+/popup_dlg.h>
 #include <wx+/image_tools.h>

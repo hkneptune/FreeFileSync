@@ -16,7 +16,7 @@
 #include <wx+/graph.h>
 #include <wx+/no_flicker.h>
 #include <wx+/font_size.h>
-#include <wx+/std_button_layout.h>
+//#include <wx+/std_button_layout.h>
 #include <zen/file_access.h>
 #include <zen/thread.h>
 #include <zen/perf.h>
@@ -878,6 +878,7 @@ dlgSizeBuf_(dlgSize)
     auto generateSquareBitmap = [&](const wxColor& fillCol, const wxColor& borderCol)
     {
         wxBitmap bmpSquare(this->GetCharHeight(), this->GetCharHeight()); //seems we don't need to pass 24-bit depth here even for high-contrast color schemes
+        bmpSquare.SetScaleFactor(getDisplayScaleFactor());
         {
             wxMemoryDC dc(bmpSquare);
             drawInsetRectangle(dc, wxRect(bmpSquare.GetSize()), fastFromDIP(1), borderCol, fillCol);
@@ -1443,7 +1444,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult syncResult, 
     pnl_.m_notebookResult->AddPage(logPanel, _("Log"), false /*bSelect*/);
 
     //show log instead of graph if errors occurred! (not required for ignored warnings)
-    const ErrorLog::Stats logCount = log.ref().getStats();
+    const ErrorLogStats logCount = getStats(log.ref());
     if (logCount.error > 0)
         pnl_.m_notebookResult->ChangeSelection(pagePosLog);
 

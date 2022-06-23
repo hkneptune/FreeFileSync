@@ -209,8 +209,7 @@ ImageBuffer::ImageBuffer(const Zstring& zipPath) //throw FileError
     }
     //--------------------------------------------------------------------
 
-    //activate support for .png files
-    wxImage::AddHandler(new wxPNGHandler); //ownership passed
+    wxImage::AddHandler(new wxPNGHandler/*ownership passed*/); //activate support for .png files
 
     //do we need xBRZ scaling for high quality DPI images?
     const int hqScale = std::clamp(numeric::intDivCeil(fastFromDIP(1000), 1000), 1, xbrz::SCALE_FACTOR_MAX);

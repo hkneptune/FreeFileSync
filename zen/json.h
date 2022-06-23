@@ -22,8 +22,8 @@ struct JsonValue
         boolean, //primitive types
         number,  //
         string,  //
-        object,
         array,
+        object,
     };
 
     /**/     JsonValue() {}
@@ -40,9 +40,10 @@ struct JsonValue
 
 
     Type type = Type::null;
-    std::string                                primVal; //for primitive types
-    std::unordered_map<std::string, JsonValue> objectVal; //"[...] most implementations of JSON libraries do not accept duplicate keys [...]" => fine!
-    std::vector<JsonValue>                     arrayVal;
+    std::string                      primVal; //for primitive types
+    std::vector<JsonValue>           arrayVal;
+    std::map<std::string, JsonValue> objectVal; //"[...] most implementations of JSON libraries do not accept duplicate keys [...]" => fine!
+    //alternative: std::unordered_map => but let's keep std::map, so that objectVal is sorted for our unit tests
 };
 
 

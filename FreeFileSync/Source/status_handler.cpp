@@ -41,15 +41,15 @@ void fff::runCommandAndLogErrors(const Zstring& cmdLine, ErrorLog& errorLog)
             exitCode != 0)
             throw SysError(formatSystemError("", replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), utfTo<std::wstring>(output)));
 
-        errorLog.logMsg(_("Executing command:") + L' ' + utfTo<std::wstring>(cmdLine) + L" [" + replaceCpy(_("Exit code %x"), L"%x", L"0") + L']', MSG_TYPE_INFO);
+        logMsg(errorLog, _("Executing command:") + L' ' + utfTo<std::wstring>(cmdLine) + L" [" + replaceCpy(_("Exit code %x"), L"%x", L"0") + L']', MSG_TYPE_INFO);
     }
     catch (SysErrorTimeOut&) //child process not failed yet => probably fine :>
     {
-        errorLog.logMsg(_("Executing command:") + L' ' + utfTo<std::wstring>(cmdLine), MSG_TYPE_INFO);
+        logMsg(errorLog, _("Executing command:") + L' ' + utfTo<std::wstring>(cmdLine), MSG_TYPE_INFO);
     }
     catch (const SysError& e)
     {
-        errorLog.logMsg(replaceCpy(_("Command %x failed."), L"%x", fmtPath(cmdLine)) + L"\n\n" + e.toString(), MSG_TYPE_ERROR);
+        logMsg(errorLog, replaceCpy(_("Command %x failed."), L"%x", fmtPath(cmdLine)) + L"\n\n" + e.toString(), MSG_TYPE_ERROR);
     }
 }
 

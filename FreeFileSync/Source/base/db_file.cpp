@@ -113,6 +113,7 @@ DbStreams loadStreams(const AbstractPath& dbPath, const IoCallback& notifyUnbuff
         try { dbNotYetExisting = !AFS::itemStillExists(dbPath); /*throw FileError*/ }
         //abstract context => unclear which exception is more relevant/useless:
         catch (const FileError& e2) { throw FileError(replaceCpy(e.toString(), L"\n\n", L'\n'), replaceCpy(e2.toString(), L"\n\n", L'\n')); }
+        //caveat: merging FileError might create redundant error message: https://freefilesync.org/forum/viewtopic.php?t=9377
 
         if (dbNotYetExisting) //throw FileError
             throw FileErrorDatabaseNotExisting(replaceCpy(_("Database file %x does not yet exist."), L"%x", fmtPath(AFS::getDisplayPath(dbPath))));

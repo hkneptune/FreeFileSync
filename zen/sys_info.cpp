@@ -28,30 +28,32 @@ Zstring zen::getLoginUser() //throw FileError
 {
     auto tryGetNonRootUser = [](const char* varName) -> const char*
     {
-        if (const char* buf = ::getenv(varName)) //no extended error reporting
+        if (const char* buf = ::getenv(varName)) //no ownership transfer + no extended error reporting
             if (strLength(buf) > 0 && !equalString(buf, "root"))
                 return buf;
         return nullptr;
     };
 
-    const uid_t userIdNo = ::getuid(); //never fails
-
-    if (userIdNo != 0) //nofail; non-root
+    if (const uid_t userIdNo = ::getuid(); //never fails
+        userIdNo != 0) //nofail; non-root
     {
-        std::vector<char> buf(std::max<long>(10000, ::sysconf(_SC_GETPW_R_SIZE_MAX))); //::sysconf may return long(-1)
+        //ugh, the world's stupidest API:
+        std::vector<char> buf(std::max<long>(10000, ::sysconf(_SC_GETPW_R_SIZE_MAX))); //::sysconf may return long(-1) or even a too small size!! WTF!
         passwd buf2 = {};
-        passwd* pwsEntry = nullptr;
-        if (::getpwuid_r(userIdNo,        //uid_t uid
-                         &buf2,           //struct passwd* pwd
-                         &buf[0],         //char* buf
-                         buf.size(),      //size_t buflen
-                         &pwsEntry) != 0) //struct passwd** result
-            THROW_LAST_FILE_ERROR(_("Cannot get process information."), "getpwuid_r");
+        passwd* pwEntry = nullptr;
+        if (const int rv = ::getpwuid_r(userIdNo,   //uid_t uid
+                                        &buf2,      //struct passwd* pwd
+                                        &buf[0],    //char* buf
+                                        buf.size(), //size_t buflen
+                                        &pwEntry);  //struct passwd** result
+            rv != 0 || !pwEntry)
+        {
+            //"If an error occurs, errno is set appropriately" => why the fuck, then also return errno as return value!?
+            errno = rv != 0 ? rv : ENOENT;
+            THROW_LAST_FILE_ERROR(_("Cannot get process information."), "getpwuid_r(" + numberTo<std::string>(userIdNo) + ')');
+        }
 
-        if (!pwsEntry)
-            throw FileError(_("Cannot get process information."), L"no login found"); //should not happen?
-
-        return pwsEntry->pw_name;
+        return pwEntry->pw_name;
     }
     //else: root(0) => consider as request for elevation, NOT impersonation!
 
@@ -178,29 +180,49 @@ Zstring zen::getRealProcessPath() //throw FileError
 }
 
 
-namespace
+Zstring zen::getUserHome() //throw FileError
 {
-Zstring getUserDir() //throw FileError
-{
-    const Zstring loginUser = getLoginUser(); //throw FileError
-    if (loginUser == "root")
-        return "/root";
-    else
-        return "/home/" + loginUser;
+    if (::getuid() != 0) //nofail; non-root
+        /*   https://linux.die.net/man/3/getpwuid: An application that wants to determine its user's home directory
+           should inspect the value of HOME (rather than the value getpwuid(getuid())->pw_dir) since this allows
+           the user to modify their notion of "the home directory" during a login session.                       */
+        if (const char* homePath = ::getenv("HOME")) //no ownership transfer + no extended error reporting
+            return homePath;
 
-    //safer? sudo --user $userName sh -c 'echo $HOME'
-}
+    //root(0) => consider as request for elevation, NOT impersonation!
+    //=> no support for HOME variable :(
+
+    const Zstring loginUser = getLoginUser(); //throw FileError
+
+    //ugh, the world's stupidest API:
+    std::vector<char> buf(std::max<long>(10000, ::sysconf(_SC_GETPW_R_SIZE_MAX))); //::sysconf may return long(-1) or even a too small size!! WTF!
+    passwd buf2 = {};
+    passwd* pwEntry = nullptr;
+    if (const int rv = ::getpwnam_r(loginUser.c_str(), //const char *name
+                                    &buf2,      //struct passwd* pwd
+                                    &buf[0],    //char* buf
+                                    buf.size(), //size_t buflen
+                                    &pwEntry);  //struct passwd** result
+        rv != 0 || !pwEntry)
+    {
+        //"If an error occurs, errno is set appropriately" => why the fuck, then also return errno as return value!?
+        errno = rv != 0 ? rv : ENOENT;
+        THROW_LAST_FILE_ERROR(_("Cannot get process information."), "getpwnam_r(" + utfTo<std::string>(loginUser) + ')');
+    }
+
+    return pwEntry->pw_dir; //home directory
 }
 
 
 Zstring zen::getUserDataPath() //throw FileError
 {
-    if (::getuid() != 0) //nofail; root(0) => consider as request for elevation, NOT impersonation
-        if (const char* xdgCfgPath = ::getenv("XDG_CONFIG_HOME"); //no extended error reporting
+    if (::getuid() != 0) //nofail; non-root
+        if (const char* xdgCfgPath = ::getenv("XDG_CONFIG_HOME"); //no ownership transfer + no extended error reporting
             xdgCfgPath && xdgCfgPath[0] != 0)
             return xdgCfgPath;
+    //root(0) => consider as request for elevation, NOT impersonation
 
-    return getUserDir() + "/.config"; //throw FileError
+    return appendPath(getUserHome(), ".config"); //throw FileError
 }
 
 
@@ -208,7 +230,7 @@ Zstring zen::getUserDownloadsPath() //throw FileError
 {
     try
     {
-        if (::getuid() != 0) //nofail; root(0) => consider as request for elevation, NOT impersonation
+        if (::getuid() != 0) //nofail; non-root
             if (const auto& [exitCode, output] = consoleExecute("xdg-user-dir DOWNLOAD", std::nullopt /*timeoutMs*/); //throw SysError
                 exitCode == 0)
             {
@@ -216,9 +238,10 @@ Zstring zen::getUserDownloadsPath() //throw FileError
                 ASSERT_SYSERROR(!downloadsPath.empty());
                 return downloadsPath;
             }
+        //root(0) => consider as request for elevation, NOT impersonation
 
         //fallback: probably correct 99.9% of the time anyway...
-        return getUserDir() + "/Downloads"; //throw FileError
+        return appendPath(getUserHome(), "Downloads"); //throw FileError
     }
     catch (const SysError& e) { throw FileError(_("Cannot get process information."), e.toString()); }
 }

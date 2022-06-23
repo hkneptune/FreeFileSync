@@ -169,6 +169,7 @@ wxImage zen::stackImages(const wxImage& img1, const wxImage& img2, ImageStackLay
 wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const wxColor& col, ImageStackAlignment textAlign)
 {
     wxMemoryDC dc; //the context used for bitmaps
+    setScaleFactor(dc, getDisplayScaleFactor());
     dc.SetFont(font); //the font parameter of GetMultiLineTextExtent() is not evaluated on OS X, wxWidgets 2.9.5, so apply it to the DC directly!
 
     std::vector<std::pair<wxString, wxSize>> lineInfo; //text + extent
@@ -187,8 +188,9 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
         return wxNullImage;
 
     wxBitmap newBitmap(maxWidth, lineHeight * lineInfo.size()); //seems we don't need to pass 24-bit depth here even for high-contrast color schemes
+    newBitmap.SetScaleFactor(getDisplayScaleFactor());
     {
-        dc.SelectObject(newBitmap);
+        dc.SelectObject(newBitmap); //copies scale factor from wxBitmap
         ZEN_ON_SCOPE_EXIT(dc.SelectObject(wxNullBitmap));
 
         if (wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft)

@@ -709,27 +709,51 @@ const Zstringc* MergeSides::checkFailedRead(FileSystemObject& fsObj, const Zstri
 }
 
 
+template <class MapType, class Function>
+void forEachSorted(const MapType& fileMap, Function fun)
+{
+    struct FileRef
+    {
+        Zstring upperCaseName;
+        const typename MapType::value_type* ref;
+    };
+    std::vector<FileRef> fileList;
+    fileList.reserve(fileMap.size()); //perf: ~5% shorter runtime
+
+    for (const auto& item : fileMap)
+        fileList.push_back({getUpperCase(item.first), &item});
+
+    //primary sort: ignore Unicode normal form and upper/lower case
+    //=> natural default sequence on file grid UI
+    std::sort(fileList.begin(), fileList.end(), [](const FileRef& lhs, const FileRef& rhs) { return lhs.upperCaseName < rhs.upperCaseName; });
+
+    for (const auto& item : fileList)
+        fun(item.ref->first, item.ref->second);
+}
+
+
 template <SelectSide side>
 void MergeSides::fillOneSide(const FolderContainer& folderCont, const Zstringc* errorMsg, ContainerObject& output)
 {
-    for (const auto& [fileName, attrib] : folderCont.files)
+    forEachSorted(folderCont.files, [&](const Zstring& fileName, const FileAttributes& attrib)
     {
         FilePair& newItem = output.addSubFile<side>(fileName, attrib);
         checkFailedRead(newItem, errorMsg);
-    }
+    });
 
-    for (const auto& [linkName, attrib] : folderCont.symlinks)
+    forEachSorted(folderCont.symlinks, [&](const Zstring& linkName, const LinkAttributes& attrib)
     {
         SymlinkPair& newItem = output.addSubLink<side>(linkName, attrib);
         checkFailedRead(newItem, errorMsg);
-    }
+    });
 
-    for (const auto& [folderName, attrAndSub] : folderCont.folders)
+    forEachSorted(folderCont.folders, [&](const Zstring& folderName, const std::pair<FolderAttributes, FolderContainer>& attrib)
     {
-        FolderPair& newFolder = output.addSubFolder<side>(folderName, attrAndSub.first);
+        FolderPair& newFolder = output.addSubFolder<side>(folderName, attrib.first);
         const Zstringc* errorMsgNew = checkFailedRead(newFolder, errorMsg);
-        fillOneSide<side>(attrAndSub.second, errorMsgNew, newFolder); //recurse
-    }
+
+        fillOneSide<side>(attrib.second, errorMsgNew, newFolder); //recurse
+    });
 }
 
 

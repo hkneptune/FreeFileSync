@@ -11,6 +11,7 @@
 #include <wx/settings.h>
 #include <wx/statbmp.h>
 #include "image_tools.h"
+#include "std_button_layout.h"
 #include "dc.h"
 
 
@@ -66,9 +67,8 @@ void setBitmapTextLabel(wxBitmapButton& btn, const wxImage& img, const wxString&
                  stackImages(imgTxt, img, ImageStackLayout::horizontal, ImageStackAlignment::center, gap);
 
     //SetMinSize() instead of SetSize() is needed here for wxWindows layout determination to work correctly
-    const int defaultHeight = wxButton::GetDefaultSize().GetHeight();
     btn.SetMinSize({imgTxt.GetWidth () + 2 * border,
-                    std::max(imgTxt.GetHeight() + 2 * border, defaultHeight)});
+                    std::max(imgTxt.GetHeight() + 2 * border, getDefaultButtonHeight())});
 
     setImage(btn, imgTxt);
 }
@@ -104,6 +104,7 @@ inline
 wxBitmap renderSelectedButton(const wxSize& sz)
 {
     wxBitmap bmp(sz); //seems we don't need to pass 24-bit depth here even for high-contrast color schemes
+    bmp.SetScaleFactor(getDisplayScaleFactor());
     {
         wxMemoryDC dc(bmp);
 
@@ -119,6 +120,7 @@ inline
 wxBitmap renderPressedButton(const wxSize& sz)
 {
     wxBitmap bmp(sz); //seems we don't need to pass 24-bit depth here even for high-contrast color schemes
+    bmp.SetScaleFactor(getDisplayScaleFactor());
     {
         //draw rectangle border with gradient
         const wxColor colFrom = wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE);

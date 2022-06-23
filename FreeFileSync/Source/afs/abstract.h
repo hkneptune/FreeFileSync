@@ -437,6 +437,7 @@ bool operator==(const AbstractPath& lhs, const AbstractPath& rhs) { return lhs.a
 inline
 AbstractPath AbstractFileSystem::appendRelPath(const AbstractPath& ap, const Zstring& relPath)
 {
+    assert(!AbstractFileSystem::isNullPath(ap));
     return AbstractPath(ap.afsDevice, AfsPath(appendPath(ap.afsPath.value, relPath)));
 }
 

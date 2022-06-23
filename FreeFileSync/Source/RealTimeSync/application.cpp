@@ -19,7 +19,6 @@
 #include "../localization.h"
 #include "../ffs_paths.h"
 #include "../return_codes.h"
-#include "../fatal_error.h"
 
     #include <gtk/gtk.h>
 
@@ -33,6 +32,39 @@ IMPLEMENT_APP(Application)
 namespace
 {
 wxDEFINE_EVENT(EVENT_ENTER_EVENT_LOOP, wxCommandEvent);
+
+
+using fff::FfsExitCode;
+
+void notifyAppError(const std::wstring& msg, FfsExitCode rc)
+{
+    //raiseExitCode(exitCode_, rc);
+
+    const std::wstring msgTypeName = [&]
+    {
+        switch (rc)
+        {
+            //*INDENT-OFF*
+            case FfsExitCode::success: break;
+            case FfsExitCode::warning:   return _("Warning");
+            case FfsExitCode::error:     return _("Error");
+            case FfsExitCode::aborted:   return _("Error");
+            case FfsExitCode::exception: return _("An exception occurred");
+            //*INDENT-ON*
+        }
+        assert(false);
+        return std::wstring{};
+    }();
+    const std::wstring title = copyStringTo<std::wstring>(wxTheApp->GetAppDisplayName()) +
+                               (msgTypeName.empty() ? L"" : SPACED_DASH + msgTypeName);
+
+    //error handling strategy unknown and no sync log output available at this point!
+    std::cerr << '[' + utfTo<std::string>(title) + "] " + utfTo<std::string>(msg) << '\n';
+    //alternative0: std::wcerr: cannot display non-ASCII at all, so why does it exist???
+    //alternative1: wxSafeShowMessage => NO console output on Debian x86, WTF!
+    //alternative2: wxMessageBox() => works, but we probably shouldn't block during command line usage
+}
+
 }
 
 
@@ -40,15 +72,8 @@ bool Application::OnInit()
 {
     //do not call wxApp::OnInit() to avoid using wxWidgets command line parser
 
-    auto logInitError = [&](const std::wstring& msg)
-    {
-        //error handling strategy unknown and no sync log output available at this point!
-        auto titleFmt = copyStringTo<std::wstring>(wxTheApp->GetAppDisplayName()) + SPACED_DASH +  _("Error");
-        std::cerr << utfTo<std::string>(titleFmt + SPACED_DASH + msg) << '\n';
-    };
-
     try { imageResourcesInit(appendPath(fff::getResourceDirPath(), Zstr("Icons.zip"))); }
-    catch (const FileError& e) { logInitError(e.toString()); }
+    catch (const FileError& e) { notifyAppError(e.toString(), FfsExitCode::warning); }
     //errors are not really critical in this context
 
     //GTK should already have been initialized by wxWidgets (see \src\gtk\app.cpp:wxApp::Initialize)
@@ -83,12 +108,12 @@ bool Application::OnInit()
     }
     catch (const SysError& e)
     {
-        std::cerr << "RealTimeSync" << utfTo<std::string>(SPACED_DASH + e.toString()) + "\n" "Loading GTK3\'s old CSS format instead..." "\n";
+        std::cerr << "[RealTimeSync] " + utfTo<std::string>(e.toString()) + "\n" "Loading GTK3\'s old CSS format instead..." "\n";
         try
         {
             loadCSS("Gtk3Styles.old.css"); //throw SysError
         }
-        catch (const SysError& e2) { logInitError(e2.toString()); }
+        catch (const SysError& e2) { notifyAppError(e2.toString(), FfsExitCode::warning); }
     }
 #else
 #error unknown GTK version!
@@ -104,7 +129,7 @@ bool Application::OnInit()
             THROW_LAST_SYS_ERROR("signal(SIGHUP)");
         else assert(!oldHandler);
     }
-    catch (const SysError& e) { logInitError(e.toString()); }
+    catch (const SysError& e) { notifyAppError(e.toString(), FfsExitCode::warning); }
 
 
     //Windows User Experience Interaction Guidelines: tool tips should have 5s timeout, info tips no timeout => compromise:
@@ -118,7 +143,7 @@ bool Application::OnInit()
         fff::localizationInit(appendPath(fff::getResourceDirPath(), Zstr("Languages.zip"))); //throw FileError
         fff::setLanguage(getProgramLanguage()); //throw FileError
     }
-    catch (const FileError& e) { logInitError(e.toString()); }
+    catch (const FileError& e) { notifyAppError(e.toString(), FfsExitCode::warning); }
 
 
     auto onSystemShutdown = []
@@ -126,7 +151,7 @@ bool Application::OnInit()
         onSystemShutdownRunTasks();
 
         //it's futile to try and clean up while the process is in full swing (CRASH!) => just terminate!
-        terminateProcess(fff::FFS_EXIT_ABORTED);
+        terminateProcess(static_cast<int>(FfsExitCode::aborted));
     };
     Bind(wxEVT_QUERY_END_SESSION, [onSystemShutdown](wxCloseEvent& event) { onSystemShutdown(); }); //can veto
     Bind(wxEVT_END_SESSION,       [onSystemShutdown](wxCloseEvent& event) { onSystemShutdown(); }); //can *not* veto
@@ -187,7 +212,7 @@ wxLayoutDirection Application::GetLayoutDirection() const { return fff::getLayou
 int Application::OnRun()
 {
     [[maybe_unused]] const int rc = wxApp::OnRun();
-    return fff::FFS_EXIT_SUCCESS; //process exit code
+    return static_cast<int>(FfsExitCode::success); //process exit code
 }
 
 
@@ -199,11 +224,8 @@ void Application::OnUnhandledException() //handles both wxApp::OnInit() + wxApp:
     }
     catch (const std::bad_alloc& e) //the only kind of exception we don't want crash dumps for
     {
-        fff::logFatalError(utfTo<std::wstring>(e.what())); //it's not always possible to display a message box, e.g. corrupted stack, however low-level file output works!
-
-        const auto titleFmt = copyStringTo<std::wstring>(wxTheApp->GetAppDisplayName()) + SPACED_DASH + _("An exception occurred");
-        std::cerr << utfTo<std::string>(titleFmt + SPACED_DASH) << e.what() << '\n';
-        terminateProcess(fff::FFS_EXIT_EXCEPTION);
+        notifyAppError(utfTo<std::wstring>(e.what()), FfsExitCode::exception);
+        terminateProcess(static_cast<int>(FfsExitCode::exception));
     }
     //catch (...) -> Windows: let it crash and create mini dump!!! Linux/macOS: std::exception::what() logged to console
 }

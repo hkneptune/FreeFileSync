@@ -12,13 +12,13 @@
 
 namespace fff
 {
-enum FfsExitCode //as returned on process exit
+enum class FfsExitCode //as returned on process exit
 {
-    FFS_EXIT_SUCCESS = 0,
-    FFS_EXIT_WARNING,
-    FFS_EXIT_ERROR,
-    FFS_EXIT_ABORTED,
-    FFS_EXIT_EXCEPTION,
+    success = 0,
+    warning,
+    error,
+    aborted,
+    exception,
 };
 
 

@@ -17,7 +17,7 @@
 
 
 using namespace zen;
-using namespace fff; //functionally needed for correct overload resolution!!!
+using namespace fff; //required for correct overload resolution!
 
 
 namespace
@@ -29,7 +29,7 @@ const int XML_FORMAT_SYNC_CFG   = 17; //2020-10-14
 }
 
 
-const ExternalApp fff::extCommandFileBrowse
+const ExternalApp fff::extCommandFileManager
 //"xdg-open \"%parent_path%\"" -> not good enough: we need %local_path% for proper MTP/Google Drive handling
 {L"Show in file manager", "xdg-open \"$(dirname \"%local_path%\")\""};
 //mark for extraction: _("Show in file manager") Linux doesn't use the term "folder"
@@ -96,10 +96,8 @@ XmlGlobalSettings::XmlGlobalSettings() :
 
 //################################################################################################################
 
-Zstring fff::getGlobalConfigFile()
-{
-    return appendPath(getConfigDirPath(), Zstr("GlobalSettings.xml"));
-}
+Zstring fff::getGlobalConfigDefaultPath() { return appendPath(getConfigDirPath(), Zstr("GlobalSettings.xml")); }
+Zstring fff::getLogFolderDefaultPath   () { return appendPath(getConfigDirPath(), Zstr("Logs")); }
 
 
 XmlGuiConfig fff::convertBatchToGui(const XmlBatchConfig& batchCfg) //noexcept
@@ -928,30 +926,49 @@ namespace
 {
 
 
-Zstring substituteFreeFileSyncDriveLetter(const Zstring& cfgFilePath)
+Zstring makePortablePath(const Zstring& pathPhrase)
 {
-    return cfgFilePath;
+    const Zstring& pathTrm = trimCpy(pathPhrase);
+    const Zstring& ffsPath = getInstallDirPath();
+
+    if (pathTrm == ffsPath)
+        return Zstr("%ffs_path%");
+
+    if (startsWith(pathTrm, appendSeparator(ffsPath))) //don't allow *partial* component match!
+        return Zstring(Zstr("%ffs_path%")) + (pathTrm.c_str() + appendSeparator(ffsPath).size() - 1);
+
+    return pathPhrase;
 }
 
-Zstring resolveFreeFileSyncDriveMacro(const Zstring& cfgFilePhrase)
+
+Zstring resolvePortablePath(const Zstring& portablePathPhrase)
 {
-    return cfgFilePhrase;
+    const Zstring& pathTrm = trimCpy(portablePathPhrase);
+
+    if (startsWith(pathTrm, Zstr("%ffs_path%")))
+        return appendPath(getInstallDirPath(), afterFirst(pathTrm, FILE_NAME_SEPARATOR, IfNotFoundReturn::none)); //caveat: appendPath() requires relPath!
+
+    //TODO: remove parameter migration after some time! 2022-06-14
+    if (startsWith(pathTrm, Zstr("%ffs_resource%")))
+        return appendPath(getResourceDirPath(), afterFirst(pathTrm, FILE_NAME_SEPARATOR, IfNotFoundReturn::none));
+
+    return portablePathPhrase;
 }
 
 
-Zstring substituteFfsResourcePath(const Zstring& filePath)
+std::vector<Zstring> makePortablePath(std::vector<Zstring> pathPhrases)
 {
-    const Zstring resPathPf = appendSeparator(getResourceDirPath());
-    if (startsWith(trimCpy(filePath, true, false), resPathPf))
-        return Zstring(Zstr("%ffs_resource%")) + FILE_NAME_SEPARATOR + (filePath.c_str() + resPathPf.size());
-    return filePath;
+    for (Zstring& pathPhrase : pathPhrases)
+        pathPhrase = makePortablePath(pathPhrase);
+    return pathPhrases;
 }
 
-Zstring resolveFfsResourceMacro(const Zstring& filePhrase)
+
+std::vector<Zstring> resolvePortablePath(std::vector<Zstring> pathPhrases)
 {
-    if (startsWith(trimCpy(filePhrase, true, false), Zstring(Zstr("%ffs_resource%")) + FILE_NAME_SEPARATOR))
-        return appendSeparator(getResourceDirPath()) + afterFirst(filePhrase, FILE_NAME_SEPARATOR, IfNotFoundReturn::none);
-    return filePhrase;
+    for (Zstring& pathPhrase : pathPhrases)
+        pathPhrase = resolvePortablePath(pathPhrase);
+    return pathPhrases;
 }
 }
 
@@ -964,24 +981,23 @@ bool readStruc(const XmlElement& input, ConfigFileItem& value)
     bool success = true;
     success = input.getAttribute("Result",  value.logResult) && success;
 
-    Zstring cfgPathRaw;
     if (input.hasAttribute("CfgPath")) //TODO: remove after migration! 2020-02-09
-        success = input.getAttribute("CfgPath", cfgPathRaw) && success; //
+        success = input.getAttribute("CfgPath", value.cfgFilePath) && success; //
     else
-        success = input.getAttribute("Config", cfgPathRaw) && success;
+        success = input.getAttribute("Config", value.cfgFilePath) && success;
 
-    //FFS portable: use special syntax for config file paths: e.g. "FFS:\SyncJob.ffs_gui"
-    value.cfgFilePath = resolveFreeFileSyncDriveMacro(cfgPathRaw);
+    //FFS portable: use special syntax for config file paths: e.g. "%ffs_drive%\SyncJob.ffs_gui"
+    value.cfgFilePath = resolvePortablePath(value.cfgFilePath);
 
     success = input.getAttribute("LastSync", value.lastSyncTime) && success;
 
-    Zstring logPathPhrase;
+    Zstring logFilePhrase;
     if (input.hasAttribute("LogPath")) //TODO: remove after migration! 2020-02-09
-        success = input.getAttribute("LogPath", logPathPhrase) && success; //
+        success = input.getAttribute("LogPath", logFilePhrase) && success; //
     else
-        success = input.getAttribute("Log", logPathPhrase) && success;
+        success = input.getAttribute("Log", logFilePhrase) && success;
 
-    value.logFilePath = createAbstractPath(resolveFreeFileSyncDriveMacro(logPathPhrase));
+    value.logFilePath = createAbstractPath(resolvePortablePath(logFilePhrase));
 
     std::string hexColor; //optional XML attribute!
     if (input.getAttribute("Color", hexColor) && hexColor.size() == 6)
@@ -995,14 +1011,9 @@ template <> inline
 void writeStruc(const ConfigFileItem& value, XmlElement& output)
 {
     output.setAttribute("Result", value.logResult);
-    output.setAttribute("Config", substituteFreeFileSyncDriveLetter(value.cfgFilePath));
+    output.setAttribute("Config", makePortablePath(value.cfgFilePath));
     output.setAttribute("LastSync", value.lastSyncTime);
-
-    if (const Zstring& nativePath = getNativeItemPath(value.logFilePath);
-        !nativePath.empty())
-        output.setAttribute("Log", substituteFreeFileSyncDriveLetter(nativePath));
-    else
-        output.setAttribute("Log", AFS::getInitPathPhrase(value.logFilePath));
+    output.setAttribute("Log", makePortablePath(AFS::getInitPathPhrase(value.logFilePath)));
 
     if (value.backColor.IsOk())
     {
@@ -1022,9 +1033,8 @@ struct ConfigFileItemV9
 template <> inline
 bool readStruc(const XmlElement& input, ConfigFileItemV9& value)
 {
-    Zstring rawPath;
-    const bool rv1 = input.getValue(rawPath);
-    if (rv1) value.filePath = resolveFreeFileSyncDriveMacro(rawPath);
+    const bool rv1 = input.getValue(value.filePath);
+    if (rv1) value.filePath = resolvePortablePath(value.filePath);
 
     const bool rv2 = input.getAttribute("LastSync", value.lastSyncTime);
     return rv1 && rv2;
@@ -1605,9 +1615,9 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     }
     else
     {
-        cfg.soundFileCompareFinished = resolveFfsResourceMacro(cfg.soundFileCompareFinished);
-        cfg.soundFileSyncFinished    = resolveFfsResourceMacro(cfg.soundFileSyncFinished);
-        cfg.soundFileAlertPending    = resolveFfsResourceMacro(cfg.soundFileAlertPending);
+        cfg.soundFileCompareFinished = resolvePortablePath(cfg.soundFileCompareFinished);
+        cfg.soundFileSyncFinished    = resolvePortablePath(cfg.soundFileSyncFinished);
+        cfg.soundFileAlertPending    = resolvePortablePath(cfg.soundFileAlertPending);
     }
 
     XmlIn inMainWin = in["MainDialog"];
@@ -1688,8 +1698,9 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     }
     else
     {
-        inConfig["Configurations"].attribute("MaxSize", cfg.mainDlg.config.histItemsMax);
+        inConfig["Configurations"].attribute("MaxSize",      cfg.mainDlg.config.histItemsMax);
         inConfig["Configurations"].attribute("LastSelected", cfg.mainDlg.config.lastSelectedFile);
+        cfg.mainDlg.config.lastSelectedFile  = resolvePortablePath(cfg.mainDlg.config.lastSelectedFile);
         inConfig["Configurations"](cfg.mainDlg.config.fileHistory);
     }
     //TODO: remove after migration! 2019-11-30
@@ -1708,14 +1719,8 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     }
     else
     {
-        std::vector<Zstring> cfgPaths;
-        if (inConfig["LastUsed"](cfgPaths))
-        {
-            for (Zstring& filePath : cfgPaths)
-                filePath = resolveFreeFileSyncDriveMacro(filePath);
-
-            cfg.mainDlg.config.lastUsedFiles = cfgPaths;
-        }
+        inConfig["LastUsed"](cfg.mainDlg.config.lastUsedFiles);
+        cfg.mainDlg.config.lastUsedFiles = resolvePortablePath(cfg.mainDlg.config.lastUsedFiles);
     }
 
     //###########################################################
@@ -1739,8 +1744,8 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
         ; //new icon layout => let user re-evaluate settings
     else
     {
-        inFileGrid.attribute("ShowIcons",  cfg.mainDlg.showIcons);
-        inFileGrid.attribute("IconSize",   cfg.mainDlg.iconSize);
+        inFileGrid.attribute("ShowIcons", cfg.mainDlg.showIcons);
+        inFileGrid.attribute("IconSize",  cfg.mainDlg.iconSize);
     }
     inFileGrid.attribute("SashOffset", cfg.mainDlg.sashOffset);
 
@@ -1756,10 +1761,10 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     //TODO: remove old parameter after migration! 2021-03-06
     if (formatVer < 21)
     {
-        inFileGrid["ColumnsLeft"](cfg.dpiLayouts[getDpiScalePercent()].fileColumnAttribsLeft);
+        inFileGrid["ColumnsLeft" ](cfg.dpiLayouts[getDpiScalePercent()].fileColumnAttribsLeft);
         inFileGrid["ColumnsRight"](cfg.dpiLayouts[getDpiScalePercent()].fileColumnAttribsRight);
 
-        inFileGrid["ColumnsLeft"].attribute("PathFormat", cfg.mainDlg.itemPathFormatLeftGrid);
+        inFileGrid["ColumnsLeft" ].attribute("PathFormat", cfg.mainDlg.itemPathFormatLeftGrid);
         inFileGrid["ColumnsRight"].attribute("PathFormat", cfg.mainDlg.itemPathFormatRightGrid);
     }
     else
@@ -1770,9 +1775,13 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
 
     inFileGrid["FolderHistoryLeft" ](cfg.mainDlg.folderHistoryLeft);
     inFileGrid["FolderHistoryRight"](cfg.mainDlg.folderHistoryRight);
+    cfg.mainDlg.folderHistoryLeft  = resolvePortablePath(cfg.mainDlg.folderHistoryLeft);
+    cfg.mainDlg.folderHistoryRight = resolvePortablePath(cfg.mainDlg.folderHistoryRight);
 
     inFileGrid["FolderHistoryLeft" ].attribute("LastSelected", cfg.mainDlg.folderLastSelectedLeft);
     inFileGrid["FolderHistoryRight"].attribute("LastSelected", cfg.mainDlg.folderLastSelectedRight);
+    cfg.mainDlg.folderLastSelectedLeft  = resolvePortablePath(cfg.mainDlg.folderLastSelectedLeft);
+    cfg.mainDlg.folderLastSelectedRight = resolvePortablePath(cfg.mainDlg.folderLastSelectedRight);
 
     //TODO: remove parameter migration after some time! 2018-01-08
     if (formatVer < 6)
@@ -1787,9 +1796,13 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     inCopyTo.attribute("OverwriteIfExists", cfg.mainDlg.copyToCfg.overwriteIfExists);
 
     XmlIn inCopyToHistory = inCopyTo["FolderHistory"];
+
     inCopyToHistory(cfg.mainDlg.copyToCfg.folderHistory);
     inCopyToHistory.attribute("TargetFolder", cfg.mainDlg.copyToCfg.targetFolderPath);
     inCopyToHistory.attribute("LastSelected", cfg.mainDlg.copyToCfg.targetFolderLastSelected);
+    cfg.mainDlg.copyToCfg.folderHistory            = resolvePortablePath(cfg.mainDlg.copyToCfg.folderHistory);
+    cfg.mainDlg.copyToCfg.targetFolderPath         = resolvePortablePath(cfg.mainDlg.copyToCfg.targetFolderPath);
+    cfg.mainDlg.copyToCfg.targetFolderLastSelected = resolvePortablePath(cfg.mainDlg.copyToCfg.targetFolderLastSelected);
     //###########################################################
 
     XmlIn inDefFilter = inMainWin["DefaultViewFilter"];
@@ -1909,6 +1922,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     else
     {
         in["SftpKeyFile"].attribute("LastSelected", cfg.sftpKeyFileLastSelected);
+        cfg.sftpKeyFileLastSelected = resolvePortablePath(cfg.sftpKeyFileLastSelected);
     }
 
     if (formatVer < 22) //TODO: remove old parameter after migration! 2021-07-31
@@ -1926,7 +1940,10 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     {
         in["VersioningFolderHistory"](cfg.versioningFolderHistory);
         in["VersioningFolderHistory"].attribute("LastSelected", cfg.versioningFolderLastSelected);
+        cfg.versioningFolderLastSelected = resolvePortablePath(cfg.versioningFolderLastSelected);
     }
+    in["LogFolder"](cfg.logFolderPhrase);
+    cfg.logFolderPhrase = resolvePortablePath(cfg.logFolderPhrase);
 
     if (formatVer < 20) //TODO: remove old parameter after migration! 2020-12-03
     {
@@ -1937,6 +1954,8 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     {
         in["LogFolderHistory"](cfg.logFolderHistory);
         in["LogFolderHistory"].attribute("LastSelected", cfg.logFolderLastSelected);
+        cfg.logFolderHistory      = resolvePortablePath(cfg.logFolderHistory);
+        cfg.logFolderLastSelected = resolvePortablePath(cfg.logFolderLastSelected);
     }
 
     if (formatVer < 20) //TODO: remove old parameter after migration! 2020-12-03
@@ -2015,6 +2034,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
         in["LastOnlineVersion"](cfg.lastOnlineVersion);
     }
 
+    in["WelcomeShownVersion"](cfg.welcomeShownVersion);
 
     //cfg.dpiLayouts.clear(); -> NO: honor migration code above!
 
@@ -2054,67 +2074,16 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
 
 
 template <class ConfigType>
-std::pair<ConfigType, std::wstring /*warningMsg*/>  readConfig(const Zstring& filePath, XmlType type, int currentXmlFormatVer) //throw FileError
+std::pair<ConfigType, std::wstring /*warningMsg*/> parseConfig(const XmlDoc& doc, const Zstring& filePath, int currentXmlFormatVer) //noexcept
 {
-    XmlDoc doc = loadXml(filePath); //throw FileError
-
-    if (getXmlTypeNoThrow(doc) != type) //noexcept
-        throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)));
-
     int formatVer = 0;
     /*bool success =*/ doc.root().getAttribute("XmlFormat", formatVer);
 
     XmlIn in(doc);
     ConfigType cfg;
-    ::readConfig(in, cfg, formatVer);
+    readConfig(in, cfg, formatVer);
 
     std::wstring warningMsg;
-    try
-    {
-        checkXmlMappingErrors(in, filePath); //throw FileError
-
-        //(try to) migrate old configuration automatically
-        if (formatVer < currentXmlFormatVer)
-            try { fff::writeConfig(cfg, filePath); /*throw FileError*/ }
-            catch (FileError&) { assert(false); } //don't bother user!
-    }
-    catch (const FileError& e) { warningMsg = e.toString(); }
-
-    return {cfg, warningMsg};
-}
-}
-
-
-std::pair<XmlGuiConfig, std::wstring /*warningMsg*/> fff::readGuiConfig(const Zstring& filePath)
-{
-    return ::readConfig<XmlGuiConfig>(filePath, XmlType::gui, XML_FORMAT_SYNC_CFG); //throw FileError
-}
-
-
-std::pair<XmlBatchConfig, std::wstring /*warningMsg*/> fff::readBatchConfig(const Zstring& filePath)
-{
-    return ::readConfig<XmlBatchConfig>(filePath, XmlType::batch, XML_FORMAT_SYNC_CFG); //throw FileError
-}
-
-
-std::pair<XmlGlobalSettings, std::wstring /*warningMsg*/> fff::readGlobalConfig(const Zstring& filePath)
-{
-    return ::readConfig<XmlGlobalSettings>(filePath, XmlType::global, XML_FORMAT_GLOBAL_CFG); //throw FileError
-}
-
-
-namespace
-{
-template <class ConfigType>
-ConfigType parseConfig(const XmlDoc& doc, const Zstring& filePath, int currentXmlFormatVer, std::wstring& warningMsg) //nothrow
-{
-    int formatVer = 0;
-    /*bool success =*/ doc.root().getAttribute("XmlFormat", formatVer);
-
-    XmlIn in(doc);
-    ConfigType cfg;
-    ::readConfig(in, cfg, formatVer);
-
     try
     {
         checkXmlMappingErrors(in, filePath); //throw FileError
@@ -2124,13 +2093,40 @@ ConfigType parseConfig(const XmlDoc& doc, const Zstring& filePath, int currentXm
             try { fff::writeConfig(cfg, filePath); /*throw FileError*/ }
             catch (FileError&) { assert(false); } //don't bother user!
     }
-    catch (const FileError& e)
-    {
-        if (warningMsg.empty())
-            warningMsg = e.toString();
-    }
-    return cfg;
+    catch (const FileError& e) { warningMsg = e.toString(); }
+
+    return {cfg, warningMsg};
 }
+
+
+template <class ConfigType>
+std::pair<ConfigType, std::wstring /*warningMsg*/> readConfig(const Zstring& filePath, XmlType type, int currentXmlFormatVer) //throw FileError
+{
+    XmlDoc doc = loadXml(filePath); //throw FileError
+
+    if (getXmlTypeNoThrow(doc) != type) //noexcept
+        throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)));
+
+    return parseConfig<ConfigType>(doc, filePath, currentXmlFormatVer);
+}
+}
+
+
+std::pair<XmlGuiConfig, std::wstring /*warningMsg*/> fff::readGuiConfig(const Zstring& filePath)
+{
+    return readConfig<XmlGuiConfig>(filePath, XmlType::gui, XML_FORMAT_SYNC_CFG); //throw FileError
+}
+
+
+std::pair<XmlBatchConfig, std::wstring /*warningMsg*/> fff::readBatchConfig(const Zstring& filePath)
+{
+    return readConfig<XmlBatchConfig>(filePath, XmlType::batch, XML_FORMAT_SYNC_CFG); //throw FileError
+}
+
+
+std::pair<XmlGlobalSettings, std::wstring /*warningMsg*/> fff::readGlobalConfig(const Zstring& filePath)
+{
+    return readConfig<XmlGlobalSettings>(filePath, XmlType::global, XML_FORMAT_GLOBAL_CFG); //throw FileError
 }
 
 
@@ -2139,7 +2135,7 @@ std::pair<XmlGuiConfig, std::wstring /*warningMsg*/> fff::readAnyConfig(const st
     assert(!filePaths.empty());
 
     XmlGuiConfig cfg;
-    std::wstring warningMsg;
+    std::wstring warningMsgAll;
     std::vector<MainConfiguration> mainCfgs;
 
     for (auto it = filePaths.begin(); it != filePaths.end(); ++it)
@@ -2153,19 +2149,25 @@ std::pair<XmlGuiConfig, std::wstring /*warningMsg*/> fff::readAnyConfig(const st
         {
             case XmlType::gui:
             {
-                XmlGuiConfig guiCfg = parseConfig<XmlGuiConfig>(doc, filePath, XML_FORMAT_SYNC_CFG, warningMsg); //nothrow
+                const auto& [guiCfg, warningMsg] = parseConfig<XmlGuiConfig>(doc, filePath, XML_FORMAT_SYNC_CFG); //nothrow
                 if (firstItem)
                     cfg = guiCfg;
                 mainCfgs.push_back(guiCfg.mainCfg);
+
+                if (!warningMsg.empty())
+                    warningMsgAll += warningMsg + L"\n\n";
             }
             break;
 
             case XmlType::batch:
             {
-                XmlBatchConfig batchCfg = parseConfig<XmlBatchConfig>(doc, filePath, XML_FORMAT_SYNC_CFG, warningMsg); //nothrow
+                const auto& [batchCfg, warningMsg] = parseConfig<XmlBatchConfig>(doc, filePath, XML_FORMAT_SYNC_CFG); //nothrow
                 if (firstItem)
                     cfg = convertBatchToGui(batchCfg);
                 mainCfgs.push_back(batchCfg.mainCfg);
+
+                if (!warningMsg.empty())
+                    warningMsgAll += warningMsg + L"\n\n";
             }
             break;
 
@@ -2176,7 +2178,7 @@ std::pair<XmlGuiConfig, std::wstring /*warningMsg*/> fff::readAnyConfig(const st
     }
     cfg.mainCfg = merge(mainCfgs);
 
-    return {cfg, warningMsg};
+    return {cfg, trimCpy(warningMsgAll)};
 }
 
 //################################################################################################
@@ -2392,9 +2394,9 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
     outOpt["WarnDirectoryLockFailed"       ].attribute("Show", cfg.warnDlgs.warnDirectoryLockFailed);
     outOpt["WarnVersioningFolderPartOfSync"].attribute("Show", cfg.warnDlgs.warnVersioningFolderPartOfSync);
 
-    out["Sounds"]["CompareFinished"].attribute("Path", substituteFfsResourcePath(cfg.soundFileCompareFinished));
-    out["Sounds"]["SyncFinished"   ].attribute("Path", substituteFfsResourcePath(cfg.soundFileSyncFinished));
-    out["Sounds"]["AlertPending"   ].attribute("Path", substituteFfsResourcePath(cfg.soundFileAlertPending));
+    out["Sounds"]["CompareFinished"].attribute("Path", makePortablePath(cfg.soundFileCompareFinished));
+    out["Sounds"]["SyncFinished"   ].attribute("Path", makePortablePath(cfg.soundFileSyncFinished));
+    out["Sounds"]["AlertPending"   ].attribute("Path", makePortablePath(cfg.soundFileAlertPending));
 
     //gui specific global settings (optional)
     XmlOut outMainWin = out["MainDialog"];
@@ -2410,15 +2412,10 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
     outConfig.attribute("SortAscending", cfg.mainDlg.config.lastSortAscending);
 
     outConfig["Configurations"].attribute("MaxSize", cfg.mainDlg.config.histItemsMax);
-    outConfig["Configurations"].attribute("LastSelected", cfg.mainDlg.config.lastSelectedFile);
+    outConfig["Configurations"].attribute("LastSelected", makePortablePath(cfg.mainDlg.config.lastSelectedFile));
     outConfig["Configurations"](cfg.mainDlg.config.fileHistory);
-    {
-        std::vector<Zstring> cfgPaths = cfg.mainDlg.config.lastUsedFiles;
-        for (Zstring& filePath : cfgPaths)
-            filePath = substituteFreeFileSyncDriveLetter(filePath);
 
-        outConfig["LastUsed"](cfgPaths);
-    }
+    outConfig["LastUsed"](makePortablePath(cfg.mainDlg.config.lastUsedFiles));
 
     //###########################################################
 
@@ -2435,11 +2432,11 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
     outFileGrid.attribute("PathFormatLeft",  cfg.mainDlg.itemPathFormatLeftGrid);
     outFileGrid.attribute("PathFormatRight", cfg.mainDlg.itemPathFormatRightGrid);
 
-    outFileGrid["FolderHistoryLeft" ](cfg.mainDlg.folderHistoryLeft);
-    outFileGrid["FolderHistoryRight"](cfg.mainDlg.folderHistoryRight);
+    outFileGrid["FolderHistoryLeft" ](makePortablePath(cfg.mainDlg.folderHistoryLeft));
+    outFileGrid["FolderHistoryRight"](makePortablePath(cfg.mainDlg.folderHistoryRight));
 
-    outFileGrid["FolderHistoryLeft" ].attribute("LastSelected", cfg.mainDlg.folderLastSelectedLeft);
-    outFileGrid["FolderHistoryRight"].attribute("LastSelected", cfg.mainDlg.folderLastSelectedRight);
+    outFileGrid["FolderHistoryLeft" ].attribute("LastSelected", makePortablePath(cfg.mainDlg.folderLastSelectedLeft));
+    outFileGrid["FolderHistoryRight"].attribute("LastSelected", makePortablePath(cfg.mainDlg.folderLastSelectedRight));
 
     //###########################################################
     XmlOut outCopyTo = outMainWin["ManualCopyTo"];
@@ -2447,9 +2444,10 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
     outCopyTo.attribute("OverwriteIfExists", cfg.mainDlg.copyToCfg.overwriteIfExists);
 
     XmlOut outCopyToHistory = outCopyTo["FolderHistory"];
-    outCopyToHistory(cfg.mainDlg.copyToCfg.folderHistory);
-    outCopyToHistory.attribute("TargetFolder", cfg.mainDlg.copyToCfg.targetFolderPath);
-    outCopyToHistory.attribute("LastSelected", cfg.mainDlg.copyToCfg.targetFolderLastSelected);
+
+    outCopyToHistory(makePortablePath(cfg.mainDlg.copyToCfg.folderHistory));
+    outCopyToHistory.attribute("TargetFolder", makePortablePath(cfg.mainDlg.copyToCfg.targetFolderPath));
+    outCopyToHistory.attribute("LastSelected", makePortablePath(cfg.mainDlg.copyToCfg.targetFolderLastSelected));
     //###########################################################
 
     XmlOut outDefFilter = outMainWin["DefaultViewFilter"];
@@ -2475,16 +2473,17 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
 
     out["FolderHistory" ].attribute("MaxSize", cfg.folderHistoryMax);
 
-    out["SftpKeyFile"].attribute("LastSelected", cfg.sftpKeyFileLastSelected);
+    out["SftpKeyFile"].attribute("LastSelected", makePortablePath(cfg.sftpKeyFileLastSelected));
 
     XmlOut outFileFilter = out["DefaultFilter"];
     writeConfig(cfg.defaultFilter, outFileFilter);
 
     out["VersioningFolderHistory"](cfg.versioningFolderHistory);
-    out["VersioningFolderHistory"].attribute("LastSelected", cfg.versioningFolderLastSelected);
+    out["VersioningFolderHistory"].attribute("LastSelected", makePortablePath(cfg.versioningFolderLastSelected));
 
-    out["LogFolderHistory"](cfg.logFolderHistory);
-    out["LogFolderHistory"].attribute("LastSelected", cfg.logFolderLastSelected);
+    out["LogFolder"](makePortablePath(cfg.logFolderPhrase));
+    out["LogFolderHistory"](makePortablePath(cfg.logFolderHistory));
+    out["LogFolderHistory"].attribute("LastSelected", makePortablePath(cfg.logFolderLastSelected));
 
     out["EmailHistory"](cfg.emailHistory);
     out["EmailHistory"].attribute("MaxSize", cfg.emailHistoryMax);
@@ -2498,6 +2497,8 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
     //last update check
     out["LastOnlineCheck"  ](cfg.lastUpdateCheck);
     out["LastOnlineVersion"](cfg.lastOnlineVersion);
+    
+    out["WelcomeShownVersion"](cfg.welcomeShownVersion);
 
 
     for (const auto& [scalePercent, layout] : cfg.dpiLayouts)

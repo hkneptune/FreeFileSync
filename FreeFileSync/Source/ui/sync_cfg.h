@@ -56,7 +56,7 @@ zen::ConfirmationButton showSyncConfigDlg(wxWindow* parent,
 
                                           FilterConfig& defaultFilter,
                                           std::vector<Zstring>& versioningFolderHistory, Zstring& versioningFolderLastSelected,
-                                          std::vector<Zstring>& logFolderHistory, Zstring& logFolderLastSelected,
+                                          std::vector<Zstring>& logFolderHistory, Zstring& logFolderLastSelected, const Zstring& globalLogFolderPhrase,
                                           size_t folderHistoryMax, Zstring& sftpKeyFileLastSelected,
                                           std::vector<Zstring>& emailHistory,   size_t emailHistoryMax,
                                           std::vector<Zstring>& commandHistory, size_t commandHistoryMax);

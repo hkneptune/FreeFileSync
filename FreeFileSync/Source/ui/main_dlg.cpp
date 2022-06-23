@@ -29,6 +29,7 @@
 #include <wx+/popup_dlg.h>
 #include <wx+/window_tools.h>
 #include <wx+/image_resources.h>
+//#include <wx+/std_button_layout.h>
 #include "cfg_grid.h"
 #include "version_check.h"
 #include "gui_status_handler.h"
@@ -48,7 +49,6 @@
 #include "../base/icon_loader.h"
 #include "../ffs_paths.h"
 #include "../localization.h"
-#include "../fatal_error.h"
 #include "../version/version.h"
 #include "../afs/gdrive.h"
 
@@ -425,16 +425,88 @@ void MainDialog::create(const Zstring& globalConfigFilePath,
         //continue!
     }
 
-    MainDialog* frame = new MainDialog(globalConfigFilePath, guiCfg, referenceFiles, globSett, startComparison);
-    frame->Show();
+    MainDialog* mainDlg = new MainDialog(globalConfigFilePath, guiCfg, referenceFiles, globSett);
+    mainDlg->Show();
+
+    //------------------------------------------------------------------------------------------
+    //construction complete! trigger special events:
+    //------------------------------------------------------------------------------------------
+
+    //show welcome screen after FreeFileSync update => show *before* any other dialogs
+    if (mainDlg->globalCfg_.welcomeShownVersion != ffsVersion)
+    {
+        mainDlg->globalCfg_.welcomeShownVersion = ffsVersion;
+        showAboutDialog(mainDlg);
+    }
+
+
+    //if FFS is started with a *.ffs_gui file as commandline parameter AND all directories contained exist, comparison shall be started right away
+    if (startComparison)
+    {
+        const MainConfiguration currMainCfg = mainDlg->getConfig().mainCfg;
+
+        //------------------------------------------------------------------------------------------
+        //harmonize checks with comparison.cpp:: checkForIncompleteInput()
+        //we're really doing two checks: 1. check directory existence 2. check config validity -> don't mix them!
+        bool havePartialPair = false;
+        bool haveFullPair    = false;
+
+        std::vector<AbstractPath> folderPathsToCheck;
+
+        auto addFolderCheck = [&](const LocalPairConfig& lpc)
+        {
+            const AbstractPath folderPathL = createAbstractPath(lpc.folderPathPhraseLeft);
+            const AbstractPath folderPathR = createAbstractPath(lpc.folderPathPhraseRight);
+
+            if (AFS::isNullPath(folderPathL) != AFS::isNullPath(folderPathR)) //only skip check if both sides are empty!
+                havePartialPair = true;
+            else if (!AFS::isNullPath(folderPathL))
+                haveFullPair = true;
+
+            if (!AFS::isNullPath(folderPathL))
+                folderPathsToCheck.push_back(folderPathL); //noexcept
+            if (!AFS::isNullPath(folderPathR))
+                folderPathsToCheck.push_back(folderPathR); //noexcept
+        };
+
+        addFolderCheck(currMainCfg.firstPair);
+        for (const LocalPairConfig& lpc : currMainCfg.additionalPairs)
+            addFolderCheck(lpc);
+        //------------------------------------------------------------------------------------------
+
+        if (havePartialPair != haveFullPair) //either all pairs full or all half-filled -> validity check!
+        {
+            //check existence of all directories in parallel!
+            AsyncFirstResult<std::false_type> firstMissingDir;
+            for (const AbstractPath& folderPath : folderPathsToCheck)
+                firstMissingDir.addJob([folderPath]() -> std::optional<std::false_type>
+            {
+                try
+                {
+                    if (AFS::getItemType(folderPath) != AFS::ItemType::file) //throw FileError
+                        return {};
+                }
+                catch (FileError&) {}
+                return std::false_type();
+            });
+
+            const bool startComparisonNow = !firstMissingDir.timedWait(std::chrono::milliseconds(500)) || //= no result yet => start comparison anyway!
+                                            !firstMissingDir.get(); //= all directories exist
+
+            if (startComparisonNow) //simulate click on "compare"
+            {
+                wxCommandEvent dummy2(wxEVT_COMMAND_BUTTON_CLICKED);
+                mainDlg->m_buttonCompare->Command(dummy2);
+            }
+        }
+    }
 }
 
 
 MainDialog::MainDialog(const Zstring& globalConfigFilePath,
                        const XmlGuiConfig& guiCfg,
                        const std::vector<Zstring>& referenceFiles,
-                       const XmlGlobalSettings& globalSettings,
-                       bool startComparison) :
+                       const XmlGlobalSettings& globalSettings) :
     MainDialogGenerated(nullptr),
     globalConfigFilePath_(globalConfigFilePath),
     folderHistoryLeft_ (std::make_shared<HistoryList>(globalSettings.mainDlg.folderHistoryLeft,  globalSettings.folderHistoryMax)),
@@ -444,7 +516,13 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     try { return extractWxImage(fff::getTrashIcon(getDefaultMenuIconSize())); /*throw SysError*/ }
     catch (SysError&) { assert(false); return loadImage("delete_recycler", getDefaultMenuIconSize()); }
 }
-())
+()),
+
+imgFileManagerSmall_([]
+{
+    try { return extractWxImage(fff::getFileManagerIcon(getDefaultMenuIconSize())); /*throw SysError*/ }
+    catch (SysError&) { assert(false); return loadImage("file_manager", getDefaultMenuIconSize()); }
+}())
 {
     SetSizeHints(fastFromDIP(640), fastFromDIP(400));
 
@@ -787,7 +865,6 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
 
     m_menuTools->Bind(wxEVT_MENU_OPEN, [this](wxMenuEvent& event) { onOpenMenuTools(event); });
 
-
     //notify about (logical) application main window => program won't quit, but stay on this dialog
     setGlobalWindow(this);
 
@@ -853,87 +930,26 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     wxCommandEvent evtDummy;           //call once before onLayoutWindowAsync()
     onResizeLeftFolderWidth(evtDummy); //
 
+
     //scroll cfg history to last used position. We cannot do this earlier e.g. in setGlobalCfgOnInit()
     //1. setConfig() indirectly calls cfggrid::addAndSelect() which changes cfg history scroll position
     //2. Grid::makeRowVisible() requires final window height! => do this after window resizing is complete
     if (m_gridCfgHistory->getRowCount() > 0)
         m_gridCfgHistory->scrollTo(std::clamp<size_t>(globalSettings.mainDlg.config.topRowPos, //must be set *after* wxAuiManager::LoadPerspective() to have any effect
-                                                      0,  m_gridCfgHistory->getRowCount() - 1));
-
-    //first selected item should always be visible:
+                                                      0, m_gridCfgHistory->getRowCount() - 1));
+    //first selected item should *always* be visible:
     const std::vector<size_t> selectedRows = m_gridCfgHistory->getSelectedRows();
     if (!selectedRows.empty())
-        m_gridCfgHistory->makeRowVisible(selectedRows.front());
-
-
-    onSystemShutdownRegister(onBeforeSystemShutdownCookie_);
-
+    {
+        m_gridCfgHistory->setGridCursor(selectedRows[0], GridEventPolicy::deny);
+        //= Grid::makeRowVisible() + set grid cursor (+ select cursor row => undo:)
+        cfggrid::addAndSelect(*m_gridCfgHistory, activeConfigFiles_, false /*scrollToSelection*/);
+    }
     //start up: user most likely wants to change config, or start comparison by pressing ENTER
     m_gridCfgHistory->SetFocus();
 
-    //----------------------------------------------------------------------------------------------------------------------------------------------------------------
-    //some convenience: if FFS is started with a *.ffs_gui file as commandline parameter AND all directories contained exist, comparison shall be started right away
-    if (startComparison)
-    {
-        const MainConfiguration currMainCfg = getConfig().mainCfg;
 
-        //------------------------------------------------------------------------------------------
-        //harmonize checks with comparison.cpp:: checkForIncompleteInput()
-        //we're really doing two checks: 1. check directory existence 2. check config validity -> don't mix them!
-        bool havePartialPair = false;
-        bool haveFullPair    = false;
-
-        std::vector<AbstractPath> folderPathsToCheck;
-
-        auto addFolderCheck = [&](const LocalPairConfig& lpc)
-        {
-            const AbstractPath folderPathL = createAbstractPath(lpc.folderPathPhraseLeft);
-            const AbstractPath folderPathR = createAbstractPath(lpc.folderPathPhraseRight);
-
-            if (AFS::isNullPath(folderPathL) != AFS::isNullPath(folderPathR)) //only skip check if both sides are empty!
-                havePartialPair = true;
-            else if (!AFS::isNullPath(folderPathL))
-                haveFullPair = true;
-
-            if (!AFS::isNullPath(folderPathL))
-                folderPathsToCheck.push_back(folderPathL); //noexcept
-            if (!AFS::isNullPath(folderPathR))
-                folderPathsToCheck.push_back(folderPathR); //noexcept
-        };
-
-        addFolderCheck(currMainCfg.firstPair);
-        for (const LocalPairConfig& lpc : currMainCfg.additionalPairs)
-            addFolderCheck(lpc);
-        //------------------------------------------------------------------------------------------
-
-        if (havePartialPair != haveFullPair) //either all pairs full or all half-filled -> validity check!
-        {
-            //check existence of all directories in parallel!
-            AsyncFirstResult<std::false_type> firstMissingDir;
-            for (const AbstractPath& folderPath : folderPathsToCheck)
-                firstMissingDir.addJob([folderPath]() -> std::optional<std::false_type>
-            {
-                try
-                {
-                    if (AFS::getItemType(folderPath) != AFS::ItemType::file) //throw FileError
-                        return {};
-                }
-                catch (FileError&) {}
-                return std::false_type();
-            });
-
-            const bool startComparisonNow = !firstMissingDir.timedWait(std::chrono::milliseconds(500)) || //= no result yet => start comparison anyway!
-                                            !firstMissingDir.get(); //= all directories exist
-
-            if (startComparisonNow)
-            {
-                wxCommandEvent dummy2(wxEVT_COMMAND_BUTTON_CLICKED);
-                //better!? => m_buttonCompare->Command(dummy2); //simulate click
-                if (wxEvtHandler* evtHandler = m_buttonCompare->GetEventHandler())
-                    evtHandler->AddPendingEvent(dummy2); //simulate button click on "compare"
-            }
-        }
-    }
+    onSystemShutdownRegister(onBeforeSystemShutdownCookie_);
 }
 
 
@@ -969,10 +985,11 @@ MainDialog::~MainDialog()
 void MainDialog::onBeforeSystemShutdown()
 {
     try { writeConfig(getConfig(), lastRunConfigPath_); }
-    catch (const FileError& e) { logFatalError(e.toString()); }
+    catch (FileError&) { assert(false); }
 
     try { writeConfig(getGlobalCfgBeforeExit(), globalConfigFilePath_); }
-    catch (const FileError& e) { logFatalError(e.toString()); }
+    catch (FileError&) { assert(false); }
+    warn_static("log, maybe?")
 }
 
 
@@ -1146,7 +1163,7 @@ XmlGlobalSettings MainDialog::getGlobalCfgBeforeExit()
     if (cfgHistory.size() > globalSettings.mainDlg.config.histItemsMax)
         cfgHistory.resize(globalSettings.mainDlg.config.histItemsMax);
 
-    globalSettings.mainDlg.config.fileHistory         = std::move(cfgHistory);
+    globalSettings.mainDlg.config.fileHistory     = std::move(cfgHistory);
     globalSettings.mainDlg.config.topRowPos       = m_gridCfgHistory->getRowAtWinPos(0);
     globalSettings.dpiLayouts[getDpiScalePercent()].configColumnAttribs = convertColAttributes<ColAttributesCfg>(m_gridCfgHistory->getColumnConfig());
     globalSettings.mainDlg.config.syncOverdueDays = cfggrid::getSyncOverdueDays(*m_gridCfgHistory);
@@ -1618,17 +1635,8 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
     {
         if (containsFileItemMacro(commandLinePhrase))
         {
-            auto openFolderInFileBrowser = [](const AbstractPath& folderPath) //throw FileError
-            {
-                    if (const Zstring& gdriveUrl = getGoogleDriveFolderUrl(folderPath); //throw FileError
-                        !gdriveUrl.empty())
-                        return openWithDefaultApp(gdriveUrl); //throw FileError
-                    else
-                        openWithDefaultApp(utfTo<Zstring>(AFS::getDisplayPath(folderPath))); //throw FileError
-            };
-
             //support fallback instead of an error in this special case
-            if (commandLinePhrase == extCommandFileBrowse.cmdLine)
+            if (commandLinePhrase == extCommandFileManager.cmdLine)
             {
                 if (selectionL.size() + selectionR.size() > 1) //do not open more than one Explorer instance!
                 {
@@ -2566,7 +2574,8 @@ void MainDialog::onGridContextRim(const std::vector<FileSystemObject*>& selectio
 
             auto openApp = [this, command = it->cmdLine, leftSide, &selectionL, &selectionR] { openExternalApplication(command, leftSide, selectionL, selectionR); };
 
-            menu.addItem(description, openApp, wxNullImage, it->cmdLine == extCommandFileBrowse.cmdLine ||
+            menu.addItem(description, openApp, it->cmdLine == extCommandFileManager.cmdLine ? imgFileManagerSmall_ : wxNullImage,
+                         it->cmdLine == extCommandFileManager.cmdLine ||
                          !containsFileItemMacro(it->cmdLine) ||
                          !selectionL.empty() || !selectionR.empty());
         }
@@ -2612,14 +2621,20 @@ void MainDialog::addFilterPhrase(const Zstring& phrase, bool include, bool requi
     {
         trim(filterString, false, true, [](Zchar c) { return c == Zstr('\n') || c == Zstr(' '); });
 
-        if (filterString.empty())
-            ;
-        else if (endsWith(filterString, FILTER_ITEM_SEPARATOR))
-            filterString += Zstr(' ');
-        else
-            filterString += Zstr('\n');
+        if (contains(afterLast(filterString, Zstr('\n'), IfNotFoundReturn::all), FILTER_ITEM_SEPARATOR))
+        {
+            if (!endsWith(filterString, FILTER_ITEM_SEPARATOR))
+                filterString += Zstring() + Zstr(' ') + FILTER_ITEM_SEPARATOR;
 
-        filterString += phrase + Zstr(' ') + FILTER_ITEM_SEPARATOR; //append FILTER_ITEM_SEPARATOR to 'mark' that next extension exclude should write to same line
+            filterString += Zstr(' ') + phrase;
+        }
+        else
+        {
+            if (!filterString.empty())
+                filterString += Zstr('\n');
+
+            filterString += phrase + Zstr(' ') + FILTER_ITEM_SEPARATOR; //append FILTER_ITEM_SEPARATOR to 'mark' that next extension exclude should write to same line
+        }
     }
 
     updateGlobalFilterButton();
@@ -2965,10 +2980,13 @@ void MainDialog::cfgHistoryRemoveObsolete(const std::vector<Zstring>& filePaths)
 
     guiQueue_.processAsync(getUnavailableCfgFilesAsync, [this](const std::vector<Zstring>& filePaths2)
     {
-        cfggrid::getDataView(*m_gridCfgHistory).removeItems(filePaths2);
+        if (!filePaths2.empty())
+        {
+            cfggrid::getDataView(*m_gridCfgHistory).removeItems(filePaths2);
 
-        //restore grid selection (after rows were removed)
-        cfggrid::addAndSelect(*m_gridCfgHistory, activeConfigFiles_, false /*scrollToSelection*/);
+            //restore grid selection (after rows were removed)
+            cfggrid::addAndSelect(*m_gridCfgHistory, activeConfigFiles_, false /*scrollToSelection*/);
+        }
     });
 }
 
@@ -3302,12 +3320,20 @@ void MainDialog::onCfgGridSelection(GridSelectEvent& event)
         else
             assert(false);
 
-    if (filePaths.empty() || //ignore accidental clicks in empty space of configuration panel
-        !loadConfiguration(filePaths, true /*ignoreBrokenConfig*/)) //=> allow user to delete broken config entry!
-        //user changed m_gridCfgHistory selection so it's this method's responsibility to synchronize with activeConfigFiles:
-        //- if user cancelled saving old config
-        //- there's an error loading new config
-        cfggrid::addAndSelect(*m_gridCfgHistory, activeConfigFiles_, false /*scrollToSelection*/);
+    //clicking on already selected config should not clear comparison results:
+    const bool skipSelection = [&] //what about multi-selection? a second selection probably *should* clear results
+    {
+        return filePaths.size() == 1 && activeConfigFiles_.size() == 1 &&
+        filePaths[0] == activeConfigFiles_[0];
+    }();
+
+    if (!skipSelection)
+        if (filePaths.empty() || //ignore accidental clicks in empty space of configuration panel
+            !loadConfiguration(filePaths, true /*ignoreBrokenConfig*/)) //=> allow user to delete broken config entry!
+            //user changed m_gridCfgHistory selection so it's this method's responsibility to synchronize with activeConfigFiles:
+            //- if user cancelled saving old config
+            //- there's an error loading new config
+            cfggrid::addAndSelect(*m_gridCfgHistory, activeConfigFiles_, false /*scrollToSelection*/);
 
     event.Skip();
 }
@@ -3515,7 +3541,7 @@ void MainDialog::onCfgGridKeyEvent(wxKeyEvent& event)
             if (!activeConfigFiles_.empty())
             {
                 wxCommandEvent dummy(wxEVT_COMMAND_BUTTON_CLICKED);
-                m_buttonCompare->Command(dummy); //simulate click
+                (folderCmp_.empty() ? m_buttonCompare : m_buttonSync)->Command(dummy); //simulate click
             }
             break;
 
@@ -3569,6 +3595,7 @@ void MainDialog::onCfgGridContext(GridContextMenuEvent& event)
         };
 
         wxBitmap bmpSquare(this->GetCharHeight(), this->GetCharHeight()); //seems we don't need to pass 24-bit depth here even for high-contrast color schemes
+        bmpSquare.SetScaleFactor(getDisplayScaleFactor());
         {
             wxMemoryDC dc(bmpSquare);
             const wxColor borderCol(0xdd, 0xdd, 0xdd); //light grey
@@ -3595,12 +3622,12 @@ void MainDialog::onCfgGridContext(GridContextMenuEvent& event)
         if (!selectedRows.empty())
             if (const ConfigView::Details* cfg = cfggrid::getDataView(*m_gridCfgHistory).getItem(selectedRows[0]))
             {
-                const Zstring cmdLine = replaceCpy(expandMacros(extCommandFileBrowse.cmdLine), Zstr("%local_path%"), cfg->cfgItem.cfgFilePath);
+                const Zstring cmdLine = replaceCpy(expandMacros(extCommandFileManager.cmdLine), Zstr("%local_path%"), cfg->cfgItem.cfgFilePath);
                 try
                 {
                     if (const auto& [exitCode, output] = consoleExecute(cmdLine, EXT_APP_MAX_TOTAL_WAIT_TIME_MS); //throw SysError, SysErrorTimeOut
                         exitCode != 0)
-                        throw SysError(formatSystemError(utfTo<std::string>(extCommandFileBrowse.cmdLine),
+                        throw SysError(formatSystemError(utfTo<std::string>(extCommandFileManager.cmdLine),
                                                          replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), utfTo<std::wstring>(output)));
                 }
                 catch (SysErrorTimeOut&) {} //child process not failed yet => probably fine :>
@@ -3613,8 +3640,8 @@ void MainDialog::onCfgGridContext(GridContextMenuEvent& event)
             }
         assert(false);
     };
-    menu.addItem(translate(extCommandFileBrowse.description), //translate default external apps on the fly: "Show in Explorer"
-                 showInFileManager, wxNullImage, !selectedRows.empty());
+    menu.addItem(translate(extCommandFileManager.description), //translate default external apps on the fly: "Show in Explorer"
+                 showInFileManager, imgFileManagerSmall_, !selectedRows.empty());
     menu.addSeparator();
     //--------------------------------------------------------------------------------------------------------
     menu.addItem(_("&Hide")   + L"\tDel",       [this] { removeSelectedCfgHistoryItems(false /*deleteFromDisk*/); }, wxNullImage,    !selectedRows.empty());
@@ -3742,7 +3769,7 @@ void MainDialog::setLastUsedConfig(const XmlGuiConfig& guiConfig, const std::vec
     activeConfigFiles_ = cfgFilePaths;
     lastSavedCfg_ = guiConfig;
 
-    cfggrid::addAndSelect(*m_gridCfgHistory, activeConfigFiles_, true /*scrollToSelection*/); //put filepath on list of last used config files
+    cfggrid::addAndSelect(*m_gridCfgHistory, activeConfigFiles_, true /*scrollToSelection*/); //put file paths on list of last used config files
 
     updateUnsavedCfgStatus();
 }
@@ -3858,7 +3885,7 @@ void MainDialog::showConfigDialog(SyncConfigPanel panelToShow, int localPairInde
                           localCfgs,
                           globalCfg_.defaultFilter,
                           globalCfg_.versioningFolderHistory, globalCfg_.versioningFolderLastSelected,
-                          globalCfg_.logFolderHistory,        globalCfg_.logFolderLastSelected,
+                          globalCfg_.logFolderHistory,        globalCfg_.logFolderLastSelected, globalCfg_.logFolderPhrase,
                           globalCfg_.folderHistoryMax,
                           globalCfg_.sftpKeyFileLastSelected,
                           globalCfg_.emailHistory,   globalCfg_.emailHistoryMax,
@@ -4013,7 +4040,7 @@ void MainDialog::setViewFilterDefault()
 }
 
 
-void MainDialog::onViewTypeContextMouse(wxMouseEvent&   event)
+void MainDialog::onViewTypeContextMouse(wxMouseEvent& event)
 {
     ContextMenu menu;
 
@@ -4080,6 +4107,10 @@ void MainDialog::onCompare(wxCommandEvent& event)
     //wxBusyCursor dummy; -> redundant: progress already shown in progress dialog!
 
     FocusPreserver fp; //e.g. keep focus on config panel after pressing F5
+    //give nice hint on what's next to do if user manually clicked on compare
+    assert(m_buttonCompare->GetId() != wxID_ANY);
+    if (fp.getFocusId() == m_buttonCompare->GetId())
+        fp.setFocus(m_buttonSync);
 
     int scrollPosX = 0;
     int scrollPosY = 0;
@@ -4161,10 +4192,6 @@ void MainDialog::onCompare(wxCommandEvent& event)
         folderHistoryLeft_ ->addItem(fpCfg.folderPathPhraseLeft_);
         folderHistoryRight_->addItem(fpCfg.folderPathPhraseRight_);
     }
-
-    assert(m_buttonCompare->GetId() != wxID_ANY);
-    if (fp.getFocusId() == m_buttonCompare->GetId())
-        fp.setFocus(m_buttonSync);
 
     //mark selected cfg files as "in sync" when there is nothing to do: https://freefilesync.org/forum/viewtopic.php?t=4991
     if (r.summary.syncResult == SyncResult::finishedSuccess)
@@ -4401,8 +4428,15 @@ void MainDialog::onStartSync(wxCommandEvent& event)
         }
         catch (AbortProcess&) {}
 
+        AbstractPath logFolderPath = createAbstractPath(guiCfg.mainCfg.altLogFolderPathPhrase); //optional
+        if (AFS::isNullPath(logFolderPath))
+            logFolderPath = createAbstractPath(globalCfg_.logFolderPhrase);
+        assert(!AFS::isNullPath(logFolderPath)); //mandatory! but still: let's include fall back
+        if (AFS::isNullPath(logFolderPath))
+            logFolderPath = createAbstractPath(getLogFolderDefaultPath());
+
         StatusHandlerFloatingDialog::Result r = statusHandler.reportResults(guiCfg.mainCfg.postSyncCommand, guiCfg.mainCfg.postSyncCondition,
-                                                                            guiCfg.mainCfg.altLogFolderPathPhrase, globalCfg_.logfilesMaxAgeDays, globalCfg_.logFormat, logFilePathsToKeep,
+                                                                            logFolderPath, globalCfg_.logfilesMaxAgeDays, globalCfg_.logFormat, logFilePathsToKeep,
                                                                             guiCfg.mainCfg.emailNotifyAddress, guiCfg.mainCfg.emailNotifyCondition); //noexcept
         //---------------------------------------------------------------------------
         setLastOperationLog(r.summary, r.errorLog.ptr());
@@ -4434,7 +4468,7 @@ void MainDialog::onStartSync(wxCommandEvent& event)
             try
             {
                 shutdownSystem(); //throw FileError
-                terminateProcess(FFS_EXIT_SUCCESS);
+                terminateProcess(static_cast<int>(FfsExitCode::success));
                 //1. no point in continuing and saving cfg again in ~MainDialog()/onBeforeSystemShutdown() while the OS will kill us anytime!
                 //2. is seems wxEVT_END_SESSION is not implemented on wxGTK anyway!
             }
@@ -4636,7 +4670,7 @@ void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::s
         //don't use "syncResult": There may be errors after sync, e.g. failure to save log file/send email!
         if (errorLog)
         {
-            const ErrorLog::Stats logCount = errorLog->getStats();
+            const ErrorLogStats logCount = getStats(*errorLog);
             if (logCount.error > 0)
                 return loadImage("msg_error", getDefaultMenuIconSize());
             if (logCount.warning > 0)

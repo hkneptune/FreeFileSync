@@ -64,11 +64,15 @@ void drawBitmapRtlMirror(wxDC& dc, const wxImage& img, const wxRect& rect, int a
             return impl::drawBitmapAligned(dc, img, rect, alignment);
 
         case wxLayout_RightToLeft:
+            if (rect.GetWidth() > 0 && rect.GetHeight() > 0)
         {
-            if (!buffer || buffer->GetWidth() != rect.width || buffer->GetHeight() < rect.height) //[!] since we do a mirror, width needs to match exactly!
-                buffer = wxBitmap(rect.width, rect.height);
+            if (!buffer || buffer->GetSize() != rect.GetSize()) //[!] since we do a mirror, width needs to match exactly!
+                buffer.emplace(rect.GetSize());
 
-            wxMemoryDC memDc(*buffer);
+            if (buffer->GetScaleFactor() != dc.GetContentScaleFactor()) //needed here?
+                buffer->SetScaleFactor(dc.GetContentScaleFactor());     //
+
+            wxMemoryDC memDc(*buffer); //copies scale factor from wxBitmap
             memDc.Blit(wxPoint(0, 0), rect.GetSize(), &dc, rect.GetTopLeft()); //blit in: background is mirrored due to memDc, dc having different layout direction!
 
             impl::drawBitmapAligned(memDc, img, wxRect(0, 0, rect.width, rect.height), alignment);

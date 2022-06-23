@@ -16,15 +16,13 @@
 
 namespace fff
 {
-Zstring getLogFolderDefaultPath();
-
 enum class LogFileFormat
 {
     html,
     text
 };
 
-AbstractPath generateLogFilePath(LogFileFormat logFormat, const ProcessSummary& summary, const Zstring& altLogFolderPathPhrase /*optional*/);
+Zstring generateLogFileName(LogFileFormat logFormat, const ProcessSummary& summary);
 
 void saveLogFile(const AbstractPath& logFilePath, //throw FileError, X
                  const ProcessSummary& summary,

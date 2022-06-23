@@ -141,8 +141,8 @@ FilterConfig mergeFilterConfig(const FilterConfig& global, const FilterConfig& l
 inline
 bool effectivelyEmpty(const LocalPairConfig& lpc)
 {
-    return trimCpy(lpc.folderPathPhraseLeft ).empty() &&
-           trimCpy(lpc.folderPathPhraseRight).empty();
+    return AFS::isNullPath(createAbstractPath(lpc.folderPathPhraseLeft)) &&
+           AFS::isNullPath(createAbstractPath(lpc.folderPathPhraseRight));
 }
 }
 

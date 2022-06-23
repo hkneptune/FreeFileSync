@@ -12,6 +12,7 @@
 #include "progress_indicator.h"
 #include "../config.h"
 #include "../status_handler.h"
+//#include "../afs/abstract.h"
 
 
 namespace fff
@@ -52,14 +53,14 @@ public:
     struct Result
     {
         SyncResult syncResult;
-        zen::ErrorLog::Stats logStats;
+        zen::ErrorLogStats logStats;
         FinalRequest finalRequest;
         AbstractPath logFilePath;
         wxSize dlgSize;
         bool dlgIsMaximized;
     };
     Result reportResults(const Zstring& postSyncCommand, PostSyncCondition postSyncCondition,
-                         const Zstring& altLogFolderPathPhrase, int logfilesMaxAgeDays, LogFileFormat logFormat, const std::set<AbstractPath>& logFilePathsToKeep,
+                         const AbstractPath& logFolderPath, int logfilesMaxAgeDays, LogFileFormat logFormat, const std::set<AbstractPath>& logFilePathsToKeep,
                          const std::string& emailNotifyAddress, ResultsNotification emailNotifyCondition); //noexcept!!
 
 private:

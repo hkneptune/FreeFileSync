@@ -725,15 +725,12 @@ bool fff::acceptsItemPathPhraseNative(const Zstring& itemPathPhrase) //noexcept
         return true;
 
     //don't accept relative paths!!! indistinguishable from MTP paths as shown in Explorer's address bar!
-    //don't accept empty paths (see drag & drop validation!)
     return static_cast<bool>(parsePathComponents(path));
 }
 
 
 AbstractPath fff::createItemPathNative(const Zstring& itemPathPhrase) //noexcept
 {
-    warn_static("reevaluate")
-    //TODO: get volume by name hangs for idle HDD! => run createItemPathNative during getFolderStatusNonBlocking() but getResolvedFilePath currently not thread-safe!
     const Zstring& itemPath = getResolvedFilePath(itemPathPhrase);
     return createItemPathNativeNoFormatting(itemPath);
 }
@@ -743,8 +740,9 @@ AbstractPath fff::createItemPathNativeNoFormatting(const Zstring& nativePath) //
 {
     if (const std::optional<PathComponents> pc = parsePathComponents(nativePath))
         return AbstractPath(makeSharedRef<NativeFileSystem>(pc->rootPath), AfsPath(pc->relPath));
-    else //broken path syntax
-        return AbstractPath(makeSharedRef<NativeFileSystem>(nativePath), AfsPath());
+
+    assert(nativePath.empty()); //broken path syntax
+    return AbstractPath(makeSharedRef<NativeFileSystem>(nativePath), AfsPath());
 }
 
 

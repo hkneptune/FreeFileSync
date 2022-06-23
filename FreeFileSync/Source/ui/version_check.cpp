@@ -148,8 +148,6 @@ std::vector<std::pair<std::string, std::string>> geHttpPostParameters(wxWindow& 
 
 void showUpdateAvailableDialog(wxWindow* parent, const std::string& onlineVersion)
 {
-    wxImage ffsVersionIcon = loadImage("FreeFileSync", fastFromDIP(48));
-
     std::wstring updateDetailsMsg;
     try
     {
@@ -329,7 +327,6 @@ void fff::automaticUpdateCheckEval(wxWindow& parent, time_t& lastUpdateCheck, st
 {
     assert(runningOnMainThread());
 
-
     const UpdateCheckResult& result = *asyncResult;
 
     if (!result.error)
@@ -337,8 +334,8 @@ void fff::automaticUpdateCheckEval(wxWindow& parent, time_t& lastUpdateCheck, st
         lastUpdateCheck   = getVersionCheckCurrentTime();
         lastOnlineVersion = result.onlineVersion;
 
-            if (haveNewerVersionOnline(result.onlineVersion))
-                showUpdateAvailableDialog(&parent, result.onlineVersion);
+        if (haveNewerVersionOnline(result.onlineVersion))
+            showUpdateAvailableDialog(&parent, result.onlineVersion);
     }
     else
     {
@@ -346,22 +343,22 @@ void fff::automaticUpdateCheckEval(wxWindow& parent, time_t& lastUpdateCheck, st
         {
             lastOnlineVersion = "Unknown";
 
-                switch (showConfirmationDialog(&parent, DialogInfoType::error, PopupDialogCfg().
-                                               setTitle(_("Check for Program Updates")).
-                                               setMainInstructions(_("Cannot find current FreeFileSync version number online. A newer version is likely available. Check manually now?")).
-                                               setDetailInstructions(result.error->toString()),
-                                               _("&Check"), _("&Retry")))
-                {
-                    case ConfirmationButton2::accept:
-                        wxLaunchDefaultBrowser(L"https://freefilesync.org/get_latest.php");
-                        break;
-                    case ConfirmationButton2::accept2: //retry
-                        automaticUpdateCheckEval(parent, lastUpdateCheck, lastOnlineVersion,
-                                                 automaticUpdateCheckRunAsync(automaticUpdateCheckPrepare(parent).get()).get()); //note: retry via recursion!!!
-                        break;
-                    case ConfirmationButton2::cancel:
-                        break;
-                }
+            switch (showConfirmationDialog(&parent, DialogInfoType::error, PopupDialogCfg().
+                                           setTitle(_("Check for Program Updates")).
+                                           setMainInstructions(_("Cannot find current FreeFileSync version number online. A newer version is likely available. Check manually now?")).
+                                           setDetailInstructions(result.error->toString()),
+                                           _("&Check"), _("&Retry")))
+            {
+                case ConfirmationButton2::accept:
+                    wxLaunchDefaultBrowser(L"https://freefilesync.org/get_latest.php");
+                    break;
+                case ConfirmationButton2::accept2: //retry
+                    automaticUpdateCheckEval(parent, lastUpdateCheck, lastOnlineVersion,
+                                             automaticUpdateCheckRunAsync(automaticUpdateCheckPrepare(parent).get()).get()); //note: retry via recursion!!!
+                    break;
+                case ConfirmationButton2::cancel:
+                    break;
+            }
         }
         //else: ignore this error
     }

@@ -70,7 +70,7 @@ enum class SelectSide
 };
 
 
-template <SelectSide side> 
+template <SelectSide side>
 constexpr SelectSide getOtherSide = side == SelectSide::left ? SelectSide::right : SelectSide::left;
 
 

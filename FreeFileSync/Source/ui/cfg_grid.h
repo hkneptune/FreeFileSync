@@ -30,8 +30,8 @@ struct ConfigFileItem
         logResult(result),
         backColor(bcol) {}
 
-    Zstring    cfgFilePath;
-    time_t     lastSyncTime = 0;  //last COMPLETED sync (aborted syncs don't count)
+    Zstring      cfgFilePath;
+    time_t       lastSyncTime = 0;  //last COMPLETED sync (aborted syncs don't count)
     AbstractPath logFilePath = getNullPath();     //ANY last sync attempt (including aborted syncs)
     SyncResult   logResult = SyncResult::aborted; //
     wxColor      backColor;

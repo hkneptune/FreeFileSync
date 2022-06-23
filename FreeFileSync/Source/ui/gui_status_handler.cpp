@@ -14,8 +14,7 @@
 #include <wx+/popup_dlg.h>
 #include "main_dlg.h"
 #include "../afs/concrete.h"
-#include "../log_file.h"
-#include "../fatal_error.h"
+//#include "../log_file.h"
 
 using namespace zen;
 using namespace fff;
@@ -150,11 +149,11 @@ StatusHandlerTemporaryPanel::Result StatusHandlerTemporaryPanel::reportResults()
     {
         if (getAbortStatus())
         {
-            errorLog_.logMsg(_("Stopped"), MSG_TYPE_ERROR); //= user cancel
+            logMsg(errorLog_, _("Stopped"), MSG_TYPE_ERROR); //= user cancel
             return SyncResult::aborted;
         }
 
-        const ErrorLog::Stats logCount = errorLog_.getStats();
+        const ErrorLogStats logCount = getStats(errorLog_);
         if (logCount.error > 0)
             return SyncResult::finishedError;
         else if (logCount.warning > 0)
@@ -191,7 +190,7 @@ void StatusHandlerTemporaryPanel::initNewPhase(int itemsTotal, int64_t bytesTota
 
 void StatusHandlerTemporaryPanel::logInfo(const std::wstring& msg)
 {
-    errorLog_.logMsg(msg, MSG_TYPE_INFO);
+    logMsg(errorLog_, msg, MSG_TYPE_INFO);
     requestUiUpdate(false /*force*/); //throw AbortProcess
 }
 
@@ -200,7 +199,7 @@ void StatusHandlerTemporaryPanel::reportWarning(const std::wstring& msg, bool& w
 {
     PauseTimers dummy(*mainDlg_.compareStatus_);
 
-    errorLog_.logMsg(msg, MSG_TYPE_WARNING);
+    logMsg(errorLog_, msg, MSG_TYPE_WARNING);
 
     if (!warningActive) //if errors are ignored, then warnings should also
         return;
@@ -238,7 +237,7 @@ ProcessCallback::Response StatusHandlerTemporaryPanel::reportError(const ErrorIn
     //auto-retry
     if (errorInfo.retryNumber < autoRetryCount_)
     {
-        errorLog_.logMsg(errorInfo.msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO, failTime);
+        logMsg(errorLog_, errorInfo.msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO, failTime);
         delayAndCountDown(errorInfo.failTime + autoRetryDelay_,
                           [&, statusPrefix  = _("Automatic retry") +
                                               (errorInfo.retryNumber == 0 ? L"" : L' ' + formatNumber(errorInfo.retryNumber + 1)) + SPACED_DASH,
@@ -248,7 +247,7 @@ ProcessCallback::Response StatusHandlerTemporaryPanel::reportError(const ErrorIn
     }
 
     //always, except for "retry":
-    auto guardWriteLog = makeGuard<ScopeGuardRunMode::onExit>([&] { errorLog_.logMsg(errorInfo.msg, MSG_TYPE_ERROR, failTime); });
+    auto guardWriteLog = makeGuard<ScopeGuardRunMode::onExit>([&] { logMsg(errorLog_, errorInfo.msg, MSG_TYPE_ERROR, failTime); });
 
     if (!mainDlg_.compareStatus_->getOptionIgnoreErrors())
     {
@@ -268,8 +267,8 @@ ProcessCallback::Response StatusHandlerTemporaryPanel::reportError(const ErrorIn
 
             case ConfirmationButton3::decline: //retry
                 guardWriteLog.dismiss();
-                errorLog_.logMsg(errorInfo.msg + L"\n-> " + _("Retrying operation..."), //explain why there are duplicate "doing operation X" info messages in the log!
-                                 MSG_TYPE_INFO, failTime);
+                logMsg(errorLog_, errorInfo.msg + L"\n-> " + _("Retrying operation..."), //explain why there are duplicate "doing operation X" info messages in the log!
+                       MSG_TYPE_INFO, failTime);
                 return ProcessCallback::retry;
 
             case ConfirmationButton3::cancel:
@@ -289,7 +288,7 @@ void StatusHandlerTemporaryPanel::reportFatalError(const std::wstring& msg)
 {
     PauseTimers dummy(*mainDlg_.compareStatus_);
 
-    errorLog_.logMsg(msg, MSG_TYPE_ERROR);
+    logMsg(errorLog_, msg, MSG_TYPE_ERROR);
 
     if (!mainDlg_.compareStatus_->getOptionIgnoreErrors())
     {
@@ -378,7 +377,7 @@ StatusHandlerFloatingDialog::~StatusHandlerFloatingDialog()
 
 
 StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(const Zstring& postSyncCommand, PostSyncCondition postSyncCondition,
-                                                                               const Zstring& altLogFolderPathPhrase, int logfilesMaxAgeDays, LogFileFormat logFormat,
+                                                                               const AbstractPath& logFolderPath, int logfilesMaxAgeDays, LogFileFormat logFormat,
                                                                                const std::set<AbstractPath>& logFilePathsToKeep,
                                                                                const std::string& emailNotifyAddress, ResultsNotification emailNotifyCondition)
 {
@@ -390,18 +389,18 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(c
     {
         if (getAbortStatus())
         {
-            errorLog_.logMsg(_("Stopped"), MSG_TYPE_ERROR); //= user cancel
+            logMsg(errorLog_, _("Stopped"), MSG_TYPE_ERROR); //= user cancel
             return SyncResult::aborted;
         }
 
-        const ErrorLog::Stats logCount = errorLog_.getStats();
+        const ErrorLogStats logCount = getStats(errorLog_);
         if (logCount.error > 0)
             return SyncResult::finishedError;
         else if (logCount.warning > 0)
             return SyncResult::finishedWarning;
 
         if (getStatsTotal() == ProgressStats())
-            errorLog_.logMsg(_("Nothing to synchronize"), MSG_TYPE_INFO);
+            logMsg(errorLog_, _("Nothing to synchronize"), MSG_TYPE_INFO);
         return SyncResult::finishedSuccess;
     }();
 
@@ -415,7 +414,7 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(c
         totalTime
     };
 
-    const AbstractPath logFilePath = generateLogFilePath(logFormat, summary, altLogFolderPathPhrase);
+    AbstractPath logFilePath = AFS::appendRelPath(logFolderPath, generateLogFileName(logFormat, summary));
     //e.g. %AppData%\FreeFileSync\Logs\Backup FreeFileSync 2013-09-15 015052.123 [Error].log
 
     auto notifyStatusNoThrow = [&](std::wstring&& msg) { try { updateStatus(std::move(msg)); /*throw AbortProcess*/ } catch (AbortProcess&) {} };
@@ -454,9 +453,9 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(c
                 try
                 {
                     sendLogAsEmail(notifyEmail, summary, errorLog_, logFilePath, notifyStatusNoThrow); //throw FileError
-                    errorLog_.logMsg(replaceCpy(_("Sending email notification to %x"), L"%x", utfTo<std::wstring>(notifyEmail)), MSG_TYPE_INFO);
+                    logMsg(errorLog_, replaceCpy(_("Sending email notification to %x"), L"%x", utfTo<std::wstring>(notifyEmail)), MSG_TYPE_INFO);
                 }
-                catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); }
+                catch (const FileError& e) { logMsg(errorLog_, e.toString(), MSG_TYPE_ERROR); }
 
         //--------------------- post sync actions ----------------------
         auto proceedWithShutdown = [&](const std::wstring& operationName)
@@ -526,16 +525,27 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(c
         //do NOT use tryReportingError()! saving log files should not be cancellable!
         saveLogFile(logFilePath, summary, errorLog_, logfilesMaxAgeDays, logFormat, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
     }
-    catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); logFatalError(e.toString()); }
-    //----------------------------------------------------------
+    catch (const FileError& e)
+    {
+        logMsg(errorLog_, e.toString(), MSG_TYPE_ERROR);
 
+        const AbstractPath logFileDefaultPath = AFS::appendRelPath(createAbstractPath(getLogFolderDefaultPath()), generateLogFileName(logFormat, summary));
+        if (logFilePath != logFileDefaultPath) //fallback: log file *must* be saved no matter what!
+            try
+            {
+                logFilePath = logFileDefaultPath;
+                saveLogFile(logFileDefaultPath, summary, errorLog_, logfilesMaxAgeDays, logFormat, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
+            }
+            catch (const FileError& e2) { logMsg(errorLog_, e2.toString(), MSG_TYPE_ERROR); }
+    }
+    //----------------------------------------------------------
 
     if (suspend) //...*before* results dialog is shown
         try
         {
             suspendSystem(); //throw FileError
         }
-        catch (const FileError& e) { errorLog_.logMsg(e.toString(), MSG_TYPE_ERROR); }
+        catch (const FileError& e) { logMsg(errorLog_, e.toString(), MSG_TYPE_ERROR); }
 
 
     auto errorLogFinal = makeSharedRef<const ErrorLog>(std::move(errorLog_));
@@ -562,7 +572,7 @@ void StatusHandlerFloatingDialog::initNewPhase(int itemsTotal, int64_t bytesTota
 
 void StatusHandlerFloatingDialog::logInfo(const std::wstring& msg)
 {
-    errorLog_.logMsg(msg, MSG_TYPE_INFO);
+    logMsg(errorLog_, msg, MSG_TYPE_INFO);
     requestUiUpdate(false /*force*/); //throw AbortProcess
 }
 
@@ -571,7 +581,7 @@ void StatusHandlerFloatingDialog::reportWarning(const std::wstring& msg, bool& w
 {
     PauseTimers dummy(*progressDlg_);
 
-    errorLog_.logMsg(msg, MSG_TYPE_WARNING);
+    logMsg(errorLog_, msg, MSG_TYPE_WARNING);
 
     if (!warningActive)
         return;
@@ -609,7 +619,7 @@ ProcessCallback::Response StatusHandlerFloatingDialog::reportError(const ErrorIn
     //auto-retry
     if (errorInfo.retryNumber < autoRetryCount_)
     {
-        errorLog_.logMsg(errorInfo.msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO, failTime);
+        logMsg(errorLog_, errorInfo.msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO, failTime);
         delayAndCountDown(errorInfo.failTime + autoRetryDelay_,
                           [&, statusPrefix  = _("Automatic retry") +
                                               (errorInfo.retryNumber == 0 ? L"" : L' ' + formatNumber(errorInfo.retryNumber + 1)) + SPACED_DASH,
@@ -619,7 +629,7 @@ ProcessCallback::Response StatusHandlerFloatingDialog::reportError(const ErrorIn
     }
 
     //always, except for "retry":
-    auto guardWriteLog = makeGuard<ScopeGuardRunMode::onExit>([&] { errorLog_.logMsg(errorInfo.msg, MSG_TYPE_ERROR, failTime); });
+    auto guardWriteLog = makeGuard<ScopeGuardRunMode::onExit>([&] { logMsg(errorLog_, errorInfo.msg, MSG_TYPE_ERROR, failTime); });
 
     if (!progressDlg_->getOptionIgnoreErrors())
     {
@@ -639,8 +649,8 @@ ProcessCallback::Response StatusHandlerFloatingDialog::reportError(const ErrorIn
 
             case ConfirmationButton3::decline: //retry
                 guardWriteLog.dismiss();
-                errorLog_.logMsg(errorInfo.msg + L"\n-> " + _("Retrying operation..."), //explain why there are duplicate "doing operation X" info messages in the log!
-                                 MSG_TYPE_INFO, failTime);
+                logMsg(errorLog_, errorInfo.msg + L"\n-> " + _("Retrying operation..."), //explain why there are duplicate "doing operation X" info messages in the log!
+                       MSG_TYPE_INFO, failTime);
                 return ProcessCallback::retry;
 
             case ConfirmationButton3::cancel:
@@ -660,7 +670,7 @@ void StatusHandlerFloatingDialog::reportFatalError(const std::wstring& msg)
 {
     PauseTimers dummy(*progressDlg_);
 
-    errorLog_.logMsg(msg, MSG_TYPE_ERROR);
+    logMsg(errorLog_, msg, MSG_TYPE_ERROR);
 
     if (!progressDlg_->getOptionIgnoreErrors())
     {

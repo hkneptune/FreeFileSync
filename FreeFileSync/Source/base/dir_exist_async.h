@@ -109,7 +109,7 @@ FolderStatus getFolderStatusNonBlocking(const std::set<AbstractPath>& folderPath
             {
                 //call future::get() only *once*! otherwise: undefined behavior!
                 if (ftIsExisting.get()) //throw FileError
-                    output.existing.emplace(folderPath);
+                    output.existing.insert(folderPath);
                 else
                     output.notExisting.insert(folderPath);
             }

@@ -15,6 +15,7 @@
 #include "ui/tree_grid_attr.h" //RTS: avoid tree grid's "file_hierarchy.h" dependency!
 #include "ui/cfg_grid.h"
 #include "log_file.h"
+#include "version/version.h"
 
 
 namespace fff
@@ -49,7 +50,7 @@ struct ExternalApp
     Zstring cmdLine;
 };
 
-extern const ExternalApp extCommandFileBrowse;
+extern const ExternalApp extCommandFileManager;
 extern const ExternalApp extCommandOpenDefault;
 
 //---------------------------------------------------------------------
@@ -120,8 +121,8 @@ struct ViewFilterDefault
 };
 
 
-Zstring getGlobalConfigFile();
-
+Zstring getGlobalConfigDefaultPath();
+Zstring getLogFolderDefaultPath();
 
 struct DpiLayout
 {
@@ -240,6 +241,7 @@ struct XmlGlobalSettings
     std::vector<Zstring> versioningFolderHistory;
     Zstring versioningFolderLastSelected;
 
+    Zstring logFolderPhrase = getLogFolderDefaultPath();
     std::vector<Zstring> logFolderHistory;
     Zstring logFolderLastSelected;
 
@@ -249,10 +251,12 @@ struct XmlGlobalSettings
     std::vector<Zstring> commandHistory;
     size_t commandHistoryMax = 10;
 
-    std::vector<ExternalApp> externalApps{extCommandFileBrowse, extCommandOpenDefault};
+    std::vector<ExternalApp> externalApps{extCommandFileManager, extCommandOpenDefault};
 
     time_t lastUpdateCheck = 0; //number of seconds since 00:00 hours, Jan 1, 1970 UTC
     std::string lastOnlineVersion;
+
+    std::string welcomeShownVersion; //last FFS version for which the welcome dialog was shown
 
     std::unordered_map<int /*scale percent*/, DpiLayout> dpiLayouts;
 };

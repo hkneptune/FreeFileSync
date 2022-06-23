@@ -34,18 +34,20 @@ void setBestInitialSize(wxRichTextCtrl& ctrl, const wxString& text, wxSize maxSi
     if (maxSize.x <= scrollbarWidth) //implicitly checks for non-zero, too!
         return;
 
+    const int rowGap = 0;
     int maxLineWidth = 0;
-    int rowCount  = 0;
     int rowHeight = 0;
+    int rowCount  = 0;
     bool haveLineWrap = false;
 
     auto evalLineExtent = [&](const wxSize& sz) -> bool //return true when done
     {
+        assert(rowHeight == 0 || rowHeight == sz.y + rowGap); //all rows *should* have same height
+        rowHeight    = std::max(rowHeight,    sz.y + rowGap);
         maxLineWidth = std::max(maxLineWidth, sz.x);
 
         const int wrappedRows = numeric::intDivCeil(sz.x, maxSize.x - scrollbarWidth); //round up: consider line-wraps!
         rowCount += wrappedRows;
-        rowHeight = std::max(rowHeight, sz.y); //all rows *should* have same height
         if (wrappedRows > 1)
             haveLineWrap = true;
 
@@ -68,20 +70,23 @@ void setBestInitialSize(wxRichTextCtrl& ctrl, const wxString& text, wxSize maxSi
         it = itEnd + 1;
     }
 
-#if 1 //wxRichTextCtrl
-    const int rowGap = 0;
-    const int extraHeight = 0;
-#else //wxTextCtrl
-    const int rowGap = 0;
-    const int extraHeight = 0;
-#endif
     int extraWidth = 0;
     if (haveLineWrap) //compensate for trivial intDivCeil() not...
         extraWidth += ctrl.GetTextExtent(L"FreeFileSync").x / 2; //...understanding line wrap algorithm
 
-    const wxSize bestSize(std::min(maxLineWidth,  maxSize.x) + extraWidth,
-                          std::min(rowCount * (rowHeight + rowGap) + extraHeight, maxSize.y));
+    const wxSize bestSize(std::min(maxLineWidth + scrollbarWidth /*1*/+ extraWidth, maxSize.x),
+                          std::min(rowHeight * (rowCount + 1 /*2*/), maxSize.y));
+    //1: wxWidgets' layout algorithm sucks: e.g. shows scrollbar *nedlessly* => extra line wrap increases height => scrollbar suddenly *needed*: catch 22!
+    //2: add some vertical space just for looks (*instead* of using border gap)! Extra space needed anyway to avoid scrollbars on Windows (2 px) and macOS (11 px)
+
     ctrl.SetMinSize(bestSize); //alas, SetMinClientSize() is just not working!
+#if 0
+    std::cout << "rowCount       " << rowCount << "\n" <<
+              "maxLineWidth   " << maxLineWidth << "\n" <<
+              "rowHeight      " << rowHeight << "\n" <<
+              "haveLineWrap   " << haveLineWrap << "\n" <<
+              "scrollbarWidth " << scrollbarWidth << "\n\n";
+#endif
 }
 }
 
@@ -173,8 +178,7 @@ public:
 
         if (!cfg.textDetail.empty())
         {
-            const wxString& text = trimCpy(cfg.textDetail) + L'\n'; //add empty line *instead* of using border space!
-
+            const wxString& text = trimCpy(cfg.textDetail);
             setBestInitialSize(*m_richTextDetail, text, wxSize(maxWidth, maxHeight));
             setTextWithUrls(*m_richTextDetail, text);
         }
@@ -214,6 +218,26 @@ public:
         }
 
         //------------------------------------------------------------------------------
+
+        auto setButtonImage = [&](wxButton& button, ConfirmationButton3 btnType)
+        {
+            auto it = cfg.buttonImages.find(btnType);
+            if (it != cfg.buttonImages.end())
+                setImage(button, it->second); //caveat: image + text at the same time not working on GTK < 2.6
+        };
+        setButtonImage(*m_buttonAccept,  ConfirmationButton3::accept);
+        setButtonImage(*m_buttonAccept2, ConfirmationButton3::accept2);
+        setButtonImage(*m_buttonDecline, ConfirmationButton3::decline);
+        setButtonImage(*m_buttonCancel,  ConfirmationButton3::cancel);
+
+
+        if (cfg.disabledButtons.contains(ConfirmationButton3::accept )) m_buttonAccept ->Disable();
+        if (cfg.disabledButtons.contains(ConfirmationButton3::accept2)) m_buttonAccept2->Disable();
+        if (cfg.disabledButtons.contains(ConfirmationButton3::decline)) m_buttonDecline->Disable();
+        assert(!cfg.disabledButtons.contains(ConfirmationButton3::cancel));
+        assert(!cfg.disabledButtons.contains(cfg.buttonToDisableWhenChecked));
+
+
         StdButtons stdBtns;
         stdBtns.setAffirmative(m_buttonAccept);
         if (labelAccept.empty()) //notification dialog
@@ -251,17 +275,11 @@ public:
                 stdBtns.setAffirmativeAll(m_buttonAccept2);
             }
         }
-
-        if (cfg.disabledButtons.contains(ConfirmationButton3::accept )) m_buttonAccept ->Disable();
-        if (cfg.disabledButtons.contains(ConfirmationButton3::accept2)) m_buttonAccept2->Disable();
-        if (cfg.disabledButtons.contains(ConfirmationButton3::decline)) m_buttonDecline->Disable();
-        assert(!cfg.disabledButtons.contains(ConfirmationButton3::cancel));
-        assert(!cfg.disabledButtons.contains(cfg.buttonToDisableWhenChecked));
-
-        updateGui();
-
         //set std order after button visibility was set
         setStandardButtonLayout(*bSizerStdButtons, stdBtns);
+
+
+        updateGui();
 
         GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
         Center(); //needs to be re-applied after a dialog size change!

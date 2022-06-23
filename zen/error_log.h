@@ -32,30 +32,17 @@ struct LogEntry
 
 std::string formatMessage(const LogEntry& entry);
 
+using ErrorLog = std::vector<LogEntry>;
 
-class ErrorLog
+void logMsg(ErrorLog& log, const std::wstring& msg, MessageType type, time_t time = std::time(nullptr));
+
+struct ErrorLogStats
 {
-public:
-    void logMsg(const std::wstring& msg, MessageType type, time_t time = std::time(nullptr));
-
-    struct Stats
-    {
-        int info    = 0;
-        int warning = 0;
-        int error   = 0;
-    };
-    Stats getStats() const;
-
-    //subset of std::vector<> interface:
-    using const_iterator = std::vector<LogEntry>::const_iterator;
-    const_iterator begin() const { return entries_.begin(); }
-    const_iterator end  () const { return entries_.end  (); }
-    bool           empty() const { return entries_.empty(); }
-
-private:
-    std::vector<LogEntry> entries_;
+    int info    = 0;
+    int warning = 0;
+    int error   = 0;
 };
-
+ErrorLogStats getStats(const ErrorLog& log);
 
 
 
@@ -65,18 +52,17 @@ private:
 
 //######################## implementation ##########################
 inline
-void ErrorLog::logMsg(const std::wstring& msg, MessageType type, time_t time)
+void logMsg(ErrorLog& log, const std::wstring& msg, MessageType type, time_t time)
 {
-    entries_.push_back({time, type, utfTo<Zstringc>(msg)});
+    log.push_back({time, type, utfTo<Zstringc>(msg)});
 }
 
 
-
 inline
-ErrorLog::Stats ErrorLog::getStats() const
+ErrorLogStats getStats(const ErrorLog& log)
 {
-    Stats count;
-    for (const LogEntry& entry : entries_)
+    ErrorLogStats count;
+    for (const LogEntry& entry : log)
         switch (entry.type)
         {
             case MSG_TYPE_INFO:
@@ -89,7 +75,7 @@ ErrorLog::Stats ErrorLog::getStats() const
                 ++count.error;
                 break;
         }
-    assert(std::ssize(entries_) == count.info + count.warning + count.error);
+    assert(std::ssize(log) == count.info + count.warning + count.error);
     return count;
 }
 
@@ -119,6 +105,7 @@ std::string formatMessage(const LogEntry& entry)
 
     const Zstringc msg = trimCpy(entry.message);
     static_assert(std::is_same_v<decltype(msg), const Zstringc>, "no worries about copying as long as we're using a ref-counted string!");
+    assert(msg == entry.message); //trimming shouldn't be needed usually!?
 
     for (auto it = msg.begin(); it != msg.end(); )
         if (*it == '\n')

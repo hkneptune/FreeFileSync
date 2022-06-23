@@ -7,6 +7,7 @@
 #include "folder_selector.h"
 #include <zen/thread.h>
 #include <zen/file_access.h>
+#include <zen/process_exec.h>
 #include <wx/dirdlg.h>
 #include <wx/scrolwin.h>
 #include <wx+/bitmap_button.h>
@@ -17,6 +18,7 @@
 #include "../afs/concrete.h"
 #include "../afs/native.h"
 #include "../icon_buffer.h"
+#include "../afs/gdrive.h"
 
 
 
@@ -286,4 +288,14 @@ Zstring FolderSelector::getPath() const
 void FolderSelector::setPath(const Zstring& folderPathPhrase)
 {
     setFolderPathPhrase(folderPathPhrase, &folderComboBox_, folderComboBox_, staticText_);
+}
+
+
+void fff::openFolderInFileBrowser(const AbstractPath& folderPath) //throw FileError
+{
+        if (const Zstring& gdriveUrl = getGoogleDriveFolderUrl(folderPath); //throw FileError
+            !gdriveUrl.empty())
+            return openWithDefaultApp(gdriveUrl); //throw FileError
+        else
+            openWithDefaultApp(utfTo<Zstring>(AFS::getDisplayPath(folderPath))); //throw FileError
 }

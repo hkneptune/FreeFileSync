@@ -184,7 +184,18 @@ FileIconHolder fff::getTrashIcon(int maxSize) //throw SysError
 {
     GIcon* const trashIcon = ::g_themed_icon_new("user-trash-full"); //empty: "user-trash"
     if (!trashIcon)
-        throw SysError(formatSystemError("g_themed_icon_new(user-trash)", L"", L"Icon not available."));
+        throw SysError(formatSystemError("g_themed_icon_new(user-trash-full)", L"", L"Icon not available."));
+
+    return FileIconHolder(trashIcon /*pass ownership*/, maxSize);
+
+}
+
+
+FileIconHolder fff::getFileManagerIcon(int maxSize) //throw SysError
+{
+    GIcon* const trashIcon = ::g_themed_icon_new("system-file-manager"); //empty: "user-trash"
+    if (!trashIcon)
+        throw SysError(formatSystemError("g_themed_icon_new(system-file-manager)", L"", L"Icon not available."));
 
     return FileIconHolder(trashIcon /*pass ownership*/, maxSize);
 

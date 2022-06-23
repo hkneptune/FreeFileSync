@@ -705,7 +705,7 @@ void scaleImage(const uint32_t* src, uint32_t* trg, int srcWidth, int srcHeight,
             //blend all four corners of current pixel
             if (blendingNeeded(blend_xy))
             {
-                const Kernel_3x3& ker3 = ker4; //"The Things We Do for Perf"
+                const Kernel_3x3& ker3 = ker4; //"The Things We Do for [Perf]"
                 blendPixel<Scaler, ColorDistance, ROT_0  >(ker3, out, trgWidth, blend_xy, cfg);
                 blendPixel<Scaler, ColorDistance, ROT_90 >(ker3, out, trgWidth, blend_xy, cfg);
                 blendPixel<Scaler, ColorDistance, ROT_180>(ker3, out, trgWidth, blend_xy, cfg);
@@ -1224,7 +1224,7 @@ void xbrz::bilinearScale(const uint32_t* src, int srcWidth, int srcHeight,
 {
     const auto pixReader = [src, srcWidth](int x, int y, BytePixel& pix)
     {
-        static_assert(sizeof(pix) == sizeof(uint32_t));
+        static_assert(sizeof(pix) == sizeof(*src));
         const uint32_t pixSrc = src[y * srcWidth + x];
 
         const unsigned char a = getAlpha(pixSrc);

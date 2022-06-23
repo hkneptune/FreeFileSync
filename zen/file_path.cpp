@@ -35,7 +35,7 @@ std::optional<PathComponents> zen::parsePathComponents(const Zstring& itemPath)
         pc = doParse(3 /*sepCountVolumeRoot*/, false /*rootWithSep*/);
 
     if (!pc && startsWith(itemPath, "/media/")) //Ubuntu: e.g. /media/zenju/DEVICE_NAME
-        if (const char* username = ::getenv("USER"))
+        if (const char* username = ::getenv("USER")) //no ownership transfer + no extended error reporting
             if (startsWith(itemPath, std::string("/media/") + username + "/"))
                 pc = doParse(4 /*sepCountVolumeRoot*/, false /*rootWithSep*/);
 

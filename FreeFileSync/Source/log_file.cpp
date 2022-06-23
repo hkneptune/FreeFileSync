@@ -9,7 +9,7 @@
 #include <zen/http.h>
 #include <zen/sys_info.h>
 #include <wx/datetime.h>
-#include "ffs_paths.h"
+//#include "ffs_paths.h"
 #include "afs/concrete.h"
 
 using namespace zen;
@@ -43,7 +43,7 @@ std::string generateLogHeaderTxt(const ProcessSummary& s, const ErrorLog& log, i
     summary.push_back(tabSpace + utfTo<std::string>(getSyncResultLabel(s.syncResult)));
     summary.emplace_back();
 
-    const ErrorLog::Stats logCount = log.getStats();
+    const ErrorLogStats logCount = getStats(log);
 
     if (logCount.error   > 0) summary.push_back(tabSpace + utfTo<std::string>(_("Errors:")   + L' ' + formatNumber(logCount.error)));
     if (logCount.warning > 0) summary.push_back(tabSpace + utfTo<std::string>(_("Warnings:") + L' ' + formatNumber(logCount.warning)));
@@ -244,7 +244,7 @@ std::string generateLogHeaderHtml(const ProcessSummary& s, const ErrorLog& log, 
         </div>
         <table role="presentation" class="summary-table" style="border-spacing:0; margin-left:10px; padding:5px 10px;">)";
 
-    const ErrorLog::Stats logCount = log.getStats();
+    const ErrorLogStats logCount = getStats(log);
 
     if (logCount.error > 0) 
         output += R"(
@@ -543,15 +543,12 @@ void limitLogfileCount(const AbstractPath& logFolderPath, //throw FileError, X
 }
 
 
-Zstring fff::getLogFolderDefaultPath() { return appendPath(getConfigDirPath(), Zstr("Logs")); }
-
-
 //"Backup FreeFileSync 2013-09-15 015052.123.html"
 //"Backup FreeFileSync 2013-09-15 015052.123 [Error].html"
 //"Backup FreeFileSync + RealTimeSync 2013-09-15 015052.123 [Error].log"
-AbstractPath fff::generateLogFilePath(LogFileFormat logFormat, const ProcessSummary& summary, const Zstring& altLogFolderPathPhrase /*optional*/)
+Zstring fff::generateLogFileName(LogFileFormat logFormat, const ProcessSummary& summary)
 {
-    //const std::string colon = "\xcb\xb8"; //="modifier letter raised colon" => regular colon is forbidden in file names on Windows and OS X
+    //const std::string colon = "\xcb\xb8"; //="modifier letter raised colon" => regular colon is forbidden in file names on Windows and macOS
     //=> too many issues, most notably cmd.exe is not Unicode-aware: https://freefilesync.org/forum/viewtopic.php?t=1679
 
     Zstring jobNamesFmt;
@@ -572,7 +569,7 @@ AbstractPath fff::generateLogFilePath(LogFileFormat logFormat, const ProcessSumm
 
     const TimeComp tc = getLocalTime(std::chrono::system_clock::to_time_t(summary.startTime));
     if (tc == TimeComp())
-        throw FileError(L"Failed to determine current time: " + numberTo<std::wstring>(summary.startTime.time_since_epoch().count()));
+        throw FileError(L"Failed to determine current time: (time_t) " + numberTo<std::wstring>(summary.startTime.time_since_epoch().count()));
 
     const auto timeMs = std::chrono::duration_cast<std::chrono::milliseconds>(summary.startTime.time_since_epoch()).count() % 1000;
     assert(std::chrono::duration_cast<std::chrono::seconds>(summary.startTime.time_since_epoch()).count() == std::chrono::system_clock::to_time_t(summary.startTime));
@@ -601,16 +598,9 @@ AbstractPath fff::generateLogFilePath(LogFileFormat logFormat, const ProcessSumm
     if (!failStatus.empty())
         logFileName += STATUS_BEGIN_TOKEN + utfTo<Zstring>(failStatus) + STATUS_END_TOKEN;
 
-    if (logFormat == LogFileFormat::html)
-        logFileName += Zstr(".html");
-    else
-        logFileName += Zstr(".log");
-
-    AbstractPath logFolderPath = createAbstractPath(altLogFolderPathPhrase);
-    if (AFS::isNullPath(logFolderPath))
-        logFolderPath = createAbstractPath(getLogFolderDefaultPath());
-
-    return AFS::appendRelPath(logFolderPath, logFileName);
+    logFileName += logFormat == LogFileFormat::html ? Zstr(".html") : Zstr(".log");
+    
+    return logFileName;
 }
 
 

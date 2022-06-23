@@ -74,9 +74,9 @@ Zstring fff::getConfigDirPath()
             }
         }();
 
-        try //create the config folder if not existing + create "Logs" subfolder while we're at it
+        try
         {
-            createDirectoryIfMissingRecursion(appendPath(configPath, Zstr("Logs"))); //throw FileError
+            createDirectoryIfMissingRecursion(configPath); //throw FileError
         }
         catch (const FileError& e)
         {
@@ -92,6 +92,6 @@ Zstring fff::getConfigDirPath()
 //this function is called by RealTimeSync!!!
 Zstring fff::getFreeFileSyncLauncherPath()
 {
-    return getProcessParentFolderPath() + Zstr("/FreeFileSync");
+    return appendPath(getProcessParentFolderPath(), Zstr("FreeFileSync"));
 
 }

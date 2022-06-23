@@ -51,8 +51,7 @@ private:
     MainDialog(const Zstring& globalConfigFilePath,
                const XmlGuiConfig& guiCfg,
                const std::vector<Zstring>& referenceFiles,
-               const XmlGlobalSettings& globalSettings, //take over ownership => save on exit
-               bool startComparison);
+               const XmlGlobalSettings& globalSettings); //take over ownership => save on exit
     ~MainDialog();
 
     void onBeforeSystemShutdown(); //last chance to do something useful before killing the application!
@@ -367,6 +366,7 @@ private:
     TempFileBuffer tempFileBuf_; //buffer temporary copies of non-native files for %local_path%
 
     const wxImage imgTrashSmall_;
+    const wxImage imgFileManagerSmall_;
 
     const zen::SharedRef<std::function<void()>> onBeforeSystemShutdownCookie_ = zen::makeSharedRef<std::function<void()>>([this] { onBeforeSystemShutdown(); });
 };

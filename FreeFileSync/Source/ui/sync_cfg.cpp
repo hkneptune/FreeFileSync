@@ -15,7 +15,7 @@
 #include <wx+/choice_enum.h>
 #include <wx+/image_tools.h>
 #include <wx+/font_size.h>
-#include <wx+/std_button_layout.h>
+//#include <wx+/std_button_layout.h>
 #include <wx+/popup_dlg.h>
 #include <wx+/image_resources.h>
 #include <wx+/window_tools.h>
@@ -25,7 +25,7 @@
 #include "../base/norm_filter.h"
 #include "../base/file_hierarchy.h"
 #include "../base/icon_loader.h"
-#include "../log_file.h"
+//#include "../log_file.h"
 #include "../afs/concrete.h"
 #include "../base_tools.h"
 
@@ -102,7 +102,7 @@ public:
                  std::vector<LocalPairConfig>& localPairCfg,
                  FilterConfig& defaultFilter,
                  std::vector<Zstring>& versioningFolderHistory, Zstring& versioningFolderLastSelected,
-                 std::vector<Zstring>& logFolderHistory, Zstring& logFolderLastSelected,
+                 std::vector<Zstring>& logFolderHistory, Zstring& logFolderLastSelected, const Zstring& globalLogFolderPhrase,
                  size_t folderHistoryMax, Zstring& sftpKeyFileLastSelected,
                  std::vector<Zstring>& emailHistory,   size_t emailHistoryMax,
                  std::vector<Zstring>& commandHistory, size_t commandHistoryMax);
@@ -208,6 +208,8 @@ private:
     void onEmailErrorWarning(wxCommandEvent& event) override { emailNotifyCondition_ = ResultsNotification::errorWarning; updateMiscGui(); }
     void onEmailErrorOnly   (wxCommandEvent& event) override { emailNotifyCondition_ = ResultsNotification::errorOnly;    updateMiscGui(); }
 
+    void onShowLogFolder(wxCommandEvent& event) override;
+
     std::optional<SyncConfig> getSyncConfig() const;
     void setSyncConfig(const SyncConfig* syncCfg);
 
@@ -227,8 +229,7 @@ private:
 
     EnumDescrList<PostSyncCondition> enumPostSyncCondition_;
 
-    FolderSelector logfileDir_;
-
+    FolderSelector logFolderSelector_;
     //-----------------------------------------------------
 
     MiscSyncConfig getMiscSyncOptions() const;
@@ -261,7 +262,7 @@ private:
     const bool enableExtraFeatures_;
     const bool showMultipleCfgs_;
 
-    const XmlGlobalSettings defaultCfg_;
+    const Zstring globalLogFolderPhrase_;
 };
 
 //#################################################################################################################
@@ -309,6 +310,7 @@ ConfigDialog::ConfigDialog(wxWindow* parent,
                            FilterConfig& defaultFilter,
                            std::vector<Zstring>& versioningFolderHistory, Zstring& versioningFolderLastSelected,
                            std::vector<Zstring>& logFolderHistory, Zstring& logFolderLastSelected,
+                           const Zstring& globalLogFolderPhrase,
                            size_t folderHistoryMax, Zstring& sftpKeyFileLastSelected,
                            std::vector<Zstring>& emailHistory,   size_t emailHistoryMax,
                            std::vector<Zstring>& commandHistory, size_t commandHistoryMax) :
@@ -338,8 +340,8 @@ setDeviceParallelOps_([this](const Zstring& folderPathPhrase, size_t parallelOps
 versioningFolder_(this, *m_panelVersioning, *m_buttonSelectVersioningFolder, *m_bpButtonSelectVersioningAltFolder, *m_versioningFolderPath, versioningFolderLastSelected, sftpKeyFileLastSelected,
                   nullptr /*staticText*/, nullptr /*dropWindow2*/, nullptr /*droppedPathsFilter*/, getDeviceParallelOps_, setDeviceParallelOps_),
 
-logfileDir_(this, *m_panelLogfile, *m_buttonSelectLogFolder, *m_bpButtonSelectAltLogFolder, *m_logFolderPath, logFolderLastSelected, sftpKeyFileLastSelected,
-            nullptr /*staticText*/, nullptr /*dropWindow2*/, nullptr /*droppedPathsFilter*/, getDeviceParallelOps_, setDeviceParallelOps_),
+logFolderSelector_(this, *m_panelLogfile, *m_buttonSelectLogFolder, *m_bpButtonSelectAltLogFolder, *m_logFolderPath, logFolderLastSelected, sftpKeyFileLastSelected,
+                   nullptr /*staticText*/, nullptr /*dropWindow2*/, nullptr /*droppedPathsFilter*/, getDeviceParallelOps_, setDeviceParallelOps_),
 
 globalPairCfgOut_(globalPairCfg),
 localPairCfgOut_(localPairCfg),
@@ -351,8 +353,11 @@ commandHistoryOut_(commandHistory),
 globalPairCfg_(globalPairCfg),
 localPairCfg_(localPairCfg),
     enableExtraFeatures_(false),
-showMultipleCfgs_(showMultipleCfgs)
+showMultipleCfgs_(showMultipleCfgs),
+globalLogFolderPhrase_(globalLogFolderPhrase)
 {
+    assert(!AFS::isNullPath(createAbstractPath(globalLogFolderPhrase_)));
+
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
 
     m_notebook->SetPadding(wxSize(fastFromDIP(2), 0)); //height cannot be changed
@@ -489,6 +494,18 @@ showMultipleCfgs_(showMultipleCfgs)
     m_spinCtrlVersionCountMax->SetMinSize({fastFromDIP(60), -1}); //
 
     m_versioningFolderPath->setHistory(std::make_shared<HistoryList>(versioningFolderHistory, folderHistoryMax));
+
+
+    const wxImage imgFileManagerSmall_([]
+    {
+        try { return extractWxImage(fff::getFileManagerIcon(fastFromDIP(20))); /*throw SysError*/ }
+        catch (SysError&) { assert(false); return loadImage("file_manager", fastFromDIP(20)); }
+    }());
+    setImage(*m_bpButtonShowLogFolder, imgFileManagerSmall_);
+    m_bpButtonShowLogFolder->SetToolTip(translate(extCommandFileManager.description));//translate default external apps on the fly: "Show in Explorer"
+
+    m_logFolderPath->SetHint(utfTo<wxString>(globalLogFolderPhrase_));
+    //1. no text shown when control is disabled! 2. apparently there's a refresh problem on GTK
 
     m_logFolderPath->setHistory(std::make_shared<HistoryList>(logFolderHistory, folderHistoryMax));
 
@@ -767,10 +784,11 @@ void ConfigDialog::updateCompGui()
 void ConfigDialog::onFilterDefaultContext(wxEvent& event)
 {
     const FilterConfig activeCfg = getFilterConfig();
+    const FilterConfig defaultFilter = XmlGlobalSettings().defaultFilter;
 
     ContextMenu menu;
     menu.addItem(_("&Save"),                 [&] { defaultFilterOut_ = activeCfg; updateFilterGui(); }, loadImage("cfg_save_sicon"), defaultFilterOut_ != activeCfg);
-    menu.addItem(_("&Load factory default"), [&] { setFilterConfig(defaultCfg_.defaultFilter); }, wxNullImage, activeCfg != defaultCfg_.defaultFilter);
+    menu.addItem(_("&Load factory default"), [&] { setFilterConfig(defaultFilter); }, wxNullImage, activeCfg != defaultFilter);
 
     menu.popup(*m_bpButtonDefaultContext, {m_bpButtonDefaultContext->GetSize().x, 0});
 }
@@ -1035,6 +1053,22 @@ void updateSyncDirectionIcons(const SyncDirectionConfig& directionCfg,
 }
 
 
+void ConfigDialog::onShowLogFolder(wxCommandEvent& event)
+{
+    assert(selectedPairIndexToShow_ < 0);
+    if (selectedPairIndexToShow_ < 0)
+        try
+        {
+            AbstractPath logFolderPath = createAbstractPath(getMiscSyncOptions().altLogFolderPathPhrase); //optional
+            if (AFS::isNullPath(logFolderPath))
+                logFolderPath = createAbstractPath(globalLogFolderPhrase_);
+
+            openFolderInFileBrowser(logFolderPath); //throw FileError
+        }
+        catch (const FileError& e) { showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString())); }
+}
+
+
 std::optional<SyncConfig> ConfigDialog::getSyncConfig() const
 {
     if (!m_checkBoxUseLocalSyncOptions->GetValue())
@@ -1247,10 +1281,10 @@ MiscSyncConfig ConfigDialog::getMiscSyncOptions() const
     miscCfg.postSyncCommand   = m_comboBoxPostSyncCommand->getValue();
     miscCfg.postSyncCondition = getEnumVal(enumPostSyncCondition_, *m_choicePostSyncCondition);
     //----------------------------------------------------------------------------
-    Zstring altLogPathPhrase = logfileDir_.getPath();
-    if (altLogPathPhrase.empty())
-        altLogPathPhrase = Zstr(' '); //trigger error message on dialog close
-    miscCfg.altLogFolderPathPhrase = m_checkBoxOverrideLogPath->GetValue() ? altLogPathPhrase : Zstring();
+    Zstring altLogFolderPhrase = logFolderSelector_.getPath();
+    if (altLogFolderPhrase.empty()) //"empty" already means "unchecked"
+        altLogFolderPhrase = Zstr(' '); //=> trigger error message on dialog close
+    miscCfg.altLogFolderPathPhrase = m_checkBoxOverrideLogPath->GetValue() ? altLogFolderPhrase : Zstring();
     //----------------------------------------------------------------------------
     std::string emailAddress = utfTo<std::string>(m_comboBoxEmail->getValue());
     if (emailAddress.empty())
@@ -1313,9 +1347,8 @@ void ConfigDialog::setMiscSyncOptions(const MiscSyncConfig& miscCfg)
     m_comboBoxPostSyncCommand->setValue(miscCfg.postSyncCommand);
     setEnumVal(enumPostSyncCondition_, *m_choicePostSyncCondition, miscCfg.postSyncCondition);
     //----------------------------------------------------------------------------
-    m_checkBoxOverrideLogPath->SetValue(!trimCpy(miscCfg.altLogFolderPathPhrase).empty());
-    logfileDir_.setPath(m_checkBoxOverrideLogPath->GetValue() ? miscCfg.altLogFolderPathPhrase : getLogFolderDefaultPath());
-    //can't use logfileDir_.setBackgroundText(): no text shown when control is disabled!
+    m_checkBoxOverrideLogPath->SetValue(!miscCfg.altLogFolderPathPhrase.empty()); //only "empty path" means unchecked! everything else (e.g. " "): "checked"
+    logFolderSelector_.setPath(m_checkBoxOverrideLogPath->GetValue() ? miscCfg.altLogFolderPathPhrase : globalLogFolderPhrase_);
     //----------------------------------------------------------------------------
     Zstring defaultEmail;
     if (const std::vector<Zstring>& history = m_comboBoxEmail->getHistory();
@@ -1517,8 +1550,8 @@ bool ConfigDialog::unselectFolderPairConfig(bool validateParams)
 
         if (selectedPairIndexToShow_ < 0)
         {
-            if (!miscCfg->altLogFolderPathPhrase.empty() &&
-                trimCpy(miscCfg->altLogFolderPathPhrase).empty())
+            if (AFS::isNullPath(createAbstractPath(miscCfg->altLogFolderPathPhrase)) &&
+                !miscCfg->altLogFolderPathPhrase.empty())
             {
                 m_notebook->ChangeSelection(static_cast<size_t>(SyncConfigPanel::sync));
                 showNotificationDialog(this, DialogInfoType::info, PopupDialogCfg().setMainInstructions(_("Please enter a folder path.")));
@@ -1595,7 +1628,7 @@ ConfirmationButton fff::showSyncConfigDlg(wxWindow* parent,
 
                                           FilterConfig& defaultFilter,
                                           std::vector<Zstring>& versioningFolderHistory, Zstring& versioningFolderLastSelected,
-                                          std::vector<Zstring>& logFolderHistory, Zstring& logFolderLastSelected,
+                                          std::vector<Zstring>& logFolderHistory, Zstring& logFolderLastSelected, const Zstring& globalLogFolderPhrase,
                                           size_t folderHistoryMax, Zstring& sftpKeyFileLastSelected,
                                           std::vector<Zstring>& emailHistory,   size_t emailHistoryMax,
                                           std::vector<Zstring>& commandHistory, size_t commandHistoryMax)
@@ -1608,7 +1641,7 @@ ConfirmationButton fff::showSyncConfigDlg(wxWindow* parent,
                          localPairCfg,
                          defaultFilter,
                          versioningFolderHistory, versioningFolderLastSelected,
-                         logFolderHistory, logFolderLastSelected,
+                         logFolderHistory, logFolderLastSelected, globalLogFolderPhrase,
                          folderHistoryMax, sftpKeyFileLastSelected,
                          emailHistory,
                          emailHistoryMax,

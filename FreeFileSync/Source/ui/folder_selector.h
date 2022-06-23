@@ -51,8 +51,6 @@ public:
     void setPath(const Zstring& folderPathPhrase);
     Zstring getPath() const;
 
-    //void setBackgroundText(const std::wstring& text) { folderComboBox_.SetHint(text); } => no text shown when control is disabled!
-
 private:
     void onMouseWheel     (wxMouseEvent&   event);
     void onItemPathDropped(zen::FileDropEvent&  event);
@@ -77,6 +75,10 @@ private:
     wxStaticText*     staticText_        = nullptr; //optional
     FolderSelector*   siblingSelector_   = nullptr; //
 };
+
+
+//abstract version of openWithDefaultApp()
+void openFolderInFileBrowser(const AbstractPath& folderPath); //throw FileError
 }
 
 #endif //FOLDER_SELECTOR_H_24857842375234523463425

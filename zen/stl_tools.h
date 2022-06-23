@@ -78,11 +78,7 @@ template <class T> inline       T* get(      std::optional<T>& opt) { return opt
 template <class T> inline const T* get(const std::optional<T>& opt) { return opt ? &*opt : nullptr; }
 
 
-
 //===========================================================================
-template <class T> class SharedRef;
-template <class T, class... Args> SharedRef<T> makeSharedRef(Args&& ... args);
-
 template <class T>
 class SharedRef //why is there no std::shared_ref???
 {
@@ -109,7 +105,6 @@ private:
 template <class T, class... Args> inline
 SharedRef<T> makeSharedRef(Args&& ... args) { return SharedRef<T>(std::make_shared<T>(std::forward<Args>(args)...)); }
 
-//===========================================================================
 
 
 

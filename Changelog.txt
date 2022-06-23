@@ -1,3 +1,14 @@
+FreeFileSync 11.22 [2022-06-23]
+-------------------------------
+Allow to change default log folder in global settings
+Fixed sort order when items existing on one side only
+Consider HOME environment variable for home path (Linux)
+Fixed config selection using shift and arrow keys
+Start comparison, then sync by only pressing Enter after startup
+Fall back to default path when failing to save log file
+Improved relative config path handling in portable mode
+
+
 FreeFileSync 11.21 [2022-05-17]
 -------------------------------
 Support volume GUID as path: \\?\Volume{01234567-89ab-cdef-0123-456789abcdef} (Windows)

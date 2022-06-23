@@ -87,7 +87,7 @@ void drawInsetRectangle(wxDC& dc, const wxRect& rect, int borderWidth, const wxC
 /* Standard DPI:
      Windows/Ubuntu: 96 x 96
      macOS: wxWidgets uses DIP (note: wxScreenDC().GetPPI() returns 72 x 72 which is a lie; looks like 96 x 96)       */
-constexpr int defaultDpi = 96;
+constexpr int defaultDpi = 96; //on Windows same as wxDisplay::GetStdPPIValue() (however returns 72 on macOS!)
 
 inline
 int getDPI()
@@ -100,6 +100,13 @@ int getDPI()
 
     //https://github.com/wxWidgets/wxWidgets/blob/d9d05c2bb201078f5e762c42458ca2f74af5b322/include/wx/window.h#L2060
     return defaultDpi; //e.g. macOS, GTK3
+}
+
+
+inline
+double getDisplayScaleFactor()
+{
+    return static_cast<double>(getDPI()) / defaultDpi;
 }
 
 
@@ -123,8 +130,20 @@ wxBitmapBundle toBitmapBundle(const wxImage& img /*expected to be DPI-scaled!*/)
 {
     //return wxBitmap(img, -1 /*depth*/, static_cast<double>(getDPI()) / defaultDpi); implementation just ignores scale parameter! WTF!
     wxBitmap bmpScaled(img);
-    bmpScaled.SetScaleFactor(static_cast<double>(getDPI()) / defaultDpi);
+    bmpScaled.SetScaleFactor(getDisplayScaleFactor());
     return bmpScaled;
+}
+
+
+//all this shit just because wxDC::SetScaleFactor() is missing:
+inline 
+void setScaleFactor(wxDC& dc, double scale)
+{
+    struct wxDcSurgeon : public wxDCImpl
+    {
+        void setScaleFactor(double scale) { m_contentScaleFactor = scale; }
+    };
+    static_cast<wxDcSurgeon*>(dc.GetImpl())->setScaleFactor(scale);
 }
 
 
@@ -195,10 +214,13 @@ public:
         const wxSize clientSize = wnd.GetClientSize();
         if (clientSize.GetWidth() > 0 && clientSize.GetHeight() > 0) //wxBitmap asserts this!! width may be 0; test case "Grid::CornerWin": compare both sides, then change config
         {
-            if (!buffer_ || clientSize != wxSize(buffer->GetWidth(), buffer->GetHeight()))
-                buffer = wxBitmap(clientSize.GetWidth(), clientSize.GetHeight());
+            if (!buffer_ || buffer->GetSize() != clientSize)
+                buffer.emplace(clientSize);
 
-            SelectObject(*buffer);
+            if (buffer->GetScaleFactor() != wnd.GetDPIScaleFactor())
+                buffer->SetScaleFactor(wnd.GetDPIScaleFactor());
+
+            SelectObject(*buffer); //copies scale factor from wxBitmap
 
             if (paintDc_.IsOk() && paintDc_.GetLayoutDirection() == wxLayout_RightToLeft)
                 SetLayoutDirection(wxLayout_RightToLeft);
@@ -213,7 +235,7 @@ public:
         {
             if (GetLayoutDirection() == wxLayout_RightToLeft)
             {
-                paintDc_.SetLayoutDirection(wxLayout_LeftToRight); //workaround bug in wxDC::Blit()
+                paintDc_.SetLayoutDirection(wxLayout_LeftToRight); //work around bug in wxDC::Blit()
                 SetLayoutDirection(wxLayout_LeftToRight);          //
             }
 

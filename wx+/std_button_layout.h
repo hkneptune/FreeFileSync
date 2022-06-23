@@ -32,6 +32,20 @@ void setStandardButtonLayout(wxBoxSizer& sizer, const StdButtons& buttons = StdB
 //sizer width will change! => call wxWindow::Fit and wxWindow::Layout
 
 
+inline
+int getDefaultMenuIconSize()
+{
+    return fastFromDIP(20);
+}
+
+
+inline
+int getDefaultButtonHeight()
+{
+    const int defaultHeight = wxButton::GetDefaultSize().GetHeight(); //buffered by wxWidgets
+    return std::max(defaultHeight, fastFromDIP(31)); //default button height is much too small => increase!
+}
+
 
 
 
@@ -103,8 +117,7 @@ void setStandardButtonLayout(wxBoxSizer& sizer, const StdButtons& buttons)
         if (btn)
         {
             assert(btn->GetMinSize().GetHeight() == -1); //let OS or this routine do the sizing! note: OS X does not allow changing the (visible!) button height!
-            const int defaultHeight = wxButton::GetDefaultSize().GetHeight(); //buffered by wxWidgets
-            btn->SetMinSize({-1, std::max(defaultHeight, fastFromDIP(31))}); //default button height is much too small => increase!
+            btn->SetMinSize({-1, getDefaultButtonHeight()});
 
             if (settingFirstButton)
                 settingFirstButton = false;

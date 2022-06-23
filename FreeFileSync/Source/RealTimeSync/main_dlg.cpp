@@ -21,7 +21,6 @@
 #include "../icon_buffer.h"
 #include "../ffs_paths.h"
 #include "../version/version.h"
-#include "../fatal_error.h"
 
     #include <gtk/gtk.h>
 
@@ -174,7 +173,8 @@ MainDialog::~MainDialog()
 void MainDialog::onBeforeSystemShutdown()
 {
     try { writeConfig(getConfiguration(), lastRunConfigPath_); } //throw FileError
-    catch (const FileError& e) { fff::logFatalError(e.toString()); }
+    catch (FileError&) { assert(false); }
+    warn_static("log, maybe?")
 }
 
 

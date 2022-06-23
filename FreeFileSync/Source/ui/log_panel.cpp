@@ -11,6 +11,7 @@
 #include <wx+/rtl.h>
 #include <wx+/context_menu.h>
 #include <wx+/popup_dlg.h>
+//#include <wx+/std_button_layout.h>
 
 using namespace zen;
 using namespace fff;
@@ -344,11 +345,11 @@ void LogPanel::setLog(const std::shared_ptr<const ErrorLog>& log)
             return SharedRef<const ErrorLog>(log);
 
         ErrorLog dummyLog;
-        dummyLog.logMsg(_("No log entries"), MSG_TYPE_INFO);
+        logMsg(dummyLog, _("No log entries"), MSG_TYPE_INFO);
         return makeSharedRef<const ErrorLog>(std::move(dummyLog));
     }();
 
-    const ErrorLog::Stats logCount = newLog.ref().getStats();
+    const ErrorLogStats logCount = getStats(newLog.ref());
 
     auto initButton = [](ToggleButton& btn, const char* imgName, const wxString& tooltip)
     {

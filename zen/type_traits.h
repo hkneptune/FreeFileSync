@@ -100,7 +100,7 @@ Usage:
 template <class Predicate>
 struct LessDescending
 {
-    LessDescending(Predicate lessThan) : lessThan_(lessThan) {}
+    LessDescending(Predicate lessThan) : lessThan_(std::move(lessThan)) {}
     template <class T> bool operator()(const T& lhs, const T& rhs) const { return lessThan_(rhs, lhs); }
 private:
     Predicate lessThan_;

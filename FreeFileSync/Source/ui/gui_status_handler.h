@@ -104,7 +104,7 @@ public:
         bool autoCloseDialog;
     };
     Result reportResults(const Zstring& postSyncCommand, PostSyncCondition postSyncCondition,
-                         const Zstring& altLogFolderPathPhrase, int logfilesMaxAgeDays, LogFileFormat logFormat, const std::set<AbstractPath>& logFilePathsToKeep,
+                         const AbstractPath& logFolderPath, int logfilesMaxAgeDays, LogFileFormat logFormat, const std::set<AbstractPath>& logFilePathsToKeep,
                          const std::string& emailNotifyAddress, ResultsNotification emailNotifyCondition); //noexcept!!
 
 private:

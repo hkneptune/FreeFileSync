@@ -7,7 +7,8 @@
 #ifndef POPUP_DLG_H_820780154723456
 #define POPUP_DLG_H_820780154723456
 
-#include <set>
+#include <unordered_set>
+#include <unordered_map>
 #include <zen/zstring.h>
 #include <wx/window.h>
 #include <wx/bitmap.h>
@@ -18,8 +19,6 @@ namespace zen
 {
 //parent window, optional: support correct dialog placement above parent on multiple monitor systems
 //this module requires error, warning and info image files in Icons.zip, see <wx+/image_resources.h>
-
-struct PopupDialogCfg;
 
 enum class DialogInfoType
 {
@@ -53,6 +52,8 @@ enum class QuestionButton2
     no     = static_cast<int>(ConfirmationButton3::decline),
 };
 
+struct PopupDialogCfg;
+
 void                showNotificationDialog(wxWindow* parent, DialogInfoType type, const PopupDialogCfg& cfg);
 ConfirmationButton  showConfirmationDialog(wxWindow* parent, DialogInfoType type, const PopupDialogCfg& cfg, const wxString& labelAccept);
 ConfirmationButton2 showConfirmationDialog(wxWindow* parent, DialogInfoType type, const PopupDialogCfg& cfg, const wxString& labelAccept, const wxString& labelAccept2);
@@ -69,6 +70,7 @@ struct PopupDialogCfg
     PopupDialogCfg& setMainInstructions  (const wxString& label) { textMain   = label; return *this; } //set at least one of these!
     PopupDialogCfg& setDetailInstructions(const wxString& label) { textDetail = label; return *this; } //
     PopupDialogCfg& disableButton(ConfirmationButton3 button) { disabledButtons.insert(button); return *this; }
+    PopupDialogCfg& setButtonImage(ConfirmationButton3 button, const wxImage& img) { buttonImages.emplace(button, img); return *this; }
     PopupDialogCfg& alertWhenPending(const Zstring& soundFilePath) { soundFileAlertPending = soundFilePath; return *this; }
     PopupDialogCfg& setCheckBox(bool& value, const wxString& label, ConfirmationButton3 disableWhenChecked = ConfirmationButton3::cancel)
     {
@@ -85,7 +87,8 @@ private:
     wxString title;
     wxString textMain;
     wxString textDetail;
-    std::set<ConfirmationButton3> disabledButtons;
+    std::unordered_set<ConfirmationButton3> disabledButtons;
+    std::unordered_map<ConfirmationButton3, wxImage> buttonImages;
     Zstring soundFileAlertPending;
     bool* checkBoxValue = nullptr; //in/out
     wxString checkBoxLabel;

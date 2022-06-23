@@ -9,7 +9,6 @@
 #include <zen/time.h>
 #include <zen/format_unit.h>
 #include <zen/build_info.h>
-#include <zen/process_exec.h>
 #include <zen/file_io.h>
 #include <zen/http.h>
 #include <wx/wupdlock.h>
@@ -22,7 +21,7 @@
 #include <wx+/no_flicker.h>
 #include <wx+/image_tools.h>
 #include <wx+/font_size.h>
-#include <wx+/std_button_layout.h>
+//#include <wx+/std_button_layout.h>
 #include <wx+/popup_dlg.h>
 #include <wx+/async_task.h>
 #include <wx+/image_resources.h>
@@ -40,7 +39,7 @@
 #include "../base/icon_loader.h"
 #include "../status_handler.h" //uiUpdateDue()
 #include "../version/version.h"
-#include "../log_file.h"
+//#include "../log_file.h"
 #include "../ffs_paths.h"
 #include "../icon_buffer.h"
 
@@ -60,11 +59,9 @@ public:
 private:
     void onOkay  (wxCommandEvent& event) override { EndModal(static_cast<int>(ConfirmationButton::accept)); }
     void onClose (wxCloseEvent&   event) override { EndModal(static_cast<int>(ConfirmationButton::cancel)); }
-    void onDonate(wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://freefilesync.org/donate"); }
-    void onOpenHomepage(wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://freefilesync.org/"); }
-    void onOpenForum   (wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://freefilesync.org/forum/"); }
-    void onSendEmail   (wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"mailto:zenju@" L"freefilesync.org"); }
-    void onShowGpl     (wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://www.gnu.org/licenses/gpl-3.0"); }
+    void onOpenForum(wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://freefilesync.org/forum"); }
+    void onSendEmail(wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"mailto:zenju@" L"freefilesync.org"); }
+    void onDonate   (wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://freefilesync.org/donate"); }
 
     void onLocalKeyEvent(wxKeyEvent& event);
 };
@@ -79,12 +76,12 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
     setImage(*m_bitmapLogo,     loadImage("logo"));
     setImage(*m_bitmapLogoLeft, loadImage("logo-left"));
 
+    setBitmapTextLabel(*m_bpButtonForum, loadImage("ffs_forum"), L"FreeFileSync Forum");
+    setBitmapTextLabel(*m_bpButtonEmail, loadImage("ffs_email"), L"zenju@" L"freefilesync.org");
+    m_bpButtonEmail->SetToolTip(L"mailto:zenju@" L"freefilesync.org");
 
-    //------------------------------------
+
     wxString build = utfTo<wxString>(ffsVersion);
-#ifndef wxUSE_UNICODE
-#error what is going on?
-#endif
 
     const wchar_t* const SPACED_BULLET = L" \u2022 ";
     build += SPACED_BULLET;
@@ -95,36 +92,29 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
     build += SPACED_BULLET;
     build += utfTo<wxString>(formatTime(formatDateTag, getCompileTime()));
 
-    m_staticTextVersion->SetLabelText(replaceCpy(_("Version: %x"), L"%x", build));
+    m_staticFfsTextVersion->SetLabelText(replaceCpy(_("Version: %x"), L"%x", build));
 
-    //------------------------------------
+    wxString variantName;
+    m_staticTextFfsVariant->SetLabelText(variantName);
+
+#ifndef wxUSE_UNICODE
+#error what is going on?
+#endif
+
     {
-        m_panelThankYou->Hide();
-        setImage(*m_bitmapDonate, loadImage("ffs_heart"));
-        setRelativeFontSize(*m_staticTextDonate, 1.25);
-        setRelativeFontSize(*m_buttonDonate, 1.25);
+        m_bitmapAnimalBig->Hide();
+
+        setRelativeFontSize(*m_staticTextDonate, 1.20);
+        m_staticTextDonate->Hide(); //temporarily! => avoid impact to dialog width
+
+        setRelativeFontSize(*m_buttonDonate1, 1.25);
+        setBitmapTextLabel(*m_buttonDonate1, loadImage("ffs_heart", fastFromDIP(28)), m_buttonDonate1->GetLabelText());
+
+        m_buttonShowDonationDetails->Hide();
+        m_buttonDonate2->Hide();
     }
 
-    //------------------------------------
-    wxImage forumImage = stackImages(loadImage("ffs_forum"),
-                                     createImageFromText(L"FreeFileSync Forum", *wxNORMAL_FONT, m_bpButtonForum->GetForegroundColour()),
-                                     ImageStackLayout::vertical, ImageStackAlignment::center, fastFromDIP(5));
-    setImage(*m_bpButtonForum, forumImage);
-
-    setBitmapTextLabel(*m_bpButtonHomepage, loadImage("ffs_homepage"), L"FreeFileSync.org");
-    setBitmapTextLabel(*m_bpButtonEmail,    loadImage("ffs_email"   ), L"zenju@" L"freefilesync.org");
-    m_bpButtonEmail->SetToolTip(L"mailto:zenju@" L"freefilesync.org");
-
-    //------------------------------------
-    setImage(*m_bpButtonGpl, loadImage("gpl"));
-
-    //have the GPL text wrap to two lines:
-    wxMemoryDC dc;
-    dc.SetFont(m_staticTextGpl->GetFont());
-    const wxSize gplExt = dc.GetTextExtent(m_staticTextGpl->GetLabelText());
-    m_staticTextGpl->Wrap(gplExt.GetWidth() * 6 / 10);
-
-    //------------------------------------
+    //--------------------------------------------------------------------------
     m_staticTextThanksForLoc->SetMinSize({fastFromDIP(200), -1});
     m_staticTextThanksForLoc->Wrap(fastFromDIP(200));
 
@@ -145,8 +135,28 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
         staticTextTranslator->SetToolTip(ti.languageName);
     }
     fgSizerTranslators->Fit(m_scrolledWindowTranslators);
+    //--------------------------------------------------------------------------
 
-    //------------------------------------
+    wxImage::AddHandler(new wxJPEGHandler /*ownership passed*/); //activate support for .jpg files
+
+    wxImage animalImg(utfTo<wxString>(appendPath(getResourceDirPath(), Zstr("Animal.dat"))), wxBITMAP_TYPE_JPEG);
+    convertToVanillaImage(animalImg);
+    assert(animalImg.IsOk());
+
+    //--------------------------------------------------------------------------
+    //have animal + text match *final* dialog width
+    GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
+
+    {
+        const int imageWidth = (m_panelDonate->GetSize().GetWidth() - 5 - 5 /* grey border*/) / 2;
+        const int textWidth  =  m_panelDonate->GetSize().GetWidth() - 5 - 5 - imageWidth;
+
+        setImage(*m_bitmapAnimalSmall, shrinkImage(animalImg, imageWidth, -1 /*maxHeight*/));
+
+        m_staticTextDonate->Show();
+        m_staticTextDonate->Wrap(textWidth - 10 /*left gap*/); //wrap *after* changing font size
+    }
+    //--------------------------------------------------------------------------
 
     Bind(wxEVT_CHAR_HOOK, [this](wxKeyEvent& event) { onLocalKeyEvent(event); }); //enable dialog-specific key events
 
@@ -505,8 +515,15 @@ void CloudSetupDlg::onDetectServerChannelLimit(wxCommandEvent& event)
     assert (type_ == CloudType::sftp);
     try
     {
+        m_spinCtrlChannelCountSftp->SetSelection(0, 0); //some visual feedback: clear selection
+        m_spinCtrlChannelCountSftp->Refresh(); //both needed for wxGTK: meh!
+        m_spinCtrlChannelCountSftp->Update();  //
+
         const int channelCountMax = getServerMaxChannelsPerConnection(extractSftpLogin(getFolderPath().afsDevice)); //throw FileError
         m_spinCtrlChannelCountSftp->SetValue(channelCountMax);
+
+        m_spinCtrlChannelCountSftp->SetFocus(); //[!] otherwise selection is lost
+        m_spinCtrlChannelCountSftp->SetSelection(-1, -1); //some visual feedback: select all
     }
     catch (const FileError& e)
     {
@@ -1140,7 +1157,7 @@ private:
     void onClose         (wxCloseEvent&   event) override { EndModal(static_cast<int>(ConfirmationButton::cancel)); }
     void onAddRow        (wxCommandEvent& event) override;
     void onRemoveRow     (wxCommandEvent& event) override;
-    void onShowLogFolder    (wxHyperlinkEvent& event) override;
+    void onShowLogFolder      (wxCommandEvent& event) override;
     void onToggleLogfilesLimit(wxCommandEvent& event) override { updateGui(); }
     void onToggleHiddenDialog (wxCommandEvent& event) override { updateGui(); }
 
@@ -1219,23 +1236,42 @@ private:
         //*INDENT-ON*
     };
 
+    FolderSelector logFolderSelector_;
+
     //output-only parameters:
     XmlGlobalSettings& globalCfgOut_;
 };
 
 
-OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
+OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalCfg) :
     OptionsDlgGenerated(parent),
-    globalCfgOut_(globalSettings)
+
+    logFolderSelector_(this, *m_panelLogfile, *m_buttonSelectLogFolder, *m_bpButtonSelectAltLogFolder, *m_logFolderPath, globalCfg.logFolderLastSelected, globalCfg.sftpKeyFileLastSelected,
+                       nullptr /*staticText*/, nullptr /*dropWindow2*/, nullptr /*droppedPathsFilter*/,
+                       [](const Zstring& folderPathPhrase) { return 1; } /*getDeviceParallelOps_*/, nullptr /*setDeviceParallelOps_*/),
+                   globalCfgOut_(globalCfg)
 {
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
 
     //setMainInstructionFont(*m_staticTextHeader);
     m_gridCustomCommand->SetTabBehaviour(wxGrid::Tab_Leave);
 
+    const wxImage imgFileManagerSmall_([]
+    {
+        try { return extractWxImage(fff::getFileManagerIcon(fastFromDIP(20))); /*throw SysError*/ }
+        catch (SysError&) { assert(false); return loadImage("file_manager", fastFromDIP(20)); }
+    }());
+    setImage(*m_bpButtonShowLogFolder, imgFileManagerSmall_);
+    m_bpButtonShowLogFolder->SetToolTip(translate(extCommandFileManager.description));//translate default external apps on the fly: "Show in Explorer"
+
+    m_logFolderPath->SetHint(utfTo<wxString>(defaultCfg_.logFolderPhrase));
+    //1. no text shown when control is disabled! 2. apparently there's a refresh problem on GTK
+
+    m_logFolderPath->setHistory(std::make_shared<HistoryList>(globalCfg.logFolderHistory, globalCfg.folderHistoryMax));
+
+    logFolderSelector_.setPath(globalCfg.logFolderPhrase);
+
     m_spinCtrlLogFilesMaxAge->SetMinSize({fastFromDIP(70), -1}); //Hack: set size (why does wxWindow::Size() not work?)
-    m_hyperlinkLogFolder->SetLabel(utfTo<wxString>(getLogFolderDefaultPath()));
-    setRelativeFontSize(*m_hyperlinkLogFolder, 1.2);
 
     setImage(*m_bitmapSettings,           loadImage("settings"));
     setImage(*m_bitmapWarnings,           loadImage("msg_warning", fastFromDIP(20)));
@@ -1285,7 +1321,7 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
     std::stable_partition(hiddenDialogCfgMapping_.begin(), hiddenDialogCfgMapping_.end(), [&](const auto& item)
     {
         const auto& [dlgShown, dlgSetShown, msg] = item;
-        return !dlgShown(globalSettings); //move hidden dialogs to the top
+        return !dlgShown(globalCfg); //move hidden dialogs to the top
     });
 
     std::vector<wxString> dialogMessages;
@@ -1297,20 +1333,20 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
     unsigned int itemPos = 0;
     for (const auto& [dlgShown, dlgSetShown, msg] : hiddenDialogCfgMapping_)
     {
-        if (dlgShown(globalSettings))
+        if (dlgShown(globalCfg))
             m_checkListHiddenDialogs->Check(itemPos);
         ++itemPos;
     }
 
     //--------------------------------------------------------------------------------
-    m_checkBoxFailSafe       ->SetValue(globalSettings.failSafeFileCopy);
-    m_checkBoxCopyLocked     ->SetValue(globalSettings.copyLockedFiles);
-    m_checkBoxCopyPermissions->SetValue(globalSettings.copyFilePermissions);
+    m_checkBoxFailSafe       ->SetValue(globalCfg.failSafeFileCopy);
+    m_checkBoxCopyLocked     ->SetValue(globalCfg.copyLockedFiles);
+    m_checkBoxCopyPermissions->SetValue(globalCfg.copyFilePermissions);
 
-    m_checkBoxLogFilesMaxAge->SetValue(globalSettings.logfilesMaxAgeDays > 0);
-    m_spinCtrlLogFilesMaxAge->SetValue(globalSettings.logfilesMaxAgeDays > 0 ? globalSettings.logfilesMaxAgeDays : XmlGlobalSettings().logfilesMaxAgeDays);
+    m_checkBoxLogFilesMaxAge->SetValue(globalCfg.logfilesMaxAgeDays > 0);
+    m_spinCtrlLogFilesMaxAge->SetValue(globalCfg.logfilesMaxAgeDays > 0 ? globalCfg.logfilesMaxAgeDays : XmlGlobalSettings().logfilesMaxAgeDays);
 
-    switch (globalSettings.logFormat)
+    switch (globalCfg.logFormat)
     {
         case LogFileFormat::html:
             m_radioBtnLogHtml->SetValue(true);
@@ -1320,9 +1356,9 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
             break;
     }
 
-    m_textCtrlSoundPathCompareDone ->ChangeValue(utfTo<wxString>(globalSettings.soundFileCompareFinished));
-    m_textCtrlSoundPathSyncDone    ->ChangeValue(utfTo<wxString>(globalSettings.soundFileSyncFinished));
-    m_textCtrlSoundPathAlertPending->ChangeValue(utfTo<wxString>(globalSettings.soundFileAlertPending));
+    m_textCtrlSoundPathCompareDone ->ChangeValue(utfTo<wxString>(globalCfg.soundFileCompareFinished));
+    m_textCtrlSoundPathSyncDone    ->ChangeValue(utfTo<wxString>(globalCfg.soundFileSyncFinished));
+    m_textCtrlSoundPathAlertPending->ChangeValue(utfTo<wxString>(globalCfg.soundFileAlertPending));
     //--------------------------------------------------------------------------------
 
     bSizerLockedFiles->Show(false);
@@ -1332,7 +1368,7 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
     m_gridCustomCommand->GetGridWindow()->Bind(wxEVT_SIZE, [this](wxSizeEvent& event) { onGridResize(event); });
 
     //temporarily set dummy value for window height calculations:
-    setExtApp(std::vector<ExternalApp>(globalSettings.externalApps.size() + 1));
+    setExtApp(std::vector<ExternalApp>(globalCfg.externalApps.size() + 1));
     updateGui();
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
@@ -1340,7 +1376,7 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalSettings) :
     Center(); //needs to be re-applied after a dialog size change!
 
     //restore actual value:
-    setExtApp(globalSettings.externalApps);
+    setExtApp(globalCfg.externalApps);
     updateGui();
 
     m_buttonOkay->SetFocus();
@@ -1438,6 +1474,8 @@ void OptionsDlg::onDefault(wxCommandEvent& event)
     for (const auto& [dlgShown, dlgSetShown, msg] : hiddenDialogCfgMapping_)
         m_checkListHiddenDialogs->Check(itemPos++, dlgShown(defaultCfg_));
 
+    logFolderSelector_.setPath(defaultCfg_.logFolderPhrase);
+
     m_checkBoxLogFilesMaxAge->SetValue(defaultCfg_.logfilesMaxAgeDays > 0);
     m_spinCtrlLogFilesMaxAge->SetValue(defaultCfg_.logfilesMaxAgeDays > 0 ? defaultCfg_.logfilesMaxAgeDays : 14);
 
@@ -1463,11 +1501,20 @@ void OptionsDlg::onDefault(wxCommandEvent& event)
 
 void OptionsDlg::onOkay(wxCommandEvent& event)
 {
+    //------- parameter validation (BEFORE writing output!) -------
+    Zstring logFolderPhrase = logFolderSelector_.getPath();
+    if (AFS::isNullPath(createAbstractPath(logFolderPhrase))) //no need to show an error: just set default!
+        logFolderPhrase = defaultCfg_.logFolderPhrase;
+    //-------------------------------------------------------------
+
     //write settings only when okay-button is pressed (except hidden dialog reset)!
     globalCfgOut_.failSafeFileCopy    = m_checkBoxFailSafe->GetValue();
     globalCfgOut_.copyLockedFiles     = m_checkBoxCopyLocked->GetValue();
     globalCfgOut_.copyFilePermissions = m_checkBoxCopyPermissions->GetValue();
 
+    globalCfgOut_.logFolderPhrase = logFolderPhrase;
+    m_logFolderPath->getHistory()->addItem(logFolderPhrase);
+    globalCfgOut_.logFolderHistory = m_logFolderPath->getHistory()->getList();
     globalCfgOut_.logfilesMaxAgeDays = m_checkBoxLogFilesMaxAge->GetValue() ? m_spinCtrlLogFilesMaxAge->GetValue() : -1;
     globalCfgOut_.logFormat = m_radioBtnLogHtml->GetValue() ? LogFileFormat::html : LogFileFormat::text;
 
@@ -1556,11 +1603,15 @@ void OptionsDlg::onRemoveRow(wxCommandEvent& event)
 }
 
 
-void OptionsDlg::onShowLogFolder(wxHyperlinkEvent& event)
+void OptionsDlg::onShowLogFolder(wxCommandEvent& event)
 {
     try
     {
-        openWithDefaultApp(getLogFolderDefaultPath()); //throw FileError
+        AbstractPath logFolderPath = createAbstractPath(logFolderSelector_.getPath());
+        if (AFS::isNullPath(logFolderPath))
+            logFolderPath = createAbstractPath(defaultCfg_.logFolderPhrase);
+
+        openFolderInFileBrowser(logFolderPath); //throw FileError
     }
     catch (const FileError& e) { showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString())); }
 }

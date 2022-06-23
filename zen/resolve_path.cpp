@@ -9,8 +9,10 @@
 #include "thread.h"
 #include "file_access.h"
 
-    #include <stdlib.h> //getenv()
-    #include <unistd.h> //getcwd()
+#include <zen/sys_info.h>
+    //    #include <stdlib.h> //getenv()
+    #include <unistd.h> //getuid()
+    #include <pwd.h>    //getpwuid_r()
 
 using namespace zen;
 
@@ -21,7 +23,7 @@ std::optional<Zstring> getEnvironmentVar(const Zchar* name)
 {
     assert(runningOnMainThread()); //getenv() is not thread-safe!
 
-    const char* buffer = ::getenv(name); //no extended error reporting
+    const char* buffer = ::getenv(name); //no ownership transfer + no extended error reporting
     if (!buffer)
         return {};
     Zstring value(buffer);
@@ -58,20 +60,19 @@ Zstring resolveRelativePath(const Zstring& relativePath)
     if (!startsWith(pathTmp, FILE_NAME_SEPARATOR)) //absolute names are exactly those starting with a '/'
     {
         /* basic support for '~': strictly speaking this is a shell-layer feature, so "realpath()" won't handle it
-            https://www.gnu.org/software/bash/manual/html_node/Tilde-Expansion.html
-
-            https://linux.die.net/man/3/getpwuid: An application that wants to determine its user's home directory
-            should inspect the value of HOME (rather than the value getpwuid(getuid())->pw_dir) since this allows
-            the user to modify their notion of "the home directory" during a login session.                       */
+            https://www.gnu.org/software/bash/manual/html_node/Tilde-Expansion.html               */
         if (startsWith(pathTmp, "~/") || pathTmp == "~")
         {
-            if (const std::optional<Zstring> homeDir = getEnvironmentVar("HOME"))
-            {
+                try
+                {
+                    const Zstring& homePath = getUserHome(); //throw FileError
+
                 if (startsWith(pathTmp, "~/"))
-                    pathTmp = appendPath(*homeDir, pathTmp.c_str() + 2);
+                    pathTmp = appendPath(homePath, pathTmp.c_str() + 2);
                 else //pathTmp == "~"
-                    pathTmp = *homeDir;
-            }
+                    pathTmp = homePath;
+                }
+                catch (FileError&) {}
             //else: error! no further processing!
         }
         else
@@ -238,8 +239,7 @@ Zstring zen::getResolvedFilePath(const Zstring& pathPhrase) //noexcept
 
     path = expandMacros(path); //expand before trimming!
 
-    //remove leading/trailing whitespace before allowing misinterpretation in applyLongPathPrefix()
-    trim(path); //attention: don't remove all whitespace from right, e.g. 0xa0 may be used as part of a folder name
+    trim(path); //remove leading/trailing whitespace before allowing misinterpretation in applyLongPathPrefix()
 
     {
         path = expandVolumeName(path); //may block for slow USB sticks and idle HDDs!

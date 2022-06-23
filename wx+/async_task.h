@@ -114,7 +114,8 @@ private:
 class AsyncGuiQueue : private wxEvtHandler
 {
 public:
-    AsyncGuiQueue(int pollingMs = 50) : pollingMs_(pollingMs) { timer_.Bind(wxEVT_TIMER, [this](wxTimerEvent& event) { onTimerEvent(event); }); }
+    explicit AsyncGuiQueue(int pollingMs = 50) :
+        pollingMs_(pollingMs) { timer_.Bind(wxEVT_TIMER, [this](wxTimerEvent& event) { onTimerEvent(event); }); }
 
     template <class Fun, class Fun2>
     void processAsync(Fun&& evalAsync, Fun2&& evalOnGui)

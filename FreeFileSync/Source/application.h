@@ -10,6 +10,7 @@
 #include <vector>
 #include <zen/zstring.h>
 #include <wx/app.h>
+#include "config.h"
 #include "return_codes.h"
 
 
@@ -23,11 +24,16 @@ private:
     int  OnExit() override;
     bool OnExceptionInMainLoop() override { throw; } //just re-throw and avoid display of additional messagebox: it will be caught in OnUnhandledException()
     void OnUnhandledException () override;
+    void notifyAppError(const std::wstring& msg, FfsExitCode rc);
     wxLayoutDirection GetLayoutDirection() const override;
     void onEnterEventLoop(wxEvent& event);
     void launch(const std::vector<Zstring>& commandArgs);
 
-    FfsExitCode exitCode_ = FFS_EXIT_SUCCESS;
+    void runGuiMode  (const Zstring& globalConfigFile);
+    void runGuiMode  (const Zstring& globalConfigFile, const XmlGuiConfig& guiCfg, const std::vector<Zstring>& cfgFilePaths, bool startComparison);
+    void runBatchMode(const Zstring& globalConfigFile, const XmlBatchConfig& batchCfg, const Zstring& cfgFilePath);
+
+    FfsExitCode exitCode_ = FfsExitCode::success;
 };
 }
 

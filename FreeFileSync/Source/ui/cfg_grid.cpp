@@ -12,6 +12,7 @@
 #include <wx+/image_resources.h>
 #include <wx+/popup_dlg.h>
 #include <wx+/image_tools.h>
+#include <wx+/std_button_layout.h>
 #include <wx/settings.h>
 #include "../icon_buffer.h"
 #include "../ffs_paths.h"
@@ -78,9 +79,8 @@ void ConfigView::addCfgFilesImpl(const std::vector<Zstring>& filePaths)
         lastUseIndexMax = std::max(lastUseIndexMax, details.lastUseIndex);
 
     for (const Zstring& filePath : filePaths)
-    {
-        auto it = cfgList_.find(filePath);
-        if (it == cfgList_.end())
+        if (auto it = cfgList_.find(filePath);
+            it == cfgList_.end())
         {
             Details detail = {};
             detail.cfgItem.cfgFilePath = filePath;
@@ -106,7 +106,6 @@ void ConfigView::addCfgFilesImpl(const std::vector<Zstring>& filePaths)
         }
         else
             it->second.lastUseIndex = ++lastUseIndexMax;
-    }
 }
 
 
@@ -653,8 +652,7 @@ void cfggrid::addAndSelect(Grid& grid, const std::vector<Zstring>& filePaths, bo
             rowsToSelect.push_back(row);
 
     if (scrollToSelection && !rowsToSelect.empty())
-        grid.setGridCursor(rowsToSelect[0], GridEventPolicy::deny);
-    //= Grid::makeRowVisible() + set grid cursor + select cursor (overwriten below)
+        grid.makeRowVisible(rowsToSelect[0]); //don't also set grid cursor: will confuse keyboard selection using shift and arrow keys
 
     grid.clearSelection(GridEventPolicy::deny);
 

@@ -22,6 +22,7 @@ zen::FileIconHolder getIconByTemplatePath(const Zstring& templatePath, int maxSi
 zen::FileIconHolder genericFileIcon(int maxSize); //throw SysError
 zen::FileIconHolder genericDirIcon (int maxSize); //throw SysError
 zen::FileIconHolder getTrashIcon   (int maxSize); //throw SysError
+zen::FileIconHolder getFileManagerIcon(int maxSize); //throw SysError
 zen::FileIconHolder getFileIcon(const Zstring& filePath, int maxSize); //throw SysError
 zen::ImageHolder getThumbnailImage(const Zstring& filePath, int maxSize); //throw SysError
 

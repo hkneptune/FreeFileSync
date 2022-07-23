@@ -1799,8 +1799,8 @@ private:
     //wait until there is real demand for copying from and to SFTP with permissions => use stream-based file copy:
 
     //----------------------------------------------------------------------------------------------------------------
-    FileIconHolder getFileIcon      (const AfsPath& afsPath, int pixelSize) const override { return {}; } //throw SysError; optional return value
-    ImageHolder    getThumbnailImage(const AfsPath& afsPath, int pixelSize) const override { return {}; } //throw SysError; optional return value
+    FileIconHolder getFileIcon      (const AfsPath& afsPath, int pixelSize) const override { return {}; } //throw FileError; optional return value
+    ImageHolder    getThumbnailImage(const AfsPath& afsPath, int pixelSize) const override { return {}; } //throw FileError; optional return value
 
     void authenticateAccess(bool allowUserInteraction) const override {} //throw FileError
 

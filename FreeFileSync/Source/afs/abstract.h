@@ -126,8 +126,8 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     static AbstractPath getSymlinkResolvedPath(const AbstractPath& ap) { return ap.afsDevice.ref().getSymlinkResolvedPath (ap.afsPath); } //throw FileError
     static bool equalSymlinkContent(const AbstractPath& apLhs, const AbstractPath& apRhs); //throw FileError
     //----------------------------------------------------------------------------------------------------------------
-    static zen::FileIconHolder getFileIcon      (const AbstractPath& ap, int pixelSize) { return ap.afsDevice.ref().getFileIcon      (ap.afsPath, pixelSize); } //throw SysError; optional return value
-    static zen::ImageHolder    getThumbnailImage(const AbstractPath& ap, int pixelSize) { return ap.afsDevice.ref().getThumbnailImage(ap.afsPath, pixelSize); } //throw SysError; optional return value
+    static zen::FileIconHolder getFileIcon      (const AbstractPath& ap, int pixelSize) { return ap.afsDevice.ref().getFileIcon      (ap.afsPath, pixelSize); } //throw FileError; optional return value
+    static zen::ImageHolder    getThumbnailImage(const AbstractPath& ap, int pixelSize) { return ap.afsDevice.ref().getThumbnailImage(ap.afsPath, pixelSize); } //throw FileError; optional return value
     //----------------------------------------------------------------------------------------------------------------
 
     struct StreamAttributes
@@ -396,8 +396,8 @@ private:
     virtual void copySymlinkForSameAfsType(const AfsPath& afsSource, const AbstractPath& apTarget, bool copyFilePermissions) const = 0; //throw FileError
 
     //----------------------------------------------------------------------------------------------------------------
-    virtual zen::FileIconHolder getFileIcon      (const AfsPath& afsPath, int pixelSize) const = 0; //throw SysError; optional return value
-    virtual zen::ImageHolder    getThumbnailImage(const AfsPath& afsPath, int pixelSize) const = 0; //throw SysError; optional return value
+    virtual zen::FileIconHolder getFileIcon      (const AfsPath& afsPath, int pixelSize) const = 0; //throw FileError; optional return value
+    virtual zen::ImageHolder    getThumbnailImage(const AfsPath& afsPath, int pixelSize) const = 0; //throw FileError; optional return value
 
     virtual void authenticateAccess(bool allowUserInteraction) const = 0; //throw FileError
 
@@ -437,7 +437,6 @@ bool operator==(const AbstractPath& lhs, const AbstractPath& rhs) { return lhs.a
 inline
 AbstractPath AbstractFileSystem::appendRelPath(const AbstractPath& ap, const Zstring& relPath)
 {
-    assert(!AbstractFileSystem::isNullPath(ap));
     return AbstractPath(ap.afsDevice, AfsPath(appendPath(ap.afsPath.value, relPath)));
 }
 

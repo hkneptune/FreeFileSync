@@ -159,8 +159,8 @@ public:
         T& objectRef(const IterTy& it) const { return *(it->second); }
     };
 
-    using ChildIter2      = PtrIter<std::unordered_multimap<std::string, XmlElement*>::iterator,             XmlElement, AccessMapElement>;
-    using ChildIterConst2 = PtrIter<std::unordered_multimap<std::string, XmlElement*>::const_iterator, const XmlElement, AccessMapElement>;
+    using ChildIter2      = PtrIter<std::multimap<std::string, XmlElement*>::iterator,             XmlElement, AccessMapElement>;
+    using ChildIterConst2 = PtrIter<std::multimap<std::string, XmlElement*>::const_iterator, const XmlElement, AccessMapElement>;
 
     ///Access all child elements with the given name via STL iterators.
     /**
@@ -249,7 +249,10 @@ private:
     std::unordered_map<std::string, std::list<Attribute>::iterator> attributesByName; //alternate view for lookup
 
     std::list<XmlElement>                             childElements_;       //child elements in order of creation
-    std::unordered_multimap<std::string, XmlElement*> childElementsByName_; //alternate view for lookup
+    std::multimap<std::string, XmlElement*> childElementsByName_; //alternate view for lookup
+    //alternative: std::unordered_map => but let's keep std::map, so which guarantees consistent order of duplicate items!
+    //e.g. std::unordered_map on Linux inserts duplicates in reverse!
+
     XmlElement* parent_ = nullptr;
 };
 

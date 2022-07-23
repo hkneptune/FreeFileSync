@@ -100,6 +100,7 @@ Zstring zen::appendPath(const Zstring& basePath, const Zstring& relPath)
     if (relPath.empty())
         return basePath; //with or without path separator, e.g. C:\ or C:\folder
 
+    //assert(!basePath.empty());
     if (basePath.empty()) //basePath might be a relative path, too!
         return relPath;
 

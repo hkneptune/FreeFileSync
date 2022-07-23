@@ -768,7 +768,7 @@ SyncProgressDialogImpl<TopLevelDialog>::SyncProgressDialogImpl(long style, //wxF
                                                                PostSyncAction2 postSyncAction) :
     TopLevelDialog(parentFrame, wxID_ANY, wxString(), wxDefaultPosition, wxDefaultSize, style), //title is overwritten anyway in setExternalStatus()
     pnl_(*new SyncProgressPanelGenerated(this)), //ownership passed to "this"
-    syncStartTime_(getLocalTime(syncStartTime)), //empty string on failure
+    syncStartTime_(getLocalTime(syncStartTime)), //returns TimeComp() on error
     jobName_([&]
 {
     std::wstring tmp;
@@ -871,8 +871,8 @@ dlgSizeBuf_(dlgSize)
     pnl_.m_panelGraphBytes->addCurve(curveBytesTimeNow_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(2)).setColor(getColorBytesDark()));
     pnl_.m_panelGraphItems->addCurve(curveItemsTimeNow_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(2)).setColor(getColorItemsDark()));
 
-    pnl_.m_panelGraphBytes->addCurve(curveBytesTimeEstim_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(2)).setColor(getColorBytesDark()));
-    pnl_.m_panelGraphItems->addCurve(curveItemsTimeEstim_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(2)).setColor(getColorItemsDark()));
+    pnl_.m_panelGraphBytes->addCurve(curveBytesTimeEstim_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(3)).setColor(getColorDarkGrey()));
+    pnl_.m_panelGraphItems->addCurve(curveItemsTimeEstim_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(3)).setColor(getColorDarkGrey()));
 
     //graph legend:
     auto generateSquareBitmap = [&](const wxColor& fillCol, const wxColor& borderCol)

@@ -34,4 +34,13 @@ double fromChars(const char* first, const char* last);
 const char* toChars(char* first, char* last, double num);
 }
 
+
+#if 0 //neat: supported on MSVC, but not yet on GCC, Clang
+auto closure = [](this auto&& self)
+{
+    self(); //just call ourself until the stack overflows
+    //e.g. use for: deleteEmptyFolderTask, removeFolderRecursionImpl, scheduleMoreTasks, traverse
+};
+#endif
+
 #endif //LEGACY_COMPILER_H_839567308565656789

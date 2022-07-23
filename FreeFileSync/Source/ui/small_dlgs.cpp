@@ -124,7 +124,7 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
     for (const TranslationInfo& ti : getAvailableTranslations())
     {
         //country flag
-        wxStaticBitmap* staticBitmapFlag = new wxStaticBitmap(m_scrolledWindowTranslators, wxID_ANY, wxBitmap(loadImage(ti.languageFlag)));
+        wxStaticBitmap* staticBitmapFlag = new wxStaticBitmap(m_scrolledWindowTranslators, wxID_ANY, toScaledBitmap(loadImage(ti.languageFlag)));
         fgSizerTranslators->Add(staticBitmapFlag, 0, wxALIGN_CENTER);
 
         //translator name

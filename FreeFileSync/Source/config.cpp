@@ -2497,7 +2497,7 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
     //last update check
     out["LastOnlineCheck"  ](cfg.lastUpdateCheck);
     out["LastOnlineVersion"](cfg.lastOnlineVersion);
-    
+
     out["WelcomeShownVersion"](cfg.welcomeShownVersion);
 
 

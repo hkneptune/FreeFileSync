@@ -218,7 +218,7 @@ namespace
 {
 time_t resolve(size_t value, UnitTime unit, time_t defaultVal)
 {
-    TimeComp tcLocal = getLocalTime();
+    TimeComp tcLocal = getLocalTime(); //returns TimeComp() on error
     if (tcLocal != TimeComp())
         switch (unit)
         {
@@ -226,17 +226,18 @@ time_t resolve(size_t value, UnitTime unit, time_t defaultVal)
                 return defaultVal;
 
             case UnitTime::today:
+            case UnitTime::lastDays:
                 tcLocal.second = 0; //0-61
                 tcLocal.minute = 0; //0-59
                 tcLocal.hour   = 0; //0-23
-                return localToTimeT(tcLocal); //convert local time back to UTC
+                break;
 
             case UnitTime::thisMonth:
                 tcLocal.second = 0; //0-61
                 tcLocal.minute = 0; //0-59
                 tcLocal.hour   = 0; //0-23
                 tcLocal.day    = 1; //1-31
-                return localToTimeT(tcLocal);
+                break;
 
             case UnitTime::thisYear:
                 tcLocal.second = 0; //0-61
@@ -244,14 +245,17 @@ time_t resolve(size_t value, UnitTime unit, time_t defaultVal)
                 tcLocal.hour   = 0; //0-23
                 tcLocal.day    = 1; //1-31
                 tcLocal.month  = 1; //1-12
-                return localToTimeT(tcLocal);
-
-            case UnitTime::lastDays:
-                tcLocal.second = 0; //0-61
-                tcLocal.minute = 0; //0-59
-                tcLocal.hour   = 0; //0-23
-                return localToTimeT(tcLocal) - value * 24 * 3600;
+                break;
         }
+    if (const auto [localTime, timeValid] = localToTimeT(tcLocal);//convert local time back to UTC
+        timeValid)
+    {
+        if (unit == UnitTime::lastDays)
+            return localTime - value * 24 * 3600;
+
+        return localTime;
+    }
+
     assert(false);
     return defaultVal;
 }

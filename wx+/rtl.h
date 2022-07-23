@@ -10,6 +10,7 @@
 #include <wx/dcmemory.h>
 #include <wx/image.h>
 #include <wx/app.h>
+#include "dc.h"
 
 
 namespace zen
@@ -50,7 +51,7 @@ void drawBitmapAligned(wxDC& dc, const wxImage& img, const wxRect& rect, int ali
     else if (alignment & wxALIGN_CENTER_VERTICAL)
         pt.y += (rect.height - img.GetHeight()) / 2;
 
-    dc.DrawBitmap(img, pt);
+    dc.DrawBitmap(toScaledBitmap(img), pt);
 }
 }
 

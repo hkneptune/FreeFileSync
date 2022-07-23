@@ -28,7 +28,7 @@ namespace zen
 inline
 void setImage(wxMenuItem& menuItem, const wxImage& img)
 {
-    menuItem.SetBitmap(toBitmapBundle(img));
+    menuItem.SetBitmap(toScaledBitmap(img));
 }
 
 

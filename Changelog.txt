@@ -1,3 +1,16 @@
+FreeFileSync 11.23 [2022-07-23]
+-------------------------------
+Format local file times with no limits on time span
+Deferred child item failure when traversing MTP folder
+Fixed occasional wrong thumbnail orientation for MTP
+Support additional image formats for MTP preview (e.g. CR2)
+Fixed folder pair window being squashed after text size increase
+Fixed wrong folder pair order when loading config (Linux)
+Fixed some images being stretched on high-DPI monitors
+Fixed config panel tab text being mirrored in RTL layout
+Fixed parsing file times one second before Unix epoch (Gdrive, FTP)
+
+
 FreeFileSync 11.22 [2022-06-23]
 -------------------------------
 Allow to change default log folder in global settings

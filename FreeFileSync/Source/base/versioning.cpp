@@ -47,15 +47,16 @@ std::pair<time_t, Zstring> fff::impl::parseVersionedFileName(const Zstring& file
 
     const auto itTs   = itExt1 + ext.length();
     const TimeComp tc = parseTime(Zstr(" %Y-%m-%d %H%M%S"), makeStringView(itTs, 18)); //returns TimeComp() on error
-    const time_t t = localToTimeT(tc); //returns -1 on error
-    if (t == -1)
+
+    const auto [localTime, timeValid] = localToTimeT(tc);
+    if (!timeValid)
         return {};
 
     Zstring fileNameOrig(fileName.begin(), itTs);
     if (fileNameOrig.empty())
         return {};
 
-    return {t, std::move(fileNameOrig)};
+    return {localTime, std::move(fileNameOrig)};
 }
 
 
@@ -63,11 +64,12 @@ std::pair<time_t, Zstring> fff::impl::parseVersionedFileName(const Zstring& file
 time_t fff::impl::parseVersionedFolderName(const Zstring& folderName)
 {
     const TimeComp tc = parseTime(Zstr("%Y-%m-%d %H%M%S"), folderName); //returns TimeComp() on error
-    const time_t t = localToTimeT(tc); //returns -1 on error
-    if (t == -1)
+
+    const auto [localTime, timeValid] = localToTimeT(tc);
+    if (!timeValid)
         return 0;
 
-    return t;
+    return localTime;
 }
 
 
@@ -488,7 +490,7 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
         tc.second = 0;
         tc.minute = 0;
         tc.hour   = 0;
-        return localToTimeT(tc); //returns -1 on error => swallow => no versions trimmed by versionMaxAgeDays
+        return localToTimeT(tc).first; //0 on error => swallow => no versions trimmed by versionMaxAgeDays
     }();
 
     for (const VersioningLimitFolder& vlf : folderLimitsTmp)

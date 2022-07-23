@@ -942,8 +942,8 @@ GdriveItemDetails extractItemDetails(const JsonValue& jvalue) //throw SysError
     if (tc == TimeComp() || !endsWith(*modifiedTime, 'Z')) //'Z' means "UTC" => it seems Google doesn't use the time-zone offset postfix
         throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L')');
 
-    const time_t modTime = utcToTimeT(tc); //returns -1 on error
-    if (modTime == -1)
+    const auto [modTime, timeValid] = utcToTimeT(tc);
+    if (!timeValid)
         throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L')');
 
     std::vector<std::string> parentIds;
@@ -1461,7 +1461,7 @@ void setModTime(const std::string& itemId, time_t modTime, const GdriveAccess& a
 {
     //https://developers.google.com/drive/api/v3/reference/files/update
     //RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
-    const std::string& modTimeRfc = formatTime<std::string>("%Y-%m-%dT%H:%M:%S.000Z", getUtcTime(modTime)); //returns empty string on failure
+    const std::string& modTimeRfc = formatTime<std::string>("%Y-%m-%dT%H:%M:%S.000Z", getUtcTime2(modTime)); //returns empty string on failure
     if (modTimeRfc.empty())
         throw SysError(L"Invalid modification time (time_t: " + numberTo<std::wstring>(modTime) + L')');
 
@@ -1576,7 +1576,7 @@ std::string /*itemId*/ gdriveUploadSmallFile(const Zstring& fileName, const std:
     postParams.objectVal.emplace("parents", std::vector<JsonValue> {JsonValue(parentId)});
     if (modTime) //convert to RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
     {
-        const std::string& modTimeRfc = utfTo<std::string>(formatTime(Zstr("%Y-%m-%dT%H:%M:%S.000Z"), getUtcTime(*modTime))); //returns empty string on failure
+        const std::string& modTimeRfc = utfTo<std::string>(formatTime(Zstr("%Y-%m-%dT%H:%M:%S.000Z"), getUtcTime2(*modTime))); //returns empty string on failure
         if (modTimeRfc.empty())
             throw SysError(L"Invalid modification time (time_t: " + numberTo<std::wstring>(*modTime) + L')');
 
@@ -3772,8 +3772,8 @@ private:
     bool supportsPermissions(const AfsPath& afsPath) const override { return false; } //throw FileError
 
     //----------------------------------------------------------------------------------------------------------------
-    FileIconHolder getFileIcon      (const AfsPath& afsPath, int pixelSize) const override { return {}; } //throw SysError; optional return value
-    ImageHolder    getThumbnailImage(const AfsPath& afsPath, int pixelSize) const override { return {}; } //throw SysError; optional return value
+    FileIconHolder getFileIcon      (const AfsPath& afsPath, int pixelSize) const override { return {}; } //throw FileError; optional return value
+    ImageHolder    getThumbnailImage(const AfsPath& afsPath, int pixelSize) const override { return {}; } //throw FileError; optional return value
 
     void authenticateAccess(bool allowUserInteraction) const override //throw FileError
     {

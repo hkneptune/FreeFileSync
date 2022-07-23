@@ -246,7 +246,7 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
     //WTF: curl_easy_perform() considers FTP response codes 4XX, 5XX as failure, but for HTTP response codes 4XX are considered success!! CONSISTENCY, people!!!
     //=> at least libcurl is aware: CURLOPT_FAILONERROR: "request failure on HTTP response >= 400"; default: "0, do not fail on error"
     //https://curl.haxx.se/docs/faq.html#curl_doesn_t_return_error_for_HT
-    //=> Curiously Google also screws up in their REST API design and returns HTTP 4XX status for domain-level errors!
+    //=> BUT Google also screws up in their REST API design and returns HTTP 4XX status for domain-level errors! https://blog.slimjim.xyz/posts/stop-using-http-codes/
     //=> let caller handle HTTP status to work around this mess!
 
     if (userCallbackException)
@@ -381,9 +381,10 @@ std::wstring zen::formatCurlStatusCode(CURLcode sc)
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_QUIC_CONNECT_ERROR);
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_PROXY);
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_SSL_CLIENTCERT);
+            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_UNRECOVERABLE_POLL);
             ZEN_CHECK_CASE_FOR_CONSTANT(CURL_LAST);
     }
-    static_assert(CURL_LAST == CURLE_SSL_CLIENTCERT + 1);
+    static_assert(CURL_LAST == CURLE_UNRECOVERABLE_POLL + 1);
 
     return replaceCpy<std::wstring>(L"Curl status %x", L"%x", numberTo<std::wstring>(static_cast<int>(sc)));
 }

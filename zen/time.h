@@ -26,11 +26,13 @@ struct TimeComp //replaces std::tm and SYSTEMTIME
     bool operator==(const TimeComp&) const = default;
 };
 
-TimeComp getLocalTime(time_t utc = std::time(nullptr)); //convert time_t (UTC) to local time components, returns TimeComp() on error
-time_t   localToTimeT(const TimeComp& tc);              //convert local time components to time_t (UTC), returns -1 on error
+TimeComp getUtcTime(time_t utc); //convert time_t (UTC) to UTC time components, returns TimeComp() on error
+TimeComp getUtcTime(); //utc = std::time()
+std::pair<time_t, bool /*success*/> utcToTimeT(const TimeComp& tc); //convert UTC time components to time_t (UTC)
 
-TimeComp getUtcTime(time_t utc = std::time(nullptr)); //convert time_t (UTC) to UTC time components, returns TimeComp() on error
-time_t   utcToTimeT(const TimeComp& tc);              //convert UTC time components to time_t (UTC), returns -1 on error
+TimeComp getLocalTime(time_t utc); //convert time_t (UTC) to local time components, returns TimeComp() on error
+TimeComp getLocalTime(); //utc = std::time()
+std::pair<time_t, bool /*success*/> localToTimeT(const TimeComp& tc); //convert local time components to time_t (UTC)
 
 TimeComp getCompileTime(); //returns TimeComp() on error
 
@@ -134,20 +136,6 @@ bool isValid(const std::tm& t)
 }
 
 
-inline
-TimeComp getLocalTime(time_t utc)
-{
-    if (utc == -1) //failure code from std::time(nullptr)
-        return TimeComp();
-
-    std::tm ctc = {};
-    if (::localtime_r(&utc, &ctc) == nullptr)
-        return TimeComp();
-
-    return impl::toZenTimeComponents(ctc);
-}
-
-
 constexpr auto daysPer400Years = 100 * (4 * 365 /*usual days per year*/ + 1 /*including leap day*/) - 3 /*no leap days for centuries, except if divisible by 400 */;
 constexpr auto secsPer400Years = 3600LL * 24 * daysPer400Years;
 
@@ -155,41 +143,106 @@ constexpr auto secsPer400Years = 3600LL * 24 * daysPer400Years;
 inline
 TimeComp getUtcTime(time_t utc)
 {
-    if (utc == -1) //failure code from std::time(nullptr)
-        return TimeComp();
+    //Windows: gmtime_s() only works for years [1970, 3001]
+    //=> map into working 400-year range [1970, 2370)
+    //   bonus: avoid asking for bugs for time_t(-1)
+    const int cycles400 = static_cast<int>(numeric::intDivFloor(utc, secsPer400Years));
+    utc -= secsPer400Years * cycles400;
 
     std::tm ctc = {};
     if (::gmtime_r(&utc, &ctc) == nullptr) //Linux, macOS: apparently NO limits (tested years 0 to 10.000!)
         return TimeComp();
+
+    ctc.tm_year += 400 * cycles400;
 
     return impl::toZenTimeComponents(ctc);
 }
 
 
 inline
-time_t localToTimeT(const TimeComp& tc) //returns -1 on error
+TimeComp getUtcTime()
 {
-    if (tc == TimeComp())
-        return -1;
+    const time_t utc = std::time(nullptr); //returns -1 on error
+    if (utc == -1)
+        return TimeComp();
 
-    std::tm ctc = impl::toClibTimeComponents(tc);
-    return std::mktime(&ctc);
+    return getUtcTime(utc);
 }
 
 
 inline
-time_t utcToTimeT(const TimeComp& tc) //returns -1 on error
+TimeComp getLocalTime(time_t utc)
+{
+    const int cycles400 = static_cast<int>(numeric::intDivFloor(utc, secsPer400Years));
+    utc -= secsPer400Years * cycles400;
+
+    std::tm ctc = {};
+    if (::localtime_r(&utc, &ctc) == nullptr)
+        return TimeComp();
+
+    ctc.tm_year += 400 * cycles400;
+
+    return impl::toZenTimeComponents(ctc);
+}
+
+
+inline
+TimeComp getLocalTime()
+{
+    const time_t utc = std::time(nullptr); //returns -1 on error
+    if (utc == -1)
+        return TimeComp();
+
+    return getLocalTime(utc);
+}
+
+
+inline
+std::pair<time_t, bool /*success*/> utcToTimeT(const TimeComp& tc)
 {
     if (tc == TimeComp())
-        return -1;
+        return {};
 
     std::tm ctc = impl::toClibTimeComponents(tc);
     ctc.tm_isdst = 0; //"Zero (0) to indicate that standard time is in effect" => unused by _mkgmtime, but take no chances
 
+    /*  Windows: _mkgmtime() only works for years [1970, 3001]
+        macOS: timegm() requires tm_year >= 1900; apparently no upper limit (tested until year 10.000!)
+        Linux, 64-bit: apparently NO limits (tested years 0 to 10.000!)
+               32-bit: timegm() only works for years [1902, 2038] => sucks to be on 32-bit! :>
 
-    time_t utc = ::timegm(&ctc);
+        => map into working 400-year range [1970, 2370)
+           bonus: disambiguate -1 error code from time_t(-1)          */
+    const int cycles400 = numeric::intDivFloor(ctc.tm_year + 1900 - 1970, 400);
+    ctc.tm_year -= 400 * cycles400;
 
-    return utc;
+    const time_t utc = ::timegm(&ctc);
+    if (utc == -1)
+        return {};
+
+    assert(utc >= 0);
+    return {utc + secsPer400Years * cycles400, true};
+}
+
+
+inline
+std::pair<time_t, bool /*success*/> localToTimeT(const TimeComp& tc) //convert local time components to time_t (UTC)
+{
+    if (tc == TimeComp())
+        return {};
+
+    std::tm ctc = impl::toClibTimeComponents(tc);
+
+    const int cycles400 = numeric::intDivFloor(ctc.tm_year + 1900 - 1971/*[!]*/, 400); //see utcToTimeT()
+    //1971: ensures resulting time_t >= 0 after time zone, DST adaption, or std::mktime will fail on Windows!
+    ctc.tm_year -= 400 * cycles400;                                       
+
+    const time_t locTime = std::mktime(&ctc);
+    if (locTime == -1)
+        return {};
+    
+    assert(locTime > 0);
+    return {locTime + secsPer400Years * cycles400, true};
 }
 
 

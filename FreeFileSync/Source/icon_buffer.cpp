@@ -42,10 +42,10 @@ std::variant<ImageHolder, FileIconHolder> getDisplayIcon(const AbstractPath& ite
         case IconBuffer::IconSize::large:
             try
             {
-                if (ImageHolder ih = AFS::getThumbnailImage(itemPath, IconBuffer::getSize(sz))) //throw SysError; optional return value
+                if (ImageHolder ih = AFS::getThumbnailImage(itemPath, IconBuffer::getSize(sz))) //throw FileError; optional return value
                     return ih;
             }
-            catch (SysError&) {}
+            catch (FileError&) {}
             //else: fallback to non-thumbnail icon
             break;
     }
@@ -53,10 +53,10 @@ std::variant<ImageHolder, FileIconHolder> getDisplayIcon(const AbstractPath& ite
     //2. retrieve file icons
         try
         {
-            if (FileIconHolder fih = AFS::getFileIcon(itemPath, IconBuffer::getSize(sz))) //throw SysError; optional return value
+            if (FileIconHolder fih = AFS::getFileIcon(itemPath, IconBuffer::getSize(sz))) //throw FileError; optional return value
                 return fih;
         }
-        catch (SysError&) {}
+        catch (FileError&) {}
 
     //run getIconByTemplatePath()/genericFileIcon() fallbacks on main thread:
     //extractWxImage() might fail if icon theme is missing a MIME type!

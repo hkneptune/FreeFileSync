@@ -34,7 +34,7 @@ std::string generateLogHeaderTxt(const ProcessSummary& s, const ErrorLog& log, i
     if (!headerLine.empty())
         headerLine += ' ';
 
-    const TimeComp tc = getLocalTime(std::chrono::system_clock::to_time_t(s.startTime)); //returns empty string on failure
+    const TimeComp tc = getLocalTime(std::chrono::system_clock::to_time_t(s.startTime)); //returns TimeComp() on error
     headerLine += utfTo<std::string>(formatTime(formatDateTag, tc) + Zstr(" [") + formatTime(formatTimeTag, tc) + Zstr(']'));
 
     //assemble summary box
@@ -224,7 +224,7 @@ std::string generateLogHeaderHtml(const ProcessSummary& s, const ErrorLog& log, 
     for (const std::wstring& jobName : s.jobNames)
         jobNamesFmt += (jobNamesFmt.empty() ? "" : " + ") + htmlTxt(jobName);
 
-    const TimeComp tc = getLocalTime(std::chrono::system_clock::to_time_t(s.startTime)); //returns empty string on failure
+    const TimeComp tc = getLocalTime(std::chrono::system_clock::to_time_t(s.startTime)); //returns TimeComp() on error
     output += R"(	<div><span style="font-weight:600; color:gray;">)" + jobNamesFmt + R"(</span> &nbsp;<span style="white-space:nowrap">)" +
               htmlTxt(formatTime(formatDateTag, tc)) + " &nbsp;" + htmlTxt(formatTime(formatTimeTag, tc)) + "</span></div>\n";
 
@@ -476,8 +476,9 @@ std::vector<LogFileInfo> getLogFiles(const AbstractPath& logFolderPath) //throw 
             {
                 tsBegin = tsEnd - TIME_STAMP_LENGTH;
                 const TimeComp tc = parseTime(Zstr("%Y-%m-%d %H%M%S"), makeStringView(tsBegin, 17)); //returns TimeComp() on error
-                const time_t t = localToTimeT(tc); //returns -1 on error
-                if (t != -1)
+
+                if (const auto [localTime, timeValid] = localToTimeT(tc);
+                    timeValid)
                 {
                     Zstring jobNames(fi.itemName.begin(), tsBegin);
                     if (!jobNames.empty())
@@ -486,7 +487,7 @@ std::vector<LogFileInfo> getLogFiles(const AbstractPath& logFolderPath) //throw 
                         jobNames.pop_back();
                     }
 
-                    logfiles.push_back({AFS::appendRelPath(logFolderPath, fi.itemName), t, utfTo<std::wstring>(jobNames)});
+                    logfiles.push_back({AFS::appendRelPath(logFolderPath, fi.itemName), localTime, utfTo<std::wstring>(jobNames)});
                 }
             }
         }
@@ -517,7 +518,7 @@ void limitLogfileCount(const AbstractPath& logFolderPath, //throw FileError, X
             tc.second = 0;
             tc.minute = 0;
             tc.hour   = 0;
-            return localToTimeT(tc); //returns -1 on error => swallow => no versions trimmed by versionMaxAgeDays
+            return localToTimeT(tc).first; //0 on error => swallow => no versions trimmed by versionMaxAgeDays
         }();
         const time_t cutOffTime = lastMidnightTime - static_cast<time_t>(logfilesMaxAgeDays) * 24 * 3600;
 

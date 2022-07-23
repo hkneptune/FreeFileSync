@@ -164,7 +164,7 @@ public:
             {
                 case ColumnTypeLog::time:
                     if (entry->firstLine)
-                        return utfTo<std::wstring>(formatTime(formatTimeTag, getLocalTime(entry->time)));
+                        return utfTo<std::wstring>(formatTime(formatTimeTag, getLocalTime(entry->time))); //empty string on error
                     break;
 
                 case ColumnTypeLog::severity:

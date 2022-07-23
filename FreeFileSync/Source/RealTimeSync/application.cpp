@@ -93,7 +93,7 @@ bool Application::OnInit()
         ZEN_ON_SCOPE_EXIT(if (error) ::g_error_free(error));
 
         ::gtk_css_provider_load_from_path(provider, //GtkCssProvider* css_provider,
-                                          (fff::getResourceDirPf() + fileName).c_str(), //const gchar* path,
+                                           appendPath(fff::getResourceDirPath(), fileName).c_str(), //const gchar* path,
                                           &error); //GError** error
         if (error)
             throw SysError(formatGlibError("gtk_css_provider_load_from_path", error));

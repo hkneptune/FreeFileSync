@@ -85,18 +85,18 @@ void setImage(wxAnyButton& button, const wxImage& img)
     }
 
 
-    button.SetBitmapLabel(toBitmapBundle(img));
+    button.SetBitmapLabel(toScaledBitmap(img));
 
     //wxWidgets excels at screwing up consistently once again:
     //the first call to SetBitmapLabel() *implicitly* sets the disabled bitmap, too, subsequent calls, DON'T!
-    button.SetBitmapDisabled(toBitmapBundle(img.ConvertToDisabled())); //inefficiency: wxBitmap::ConvertToDisabled() implicitly converts to wxImage!
+    button.SetBitmapDisabled(toScaledBitmap(img.ConvertToDisabled())); //inefficiency: wxBitmap::ConvertToDisabled() implicitly converts to wxImage!
 }
 
 
 inline
 void setImage(wxStaticBitmap& staticBmp, const wxImage& img)
 {
-    staticBmp.SetBitmap(toBitmapBundle(img));
+    staticBmp.SetBitmap(toScaledBitmap(img));
 }
 
 

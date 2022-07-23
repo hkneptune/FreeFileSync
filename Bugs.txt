@@ -5,7 +5,7 @@ the ones mentioned below. The remaining issues that are yet to be fixed are list
 
 
 ----------------
-| libcurl 7.83|
+| libcurl 7.84|
 ----------------
 __________________________________________________________________________________________________________
 /lib/ftp.c

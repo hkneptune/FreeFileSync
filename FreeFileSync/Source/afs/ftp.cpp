@@ -1023,8 +1023,8 @@ FtpItem getFtpSymlinkInfo(const FtpLogin& login, const AfsPath& linkPath) //thro
 
                     if (const TimeComp tc = parseTime("%Y%m%d%H%M%S", makeStringView(itStart, itEnd));
                         tc != TimeComp())
-                        if (const time_t modTime = utcToTimeT(tc); //returns -1 on error
-                            modTime != -1)
+                        if (const auto [modTime, timeValid] = utcToTimeT(tc);
+                            timeValid)
                             return modTime;
                     break;
                 }
@@ -1170,8 +1170,10 @@ private:
                     if (tc == TimeComp())
                         throw SysError(L"Modification time could not be parsed.");
 
-                    item.modTime = utcToTimeT(tc); //returns -1 on error
-                    if (item.modTime == -1)
+                    if (const auto [modTime, timeValid] = utcToTimeT(tc);
+                        timeValid)
+                        item.modTime = modTime;
+                    else
                         throw SysError(L"Modification time could not be parsed.");
                 }
                 else if (startsWithAsciiNoCase(fact, "unique="))
@@ -1367,11 +1369,12 @@ private:
                 timeComp.hour   = hour;
                 timeComp.minute = minute;
                 timeComp.year = utcCurrentYear; //tentatively
-                const time_t serverLocalTime = utcToTimeT(timeComp); //returns -1 on error
-                if (serverLocalTime == -1)
+
+                const auto [serverLocalTime, timeValid] = utcToTimeT(timeComp);
+                if (!timeValid)
                     throw SysError(L"Modification time could not be parsed.");
 
-                if (serverLocalTime - utcTimeNow > 3600 * 24) //time-zones range from UTC-12:00 to UTC+14:00, consider DST; FileZilla uses 1 day tolerance
+                if (serverLocalTime > utcTimeNow + 24 * 3600 ) //time-zones range from UTC-12:00 to UTC+14:00, consider DST; FileZilla uses 1 day tolerance
                     --timeComp.year; //"more likely" this time is from last year
             }
             else if (timeOrYear.size() == 4)
@@ -1386,8 +1389,8 @@ private:
 
             //let's pretend the time listing is UTC (same behavior as FileZilla): hopefully MLSD will make this mess obsolete soon...
             //  => find exact offset with some MDTM hackery? yes, could do that, but this doesn't solve the bigger problem of imprecise LIST file times, so why bother?
-            const time_t utcTime = utcToTimeT(timeComp); //returns -1 on error
-            if (utcTime == -1)
+            const auto [modTime, timeValid] = utcToTimeT(timeComp);
+            if (!timeValid)
                 throw SysError(L"Modification time could not be parsed.");
             //------------------------------------------------------------------------------------
             const std::string trail = parser.readRange([](char) { return true; }); //throw SysError
@@ -1411,7 +1414,7 @@ private:
                 item.fileSize = fileSize;
 
             item.itemName = serverToUtfEncoding(itemName, enc); //throw SysError
-            item.modTime = utcTime;
+            item.modTime = modTime;
 
             return item;
         }
@@ -1508,8 +1511,8 @@ private:
                 timeComp.minute = minute;
                 //let's pretend the time listing is UTC (same behavior as FileZilla): hopefully MLSD will make this mess obsolete soon...
                 //  => find exact offset with some MDTM hackery? yes, could do that, but this doesn't solve the bigger problem of imprecise LIST file times, so why bother?
-                const time_t utcTime = utcToTimeT(timeComp); //returns -1 on error
-                if (utcTime == -1)
+                const auto [modTime, timeValid] = utcToTimeT(timeComp);
+                if (!timeValid)
                     throw SysError(L"Modification time could not be parsed.");
                 //------------------------------------------------------------------------------------
                 const std::string dirTagOrSize = parser.readRange(std::not_fn(isWhiteSpace<char>)); //throw SysError
@@ -1540,7 +1543,7 @@ private:
                         item.type = AFS::ItemType::folder;
                     item.itemName = serverToUtfEncoding(itemName, enc); //throw SysError
                     item.fileSize = fileSize;
-                    item.modTime  = utcTime;
+                    item.modTime  = modTime;
 
                     output.push_back(item);
                 }
@@ -2241,8 +2244,8 @@ private:
     //wait until there is real demand for copying from and to FTP with permissions => use stream-based file copy:
 
     //----------------------------------------------------------------------------------------------------------------
-    FileIconHolder getFileIcon      (const AfsPath& afsPath, int pixelSize) const override { return {}; } //throw SysError; optional return value
-    ImageHolder    getThumbnailImage(const AfsPath& afsPath, int pixelSize) const override { return {}; } //throw SysError; optional return value
+    FileIconHolder getFileIcon      (const AfsPath& afsPath, int pixelSize) const override { return {}; } //throw FileError; optional return value
+    ImageHolder    getThumbnailImage(const AfsPath& afsPath, int pixelSize) const override { return {}; } //throw FileError; optional return value
 
     void authenticateAccess(bool allowUserInteraction) const override {} //throw FileError
 

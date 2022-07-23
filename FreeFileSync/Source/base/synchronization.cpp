@@ -2633,10 +2633,9 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
                 continue;
 
             //------------------------------------------------------------------------------------------
-            if (folderCmp.size() > 1)
-                callback.logInfo(_("Synchronizing folder pair:") + L' ' + getVariantNameWithSymbol(folderPairCfg.syncVar) + L'\n' + //throw X
-                                 L"    " + AFS::getDisplayPath(baseFolder.getAbstractPath<SelectSide::left >()) + L'\n' +
-                                 L"    " + AFS::getDisplayPath(baseFolder.getAbstractPath<SelectSide::right>()));
+            callback.logInfo(_("Synchronizing folder pair:") + L' ' + getVariantNameWithSymbol(folderPairCfg.syncVar) + L'\n' + //throw X
+                             L"    " + AFS::getDisplayPath(baseFolder.getAbstractPath<SelectSide::left >()) + L'\n' +
+                             L"    " + AFS::getDisplayPath(baseFolder.getAbstractPath<SelectSide::right>()));
             //------------------------------------------------------------------------------------------
 
             //checking a second time: 1. a long time may have passed since syncing the previous folder pairs!

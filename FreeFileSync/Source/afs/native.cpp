@@ -400,7 +400,7 @@ class NativeFileSystem : public AbstractFileSystem
 public:
     explicit NativeFileSystem(const Zstring& rootPath) : rootPath_(rootPath) {}
 
-    Zstring getNativePath(const AfsPath& afsPath) const { return appendPath(rootPath_, afsPath.value); }
+    Zstring getNativePath(const AfsPath& afsPath) const { return isNullFileSystem() ? Zstring{} : appendPath(rootPath_, afsPath.value); }
 
 private:
     Zstring getInitPathPhrase(const AfsPath& afsPath) const override { return makePathPhrase(getNativePath(afsPath)); }
@@ -631,26 +631,24 @@ private:
     }
 
     //----------------------------------------------------------------------------------------------------------------
-    FileIconHolder getFileIcon(const AfsPath& afsPath, int pixelSize) const override //throw SysError; (optional return value)
+    FileIconHolder getFileIcon(const AfsPath& afsPath, int pixelSize) const override //throw FileError; (optional return value)
     {
+        initComForThread(); //throw FileError
         try
         {
-            initComForThread(); //throw FileError
+            return fff::getFileIcon(getNativePath(afsPath), pixelSize); //throw SysError
         }
-        catch (const FileError& e) { throw SysError(e.toString()); }
-
-        return fff::getFileIcon(getNativePath(afsPath), pixelSize); //throw SysError
+        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString()); }
     }
 
-    ImageHolder getThumbnailImage(const AfsPath& afsPath, int pixelSize) const override //throw SysError; (optional return value)
+    ImageHolder getThumbnailImage(const AfsPath& afsPath, int pixelSize) const override //throw FileError; (optional return value)
     {
+        initComForThread(); //throw FileError
         try
         {
-            initComForThread(); //throw FileError
+            return fff::getThumbnailImage(getNativePath(afsPath), pixelSize); //throw SysError
         }
-        catch (const FileError& e) { throw SysError(e.toString()); }
-
-        return fff::getThumbnailImage(getNativePath(afsPath), pixelSize); //throw SysError
+        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString()); }
     }
 
     void authenticateAccess(bool allowUserInteraction) const override //throw FileError

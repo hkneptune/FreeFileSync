@@ -107,8 +107,8 @@ void NameFilter::MaskMatcher::insert(const Zstring& mask)
         realMasks_.insert(mask);
     else
     {
-        relPaths_   .emplace(mask);
-        relPathsCmp_.emplace(mask); //little memory wasted thanks to COW string!
+        relPaths_   .insert(mask);
+        relPathsCmp_.insert(mask); //little memory wasted thanks to COW string!
     }
 }
 

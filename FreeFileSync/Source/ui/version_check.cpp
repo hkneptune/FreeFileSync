@@ -159,7 +159,7 @@ void showUpdateAvailableDialog(wxWindow* parent, const std::string& onlineVersio
 
     std::function<void()> openBrowserForDownload = [] { wxLaunchDefaultBrowser(L"https://freefilesync.org/get_latest.php"); };
     switch (showConfirmationDialog(parent, DialogInfoType::info, PopupDialogCfg().
-                                   setIcon(ffsVersionIcon).
+                                   setIcon(loadImage("FreeFileSync", fastFromDIP(48))).
                                    setTitle(_("Check for Program Updates")).
                                    setMainInstructions(replaceCpy(_("FreeFileSync %x is available!"), L"%x", utfTo<std::wstring>(onlineVersion)) + L"\n\n" + _("Download now?")).
                                    setDetailInstructions(updateDetailsMsg), _("&Download")))

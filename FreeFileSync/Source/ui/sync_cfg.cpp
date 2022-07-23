@@ -370,8 +370,8 @@ globalLogFolderPhrase_(globalLogFolderPhrase)
     {
         assert(img.GetWidth () <= imgListSize);
         assert(img.GetHeight() <= imgListSize);
-        imgList->Add(img);
-        imgList->Add(greyScale(img));
+        imgList->Add(toScaledBitmap(img));
+        imgList->Add(toScaledBitmap(greyScale(img)));
     };
     //add images in same sequence like ConfigTypeImage enum!!!
     addToImageList(loadImage("options_compare_sicon"));
@@ -1033,8 +1033,8 @@ void updateSyncDirectionIcons(const SyncDirectionConfig& directionCfg,
                     break;
             }
             wxImage img = mirrorIfRtl(loadImage(imgName));
-            button.SetBitmapLabel   (toBitmapBundle(          img));
-            button.SetBitmapDisabled(toBitmapBundle(greyScale(img))); //fix wxWidgets' all-too-clever multi-state!
+            button.SetBitmapLabel   (toScaledBitmap(          img));
+            button.SetBitmapDisabled(toScaledBitmap(greyScale(img))); //fix wxWidgets' all-too-clever multi-state!
             //=> the disabled bitmap is generated during first SetBitmapLabel() call but never updated again by wxWidgets!
         };
 
@@ -1407,8 +1407,8 @@ void ConfigDialog::updateMiscGui()
                 label = resizeCanvas(label, {label.GetWidth() + successIcon.GetWidth(), label.GetHeight()}, wxALIGN_LEFT);
 
             button.SetToolTip(tooltip);
-            button.SetBitmapLabel   (toBitmapBundle(notifyCondition == emailNotifyCondition_ && sendEmailEnabled ? label : greyScale(label)));
-            button.SetBitmapDisabled(toBitmapBundle(greyScale(label))); //fix wxWidgets' all-too-clever multi-state!
+            button.SetBitmapLabel   (toScaledBitmap(notifyCondition == emailNotifyCondition_ && sendEmailEnabled ? label : greyScale(label)));
+            button.SetBitmapDisabled(toScaledBitmap(greyScale(label))); //fix wxWidgets' all-too-clever multi-state!
             //=> the disabled bitmap is generated during first SetBitmapLabel() call but never updated again by wxWidgets!
         }
     };

@@ -126,12 +126,12 @@ int getDpiScalePercent()
 
 
 inline
-wxBitmapBundle toBitmapBundle(const wxImage& img /*expected to be DPI-scaled!*/)
+wxBitmap toScaledBitmap(const wxImage& img /*expected to be DPI-scaled!*/)
 {
-    //return wxBitmap(img, -1 /*depth*/, static_cast<double>(getDPI()) / defaultDpi); implementation just ignores scale parameter! WTF!
+    //wxBitmap(const wxImage& image, int depth = -1, double WXUNUSED(scale) = 1.0) => wxWidgets just ignores scale parameter! WTF!
     wxBitmap bmpScaled(img);
     bmpScaled.SetScaleFactor(getDisplayScaleFactor());
-    return bmpScaled;
+    return bmpScaled; //when testing use 175% scaling: wxWidgets' scaling logic doesn't kick in for 150% only
 }
 
 

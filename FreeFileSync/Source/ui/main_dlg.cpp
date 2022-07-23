@@ -29,7 +29,6 @@
 #include <wx+/popup_dlg.h>
 #include <wx+/window_tools.h>
 #include <wx+/image_resources.h>
-//#include <wx+/std_button_layout.h>
 #include "cfg_grid.h"
 #include "version_check.h"
 #include "gui_status_handler.h"
@@ -684,16 +683,22 @@ imgFileManagerSmall_([]
                     //wxAui does not consider the progress panel's wxRAISED_BORDER and set's too small a panel height! => use correct value from wxWindow::GetSize()
                     MinSize(-1, compareStatus_->getAsWindow()->GetSize().GetHeight())); //bonus: minimal height isn't a bad idea anyway
 
+    m_panelDirectoryPairs->GetSizer()->SetSizeHints(m_panelDirectoryPairs); //~=Fit() + SetMinSize()
     auiMgr_.AddPane(m_panelDirectoryPairs,
-                    wxAuiPaneInfo().Name(L"FoldersPanel").Layer(2).Top().Row(3).Caption(_("Folder Pairs")).CaptionVisible(false).PaneBorder(false).Gripper());
+                    wxAuiPaneInfo().Name(L"FoldersPanel").Layer(2).Top().Row(3).Caption(_("Folder Pairs")).CaptionVisible(false).PaneBorder(false).Gripper().
+                    /* yes, m_panelDirectoryPairs's min height is overwritten in updateGuiForFolderPair(), but the default height might be wrong
+                       after increasing text size (Win10 Settings -> Accessibility -> Text size), e.g. to 150%:
+                       auiMgr_.LoadPerspective will load a too small "dock_size", so m_panelTopLeft/m_panelTopCenter will have squashed height */
+                    MinSize(fastFromDIP(100), m_panelDirectoryPairs->GetSize().y));
 
+    m_panelSearch->GetSizer()->SetSizeHints(m_panelSearch); //~=Fit() + SetMinSize()
     auiMgr_.AddPane(m_panelSearch,
                     wxAuiPaneInfo().Name(L"SearchPanel").Layer(2).Bottom().Row(3).Caption(_("Find")).CaptionVisible(false).PaneBorder(false).Gripper().
                     MinSize(fastFromDIP(100), m_panelSearch->GetSize().y).Hide());
 
     auiMgr_.AddPane(m_panelLog,
                     wxAuiPaneInfo().Name(L"LogPanel").Layer(2).Bottom().Row(2).Caption(_("Log")).MaximizeButton().Hide().
-                    MinSize(fastFromDIP(100), fastFromDIP(100)).
+                    MinSize (fastFromDIP(100), fastFromDIP(100)).
                     BestSize(fastFromDIP(600), fastFromDIP(300)));
 
     m_panelViewFilter->GetSizer()->SetSizeHints(m_panelViewFilter); //~=Fit() + SetMinSize()
@@ -707,8 +712,8 @@ imgFileManagerSmall_([]
 
     auiMgr_.AddPane(m_gridOverview,
                     wxAuiPaneInfo().Name(L"OverviewPanel").Layer(3).Left().Position(2).Caption(_("Overview")).
-                    MinSize(fastFromDIP(100), fastFromDIP(100)).
-                    BestSize(fastFromDIP(300), m_gridOverview->GetSize().GetHeight()));
+                    MinSize (fastFromDIP(100), fastFromDIP(100)).
+                    BestSize(fastFromDIP(300), -1));
     {
         wxAuiDockArt* artProvider = auiMgr_.GetArtProvider();
 
@@ -1080,7 +1085,7 @@ void MainDialog::setGlobalCfgOnInit(const XmlGlobalSettings& globalSettings)
     //--------------------------------------------------------------------------------
     m_checkBoxMatchCase->SetValue(globalCfg_.mainDlg.textSearchRespectCase);
 
-    //wxAuiManager erroneously loads panel captions, we don't want that
+    //wxAuiManager loads panel captions: don't use => might be different language!
     std::vector<std::pair<wxAuiPaneInfo*, wxString>> paneCaptions;
     wxAuiPaneInfoArray& paneArray = auiMgr_.GetAllPanes();
     for (size_t i = 0; i < paneArray.size(); ++i)
@@ -1091,8 +1096,9 @@ void MainDialog::setGlobalCfgOnInit(const XmlGlobalSettings& globalSettings)
     auto preserveConstraint = [&paneConstraints](wxAuiPaneInfo& pane) { paneConstraints.emplace_back(&pane, pane.min_size, pane.best_size); };
 
     wxAuiPaneInfo& progPane = auiMgr_.GetPane(compareStatus_->getAsWindow());
-    preserveConstraint(auiMgr_.GetPane(m_panelTopButtons));
     preserveConstraint(progPane);
+    preserveConstraint(auiMgr_.GetPane(m_panelTopButtons));
+    preserveConstraint(auiMgr_.GetPane(m_panelDirectoryPairs));
     preserveConstraint(auiMgr_.GetPane(m_panelSearch));
     preserveConstraint(auiMgr_.GetPane(m_panelViewFilter));
     preserveConstraint(auiMgr_.GetPane(m_panelConfig));
@@ -5434,8 +5440,8 @@ void MainDialog::updateGuiForFolderPair()
     wxAuiPaneInfo& dirPane = auiMgr_.GetPane(m_panelDirectoryPairs);
 
     //make sure user cannot fully shrink additional folder pairs
-    dirPane.MinSize (-1, firstPairHeight + addPairCountMin * addPairHeight);
-    dirPane.BestSize(-1, firstPairHeight + addPairCountOpt * addPairHeight);
+    dirPane.MinSize(fastFromDIP(100), firstPairHeight + addPairCountMin * addPairHeight);
+    dirPane.BestSize(-1,              firstPairHeight + addPairCountOpt * addPairHeight);
 
     //########################################################################################################################
     //wxAUI hack: call wxAuiPaneInfo::Fixed() to apply best size:

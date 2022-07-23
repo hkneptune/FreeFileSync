@@ -602,11 +602,10 @@ std::vector<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(
 
         AsyncCallback acb;                       //
         std::function<void()> scheduleMoreTasks; //manage life time: enclose ThreadGroup!
-        const std::wstring txtComparingContentOfFiles = _("Comparing content of files %x"); //
 
         ThreadGroup<std::function<void()>> tg(std::numeric_limits<size_t>::max(), Zstr("Binary Comparison"));
 
-        scheduleMoreTasks = [&]
+        scheduleMoreTasks = [&, txtComparingContentOfFiles = _("Comparing content of files %x")]
         {
             bool wereDone = true;
 

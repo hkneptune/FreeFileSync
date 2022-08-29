@@ -33,11 +33,13 @@ class Socket //throw SysError
 public:
     Socket(const Zstring& server, const Zstring& serviceName) //throw SysError
     {
-        ::addrinfo hints = {};
-        hints.ai_socktype = SOCK_STREAM; //we *do* care about this one!
-        hints.ai_flags = AI_ADDRCONFIG; //save a AAAA lookup on machines that can't use the returned data anyhow
+        const addrinfo hints
+        {
+            .ai_flags = AI_ADDRCONFIG, //save a AAAA lookup on machines that can't use the returned data anyhow
+            .ai_socktype = SOCK_STREAM, //we *do* care about this one!
+        };
 
-        ::addrinfo* servinfo = nullptr;
+        addrinfo* servinfo = nullptr;
         ZEN_ON_SCOPE_EXIT(if (servinfo) ::freeaddrinfo(servinfo));
 
         const int rcGai = ::getaddrinfo(server.c_str(), serviceName.c_str(), &hints, &servinfo);

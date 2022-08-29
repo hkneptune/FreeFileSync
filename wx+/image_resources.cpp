@@ -70,7 +70,7 @@ ImageHolder xbrzScale(int width, int height, const unsigned char* imageRgb, cons
 }
 
 
-auto getScalerTask(const std::string& imageName, const wxImage& img, int hqScale, Protected<std::vector<std::pair<std::string, ImageHolder>>>& result)
+auto createScalerTask(const std::string& imageName, const wxImage& img, int hqScale, Protected<std::vector<std::pair<std::string, ImageHolder>>>& result)
 {
     assert(runningOnMainThread());
     return [imageName,
@@ -97,7 +97,7 @@ public:
     {
         assert(runningOnMainThread());
         imgKeeper_.push_back(img); //retain (ref-counted) wxImage so that the rgb/alpha pointers remain valid after passed to threads
-        threadGroup_->run(getScalerTask(imageName, img, hqScale_, result_));
+        threadGroup_->run(createScalerTask(imageName, img, hqScale_, result_));
     }
 
     std::unordered_map<std::string, wxImage> waitAndGetResult()
@@ -125,7 +125,7 @@ private:
     std::vector<wxImage> imgKeeper_;
     Protected<std::vector<std::pair<std::string, ImageHolder>>> result_;
 
-    using TaskType = FunctionReturnTypeT<decltype(&getScalerTask)>;
+    using TaskType = FunctionReturnTypeT<decltype(&createScalerTask)>;
     std::optional<ThreadGroup<TaskType>> threadGroup_{ThreadGroup<TaskType>(std::max<int>(std::thread::hardware_concurrency(), 1), Zstr("xBRZ Scaler"))};
     //hardware_concurrency() == 0 if "not computable or well defined"
 };
@@ -192,11 +192,13 @@ ImageBuffer::ImageBuffer(const Zstring& zipPath) //throw FileError
             else
                 assert(false);
     }
-    catch (FileError&) //fall back to folder
+    catch (FileError&) //fall back to folder: dev build (only!?)
     {
         const Zstring fallbackFolder = beforeLast(zipPath, Zstr(".zip"), IfNotFoundReturn::none);
-        if (dirAvailable(fallbackFolder)) //Debug build (only!?)
-            traverseFolder(fallbackFolder, [&](const FileInfo& fi)
+        if (!itemStillExists(fallbackFolder)) //throw FileError
+            throw;
+
+        traverseFolder(fallbackFolder, [&](const FileInfo& fi)
         {
             if (endsWith(fi.fullPath, Zstr(".png")))
             {
@@ -204,8 +206,6 @@ ImageBuffer::ImageBuffer(const Zstring& zipPath) //throw FileError
                 streams.emplace_back(fi.itemName, std::move(stream));
             }
         }, nullptr, nullptr, [](const std::wstring& errorMsg) { throw FileError(errorMsg); });
-        else
-            throw;
     }
     //--------------------------------------------------------------------
 

@@ -28,8 +28,8 @@ namespace zen { class BitmapTextButton; }
 #include <wx/font.h>
 #include <wx/colour.h>
 #include <wx/settings.h>
-#include <wx/bmpbuttn.h>
 #include <wx/button.h>
+#include <wx/bmpbuttn.h>
 #include <wx/sizer.h>
 #include <wx/panel.h>
 #include <wx/stattext.h>
@@ -101,15 +101,15 @@ protected:
     wxMenuItem* m_menuItemAbout;
     wxBoxSizer* bSizerPanelHolder;
     wxPanel* m_panelTopButtons;
-    wxBoxSizer* bSizerTopButtons;
-    wxBitmapButton* m_bpButtonCmpConfig;
+    wxBoxSizer* bSizer2941;
     wxButton* m_buttonCancel;
     zen::BitmapTextButton* m_buttonCompare;
+    wxBitmapButton* m_bpButtonCmpConfig;
     wxBitmapButton* m_bpButtonCmpContext;
     wxBitmapButton* m_bpButtonFilter;
     wxBitmapButton* m_bpButtonFilterContext;
-    wxBitmapButton* m_bpButtonSyncConfig;
     zen::BitmapTextButton* m_buttonSync;
+    wxBitmapButton* m_bpButtonSyncConfig;
     wxBitmapButton* m_bpButtonSyncContext;
     wxPanel* m_panelDirectoryPairs;
     wxStaticText* m_staticTextResolvedPathL;
@@ -170,6 +170,7 @@ protected:
     wxStaticText* m_staticText95;
     wxBitmapButton* m_bpButtonSave;
     wxStaticText* m_staticText961;
+    wxBoxSizer* bSizerSaveAs;
     wxBitmapButton* m_bpButtonSaveAs;
     wxBitmapButton* m_bpButtonSaveAsBatch;
     wxStaticText* m_staticText97;
@@ -178,6 +179,7 @@ protected:
     wxPanel* m_panelViewFilter;
     wxBoxSizer* bSizerViewFilter;
     wxBitmapButton* m_bpButtonToggleLog;
+    wxBoxSizer* bSizerViewButtons;
     zen::ToggleButton* m_bpButtonViewType;
     zen::ToggleButton* m_bpButtonShowExcluded;
     zen::ToggleButton* m_bpButtonShowDeleteLeft;
@@ -356,6 +358,7 @@ protected:
     wxHyperlinkCtrl* m_hyperlink241;
     wxStaticLine* m_staticline331;
     wxBoxSizer* bSizerCompMisc;
+    wxStaticLine* m_staticline3311;
     wxStaticBitmap* m_bitmapIgnoreErrors;
     wxCheckBox* m_checkBoxIgnoreErrors;
     wxCheckBox* m_checkBoxAutoRetry;
@@ -364,7 +367,6 @@ protected:
     wxStaticText* m_staticTextAutoRetryDelay;
     wxSpinCtrl* m_spinCtrlAutoRetryCount;
     wxSpinCtrl* m_spinCtrlAutoRetryDelay;
-    wxStaticLine* m_staticline3311;
     wxStaticLine* m_staticline751;
     wxBoxSizer* bSizerPerformance;
     wxPanel* m_panel57;

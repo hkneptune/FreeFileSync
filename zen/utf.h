@@ -7,8 +7,6 @@
 #ifndef UTF_H_01832479146991573473545
 #define UTF_H_01832479146991573473545
 
-//#include <cstdint>
-//#include <iterator>
 #include "string_tools.h" //copyStringTo
 
 
@@ -45,8 +43,8 @@ using CodePoint = uint32_t;
 using Char16    = uint16_t;
 using Char8     = uint8_t;
 
-const CodePoint LEAD_SURROGATE      = 0xd800;
-const CodePoint TRAIL_SURROGATE     = 0xdc00; //== LEAD_SURROGATE_MAX + 1
+const CodePoint LEAD_SURROGATE      = 0xd800; //1101 1000 0000 0000    LEAD_SURROGATE_MAX = TRAIL_SURROGATE - 1
+const CodePoint TRAIL_SURROGATE     = 0xdc00; //1101 1100 0000 0000
 const CodePoint TRAIL_SURROGATE_MAX = 0xdfff;
 
 const CodePoint REPLACEMENT_CHAR    = 0xfffd;
@@ -62,31 +60,17 @@ void codePointToUtf16(CodePoint cp, Function writeOutput) //"writeOutput" is a u
     if (cp < LEAD_SURROGATE)
         writeOutput(static_cast<Char16>(cp));
     else if (cp <= TRAIL_SURROGATE_MAX) //invalid code point
-        codePointToUtf16(REPLACEMENT_CHAR, writeOutput); //resolves to 1-character utf16
-    else if (cp < 0x10000)
+        writeOutput(static_cast<Char16>(REPLACEMENT_CHAR));
+    else if (cp <= 0xffff)
         writeOutput(static_cast<Char16>(cp));
     else if (cp <= CODE_POINT_MAX)
     {
         cp -= 0x10000;
         writeOutput(static_cast<Char16>( LEAD_SURROGATE + (cp >> 10)));
-        writeOutput(static_cast<Char16>(TRAIL_SURROGATE + (cp & 0x3ff)));
+        writeOutput(static_cast<Char16>(TRAIL_SURROGATE + (cp & 0b11'1111'1111)));
     }
     else //invalid code point
-        codePointToUtf16(REPLACEMENT_CHAR, writeOutput); //resolves to 1-character utf16
-}
-
-
-inline
-size_t getUtf16Len(Char16 ch) //ch must be first code unit! returns 0 on error!
-{
-    if (ch < LEAD_SURROGATE)
-        return 1;
-    else if (ch < TRAIL_SURROGATE)
-        return 2;
-    else if (ch <= TRAIL_SURROGATE_MAX)
-        return 0; //unexpected trail surrogate!
-    else
-        return 1;
+        writeOutput(static_cast<Char16>(REPLACEMENT_CHAR));
 }
 
 
@@ -102,17 +86,14 @@ public:
 
         const Char16 ch = *it_++;
         CodePoint cp = ch;
-        switch (getUtf16Len(ch))
-        {
-            case 0: //invalid utf16 character
-                cp = REPLACEMENT_CHAR;
-                break;
-            case 1:
-                break;
-            case 2:
-                decodeTrail(cp);
-                break;
-        }
+
+        if (ch < LEAD_SURROGATE || ch > TRAIL_SURROGATE_MAX) //single Char16, no surrogates
+            ;
+        else if (ch < TRAIL_SURROGATE) //two Char16: lead and trail surrogates
+            decodeTrail(cp); //no range check needed: cp is inside [U+010000, U+10FFFF] by construction
+        else //unexpected trail surrogate
+            cp = REPLACEMENT_CHAR;
+
         return cp;
     }
 
@@ -141,46 +122,37 @@ private:
 template <class Function> inline
 void codePointToUtf8(CodePoint cp, Function writeOutput) //"writeOutput" is a unary function taking a Char8
 {
-    //https://en.wikipedia.org/wiki/UTF-8
-    //assert(cp < LEAD_SURROGATE || TRAIL_SURROGATE_MAX < cp); //code points [0xd800, 0xdfff] are reserved for UTF-16 and *should* not be encoded in UTF-8
+    /* https://en.wikipedia.org/wiki/UTF-8
+      "high and low surrogate halves used by UTF-16 (U+D800 through U+DFFF) and
+       code points not encodable by UTF-16 (those after U+10FFFF) [...] must be treated as an invalid byte sequence" */
 
-    if (cp < 0x80)
+    if (cp <= 0b111'1111)
         writeOutput(static_cast<Char8>(cp));
-    else if (cp < 0x800)
+    else if (cp <= 0b0111'1111'1111)
     {
-        writeOutput(static_cast<Char8>((cp >> 6  ) | 0xc0));
-        writeOutput(static_cast<Char8>((cp & 0x3f) | 0x80));
+        writeOutput(static_cast<Char8>((cp >> 6)        | 0b1100'0000)); //110x xxxx
+        writeOutput(static_cast<Char8>((cp & 0b11'1111) | 0b1000'0000)); //10xx xxxx
     }
-    else if (cp < 0x10000)
+    else if (cp <= 0b1111'1111'1111'1111)
     {
-        writeOutput(static_cast<Char8>( (cp >> 12       ) | 0xe0));
-        writeOutput(static_cast<Char8>(((cp >> 6) & 0x3f) | 0x80));
-        writeOutput(static_cast<Char8>( (cp       & 0x3f) | 0x80));
+        if (LEAD_SURROGATE <= cp && cp <= TRAIL_SURROGATE_MAX) //[0xd800, 0xdfff]
+            codePointToUtf8(REPLACEMENT_CHAR, writeOutput);
+        else
+        {
+            writeOutput(static_cast<Char8>( (cp >> 12)             | 0b1110'0000)); //1110 xxxx
+            writeOutput(static_cast<Char8>(((cp >> 6) & 0b11'1111) | 0b1000'0000)); //10xx xxxx
+            writeOutput(static_cast<Char8>( (cp       & 0b11'1111) | 0b1000'0000)); //10xx xxxx
+        }
     }
     else if (cp <= CODE_POINT_MAX)
     {
-        writeOutput(static_cast<Char8>( (cp >> 18        ) | 0xf0));
-        writeOutput(static_cast<Char8>(((cp >> 12) & 0x3f) | 0x80));
-        writeOutput(static_cast<Char8>(((cp >> 6)  & 0x3f) | 0x80));
-        writeOutput(static_cast<Char8>( (cp        & 0x3f) | 0x80));
+        writeOutput(static_cast<Char8>( (cp >> 18)              | 0b1111'0000)); //1111 0xxx
+        writeOutput(static_cast<Char8>(((cp >> 12) & 0b11'1111) | 0b1000'0000)); //10xx xxxx
+        writeOutput(static_cast<Char8>(((cp >> 6)  & 0b11'1111) | 0b1000'0000)); //10xx xxxx
+        writeOutput(static_cast<Char8>( (cp        & 0b11'1111) | 0b1000'0000)); //10xx xxxx
     }
     else //invalid code point
-        codePointToUtf8(REPLACEMENT_CHAR, writeOutput); //resolves to 3-byte utf8
-}
-
-
-inline
-size_t getUtf8Len(Char8 ch) //ch must be first code unit! returns 0 on error!
-{
-    if (ch < 0x80)
-        return 1;
-    if (ch >> 5 == 0x6)
-        return 2;
-    if (ch >> 4 == 0xe)
-        return 3;
-    if (ch >> 3 == 0x1e)
-        return 4;
-    return 0; //invalid begin of UTF8 encoding
+        codePointToUtf8(REPLACEMENT_CHAR, writeOutput); //resolves to 3-byte UTF8
 }
 
 
@@ -196,30 +168,34 @@ public:
 
         const Char8 ch = *it_++;
         CodePoint cp = ch;
-        switch (getUtf8Len(ch))
+
+        if (ch < 0x80) //1 byte
+            ;
+        else if (ch >> 5 == 0b110) //2 bytes
         {
-            case 0: //invalid utf8 character
-                cp = REPLACEMENT_CHAR;
-                break;
-            case 1:
-                break;
-            case 2:
-                cp &= 0x1f;
-                decodeTrail(cp);
-                break;
-            case 3:
-                cp &= 0xf;
-                if (decodeTrail(cp))
-                    decodeTrail(cp);
-                break;
-            case 4:
-                cp &= 0x7;
-                if (decodeTrail(cp))
-                    if (decodeTrail(cp))
-                        decodeTrail(cp);
-                if (cp > CODE_POINT_MAX) cp = REPLACEMENT_CHAR;
-                break;
+            cp &= 0b1'1111;
+            if (decodeTrail(cp))
+                if (cp <= 0b111'1111) //overlong encoding: "correct encoding of a code point uses only the minimum number of bytes required"
+                    cp = REPLACEMENT_CHAR;
         }
+        else if (ch >> 4 == 0b1110) //3 bytes
+        {
+            cp &= 0b1111;
+            if (decodeTrail(cp) && decodeTrail(cp))
+                if (cp <= 0b0111'1111'1111 ||
+                    (LEAD_SURROGATE <= cp && cp <= TRAIL_SURROGATE_MAX)) //[0xd800, 0xdfff] are invalid code points
+                    cp = REPLACEMENT_CHAR;
+        }
+        else if (ch >> 3 == 0b11110) //4 bytes
+        {
+            cp &= 0b111;
+            if (decodeTrail(cp) && decodeTrail(cp) && decodeTrail(cp))
+                if (cp <= 0b1111'1111'1111'1111 || cp > CODE_POINT_MAX)
+                    cp = REPLACEMENT_CHAR;
+        }
+        else //invalid begin of UTF8 encoding
+            cp = REPLACEMENT_CHAR;
+
         return cp;
     }
 
@@ -229,9 +205,9 @@ private:
         if (it_ != last_) //trail surrogate expected!
         {
             const Char8 ch = *it_;
-            if (ch >> 6 == 0x2) //trail surrogate expected!
+            if (ch >> 6 == 0b10) //trail surrogate expected!
             {
-                cp = (cp << 6) + (ch & 0x3f);
+                cp = (cp << 6) + (ch & 0b11'1111);
                 ++it_;
                 return true;
             }
@@ -337,7 +313,9 @@ UtfString getUnicodeSubstring(const UtfString& str, size_t uniPosFirst, size_t u
     assert(uniPosFirst <= uniPosLast && uniPosLast <= unicodeLength(str));
     using namespace impl;
     using CharType = GetCharTypeT<UtfString>;
+
     UtfString output;
+    assert(uniPosFirst <= uniPosLast);
     if (uniPosFirst >= uniPosLast) //optimize for empty range
         return output;
 
@@ -357,6 +335,10 @@ UtfString getUnicodeSubstring(const UtfString& str, size_t uniPosFirst, size_t u
 namespace impl
 {
 template <class TargetString, class SourceString> inline
+TargetString utfTo(const SourceString& str, std::true_type) { return copyStringTo<TargetString>(str); }
+
+
+template <class TargetString, class SourceString> inline
 TargetString utfTo(const SourceString& str, std::false_type)
 {
     using CharSrc = GetCharTypeT<SourceString>;
@@ -371,10 +353,6 @@ TargetString utfTo(const SourceString& str, std::false_type)
 
     return output;
 }
-
-
-template <class TargetString, class SourceString> inline
-TargetString utfTo(const SourceString& str, std::true_type) { return copyStringTo<TargetString>(str); }
 }
 
 

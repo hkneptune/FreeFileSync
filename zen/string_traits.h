@@ -105,8 +105,8 @@ class StringTraits
 public:
     enum
     {
-        isStringClass = hasMemberType_value_type<CleanType> &&
-                        hasMember_c_str         <CleanType> &&
+        isStringClass = hasMemberType_value_type<CleanType>&&
+                        hasMember_c_str         <CleanType>&&
                         hasMember_length        <CleanType>
     };
 

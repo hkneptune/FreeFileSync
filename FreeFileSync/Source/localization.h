@@ -18,6 +18,7 @@ namespace fff
 struct TranslationInfo
 {
     wxLanguage languageID = wxLANGUAGE_UNKNOWN;
+    std::string locale;
     std::wstring languageName;
     std::wstring translatorName;
     std::string languageFlag;

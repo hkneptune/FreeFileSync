@@ -130,16 +130,17 @@ void BatchDialog::setConfig(const BatchDialogConfig& dlgCfg)
 
 BatchDialogConfig BatchDialog::getConfig() const
 {
-    BatchDialogConfig dlgCfg = {};
-
-    dlgCfg.ignoreErrors = m_checkBoxIgnoreErrors->GetValue();
-
-    dlgCfg.batchExCfg.batchErrorHandling  = m_radioBtnErrorDialogCancel->GetValue() ? BatchErrorHandling::cancel : BatchErrorHandling::showPopup;
-    dlgCfg.batchExCfg.runMinimized        = m_checkBoxRunMinimized->GetValue();
-    dlgCfg.batchExCfg.autoCloseSummary    = m_checkBoxAutoClose   ->GetValue();
-    dlgCfg.batchExCfg.postSyncAction = getEnumVal(enumPostSyncAction_, *m_choicePostSyncAction);
-
-    return dlgCfg;
+    return
+    {
+        .batchExCfg
+        {
+            .batchErrorHandling  = m_radioBtnErrorDialogCancel->GetValue() ? BatchErrorHandling::cancel : BatchErrorHandling::showPopup,
+            .runMinimized        = m_checkBoxRunMinimized->GetValue(),
+            .autoCloseSummary    = m_checkBoxAutoClose   ->GetValue(),
+            .postSyncAction = getEnumVal(enumPostSyncAction_, *m_choicePostSyncAction),
+        },
+        .ignoreErrors = m_checkBoxIgnoreErrors->GetValue(),
+    };
 }
 
 

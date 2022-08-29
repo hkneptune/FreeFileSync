@@ -20,16 +20,6 @@
 
 namespace fff
 {
-enum class XmlType
-{
-    gui,
-    batch,
-    global,
-    other
-};
-XmlType getXmlType(const Zstring& filePath); //throw FileError
-
-
 enum class BatchErrorHandling
 {
     showPopup,
@@ -185,7 +175,7 @@ struct XmlGlobalSettings
             int           syncOverdueDays = 7;
             ColumnTypeCfg lastSortColumn = cfgGridLastSortColumnDefault;
             bool          lastSortAscending = getDefaultSortDirection(cfgGridLastSortColumnDefault);
-            size_t histItemsMax = 100;
+            size_t histItemsMax = 100; //do we need to limit config items at all?
             Zstring lastSelectedFile;
             std::vector<ConfigFileItem> fileHistory;
             std::vector<Zstring>        lastUsedFiles;
@@ -253,7 +243,7 @@ struct XmlGlobalSettings
 
     std::vector<ExternalApp> externalApps{extCommandFileManager, extCommandOpenDefault};
 
-    time_t lastUpdateCheck = 0; //number of seconds since 00:00 hours, Jan 1, 1970 UTC
+    time_t lastUpdateCheck = 0; //number of seconds since Jan 1, 1970 GMT
     std::string lastOnlineVersion;
 
     std::string welcomeShownVersion; //last FFS version for which the welcome dialog was shown

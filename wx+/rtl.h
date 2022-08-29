@@ -66,22 +66,22 @@ void drawBitmapRtlMirror(wxDC& dc, const wxImage& img, const wxRect& rect, int a
 
         case wxLayout_RightToLeft:
             if (rect.GetWidth() > 0 && rect.GetHeight() > 0)
-        {
-            if (!buffer || buffer->GetSize() != rect.GetSize()) //[!] since we do a mirror, width needs to match exactly!
-                buffer.emplace(rect.GetSize());
+            {
+                if (!buffer || buffer->GetSize() != rect.GetSize()) //[!] since we do a mirror, width needs to match exactly!
+                    buffer.emplace(rect.GetSize());
 
-            if (buffer->GetScaleFactor() != dc.GetContentScaleFactor()) //needed here?
-                buffer->SetScaleFactor(dc.GetContentScaleFactor());     //
+                if (buffer->GetScaleFactor() != dc.GetContentScaleFactor()) //needed here?
+                    buffer->SetScaleFactor(dc.GetContentScaleFactor());     //
 
-            wxMemoryDC memDc(*buffer); //copies scale factor from wxBitmap
-            memDc.Blit(wxPoint(0, 0), rect.GetSize(), &dc, rect.GetTopLeft()); //blit in: background is mirrored due to memDc, dc having different layout direction!
+                wxMemoryDC memDc(*buffer); //copies scale factor from wxBitmap
+                memDc.Blit(wxPoint(0, 0), rect.GetSize(), &dc, rect.GetTopLeft()); //blit in: background is mirrored due to memDc, dc having different layout direction!
 
-            impl::drawBitmapAligned(memDc, img, wxRect(0, 0, rect.width, rect.height), alignment);
-            //note: we cannot simply use memDc.SetLayoutDirection(wxLayout_RightToLeft) due to some strange 1 pixel bug! 2022-04-04: maybe fixed in wxWidgets 3.1.6?
+                impl::drawBitmapAligned(memDc, img, wxRect(0, 0, rect.width, rect.height), alignment);
+                //note: we cannot simply use memDc.SetLayoutDirection(wxLayout_RightToLeft) due to some strange 1 pixel bug! 2022-04-04: maybe fixed in wxWidgets 3.1.6?
 
-            dc.Blit(rect.GetTopLeft(), rect.GetSize(), &memDc, wxPoint(0, 0)); //blit out: mirror once again
-        }
-        break;
+                dc.Blit(rect.GetTopLeft(), rect.GetSize(), &memDc, wxPoint(0, 0)); //blit out: mirror once again
+            }
+            break;
 
         case wxLayout_Default: //CAVEAT: wxPaintDC/wxMemoryDC on wxGTK/wxMAC does not implement SetLayoutDirection()!!! => GetLayoutDirection() == wxLayout_Default
             if (wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft)

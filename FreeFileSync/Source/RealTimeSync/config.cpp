@@ -37,29 +37,15 @@ bool readText(const std::string& input, wxLanguage& value)
 
 namespace
 {
-enum class RtsXmlType
-{
-    real,
-    batch,
-    global,
-    other
-};
-RtsXmlType getXmlTypeNoThrow(const XmlDoc& doc) //throw()
+std::string getConfigType(const XmlDoc& doc)
 {
     if (doc.root().getName() == "FreeFileSync")
     {
         std::string type;
         if (doc.root().getAttribute("XmlType", type))
-        {
-            if (type == "REAL")
-                return RtsXmlType::real;
-            else if (type == "BATCH")
-                return RtsXmlType::batch;
-            else if (type == "GLOBAL")
-                return RtsXmlType::global;
-        }
+            return type;
     }
-    return RtsXmlType::other;
+    return {};
 }
 
 
@@ -90,7 +76,7 @@ void rts::readConfig(const Zstring& filePath, XmlRealConfig& cfg, std::wstring& 
 {
     XmlDoc doc = loadXml(filePath); //throw FileError
 
-    if (getXmlTypeNoThrow(doc) != RtsXmlType::real) //noexcept
+    if (getConfigType(doc) != "REAL")
         throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)));
 
     int formatVer = 0;
@@ -130,10 +116,8 @@ void rts::readRealOrBatchConfig(const Zstring& filePath, XmlRealConfig& cfg, std
     XmlDoc doc = loadXml(filePath); //throw FileError
     //quick exit if file is not an FFS XML
 
-    const RtsXmlType xmlType = ::getXmlTypeNoThrow(doc);
-
     //convert batch config to RealTimeSync config
-    if (xmlType == RtsXmlType::batch)
+    if (getConfigType(doc) == "BATCH")
     {
         XmlIn in(doc);
 
@@ -180,7 +164,7 @@ wxLanguage rts::getProgramLanguage() //throw FileError
         throw;
     }
 
-    if (getXmlTypeNoThrow(doc) != RtsXmlType::global) //noexcept
+    if (getConfigType(doc) != "GLOBAL")
         throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)));
 
     XmlIn in(doc);

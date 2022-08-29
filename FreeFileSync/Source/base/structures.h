@@ -29,7 +29,7 @@ enum class CompareVariant
 enum class SymLinkHandling
 {
     exclude,
-    direct,
+    asLink,
     follow
 };
 

@@ -328,10 +328,7 @@ void StatusHandlerTemporaryPanel::onLocalKeyEvent(wxKeyEvent& event)
 {
     const int keyCode = event.GetKeyCode();
     if (keyCode == WXK_ESCAPE)
-    {
-        wxCommandEvent dummy;
-        onAbortCompare(dummy);
-    }
+        return userRequestAbort();
 
     event.Skip();
 }

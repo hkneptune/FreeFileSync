@@ -26,10 +26,10 @@ class DirectoryPanel;
 class MainDialog: public MainDlgGenerated
 {
 public:
-    static void create(const Zstring& cfgFile);
+    static void create(const Zstring& cfgFilePath);
 
 private:
-    MainDialog(const Zstring& cfgFileName);
+    MainDialog(const Zstring& cfgFilePath);
     ~MainDialog();
 
     void onBeforeSystemShutdown(); //last chance to do something useful before killing the application!

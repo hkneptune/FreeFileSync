@@ -1,4 +1,4 @@
-// *****************************************************************************
+﻿// *****************************************************************************
 // * This file is part of the FreeFileSync project. It is distributed under    *
 // * GNU General Public License: https://www.gnu.org/licenses/gpl-3.0          *
 // * Copyright (C) Zenju (zenju AT freefilesync DOT org) - All Rights Reserved *
@@ -445,6 +445,208 @@ bool significantDifferenceDetected(const SyncStatistics& folderPairStat)
     //folderPairStat.conflictCount();
 
     return nonMatchingRows >= 10 && nonMatchingRows > 0.5 * folderPairStat.rowCount();
+}
+
+//---------------------------------------------------------------------------------------------
+
+struct ChildPathRef
+{
+    const FileSystemObject* fsObj = nullptr;
+    uint64_t childPathHash = 0;
+};
+
+
+template <SelectSide side>
+class GetChildPathsHashed
+{
+public:
+    static std::vector<ChildPathRef> execute(const ContainerObject& folder)
+    {
+        GetChildPathsHashed inst;
+        inst.recurse(folder, FNV1aHash<uint64_t>().get() /*don't start with 0!*/);
+        return std::move(inst.childPathRefs_);
+    }
+
+private:
+    GetChildPathsHashed           (const GetChildPathsHashed&) = delete;
+    GetChildPathsHashed& operator=(const GetChildPathsHashed&) = delete;
+
+    GetChildPathsHashed() {}
+
+    void recurse(const ContainerObject& hierObj, uint64_t parentPathHash)
+    {
+        for (const FilePair& file : hierObj.refSubFiles())
+            if (file.isActive())
+                childPathRefs_.push_back({&file, getPathHash(file, parentPathHash)});
+
+        for (const SymlinkPair& symlink : hierObj.refSubLinks())
+            if (symlink.isActive())
+                childPathRefs_.push_back({&symlink, getPathHash(symlink, parentPathHash)});
+
+        for (const FolderPair& subFolder : hierObj.refSubFolders())
+        {
+            const uint64_t folderPathHash = getPathHash(subFolder, parentPathHash);
+
+            if (subFolder.isActive())
+                childPathRefs_.push_back({&subFolder, folderPathHash});
+
+            recurse(subFolder, folderPathHash);
+        }
+    }
+
+    static uint64_t getPathHash(const FileSystemObject& fsObj, uint64_t parentPathHash)
+    {
+        FNV1aHash<uint64_t> hash(parentPathHash);
+        const Zstring& itemName = fsObj.getItemName<side>();
+
+        if (isAsciiString(itemName)) //fast path: no need for extra memory allocation!
+            for (const Zchar c : itemName)
+                hash.add(asciiToUpper(c));
+        else
+            for (const Zchar c : getUpperCase(itemName))
+                hash.add(c);
+
+        return hash.get();
+    }
+
+    std::vector<ChildPathRef> childPathRefs_;
+};
+
+
+template <SelectSide side>
+bool plannedWriteAccess(const FileSystemObject& fsObj)
+{
+    if (std::optional<SelectSide> dir = getTargetDirection(fsObj.getSyncOperation()))
+        return side == *dir;
+    else
+        return false;
+}
+
+
+template <SelectSide sideL, SelectSide sideR>
+std::weak_ordering comparePathRef(const ChildPathRef& lhs, const ChildPathRef& rhs)
+{
+    if (const std::weak_ordering cmp = lhs.childPathHash <=> rhs.childPathHash;
+        cmp != std::weak_ordering::equivalent)
+        return cmp; //fast path!
+
+    return compareNoCase(lhs.fsObj->getAbstractPath<sideL>().afsPath.value,  //fsObj may come from *different* BaseFolderPair
+                         rhs.fsObj->getAbstractPath<sideR>().afsPath.value); // => don't compare getRelativePath()!
+}
+
+
+template <SelectSide side>
+void sortAndRemoveDuplicates(std::vector<ChildPathRef>& pathRefs)
+{
+    std::sort(pathRefs.begin(), pathRefs.end(), [](const ChildPathRef& lhs, const ChildPathRef& rhs)
+    {
+        if (const std::weak_ordering cmp = comparePathRef<side, side>(lhs, rhs);
+            cmp != std::weak_ordering::equivalent)
+            return cmp < 0;
+
+        return //multiple (case-insensitive) relPaths? => order write-access before read-access, so that std::unique leaves a write if existing!
+            plannedWriteAccess<side>(*lhs.fsObj) >
+            plannedWriteAccess<side>(*rhs.fsObj);
+    });
+
+    pathRefs.erase(std::unique(pathRefs.begin(), pathRefs.end(),
+    [](const ChildPathRef& lhs, const ChildPathRef& rhs) { return comparePathRef<side, side>(lhs, rhs) == std::weak_ordering::equivalent; }),
+    pathRefs.end());
+
+    //let's not use removeDuplicates(): we rely too much on implementation details!
+}
+
+template <SelectSide side>
+std::wstring formatRaceItem(const FileSystemObject& fsObj)
+{
+    return AFS::getDisplayPath(fsObj.base().getAbstractPath<side>()) + (plannedWriteAccess<side>(fsObj) ? L" 💾 "  : L" 👓 " ) +
+           utfTo<std::wstring>(fsObj.getRelativePath<side>()); //e.g. C:\Folder 💾 subfolder\file.txt
+}
+
+struct PathRaceCondition
+{
+    std::wstring itemList;
+    size_t count = 0;
+};
+
+
+template <SelectSide side1, SelectSide side2>
+void getChildItemRaceCondition(std::vector<ChildPathRef>& pathRefs1, std::vector<ChildPathRef>& pathRefs2, PathRaceCondition& result)
+{
+    //use case-sensitive comparison because items were scanned by FFS (=> no messy user input)?
+    //not good enough! E.g. not-yet-existing files are set to be created with different case!
+    // + (weird) a file and a folder are set to be created with same name
+    // => (throw hands in the air) fine, check path only and don't consider case
+
+    sortAndRemoveDuplicates<side1>(pathRefs1);
+    sortAndRemoveDuplicates<side2>(pathRefs2);
+
+    mergeTraversal(pathRefs1.begin(), pathRefs1.end(),
+                   pathRefs2.begin(), pathRefs2.end(),
+    [](const ChildPathRef&) {} /*left only*/,
+    [&](const ChildPathRef& lhs, const ChildPathRef& rhs)
+    {
+        if (plannedWriteAccess<side1>(*lhs.fsObj) ||
+            plannedWriteAccess<side2>(*rhs.fsObj))
+        {
+            if (result.count < CONFLICTS_PREVIEW_MAX)
+                result.itemList += formatRaceItem<side1>(*lhs.fsObj) + L"\n" +
+                                   formatRaceItem<side2>(*rhs.fsObj) + L"\n\n";
+            ++result.count;
+        }
+    },
+    [](const ChildPathRef&) {} /*right only*/, comparePathRef<side1, side2>);
+}
+
+
+//check if some files/folders are included more than once and form a race condition (:= multiple accesses of which at least one is a write)
+// - checking filter for subfolder exclusion is not good enough: one folder may have a *.txt include-filter, the other a *.lng include filter => still no dependencies
+// - user may have manually excluded the conflicting items or changed the filter settings without running a re-compare
+template <SelectSide sideP, SelectSide sideC>
+void getPathRaceCondition(const BaseFolderPair& baseFolderP, const BaseFolderPair& baseFolderC, PathRaceCondition& result)
+{
+    const AbstractPath basePathP = baseFolderP.getAbstractPath<sideP>(); //parent/child notion is tentative at this point
+    const AbstractPath basePathC = baseFolderC.getAbstractPath<sideC>(); //=> will be swapped if necessary
+
+    if (!AFS::isNullPath(basePathP) && !AFS::isNullPath(basePathC))
+        if (basePathP.afsDevice == basePathC.afsDevice)
+        {
+            if (basePathP.afsPath.value.size() > basePathC.afsPath.value.size())
+                return getPathRaceCondition<sideC, sideP>(baseFolderC, baseFolderP, result);
+
+            const std::vector<Zstring> relPathP = split(basePathP.afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip);
+            const std::vector<Zstring> relPathC = split(basePathC.afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip);
+
+            if (relPathP.size() <= relPathC.size() &&
+            /**/std::equal(relPathP.begin(), relPathP.end(), relPathC.begin(), [](const Zstring& lhs, const Zstring& rhs) { return equalNoCase(lhs, rhs); }))
+            {
+                //=> at this point parent/child folders are confirmed
+                //now find child folder match inside baseFolderP
+                //e.g.  C:\folder <-> C:\folder\sub    =>  find "sub" inside C:\folder
+                std::vector<const ContainerObject*> childFolderP{&baseFolderP};
+
+                std::for_each(relPathC.begin() + relPathP.size(), relPathC.end(), [&](const Zstring& itemName)
+                {
+                    std::vector<const ContainerObject*> childFolderP2;
+
+                    for (const ContainerObject* childFolder : childFolderP)
+                        for (const FolderPair& folder : childFolder->refSubFolders())
+                            if (equalNoCase(folder.getItemName<sideP>(), itemName))
+                                childFolderP2.push_back(&folder);
+                    //no "break"? yes, weird, but there could be more than one (for case-sensitive file system)
+
+                    childFolderP = std::move(childFolderP2);
+                });
+
+                std::vector<ChildPathRef> pathRefsP;
+                for (const ContainerObject* childFolder : childFolderP)
+                    append(pathRefsP, GetChildPathsHashed<sideP>::execute(*childFolder));
+
+                std::vector<ChildPathRef> pathRefsC = GetChildPathsHashed<sideC>::execute(baseFolderC);
+
+                getChildItemRaceCondition<sideP, sideC>(pathRefsP, pathRefsC, result);
+            }
+        }
 }
 
 //#################################################################################################################
@@ -2227,11 +2429,11 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
 
     //-------------------execute basic checks all at once BEFORE starting sync--------------------------------------
 
-    std::vector<int /*we really want bool*/> skipFolderPair(folderCmp.size(), false); //folder pairs may be skipped after fatal errors were found
+    std::vector<unsigned char /*we really want bool*/> skipFolderPair(folderCmp.size(), false); //folder pairs may be skipped after fatal errors were found
 
-    std::map<const BaseFolderPair*, std::pair<int, std::vector<SyncStatistics::ConflictInfo>>> checkUnresolvedConflicts;
+    std::vector<std::tuple<const BaseFolderPair*, int /*conflict count*/, std::vector<SyncStatistics::ConflictInfo>>> checkUnresolvedConflicts;
 
-    std::vector<std::tuple<AbstractPath, const PathFilter*, bool /*write access*/>> checkReadWriteBaseFolders;
+    std::vector<std::tuple<const BaseFolderPair*, SelectSide, bool /*write access*/>> checkBaseFolderRaceCondition;
 
     std::vector<std::pair<AbstractPath, AbstractPath>> checkSignificantDiffPairs;
 
@@ -2246,17 +2448,17 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
     std::set<AbstractPath> checkVersioningLimitPaths;
 
     //------------------- start checking folder pairs -------------------
-    for (auto itBase = begin(folderCmp); itBase != end(folderCmp); ++itBase)
+    for (size_t folderIndex = 0; folderIndex < folderCmp.size(); ++folderIndex)
     {
-        BaseFolderPair& baseFolder = *itBase;
-        const size_t folderIndex = itBase - begin(folderCmp);
-        const FolderPairSyncCfg& folderPairCfg  = syncConfig     [folderIndex];
+        BaseFolderPair&          baseFolder     = *folderCmp[folderIndex];
+        const FolderPairSyncCfg& folderPairCfg  = syncConfig[folderIndex];
         const SyncStatistics&    folderPairStat = folderPairStats[folderIndex];
 
         const AbstractPath versioningFolderPath = createAbstractPath(folderPairCfg.versioningFolderPhrase);
 
-        //aggregate *all* conflicts:
-        checkUnresolvedConflicts[&baseFolder] = std::pair(folderPairStat.conflictCount(), folderPairStat.getConflictsPreview());
+        //prepare conflict preview:
+        if (folderPairStat.conflictCount() > 0)
+            checkUnresolvedConflicts.emplace_back(&baseFolder, folderPairStat.conflictCount(), folderPairStat.getConflictsPreview());
 
         //consider *all* paths that might be used during versioning limit at some time
         if (folderPairCfg.handleDeletion == DeletionPolicy::versioning &&
@@ -2268,7 +2470,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
         //================ begin of checks that may SKIP folder pairs ===================
         //===============================================================================
 
-        //exclude a few pathological cases (including empty left, right folders)
+        //exclude a few pathological cases:
         if (baseFolder.getAbstractPath<SelectSide::left >() ==
             baseFolder.getAbstractPath<SelectSide::right>())
         {
@@ -2311,7 +2513,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
             continue;
         }
 
-        //allow propagation of deletions only from *null-* or *existing* source folder:
+        //allow propagation of deletions only from *empty* or *existing* source folder:
         auto sourceFolderMissing = [&](const AbstractPath& baseFolderPath, BaseFolderStatus folderStatus) //we need to evaluate existence status from time of comparison!
         {
             if (!AFS::isNullPath(baseFolderPath))
@@ -2349,13 +2551,13 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
 
             //prepare: check if versioning path itself will be synchronized (and was not excluded via filter)
             checkVersioningPaths.insert(versioningFolderPath);
-            checkVersioningBasePaths.emplace_back(baseFolder.getAbstractPath<SelectSide::left >(), &baseFolder.getFilter());
-            checkVersioningBasePaths.emplace_back(baseFolder.getAbstractPath<SelectSide::right>(), &baseFolder.getFilter());
         }
+        checkVersioningBasePaths.emplace_back(baseFolder.getAbstractPath<SelectSide::left >(), &baseFolder.getFilter());
+        checkVersioningBasePaths.emplace_back(baseFolder.getAbstractPath<SelectSide::right>(), &baseFolder.getFilter());
 
-        //prepare: check if folders are used by multiple pairs in read/write access
-        checkReadWriteBaseFolders.emplace_back(baseFolder.getAbstractPath<SelectSide::left >(), &baseFolder.getFilter(), writeLeft);
-        checkReadWriteBaseFolders.emplace_back(baseFolder.getAbstractPath<SelectSide::right>(), &baseFolder.getFilter(), writeRight);
+        //prepare: check if some files are used by multiple pairs in read/write access
+        checkBaseFolderRaceCondition.emplace_back(&baseFolder, SelectSide::left,  writeLeft);
+        checkBaseFolderRaceCondition.emplace_back(&baseFolder, SelectSide::right, writeRight);
 
         //check if more than 50% of total number of files/dirs are to be created/overwritten/deleted
         if (!AFS::isNullPath(baseFolder.getAbstractPath<SelectSide::left >()) &&
@@ -2412,29 +2614,51 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
                 checkRecycler(baseFolder.getAbstractPath<SelectSide::right>());
         }
     }
-    //-----------------------------------------------------------------
+    //--------------------------------------------------------------------------------------
 
     //check if unresolved conflicts exist
-    if (std::any_of(checkUnresolvedConflicts.begin(), checkUnresolvedConflicts.end(), [](const auto& item) { return item.second.first > 0; }))
+    if (!checkUnresolvedConflicts.empty())
     {
+        //distribute CONFLICTS_PREVIEW_MAX over all pairs, not *per* pair, or else log size with many folder pairs can blow up!
+        std::vector<std::vector<SyncStatistics::ConflictInfo>> conflictPreviewTrim(checkUnresolvedConflicts.size());
+
+        size_t previewRemain = CONFLICTS_PREVIEW_MAX;
+        for (size_t i = 0; ; ++i)
+        {
+            const size_t previewRemainOld = previewRemain;
+
+            for (size_t j = 0; j < checkUnresolvedConflicts.size(); ++j)
+            {
+                const auto& [baseFolder, conflictCount, conflictPreview] = checkUnresolvedConflicts[j];
+
+                if (i < conflictPreview.size())
+                {
+                    conflictPreviewTrim[j].push_back(conflictPreview[i]);
+                    if (--previewRemain == 0)
+                        goto break2; //sigh
+                }
+            }
+            if (previewRemain == previewRemainOld)
+                break;
+        }
+break2:
+
         std::wstring msg = _("The following items have unresolved conflicts and will not be synchronized:");
 
-        for (const auto& [baseFolder, conflicts] : checkUnresolvedConflicts)
+        auto itPrevi = conflictPreviewTrim.begin();
+        for (const auto& [baseFolder, conflictCount, conflictPreview] : checkUnresolvedConflicts)
         {
-            const auto& [conflictCount, conflictPreview] = conflicts;
-            if (conflictCount > 0)
-            {
-                msg += L"\n\n" + _("Folder pair:") + L' ' +
-                       AFS::getDisplayPath(baseFolder->getAbstractPath<SelectSide::left >()) + L" <-> " +
-                       AFS::getDisplayPath(baseFolder->getAbstractPath<SelectSide::right>());
+            msg += L"\n\n" + _("Folder pair:") + L' ' +
+                   AFS::getDisplayPath(baseFolder->getAbstractPath<SelectSide::left >()) + L" <-> " +
+                   AFS::getDisplayPath(baseFolder->getAbstractPath<SelectSide::right>());
 
-                for (const SyncStatistics::ConflictInfo& item : conflictPreview)
-                    msg += L'\n' + utfTo<std::wstring>(item.relPath) + L": " + item.msg;
+            for (const SyncStatistics::ConflictInfo& item : *itPrevi)
+                msg += L'\n' + utfTo<std::wstring>(item.relPath) + L": " + item.msg;
 
-                if (makeUnsigned(conflictCount) > conflictPreview.size())
-                    msg += L"\n  [...]  " + replaceCpy(_P("Showing %y of 1 item", "Showing %y of %x items", conflictCount), //%x used as plural form placeholder!
-                                                       L"%y", formatNumber(conflictPreview.size()));
-            }
+            if (makeUnsigned(conflictCount) > itPrevi->size())
+                msg += L"\n  [...]  " + replaceCpy(_P("Showing %y of 1 item", "Showing %y of %x items", conflictCount), //%x used as plural form placeholder!
+                                                   L"%y", formatNumber(itPrevi->size()));
+            ++itPrevi;
         }
 
         callback.reportWarning(msg, warnings.warnUnresolvedConflicts);
@@ -2460,8 +2684,8 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
 
         for (const auto& [folderPath, space] : checkDiskSpaceMissing)
             msg += L"\n\n" + AFS::getDisplayPath(folderPath) + L'\n' +
-                   _("Required:")  + L' ' + formatFilesizeShort(space.first)  + L'\n' +
-                   _("Available:") + L' ' + formatFilesizeShort(space.second);
+                   TAB_SPACE + _("Required:")  + L' ' + formatFilesizeShort(space.first)  + L'\n' +
+                   TAB_SPACE + _("Available:") + L' ' + formatFilesizeShort(space.second);
 
         callback.reportWarning(msg, warnings.warnNotEnoughDiskSpace);
     }
@@ -2480,35 +2704,41 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
 
     //check if folders are used by multiple pairs in read/write access
     {
-        std::set<AbstractPath> dependentFolders;
+        PathRaceCondition conflicts;
 
         //race condition := multiple accesses of which at least one is a write
-        for (auto it = checkReadWriteBaseFolders.begin(); it != checkReadWriteBaseFolders.end(); ++it)
-        {
-            const auto& [basePath1, filter1, writeAccess1] = *it;
-            if (writeAccess1)
-                for (auto it2 = checkReadWriteBaseFolders.begin(); it2 != checkReadWriteBaseFolders.end(); ++it2)
+        //=> use "writeAccess" to reduce list of - not necessarily conflicting - candidates to check (=> perf!)
+        for (auto it = checkBaseFolderRaceCondition.begin(); it != checkBaseFolderRaceCondition.end(); ++it)
+            if (const auto& [baseFolder1, side1, writeAccess1] = *it;
+                writeAccess1)
+                for (auto it2 = checkBaseFolderRaceCondition.begin(); it2 != checkBaseFolderRaceCondition.end(); ++it2)
                 {
-                    const auto& [basePath2, filter2, writeAccess2] = *it2;
+                    const auto& [baseFolder2, side2, writeAccess2] = *it2;
 
                     if (!writeAccess2 ||
                         it < it2) //avoid duplicate comparisons
-                        if (std::optional<PathDependency> pd = getPathDependency(basePath1, *filter1,
-                                                                                 basePath2, *filter2))
-                        {
-                            dependentFolders.insert(pd->basePathParent);
-                            dependentFolders.insert(pd->basePathChild);
-                        }
+                    {
+                        //"The Things We Do for [Perf]"
+                        /**/ if (side1 == SelectSide::left  && side2 == SelectSide::left ) getPathRaceCondition<SelectSide::left,  SelectSide::left >(*baseFolder1, *baseFolder2, conflicts);
+                        else if (side1 == SelectSide::left  && side2 == SelectSide::right) getPathRaceCondition<SelectSide::left,  SelectSide::right>(*baseFolder1, *baseFolder2, conflicts);
+                        else if (side1 == SelectSide::right && side2 == SelectSide::left ) getPathRaceCondition<SelectSide::right, SelectSide::left >(*baseFolder1, *baseFolder2, conflicts);
+                        else                                                               getPathRaceCondition<SelectSide::right, SelectSide::right>(*baseFolder1, *baseFolder2, conflicts);
+                    }
                 }
-        }
+        assert(makeUnsigned(std::count(conflicts.itemList.begin(), conflicts.itemList.end(), L'\n')) == 3 * std::min(conflicts.count, CONFLICTS_PREVIEW_MAX));
 
-        if (!dependentFolders.empty())
+        if (conflicts.count > 0)
         {
             std::wstring msg = _("Some files will be synchronized as part of multiple base folders.") + L'\n' +
-                               _("To avoid conflicts, set up exclude filters so that each updated file is included by only one base folder.") + L'\n';
+                               _("To avoid conflicts, set up exclude filters so that each updated file is included by only one base folder.") + L"\n\n" +
+                               conflicts.itemList;
 
-            for (const AbstractPath& baseFolderPath : dependentFolders)
-                msg += L'\n' + AFS::getDisplayPath(baseFolderPath);
+            assert(endsWith(conflicts.itemList, L"\n\n"));
+            if (conflicts.count > CONFLICTS_PREVIEW_MAX)
+                msg += L"[...]  " + replaceCpy(_P("Showing %y of 1 item", "Showing %y of %x items", conflicts.count), //%x used as plural form placeholder!
+                                               L"%y", formatNumber(CONFLICTS_PREVIEW_MAX));
+            else
+                trim(msg);
 
             callback.reportWarning(msg, warnings.warnDependentBaseFolders);
         }
@@ -2517,26 +2747,34 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
     //check if versioning path itself will be synchronized (and was not excluded via filter)
     {
         std::wstring msg;
+        bool shouldExclude = false;
+
         for (const AbstractPath& versioningFolderPath : checkVersioningPaths)
         {
-            std::map<AbstractPath, std::wstring> uniqueMsgs; //=> at most one msg per base folder (*and* per versioningFolderPath)
+            std::set<AbstractPath> foldersWithWarnings; //=> at most one msg per base folder (*and* per versioningFolderPath)
 
             for (const auto& [folderPath, filter] : checkVersioningBasePaths) //may contain duplicate paths, but with *different* hard filter!
                 if (std::optional<PathDependency> pd = getPathDependency(versioningFolderPath, NullFilter(), folderPath, *filter))
-                {
-                    std::wstring line = L"\n\n" + _("Versioning folder:") + L" \t" + AFS::getDisplayPath(versioningFolderPath) +
-                                        L'\n'   + _("Base folder:")       + L" \t" + AFS::getDisplayPath(folderPath);
-                    if (pd->basePathParent == folderPath && !pd->relPath.empty())
-                        line += L'\n' + _("Exclude:") + L" \t" + utfTo<std::wstring>(FILE_NAME_SEPARATOR + pd->relPath + FILE_NAME_SEPARATOR);
-
-                    uniqueMsgs[folderPath] = line;
-                }
-            for (const auto& [folderPath, perFolderMsg] : uniqueMsgs)
-                msg += perFolderMsg;
+                    if (const auto [it, inserted] = foldersWithWarnings.insert(folderPath);
+                        inserted)
+                    {
+                        msg += L"\n\n" +
+                               _("Base folder:")       + L" \t" + AFS::getDisplayPath(folderPath) + L'\n' +
+                               _("Versioning folder:") + L" \t" + AFS::getDisplayPath(versioningFolderPath);
+                        if (pd->folderPathParent == folderPath) //else: probably fine? :>
+                            if (!pd->relPath.empty())
+                            {
+                                shouldExclude = true;
+                                msg += std::wstring() + L'\n' + L"⇒ " +
+                                       _("Exclude:") + L" \t" + utfTo<std::wstring>(FILE_NAME_SEPARATOR + pd->relPath + FILE_NAME_SEPARATOR);
+                            }
+                        warn_static("else: ???")
+                    }
         }
         if (!msg.empty())
-            callback.reportWarning(_("The versioning folder is contained in a base folder.") + L'\n' +
-                                   _("The folder should be excluded from synchronization via filter.") + msg, warnings.warnVersioningFolderPartOfSync);
+            callback.reportWarning(_("The versioning folder is contained in a base folder.") +
+                                   (shouldExclude ? L'\n' + _("The folder should be excluded from synchronization via filter.") : L"") +
+                                   msg, warnings.warnVersioningFolderPartOfSync);
     }
 
     //warn if versioning folder paths differ only in case => possible pessimization for applyVersioningLimit()
@@ -2558,6 +2796,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
                 }
             callback.reportWarning(msg, warnings.warnFoldersDifferInCase); //throw X
         }
+                //what about /folder and /Folder/subfolder? => yes, inconsistent, but doesn't matter for FFS
     }
     //-------------------end of basic checks------------------------------------------
 
@@ -2622,11 +2861,10 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
     try
     {
         //loop through all directory pairs
-        for (auto itBase = begin(folderCmp); itBase != end(folderCmp); ++itBase)
+        for (size_t folderIndex = 0; folderIndex < folderCmp.size(); ++folderIndex)
         {
-            BaseFolderPair& baseFolder = *itBase;
-            const size_t folderIndex = itBase - begin(folderCmp);
-            const FolderPairSyncCfg& folderPairCfg  = syncConfig     [folderIndex];
+            BaseFolderPair&          baseFolder     = *folderCmp[folderIndex];
+            const FolderPairSyncCfg& folderPairCfg  = syncConfig[folderIndex];
             const SyncStatistics&    folderPairStat = folderPairStats[folderIndex];
 
             if (skipFolderPair[folderIndex]) //folder pairs may be skipped after fatal errors were found
@@ -2634,8 +2872,8 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
 
             //------------------------------------------------------------------------------------------
             callback.logInfo(_("Synchronizing folder pair:") + L' ' + getVariantNameWithSymbol(folderPairCfg.syncVar) + L'\n' + //throw X
-                             L"    " + AFS::getDisplayPath(baseFolder.getAbstractPath<SelectSide::left >()) + L'\n' +
-                             L"    " + AFS::getDisplayPath(baseFolder.getAbstractPath<SelectSide::right>()));
+                             TAB_SPACE + AFS::getDisplayPath(baseFolder.getAbstractPath<SelectSide::left >()) + L'\n' +
+                             TAB_SPACE + AFS::getDisplayPath(baseFolder.getAbstractPath<SelectSide::right>()));
             //------------------------------------------------------------------------------------------
 
             //checking a second time: 1. a long time may have passed since syncing the previous folder pairs!
@@ -2734,15 +2972,15 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
             //(try to gracefully) write database file
             if (folderPairCfg.saveSyncDB)
             {
-                saveLastSynchronousState(baseFolder, failSafeFileCopy, //throw X
-                                         callback /*throw X*/);
-                guardDbSave.dismiss(); //[!] after "graceful" try: user might have cancelled during DB write: ensure DB is still written
+                saveLastSynchronousState(baseFolder, failSafeFileCopy,
+                                         callback /*throw X*/); //throw X
+                guardDbSave.dismiss(); //[!] dismiss *after* "graceful" try: user might cancel during DB write: ensure DB is still written
             }
         }
         //-----------------------------------------------------------------------------------------------------
 
         applyVersioningLimit(versionLimitFolders,
-                             callback /*throw X*/);
+                             callback /*throw X*/); //throw X
     }
     catch (const std::exception& e)
     {

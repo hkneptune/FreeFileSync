@@ -132,7 +132,7 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
 
     struct StreamAttributes
     {
-        time_t modTime; //number of seconds since Jan. 1st 1970 UTC
+        time_t modTime; //number of seconds since Jan. 1st 1970 GMT
         uint64_t fileSize;
         FingerPrint filePrint; //optional
     };
@@ -197,7 +197,7 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     {
         Zstring itemName;
         uint64_t fileSize; //unit: bytes!
-        time_t modTime; //number of seconds since Jan. 1st 1970 UTC
+        time_t modTime; //number of seconds since Jan. 1st 1970 GMT
         FingerPrint filePrint; //optional; persistent + unique (relative to device) or 0!
         bool isFollowedSymlink;
     };
@@ -263,7 +263,7 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     struct FileCopyResult
     {
         uint64_t fileSize = 0;
-        time_t modTime = 0; //number of seconds since Jan. 1st 1970 UTC
+        time_t modTime = 0; //number of seconds since Jan. 1st 1970 GMT
         FingerPrint sourceFilePrint = 0; //optional
         FingerPrint targetFilePrint = 0; //
         std::optional<zen::FileError> errorModTime; //failure to set modification time

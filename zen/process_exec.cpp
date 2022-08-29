@@ -176,8 +176,7 @@ std::pair<int /*exit code*/, std::string> processExecuteImpl(const Zstring& file
 
             const auto waitTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - now).count();
 
-            timeval tv = {};
-            tv.tv_sec  = static_cast<long>(waitTimeMs / 1000);
+            timeval tv{.tv_sec = static_cast<long>(waitTimeMs / 1000)};
             tv.tv_usec = static_cast<long>(waitTimeMs - tv.tv_sec * 1000) * 1000;
 
             fd_set rfd = {}; //includes FD_ZERO

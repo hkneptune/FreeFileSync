@@ -114,11 +114,13 @@ std::vector<TranslationInfo> loadTranslations(const Zstring& zipPath) //throw Fi
             else
                 assert(false);
     }
-    catch (FileError&) //fall back to folder
+    catch (FileError&) //fall back to folder: dev build (only!?)
     {
         const Zstring fallbackFolder = beforeLast(zipPath, Zstr(".zip"), IfNotFoundReturn::none);
-        if (dirAvailable(fallbackFolder)) //Debug build (only!?)
-            traverseFolder(fallbackFolder, [&](const FileInfo& fi)
+        if (!itemStillExists(fallbackFolder)) //throw FileError
+            throw;
+
+        traverseFolder(fallbackFolder, [&](const FileInfo& fi)
         {
             if (endsWith(fi.fullPath, Zstr(".lng")))
             {
@@ -126,23 +128,22 @@ std::vector<TranslationInfo> loadTranslations(const Zstring& zipPath) //throw Fi
                 streams.emplace_back(fi.itemName, std::move(stream));
             }
         }, nullptr, nullptr, [](const std::wstring& errorMsg) { throw FileError(errorMsg); });
-        else
-            throw;
     }
     //--------------------------------------------------------------------
 
-    std::vector<TranslationInfo> translations;
+    std::vector<TranslationInfo> translations
     {
         //default entry:
-        TranslationInfo newEntry;
-        newEntry.languageID     = wxLANGUAGE_ENGLISH_US;
-        newEntry.languageName   = L"English";
-        newEntry.translatorName = L"Zenju";
-        newEntry.languageFlag   = "flag_usa";
-        newEntry.lngFileName    = Zstr("");
-        newEntry.lngStream      = "";
-        translations.push_back(newEntry);
-    }
+        {
+            .languageID     = wxLANGUAGE_ENGLISH_US,
+            .locale         = "en_US",
+            .languageName   = L"English",
+            .translatorName = L"Zenju",
+            .languageFlag   = "flag_usa",
+            .lngFileName    = Zstr(""),
+            .lngStream      = "",
+        }
+    };
 
     for (/*const*/ auto& [fileName, stream] : streams)
         try
@@ -150,22 +151,22 @@ std::vector<TranslationInfo> loadTranslations(const Zstring& zipPath) //throw Fi
             const lng::TransHeader lngHeader = lng::parseHeader(stream); //throw ParsingError
             assert(!lngHeader.languageName  .empty());
             assert(!lngHeader.translatorName.empty());
-            assert(!lngHeader.localeName    .empty());
+            assert(!lngHeader.locale        .empty());
             assert(!lngHeader.flagFile      .empty());
 
-            const wxLanguageInfo* lngInfo = wxLocale::FindLanguageInfo(utfTo<wxString>(lngHeader.localeName));
-            assert(lngInfo && lngInfo->CanonicalName == utfTo<wxString>(lngHeader.localeName));
+            const wxLanguageInfo* lngInfo = wxLocale::FindLanguageInfo(utfTo<wxString>(lngHeader.locale));
+            assert(lngInfo && lngInfo->CanonicalName == utfTo<wxString>(lngHeader.locale));
             if (lngInfo)
+                translations.push_back(
             {
-                TranslationInfo newEntry;
-                newEntry.languageID     = static_cast<wxLanguage>(lngInfo->Language);
-                newEntry.languageName   = utfTo<std::wstring>(lngHeader.languageName);
-                newEntry.translatorName = utfTo<std::wstring>(lngHeader.translatorName);
-                newEntry.languageFlag   = lngHeader.flagFile;
-                newEntry.lngFileName    = fileName;
-                newEntry.lngStream      = std::move(stream);
-                translations.push_back(std::move(newEntry));
-            }
+                .languageID     = static_cast<wxLanguage>(lngInfo->Language),
+                .locale         = lngHeader.locale,
+                .languageName   = utfTo<std::wstring>(lngHeader.languageName),
+                .translatorName = utfTo<std::wstring>(lngHeader.translatorName),
+                .languageFlag   = lngHeader.flagFile,
+                .lngFileName    = fileName,
+                .lngStream      = std::move(stream),
+            });
         }
         catch (lng::ParsingError&) { assert(false); }
 
@@ -278,13 +279,13 @@ public:
 
     wxMsgCatalog* LoadCatalog(const wxString& domain, const wxString& lang) override
     {
+        //"lang" is NOT (exactly) what we return from GetAvailableTranslations(), but has a little "extra", e.g.: de_DE.WINDOWS-1252 or ar.WINDOWS-1252
         auto extractIsoLangCode = [](wxString langCode)
         {
             langCode = beforeLast(langCode, L".", IfNotFoundReturn::all);
             return beforeLast(langCode, L"_", IfNotFoundReturn::all);
         };
 
-        //"lang" is NOT (exactly) what we return from GetAvailableTranslations(), but has a little "extra", e.g.: de_DE.WINDOWS-1252 or ar.WINDOWS-1252
         if (equalAsciiNoCase(extractIsoLangCode(lang), extractIsoLangCode(canonicalName_)))
             return wxMsgCatalog::CreateFromData(wxScopedCharBuffer::CreateNonOwned(moBuf_.ref().c_str(), moBuf_.ref().size()), domain);
         assert(false);

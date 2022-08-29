@@ -82,9 +82,8 @@ void ConfigView::addCfgFilesImpl(const std::vector<Zstring>& filePaths)
         if (auto it = cfgList_.find(filePath);
             it == cfgList_.end())
         {
-            Details detail = {};
+            Details detail{.lastUseIndex = ++lastUseIndexMax};
             detail.cfgItem.cfgFilePath = filePath;
-            detail.lastUseIndex = ++lastUseIndexMax;
 
             std::tie(detail.name, detail.cfgType, detail.isLastRunCfg) = [&]
             {

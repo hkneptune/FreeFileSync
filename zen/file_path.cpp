@@ -13,11 +13,12 @@ std::optional<PathComponents> zen::parsePathComponents(const Zstring& itemPath)
 {
     auto doParse = [&](int sepCountVolumeRoot, bool rootWithSep) -> std::optional<PathComponents>
     {
+        assert(sepCountVolumeRoot > 0);
         const Zstring itemPathPf = appendSeparator(itemPath); //simplify analysis of root without separator, e.g. \\server-name\share
-        int sepCount = 0;
+
         for (auto it = itemPathPf.begin(); it != itemPathPf.end(); ++it)
             if (*it == FILE_NAME_SEPARATOR)
-                if (++sepCount == sepCountVolumeRoot)
+                if (--sepCountVolumeRoot == 0)
                 {
                     Zstring rootPath(itemPathPf.begin(), rootWithSep ? it + 1 : it);
 
@@ -89,7 +90,7 @@ bool zen::isValidRelPath(const Zstring& relPath)
     if constexpr (FILE_NAME_SEPARATOR != Zstr('\\')) if (contains(relPath, Zstr('\\'))) return false;
 
     const Zchar doubleSep[] = {FILE_NAME_SEPARATOR, FILE_NAME_SEPARATOR, 0};
-    return !startsWith(relPath, FILE_NAME_SEPARATOR)&& !endsWith(relPath, FILE_NAME_SEPARATOR)&&
+    return !startsWith(relPath, FILE_NAME_SEPARATOR) && !endsWith(relPath, FILE_NAME_SEPARATOR) &&
            !contains(relPath, doubleSep);
 }
 

@@ -24,7 +24,6 @@
 #include "ui/batch_status_handler.h"
 #include "ui/main_dlg.h"
 #include "base_tools.h"
-//#include "log_file.h"
 #include "ffs_paths.h"
 
     #include <gtk/gtk.h>
@@ -55,10 +54,10 @@ void showSyntaxHelp()
                            setTitle(_("Command line")).
                            setDetailInstructions(_("Syntax:") + L"\n\n" +
                                                  L"FreeFileSync" + L'\n' +
-                                                 L"    [" + _("config files:") + L" *.ffs_gui/*.ffs_batch]" + L'\n' +
-                                                 L"    [-DirPair " + _("directory") + L' ' + _("directory") + L"]" L"\n" +
-                                                 L"    [-Edit]" + L'\n' +
-                                                 L"    [" + _("global config file:") + L" GlobalSettings.xml]" + L"\n\n" +
+                                                 TAB_SPACE + L"[" + _("config files:") + L" *.ffs_gui/*.ffs_batch]" + L'\n' +
+                                                 TAB_SPACE + L"[-DirPair " + _("directory") + L' ' + _("directory") + L"]" L"\n" +
+                                                 TAB_SPACE + L"[-Edit]" + L'\n' +
+                                                 TAB_SPACE + L"[" + _("global config file:") + L" GlobalSettings.xml]" + L"\n\n" +
 
                                                  _("config files:") + L'\n' +
                                                  _("Any number of FreeFileSync \"ffs_gui\" and/or \"ffs_batch\" configuration files.") + L"\n\n" +
@@ -270,7 +269,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
     {
         //parse command line arguments
         std::vector<std::pair<Zstring, Zstring>> dirPathPhrasePairs;
-        std::vector<std::pair<Zstring, XmlType>> configFiles; //XmlType: batch or GUI files only
+        std::vector<Zstring> cfgFilePaths;
         Zstring globalConfigFile;
         bool openForEdit = false;
         {
@@ -351,34 +350,20 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
                 }
                 else
                 {
-                    Zstring filePath = getResolvedFilePath(*it);
-
+                    const Zstring& filePath = getResolvedFilePath(*it);
+#if 0
                     if (!fileAvailable(filePath)) //...be a little tolerant
-                    {
-                        if (fileAvailable(filePath + Zstr(".ffs_batch")))
-                            filePath += Zstr(".ffs_batch");
-                        else if (fileAvailable(filePath + Zstr(".ffs_gui")))
-                            filePath += Zstr(".ffs_gui");
-                        else if (fileAvailable(filePath + Zstr(".xml")))
-                            filePath += Zstr(".xml");
-                        else
-                            throw FileError(replaceCpy(_("Cannot find file %x."), L"%x", fmtPath(filePath)));
-                    }
-
-                    switch (getXmlType(filePath)) //throw FileError
-                    {
-                        case XmlType::gui:
-                            configFiles.emplace_back(filePath, XmlType::gui);
-                            break;
-                        case XmlType::batch:
-                            configFiles.emplace_back(filePath, XmlType::batch);
-                            break;
-                        case XmlType::global:
-                            globalConfigFile = filePath;
-                            break;
-                        case XmlType::other:
-                            throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)));
-                    }
+                        for (const Zchar* ext : {Zstr(".ffs_gui"), Zstr(".ffs_batch"), Zstr(".xml")})
+                            if (fileAvailable(filePath + ext))
+                                filePath += ext;
+#endif
+                    if (endsWithAsciiNoCase(filePath, Zstr(".ffs_gui")) ||
+                        endsWithAsciiNoCase(filePath, Zstr(".ffs_batch")))
+                        cfgFilePaths.push_back(filePath);
+                    else if (endsWithAsciiNoCase(filePath, Zstr(".xml")))
+                        globalConfigFile = filePath;
+                    else
+                        throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)));
                 }
         }
         //----------------------------------------------------------------------------------------------------
@@ -415,7 +400,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
         //---------------------------
         const Zstring globalConfigFilePath = !globalConfigFile.empty() ? globalConfigFile : getGlobalConfigDefaultPath();
 
-        if (configFiles.empty())
+        if (cfgFilePaths.empty())
         {
             //gui mode: default startup
             if (dirPathPhrasePairs.empty())
@@ -431,25 +416,25 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
                 runGuiMode(globalConfigFilePath, guiCfg, std::vector<Zstring>(), !openForEdit /*startComparison*/);
             }
         }
-        else if (configFiles.size() == 1)
+        else if (cfgFilePaths.size() == 1)
         {
-            const Zstring filepath = configFiles[0].first;
+            const Zstring filePath = cfgFilePaths[0];
 
             //batch mode
-            if (configFiles[0].second == XmlType::batch && !openForEdit)
+            if (endsWithAsciiNoCase(filePath, Zstr(".ffs_batch")) && !openForEdit)
             {
-                auto [batchCfg, warningMsg] = readBatchConfig(filepath); //throw FileError
+                auto [batchCfg, warningMsg] = readBatchConfig(filePath); //throw FileError
                 if (!warningMsg.empty())
                     throw FileError(warningMsg); //batch mode: break on errors AND even warnings!
 
                 replaceDirectories(batchCfg.mainCfg); //throw FileError
 
-                runBatchMode(globalConfigFilePath, batchCfg, filepath);
+                runBatchMode(globalConfigFilePath, batchCfg, filePath);
             }
             //GUI mode: single config (ffs_gui *or* ffs_batch)
             else
             {
-                auto [guiCfg, warningMsg] = readAnyConfig({filepath}); //throw FileError
+                auto [guiCfg, warningMsg] = readAnyConfig({filePath}); //throw FileError
                 if (!warningMsg.empty())
                     showNotificationDialog(nullptr, DialogInfoType::warning, PopupDialogCfg().setDetailInstructions(warningMsg));
                 //what about simulating changed config on parsing errors?
@@ -458,7 +443,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
                 //what about simulating changed config due to directory replacement?
                 //-> propably fine to not show as changed on GUI and not ask user to save on exit!
 
-                runGuiMode(globalConfigFilePath, guiCfg, {filepath}, !openForEdit); //caveat: guiCfg and filepath do not match if directories were set/replaced via command line!
+                runGuiMode(globalConfigFilePath, guiCfg, {filePath}, !openForEdit); //caveat: guiCfg and filepath do not match if directories were set/replaced via command line!
             }
         }
         //gui mode: merged configs
@@ -467,16 +452,12 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
             if (!dirPathPhrasePairs.empty())
                 throw FileError(_("Directories cannot be set for more than one configuration file."));
 
-            std::vector<Zstring> filePaths;
-            for (const auto& [filePath, xmlType] : configFiles)
-                filePaths.push_back(filePath);
-
-            const auto& [guiCfg, warningMsg] = readAnyConfig(filePaths); //throw FileError
+            const auto& [guiCfg, warningMsg] = readAnyConfig(cfgFilePaths); //throw FileError
             if (!warningMsg.empty())
                 showNotificationDialog(nullptr, DialogInfoType::warning, PopupDialogCfg().setDetailInstructions(warningMsg));
             //what about simulating changed config on parsing errors?
 
-            runGuiMode(globalConfigFilePath, guiCfg, filePaths, !openForEdit /*startComparison*/);
+            runGuiMode(globalConfigFilePath, guiCfg, cfgFilePaths, !openForEdit /*startComparison*/);
         }
     }
     catch (const FileError& e)

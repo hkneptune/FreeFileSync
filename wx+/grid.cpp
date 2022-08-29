@@ -164,7 +164,7 @@ void GridData::drawCellText(wxDC& dc, const wxRect& rect, const std::wstring& te
 
     if (extentTrunc.GetWidth() > rect.width)
     {
-        //unlike Windows Explorer, we truncate UTF-16 correctly: e.g. CJK-Ideogramm encodes to TWO wchar_t: utfTo<std::wstring>("\xf0\xa4\xbd\x9c");
+        //unlike Windows Explorer, we truncate UTF-16 correctly: e.g. CJK-Ideograph encodes to TWO wchar_t: utfTo<std::wstring>("\xf0\xa4\xbd\x9c");
         size_t low  = 0;                   //number of unicode chars!
         size_t high = unicodeLength(text); //
         if (high > 1)
@@ -285,7 +285,7 @@ public:
         Bind(wxEVT_MOUSE_CAPTURE_LOST, [this](wxMouseCaptureLostEvent& event) { onMouseCaptureLost(event); });
 
         Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onKeyDown(event); });
-        Bind(wxEVT_KEY_UP,   [this](wxKeyEvent& event) { onKeyUp  (event); });
+        //Bind(wxEVT_KEY_UP,   [this](wxKeyEvent& event) { onKeyUp  (event); }); -> superfluous?
 
         assert(GetClientAreaOrigin() == wxPoint()); //generally assumed when dealing with coordinates below
     }
@@ -335,12 +335,6 @@ private:
     virtual void onMouseCaptureLost(wxMouseCaptureLostEvent& event) { event.Skip(); }
 
     void onKeyDown(wxKeyEvent& event)
-    {
-        if (!sendEventToParent(event)) //let parent collect all key events
-            event.Skip();
-    }
-
-    void onKeyUp(wxKeyEvent& event)
     {
         if (!sendEventToParent(event)) //let parent collect all key events
             event.Skip();
@@ -969,6 +963,17 @@ public:
         colLabelWin_(colLabelWin)
     {
         Bind(EVENT_GRID_HAS_SCROLLED, [this](wxCommandEvent& event) { onRequestWindowUpdate(event); });
+
+        Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event)
+        {
+            if (event.GetKeyCode() == WXK_ESCAPE && activeSelection_) //allow Escape key to cancel active selection!
+            {
+                wxMouseCaptureLostEvent evt;
+                GetEventHandler()->ProcessEvent(evt); //better integrate into event handling rather than calling onMouseCaptureLost() directly!?
+            }
+            else
+                event.Skip();
+        });
     }
 
     ~MainWin() { assert(!gridUpdatePending_); }
@@ -1099,6 +1104,13 @@ private:
 
     void onMouseDown(wxMouseEvent& event) //handle left and right mouse button clicks (almost) the same
     {
+        if (activeSelection_) //allow other mouse button to cancel active selection!
+        {
+            wxMouseCaptureLostEvent evt;
+            GetEventHandler()->ProcessEvent(evt);
+            return;
+        }
+
         if (auto prov = refParent().getDataProvider())
         {
             evalMouseMovement(event.GetPosition()); //update highlight in obscure cases (e.g. right-click while other context menu is open)

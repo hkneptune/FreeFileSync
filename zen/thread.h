@@ -445,7 +445,7 @@ private:
         activeCondition_ = cv;
     }
 
-    std::atomic<bool> stopRequested_{false}; //std:atomic is uninitialized by default!!!
+    std::atomic<bool> stopRequested_{false}; //std::atomic is uninitialized by default!!!
     //"The default constructor is trivial: no initialization takes place other than zero initialization of static and thread-local objects."
 
     std::condition_variable* activeCondition_ = nullptr;

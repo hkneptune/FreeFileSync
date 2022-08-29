@@ -313,7 +313,7 @@ void updateTopButton(wxBitmapButton& btn, const wxImage& img, const wxString& va
              stackImages(btnIconImg, btnImg, ImageStackLayout::horizontal, ImageStackAlignment::center, fastFromDIP(5)) :
              stackImages(btnImg, btnIconImg, ImageStackLayout::horizontal, ImageStackAlignment::center, fastFromDIP(5));
 
-    wxSize btnSize = btnImg.GetSize() + wxSize(fastFromDIP(10), fastFromDIP(10)); //add border space
+    wxSize btnSize = btnImg.GetSize();
     btnSize.x = std::max(btnSize.x, fastFromDIP(TOP_BUTTON_OPTIMAL_WIDTH_DIP));
 
     btnImg = resizeCanvas(btnImg, btnSize, wxALIGN_CENTER);
@@ -411,6 +411,7 @@ void MainDialog::create(const Zstring& globalConfigFilePath,
                         const std::vector<Zstring>& referenceFiles,
                         bool startComparison)
 {
+
     const XmlGlobalSettings globSett = globalSettings ? *globalSettings : tryLoadGlobalConfig(globalConfigFilePath);
 
     try
@@ -675,7 +676,10 @@ imgFileManagerSmall_([]
 
     auiMgr_.AddPane(m_panelTopButtons,
                     wxAuiPaneInfo().Name(L"TopPanel").Layer(2).Top().Row(1).Caption(_("Main Bar")).CaptionVisible(false).
-                    PaneBorder(false).Gripper().MinSize(fastFromDIP(TOP_BUTTON_OPTIMAL_WIDTH_DIP), m_panelTopButtons->GetSize().GetHeight()));
+                    PaneBorder(false).Gripper().
+                    //BestSize(-1, m_panelTopButtons->GetSize().GetHeight() + fastFromDIP(10)).
+                    MinSize(fastFromDIP(TOP_BUTTON_OPTIMAL_WIDTH_DIP), m_panelTopButtons->GetSize().GetHeight())
+                   );
     //note: min height is calculated incorrectly by wxAuiManager if panes with and without caption are in the same row => use smaller min-size
 
     auiMgr_.AddPane(compareStatus_->getAsWindow(),
@@ -704,7 +708,7 @@ imgFileManagerSmall_([]
     m_panelViewFilter->GetSizer()->SetSizeHints(m_panelViewFilter); //~=Fit() + SetMinSize()
     auiMgr_.AddPane(m_panelViewFilter,
                     wxAuiPaneInfo().Name(L"ViewFilterPanel").Layer(2).Bottom().Row(1).Caption(_("View Settings")).CaptionVisible(false).
-                    PaneBorder(false).Gripper().MinSize(fastFromDIP(100), m_panelViewFilter->GetSize().y));
+                    PaneBorder(false).Gripper().MinSize(fastFromDIP(80), m_panelViewFilter->GetSize().y));
 
     m_panelConfig->GetSizer()->SetSizeHints(m_panelConfig); //~=Fit() + SetMinSize()
     auiMgr_.AddPane(m_panelConfig,
@@ -854,8 +858,7 @@ imgFileManagerSmall_([]
     {
         m_menuTools->Bind(wxEVT_COMMAND_MENU_SELECTED, [this, panelWindow](wxCommandEvent&)
         {
-            wxAuiPaneInfo& paneInfo = this->auiMgr_.GetPane(panelWindow);
-            paneInfo.Show();
+            this->auiMgr_.GetPane(panelWindow).Show();
             this->auiMgr_.Update();
         }, menuItem->GetId());
 
@@ -1921,40 +1924,46 @@ void MainDialog::enableGuiElements()
 }
 
 
-namespace
-{
-void updateSizerOrientation(wxBoxSizer& sizer, wxWindow& window, double horizontalWeight)
-{
-    const int newOrientation = window.GetSize().GetWidth() * horizontalWeight > window.GetSize().GetHeight() ? wxHORIZONTAL : wxVERTICAL; //check window NOT sizer width!
-    if (sizer.GetOrientation() != newOrientation)
-    {
-        sizer.SetOrientation(newOrientation);
-        window.Layout();
-    }
-}
-}
-
-
 void MainDialog::onResizeTopButtonPanel(wxEvent& event)
 {
-    updateSizerOrientation(*bSizerTopButtons, *m_panelTopButtons, 0.5);
+    //TODO: shrink icons when out of space!?
     event.Skip();
 }
 
 
 void MainDialog::onResizeConfigPanel(wxEvent& event)
 {
-    updateSizerOrientation(*bSizerConfig, *m_panelConfig, 0.5);
+    const double horizontalWeight = 0.75;
+    const int newOrientation = m_panelConfig->GetSize().GetWidth() * horizontalWeight >
+                               m_panelConfig->GetSize().GetHeight() ? wxHORIZONTAL : wxVERTICAL; //check window NOT sizer width!
+    if (bSizerConfig->GetOrientation() != newOrientation)
+    {
+        //hide button labels for horizontal layout
+        for (wxSizerItem* szItem : bSizerCfgHistoryButtons->GetChildren())
+            if (auto sizerChild = dynamic_cast<wxBoxSizer*>(szItem->GetSizer()))
+                for (wxSizerItem* szItem2 : sizerChild->GetChildren())
+                    if (auto btnLabel = dynamic_cast<wxStaticText*>(szItem2->GetWindow()))
+                        btnLabel->Show(newOrientation == wxVERTICAL);
+
+        bSizerConfig->SetOrientation(newOrientation);
+        bSizerCfgHistoryButtons->SetOrientation(newOrientation == wxHORIZONTAL ? wxVERTICAL : wxHORIZONTAL);
+        bSizerSaveAs           ->SetOrientation(newOrientation == wxHORIZONTAL ? wxVERTICAL : wxHORIZONTAL);
+        m_panelConfig->Layout();
+    }
     event.Skip();
 }
 
 
 void MainDialog::onResizeViewPanel(wxEvent& event)
 {
-    //we need something more fancy for the statistics:
-    const int newOrientation = m_panelViewFilter->GetSize().GetWidth() > m_panelViewFilter->GetSize().GetHeight() ? wxHORIZONTAL : wxVERTICAL; //check window NOT sizer width!
+    const int newOrientation = m_panelViewFilter->GetSize().GetWidth() >
+                               m_panelViewFilter->GetSize().GetHeight() ? wxHORIZONTAL : wxVERTICAL; //check window NOT sizer width!
     if (bSizerViewFilter->GetOrientation() != newOrientation)
     {
+        bSizerStatistics->SetOrientation(newOrientation);
+        bSizerViewButtons->SetOrientation(newOrientation);
+        bSizerViewFilter->SetOrientation(newOrientation);
+
         //apply opposite orientation for child sizers
         const int childOrient = newOrientation == wxHORIZONTAL ? wxVERTICAL : wxHORIZONTAL;
 
@@ -1963,8 +1972,6 @@ void MainDialog::onResizeViewPanel(wxEvent& event)
                 if (sizerChild->GetOrientation() != childOrient)
                     sizerChild->SetOrientation(childOrient);
 
-        bSizerStatistics->SetOrientation(newOrientation);
-        bSizerViewFilter->SetOrientation(newOrientation);
         m_panelViewFilter->Layout();
         m_panelStatistics->Layout();
     }
@@ -2146,119 +2153,115 @@ void MainDialog::onGridKeyEvent(wxKeyEvent& event, Grid& grid, bool leftSide)
 
 void MainDialog::onLocalKeyEvent(wxKeyEvent& event) //process key events without explicit menu entry :)
 {
-    if (!localKeyEventsEnabled_)
+    if (localKeyEventsEnabled_) //avoid recursion
     {
-        event.Skip();
-        return;
-    }
-    localKeyEventsEnabled_ = false; //avoid recursion
-    ZEN_ON_SCOPE_EXIT(localKeyEventsEnabled_ = true);
+        localKeyEventsEnabled_ = false; //avoid recursion
+        ZEN_ON_SCOPE_EXIT(localKeyEventsEnabled_ = true);
 
+        const int keyCode = event.GetKeyCode();
 
-    const int keyCode = event.GetKeyCode();
+        //CTRL + X
+        /*   if (event.ControlDown())
+                switch (keyCode)
+                {
+                    case 'F': //CTRL + F
+                        showFindPanel();
+                        return; //-> swallow event!
+                }                                      */
 
-    //CTRL + X
-    /*   if (event.ControlDown())
+        if (event.ControlDown())
             switch (keyCode)
             {
-                case 'F': //CTRL + F
-                    showFindPanel();
+                case WXK_TAB: //CTRL + TAB
+                case WXK_NUMPAD_TAB: //don't use F10: avoid accidental clicks: https://freefilesync.org/forum/viewtopic.php?t=1663
+                    swapSides();
                     return; //-> swallow event!
-            }                                      */
+            }
 
-    if (event.ControlDown())
         switch (keyCode)
         {
-            case WXK_TAB: //CTRL + TAB
-            case WXK_NUMPAD_TAB: //don't use F10: avoid accidental clicks: https://freefilesync.org/forum/viewtopic.php?t=1663
-                swapSides();
+            case WXK_F3:
+            case WXK_NUMPAD_F3:
+                startFindNext(!event.ShiftDown() /*searchAscending*/);
                 return; //-> swallow event!
-        }
 
-    switch (keyCode)
-    {
-        case WXK_F3:
-        case WXK_NUMPAD_F3:
-            startFindNext(!event.ShiftDown() /*searchAscending*/);
-            return; //-> swallow event!
+            //case WXK_F6:
+            //{
+            //    wxCommandEvent dummy2(wxEVT_COMMAND_BUTTON_CLICKED);
+            //    m_bpButtonCmpConfig->Command(dummy2); //simulate click
+            //}
+            //return; //-> swallow event!
 
-        //case WXK_F6:
-        //{
-        //    wxCommandEvent dummy2(wxEVT_COMMAND_BUTTON_CLICKED);
-        //    m_bpButtonCmpConfig->Command(dummy2); //simulate click
-        //}
-        //return; //-> swallow event!
+            //case WXK_F7:
+            //{
+            //    wxCommandEvent dummy2(wxEVT_COMMAND_BUTTON_CLICKED);
+            //    m_bpButtonFilter->Command(dummy2); //simulate click
+            //}
+            //return; //-> swallow event!
 
-        //case WXK_F7:
-        //{
-        //    wxCommandEvent dummy2(wxEVT_COMMAND_BUTTON_CLICKED);
-        //    m_bpButtonFilter->Command(dummy2); //simulate click
-        //}
-        //return; //-> swallow event!
+            //case WXK_F8:
+            //{
+            //    wxCommandEvent dummy2(wxEVT_COMMAND_BUTTON_CLICKED);
+            //    m_bpButtonSyncConfig->Command(dummy2); //simulate click
+            //}
+            //return; //-> swallow event!
 
-        //case WXK_F8:
-        //{
-        //    wxCommandEvent dummy2(wxEVT_COMMAND_BUTTON_CLICKED);
-        //    m_bpButtonSyncConfig->Command(dummy2); //simulate click
-        //}
-        //return; //-> swallow event!
+            case WXK_F11:
+                warn_static("F11 not working at all on macOS!")
+                setGridViewType(m_bpButtonViewType->isActive() ? GridViewType::difference : GridViewType::action);
+                return; //-> swallow event!
 
-        case WXK_F11:
-            warn_static("F11 not working at all on macOS!")
-            setGridViewType(m_bpButtonViewType->isActive() ? GridViewType::difference : GridViewType::action);
-            return; //-> swallow event!
+            //redirect certain (unhandled) keys directly to grid!
+            case WXK_UP:
+            case WXK_DOWN:
+            case WXK_LEFT:
+            case WXK_RIGHT:
+            case WXK_PAGEUP:
+            case WXK_PAGEDOWN:
+            case WXK_HOME:
+            case WXK_END:
 
-        //redirect certain (unhandled) keys directly to grid!
-        case WXK_UP:
-        case WXK_DOWN:
-        case WXK_LEFT:
-        case WXK_RIGHT:
-        case WXK_PAGEUP:
-        case WXK_PAGEDOWN:
-        case WXK_HOME:
-        case WXK_END:
-
-        case WXK_NUMPAD_UP:
-        case WXK_NUMPAD_DOWN:
-        case WXK_NUMPAD_LEFT:
-        case WXK_NUMPAD_RIGHT:
-        case WXK_NUMPAD_PAGEUP:
-        case WXK_NUMPAD_PAGEDOWN:
-        case WXK_NUMPAD_HOME:
-        case WXK_NUMPAD_END:
-        {
-            const wxWindow* focus = wxWindow::FindFocus();
-            if (!isComponentOf(focus, m_gridMainL     ) && //
-                !isComponentOf(focus, m_gridMainC     ) && //don't propagate keyboard commands if grid is already in focus
-                !isComponentOf(focus, m_gridMainR     ) && //
-                !isComponentOf(focus, m_gridOverview  ) &&
-                !isComponentOf(focus, m_gridCfgHistory) && //don't propagate if selecting config
-                !isComponentOf(focus, m_panelSearch   ) &&
-                !isComponentOf(focus, m_panelLog      ) &&
-                !isComponentOf(focus, m_panelDirectoryPairs) && //don't propagate if changing directory fields
-                m_gridMainL->IsEnabled())
-                if (wxEvtHandler* evtHandler = m_gridMainL->getMainWin().GetEventHandler())
-                {
-                    m_gridMainL->SetFocus();
-
-                    event.SetEventType(wxEVT_KEY_DOWN); //the grid event handler doesn't expect wxEVT_CHAR_HOOK!
-                    evtHandler->ProcessEvent(event); //propagating event to child lead to recursion with old key_event.h handling => still an issue?
-                    event.Skip(false); //definitively handled now!
-                    return;
-                }
-        }
-        break;
-
-        case WXK_ESCAPE: //let's do something useful and hide the log panel
-            if (!isComponentOf(wxWindow::FindFocus(), m_panelSearch)  && //search panel also handles ESC!
-                m_panelLog->IsEnabled())
+            case WXK_NUMPAD_UP:
+            case WXK_NUMPAD_DOWN:
+            case WXK_NUMPAD_LEFT:
+            case WXK_NUMPAD_RIGHT:
+            case WXK_NUMPAD_PAGEUP:
+            case WXK_NUMPAD_PAGEDOWN:
+            case WXK_NUMPAD_HOME:
+            case WXK_NUMPAD_END:
             {
-                if (auiMgr_.GetPane(m_panelLog).IsShown()) //else: let it "ding"
-                    return showLogPanel(false /*show*/);
+                const wxWindow* focus = wxWindow::FindFocus();
+                if (!isComponentOf(focus, m_gridMainL     ) && //
+                    !isComponentOf(focus, m_gridMainC     ) && //don't propagate keyboard commands if grid is already in focus
+                    !isComponentOf(focus, m_gridMainR     ) && //
+                    !isComponentOf(focus, m_gridOverview  ) &&
+                    !isComponentOf(focus, m_gridCfgHistory) && //don't propagate if selecting config
+                    !isComponentOf(focus, m_panelSearch   ) &&
+                    !isComponentOf(focus, m_panelLog      ) &&
+                    !isComponentOf(focus, m_panelDirectoryPairs) && //don't propagate if changing directory fields
+                    m_gridMainL->IsEnabled())
+                    if (wxEvtHandler* evtHandler = m_gridMainL->getMainWin().GetEventHandler())
+                    {
+                        m_gridMainL->SetFocus();
+
+                        event.SetEventType(wxEVT_KEY_DOWN); //the grid event handler doesn't expect wxEVT_CHAR_HOOK!
+                        evtHandler->ProcessEvent(event); //propagating event to child lead to recursion with old key_event.h handling => still an issue?
+                        event.Skip(false); //definitively handled now!
+                        return;
+                    }
             }
             break;
-    }
 
+            case WXK_ESCAPE: //let's do something useful and hide the log panel
+                if (!isComponentOf(wxWindow::FindFocus(), m_panelSearch)  && //search panel also handles ESC!
+                    m_panelLog->IsEnabled())
+                {
+                    if (auiMgr_.GetPane(m_panelLog).IsShown()) //else: let it "ding"
+                        return showLogPanel(false /*show*/);
+                }
+                break;
+        }
+    }
     event.Skip();
 }
 
@@ -2778,9 +2781,9 @@ void MainDialog::onGridLabelContextRim(GridLabelClickEvent& event, bool leftSide
     {
         menu.addRadio(label, [sz, &setIconSize] { setIconSize(sz, true /*showIcons*/); }, globalCfg_.mainDlg.iconSize == sz, globalCfg_.mainDlg.showIcons);
     };
-    addSizeEntry(L"    " + _("Small" ), GridIconSize::small );
-    addSizeEntry(L"    " + _("Medium"), GridIconSize::medium);
-    addSizeEntry(L"    " + _("Large" ), GridIconSize::large );
+    addSizeEntry(TAB_SPACE + _("Small" ), GridIconSize::small );
+    addSizeEntry(TAB_SPACE + _("Medium"), GridIconSize::medium);
+    addSizeEntry(TAB_SPACE + _("Large" ), GridIconSize::large );
 
     //----------------------------------------------------------------------------------------------
     auto setDefault = [&]
@@ -3074,27 +3077,15 @@ void MainDialog::onConfigSave(wxCommandEvent& event)
     if (activeCfgFilePath.empty())
         trySaveConfig(nullptr);
     else
-        try
-        {
-            switch (getXmlType(activeCfgFilePath)) //throw FileError
-            {
-                case XmlType::gui:
-                    trySaveConfig(&activeCfgFilePath);
-                    break;
-                case XmlType::batch:
-                    trySaveBatchConfig(&activeCfgFilePath);
-                    break;
-                case XmlType::global:
-                case XmlType::other:
-                    showNotificationDialog(this, DialogInfoType::error,
-                                           PopupDialogCfg().setDetailInstructions(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(activeCfgFilePath))));
-                    break;
-            }
-        }
-        catch (const FileError& e)
-        {
-            showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
-        }
+    {
+        if (endsWithAsciiNoCase(activeCfgFilePath, Zstr(".ffs_gui")))
+            trySaveConfig(&activeCfgFilePath);
+        else if (endsWithAsciiNoCase(activeCfgFilePath, Zstr(".ffs_batch")))
+            trySaveBatchConfig(&activeCfgFilePath);
+        else
+            showNotificationDialog(this, DialogInfoType::error,
+                                   PopupDialogCfg().setDetailInstructions(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(activeCfgFilePath))));
+    }
 }
 
 
@@ -3105,7 +3096,7 @@ bool MainDialog::trySaveConfig(const Zstring* guiCfgPath) //"false": error/cance
     if (guiCfgPath)
     {
         cfgFilePath = *guiCfgPath;
-        assert(endsWith(cfgFilePath, Zstr(".ffs_gui")));
+        assert(endsWithAsciiNoCase(cfgFilePath, Zstr(".ffs_gui")));
     }
     else
     {
@@ -3127,7 +3118,12 @@ bool MainDialog::trySaveConfig(const Zstring* guiCfgPath) //"false": error/cance
                                   wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
         if (fileSelector.ShowModal() != wxID_OK)
             return false;
-        cfgFilePath = globalCfg_.mainDlg.config.lastSelectedFile = utfTo<Zstring>(fileSelector.GetPath());
+
+        cfgFilePath = utfTo<Zstring>(fileSelector.GetPath());
+        if (!endsWithAsciiNoCase(cfgFilePath, Zstr(".ffs_gui"))) //no weird shit!
+            cfgFilePath += Zstr(".ffs_gui");          //https://freefilesync.org/forum/viewtopic.php?t=9451#p34724
+
+        globalCfg_.mainDlg.config.lastSelectedFile = cfgFilePath;
     }
 
     const XmlGuiConfig guiCfg = getConfig();
@@ -3161,15 +3157,12 @@ bool MainDialog::trySaveBatchConfig(const Zstring* batchCfgPath) //"false": erro
         Zstring referenceBatchFile;
         if (batchCfgPath)
             referenceBatchFile = *batchCfgPath;
-        else if (!activeCfgFilePath.empty())
-            if (getXmlType(activeCfgFilePath) == XmlType::batch) //throw FileError
-                referenceBatchFile = activeCfgFilePath;
+        else if (!activeCfgFilePath.empty() && endsWithAsciiNoCase(activeCfgFilePath, Zstr(".ffs_batch")))
+            referenceBatchFile = activeCfgFilePath;
 
         if (!referenceBatchFile.empty())
-        {
             batchExCfg = readBatchConfig(referenceBatchFile).first.batchExCfg; //throw FileError
-            //=> ignore warnings altogether: user has seen them already when loading the config file!
-        }
+        //=> ignore warnings altogether: user has seen them already when loading the config file!
     }
     catch (const FileError& e)
     {
@@ -3181,7 +3174,7 @@ bool MainDialog::trySaveBatchConfig(const Zstring* batchCfgPath) //"false": erro
     if (batchCfgPath)
     {
         cfgFilePath = *batchCfgPath;
-        assert(endsWith(cfgFilePath, Zstr(".ffs_batch")));
+        assert(endsWithAsciiNoCase(cfgFilePath, Zstr(".ffs_batch")));
     }
     else
     {
@@ -3208,7 +3201,12 @@ bool MainDialog::trySaveBatchConfig(const Zstring* batchCfgPath) //"false": erro
                                   wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
         if (fileSelector.ShowModal() != wxID_OK)
             return false;
-        cfgFilePath = globalCfg_.mainDlg.config.lastSelectedFile = utfTo<Zstring>(fileSelector.GetPath());
+
+        cfgFilePath = utfTo<Zstring>(fileSelector.GetPath());
+        if (!endsWithAsciiNoCase(cfgFilePath, Zstr(".ffs_batch"))) //no weird shit!
+            cfgFilePath += Zstr(".ffs_batch");          //https://freefilesync.org/forum/viewtopic.php?t=9451#p34724
+
+        globalCfg_.mainDlg.config.lastSelectedFile = cfgFilePath;
     }
 
     const XmlGuiConfig guiCfg = getConfig();
@@ -3252,24 +3250,14 @@ bool MainDialog::saveOldConfig() //"false": error/cancel
                                            _("&Save"), _("Do&n't save")))
                 {
                     case QuestionButton2::yes: //save
-                        try
+                        if (endsWithAsciiNoCase(activeCfgFilePath, Zstr(".ffs_gui")))
+                            return trySaveConfig(&activeCfgFilePath); //"false": error/cancel
+                        else if (endsWithAsciiNoCase(activeCfgFilePath, Zstr(".ffs_batch")))
+                            return trySaveBatchConfig(&activeCfgFilePath); //"false": error/cancel
+                        else
                         {
-                            switch (getXmlType(activeCfgFilePath)) //throw FileError
-                            {
-                                case XmlType::gui:
-                                    return trySaveConfig(&activeCfgFilePath); //"false": error/cancel
-                                case XmlType::batch:
-                                    return trySaveBatchConfig(&activeCfgFilePath); //"false": error/cancel
-                                case XmlType::global:
-                                case XmlType::other:
-                                    showNotificationDialog(this, DialogInfoType::error,
-                                                           PopupDialogCfg().setDetailInstructions(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(activeCfgFilePath))));
-                                    return false;
-                            }
-                        }
-                        catch (const FileError& e)
-                        {
-                            showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
+                            showNotificationDialog(this, DialogInfoType::error,
+                                                   PopupDialogCfg().setDetailInstructions(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(activeCfgFilePath))));
                             return false;
                         }
                         break;
@@ -4249,7 +4237,7 @@ void MainDialog::updateGui()
             //*INDENT-ON*
         }
 
-    updateTopButton(*m_buttonCompare, loadImage("compare"),   getVariantName(cmpVar),  cmpVarIconName, false /*makeGrey*/);
+    updateTopButton(*m_buttonCompare, loadImage("compare"),    getVariantName(cmpVar),  cmpVarIconName, false /*makeGrey*/);
     updateTopButton(*m_buttonSync,    loadImage("start_sync"), getVariantName(syncVar), syncVarIconName, folderCmp_.empty());
     m_panelTopButtons->Layout();
 

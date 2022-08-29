@@ -115,7 +115,7 @@ private:
 
     struct FilterSet
     {
-        MaskMatcher fileFolderMasks;
+        MaskMatcher fileMasks;
         MaskMatcher folderMasks;
 
         std::strong_ordering operator<=>(const FilterSet&) const = default;

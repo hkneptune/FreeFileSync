@@ -29,12 +29,7 @@ using FileIndex = ino_t;
 using FileTimeNative = timespec;
 
 inline time_t nativeFileTimeToTimeT(const timespec& ft) { return ft.tv_sec; } //follow Windows Explorer and always round down!
-inline timespec timetToNativeFileTime(time_t utcTime)
-{
-    timespec natTime = {};
-    natTime.tv_sec = utcTime;
-    return natTime;
-}
+inline timespec timetToNativeFileTime(time_t utcTime) { return {.tv_sec = utcTime}; }
 
 enum class ItemType
 {
@@ -44,15 +39,14 @@ enum class ItemType
 };
 //(hopefully) fast: does not distinguish between error/not existing
 ItemType getItemType(const Zstring& itemPath); //throw FileError
-//execute potentially SLOW folder traversal but distinguish error/not existing
-//  assumes: - base path still exists
-//           - all child item path parts must correspond to folder traversal
+//execute potentially SLOW folder traversal but distinguish error/not existing:
+//  - all child item path parts must correspond to folder traversal
 //  => we can conclude whether an item is *not* existing anymore by doing a *case-sensitive* name search => potentially SLOW!
 std::optional<ItemType> itemStillExists(const Zstring& itemPath); //throw FileError
 
 enum class ProcSymlink
 {
-    direct,
+    asLink,
     follow
 };
 void setFileTime(const Zstring& filePath, time_t modTime, ProcSymlink procSl); //throw FileError

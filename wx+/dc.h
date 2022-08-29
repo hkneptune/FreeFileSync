@@ -136,7 +136,7 @@ wxBitmap toScaledBitmap(const wxImage& img /*expected to be DPI-scaled!*/)
 
 
 //all this shit just because wxDC::SetScaleFactor() is missing:
-inline 
+inline
 void setScaleFactor(wxDC& dc, double scale)
 {
     struct wxDcSurgeon : public wxDCImpl

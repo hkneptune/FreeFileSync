@@ -83,30 +83,32 @@ std::tm toClibTimeComponents(const TimeComp& tc)
            0 <= tc.minute && tc.minute <= 59 &&
            0 <= tc.second && tc.second <= 61);
 
-    std::tm ctc = {};
-    ctc.tm_year  = tc.year - 1900; //years since 1900
-    ctc.tm_mon   = tc.month - 1;   //0-11
-    ctc.tm_mday  = tc.day;         //1-31
-    ctc.tm_hour  = tc.hour;        //0-23
-    ctc.tm_min   = tc.minute;      //0-59
-    ctc.tm_sec   = tc.second;      //0-60 (including leap second)
-    ctc.tm_isdst = -1;             //> 0 if DST is active, == 0 if DST is not active, < 0 if the information is not available
-    //ctc.tm_wday
-    //ctc.tm_yday
-    return ctc;
+    return
+    {
+        .tm_sec   = tc.second,      //0-60 (including leap second)
+        .tm_min   = tc.minute,      //0-59
+        .tm_hour  = tc.hour,        //0-23
+        .tm_mday  = tc.day,         //1-31
+        .tm_mon   = tc.month - 1,   //0-11
+        .tm_year  = tc.year - 1900, //years since 1900
+        .tm_isdst = -1,             //> 0 if DST is active, == 0 if DST is not active, < 0 if the information is not available
+        //.tm_wday
+        //.tm_yday
+    };
 }
 
 inline
 TimeComp toZenTimeComponents(const std::tm& ctc)
 {
-    TimeComp tc;
-    tc.year   = ctc.tm_year + 1900;
-    tc.month  = ctc.tm_mon + 1;
-    tc.day    = ctc.tm_mday;
-    tc.hour   = ctc.tm_hour;
-    tc.minute = ctc.tm_min;
-    tc.second = ctc.tm_sec;
-    return tc;
+    return
+    {
+        .year   = ctc.tm_year + 1900,
+        .month  = ctc.tm_mon + 1,
+        .day    = ctc.tm_mday,
+        .hour   = ctc.tm_hour,
+        .minute = ctc.tm_min,
+        .second = ctc.tm_sec,
+    };
 }
 
 
@@ -235,12 +237,12 @@ std::pair<time_t, bool /*success*/> localToTimeT(const TimeComp& tc) //convert l
 
     const int cycles400 = numeric::intDivFloor(ctc.tm_year + 1900 - 1971/*[!]*/, 400); //see utcToTimeT()
     //1971: ensures resulting time_t >= 0 after time zone, DST adaption, or std::mktime will fail on Windows!
-    ctc.tm_year -= 400 * cycles400;                                       
+    ctc.tm_year -= 400 * cycles400;
 
     const time_t locTime = std::mktime(&ctc);
     if (locTime == -1)
         return {};
-    
+
     assert(locTime > 0);
     return {locTime + secsPer400Years * cycles400, true};
 }

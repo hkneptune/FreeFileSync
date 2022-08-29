@@ -68,6 +68,12 @@ time_t getVersionCheckCurrentTime()
     time_t now = std::time(nullptr);
     return now;
 }
+
+
+void openBrowserForDownload(wxWindow* parent)
+{
+    wxLaunchDefaultBrowser(L"https://freefilesync.org/get_latest.php");
+}
 }
 
 
@@ -126,7 +132,7 @@ std::vector<std::pair<std::string, std::string>> geHttpPostParameters(wxWindow& 
     const OsVersion osv = getOsVersion();
     params.emplace_back("os_version", numberTo<std::string>(osv.major) + "." + numberTo<std::string>(osv.minor));
 
-    const char* osArch = BuildArch::program == BuildArch::bit32 ? "32" : "64";
+    const char* osArch = cpuArchName;
     params.emplace_back("os_arch", osArch);
 
 #if GTK_MAJOR_VERSION == 2
@@ -136,6 +142,17 @@ std::vector<std::pair<std::string, std::string>> geHttpPostParameters(wxWindow& 
 #else
 #error unknown GTK version!
 #endif
+
+    const std::string ffsLang = []
+    {
+        const wxLanguage lang = getLanguage();
+
+        for (const TranslationInfo& ti : getAvailableTranslations())
+            if (ti.languageID == lang)
+                return ti.locale;
+        return std::string("zz");
+    }();
+    params.emplace_back("ffs_lang",  ffsLang);
 
     params.emplace_back("language", utfTo<std::string>(getIso639Language()));
     params.emplace_back("country",  utfTo<std::string>(getIso3166Country()));
@@ -157,7 +174,6 @@ void showUpdateAvailableDialog(wxWindow* parent, const std::string& onlineVersio
     catch (const SysError& e) { updateDetailsMsg = _("Failed to retrieve update information.") + + L"\n\n" + e.toString(); }
 
 
-    std::function<void()> openBrowserForDownload = [] { wxLaunchDefaultBrowser(L"https://freefilesync.org/get_latest.php"); };
     switch (showConfirmationDialog(parent, DialogInfoType::info, PopupDialogCfg().
                                    setIcon(loadImage("FreeFileSync", fastFromDIP(48))).
                                    setTitle(_("Check for Program Updates")).
@@ -250,7 +266,7 @@ void fff::checkForUpdateNow(wxWindow& parent, std::string& lastOnlineVersion)
                                            setDetailInstructions(e.toString()), _("&Check"), _("&Retry")))
             {
                 case ConfirmationButton2::accept:
-                    wxLaunchDefaultBrowser(L"https://freefilesync.org/get_latest.php");
+                    openBrowserForDownload(&parent);
                     break;
                 case ConfirmationButton2::accept2: //retry
                     checkForUpdateNow(parent, lastOnlineVersion); //note: retry via recursion!!!
@@ -350,7 +366,7 @@ void fff::automaticUpdateCheckEval(wxWindow& parent, time_t& lastUpdateCheck, st
                                            _("&Check"), _("&Retry")))
             {
                 case ConfirmationButton2::accept:
-                    wxLaunchDefaultBrowser(L"https://freefilesync.org/get_latest.php");
+                    openBrowserForDownload(&parent);
                     break;
                 case ConfirmationButton2::accept2: //retry
                     automaticUpdateCheckEval(parent, lastUpdateCheck, lastOnlineVersion,

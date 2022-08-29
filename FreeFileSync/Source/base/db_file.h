@@ -19,18 +19,12 @@ const Zchar SYNC_DB_FILE_ENDING[] = Zstr(".ffs_db"); //don't use Zstring as glob
 
 struct InSyncDescrFile //subset of FileAttributes
 {
-    InSyncDescrFile(time_t modTimeIn, AFS::FingerPrint filePrintIn) :
-        modTime(modTimeIn),
-        filePrint(filePrintIn) {}
-
     time_t modTime = 0;
     AFS::FingerPrint filePrint = 0; //optional!
 };
 
 struct InSyncDescrLink
 {
-    explicit InSyncDescrLink(time_t modTimeIn) : modTime(modTimeIn) {}
-
     time_t modTime = 0;
 };
 

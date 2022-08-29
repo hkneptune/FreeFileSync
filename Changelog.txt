@@ -1,3 +1,20 @@
+FreeFileSync 11.25
+------------------
+
+
+FreeFileSync 11.24 [2022-08-28]
+-------------------------------
+Enhanced filter syntax to match files only (append ':')
+Fixed "Some files will be synchronized as part of multiple base folders": no more false-positives
+Detect full path filter items and convert to relative path 
+Auto-detect FTP server character encoding (UTF8 or ANSI)
+Cancel grid selection via Escape key or second mouse button
+Apply conflict preview limit accross all folder pairs
+Require config type and file extension to match
+Fixed view filter panel vertical layout
+Strict validation of UTF encoding
+
+
 FreeFileSync 11.23 [2022-07-23]
 -------------------------------
 Format local file times with no limits on time span

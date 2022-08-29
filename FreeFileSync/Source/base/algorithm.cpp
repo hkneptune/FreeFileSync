@@ -565,14 +565,15 @@ private:
         if (dbEntryL && dbEntryR && dbEntryL != dbEntryR) //conflict: which db entry to use?
             return file.setSyncDirConflict(txtDbAmbiguous_);
 
+        if (const InSyncFile* dbEntry = dbEntryL ? dbEntryL : dbEntryR;
+            dbEntry && !stillInSync(*dbEntry, cmpVar_, fileTimeTolerance_, ignoreTimeShiftMinutes_)) //check *before* misleadingly reporting txtNoSideChanged_
+            return file.setSyncDirConflict(txtDbNotInSync_);
+
         const bool changeOnLeft  = !matchesDbEntry<SelectSide::left >(file, dbEntryL, ignoreTimeShiftMinutes_);
         const bool changeOnRight = !matchesDbEntry<SelectSide::right>(file, dbEntryR, ignoreTimeShiftMinutes_);
 
         if (changeOnLeft == changeOnRight)
             file.setSyncDirConflict(changeOnLeft ? txtBothSidesChanged_ : txtNoSideChanged_);
-        else if (const InSyncFile* dbEntry = dbEntryL ? dbEntryL : dbEntryR;
-                 dbEntry && !stillInSync(*dbEntry, cmpVar_, fileTimeTolerance_, ignoreTimeShiftMinutes_))
-            file.setSyncDirConflict(txtDbNotInSync_);
         else
             file.setSyncDir(changeOnLeft ? SyncDirection::right : SyncDirection::left);
     }
@@ -601,14 +602,15 @@ private:
         if (dbEntryL && dbEntryR && dbEntryL != dbEntryR) //conflict: which db entry to use?
             return symlink.setSyncDirConflict(txtDbAmbiguous_);
 
+        if (const InSyncSymlink* dbEntry = dbEntryL ? dbEntryL : dbEntryR;
+            dbEntry && !stillInSync(*dbEntry, cmpVar_, fileTimeTolerance_, ignoreTimeShiftMinutes_))
+            return symlink.setSyncDirConflict(txtDbNotInSync_);
+
         const bool changeOnLeft  = !matchesDbEntry<SelectSide::left >(symlink, dbEntryL, ignoreTimeShiftMinutes_);
         const bool changeOnRight = !matchesDbEntry<SelectSide::right>(symlink, dbEntryR, ignoreTimeShiftMinutes_);
 
         if (changeOnLeft == changeOnRight)
             symlink.setSyncDirConflict(changeOnLeft ? txtBothSidesChanged_ : txtNoSideChanged_);
-        else if (const InSyncSymlink* dbEntry = dbEntryL ? dbEntryL : dbEntryR;
-                 dbEntry && !stillInSync(*dbEntry, cmpVar_, fileTimeTolerance_, ignoreTimeShiftMinutes_))
-            symlink.setSyncDirConflict(txtDbNotInSync_);
         else
             symlink.setSyncDir(changeOnLeft ? SyncDirection::right : SyncDirection::left);
     }
@@ -653,15 +655,18 @@ private:
 
         if (cat != DIR_EQUAL)
         {
-            const bool changeOnLeft  = !matchesDbEntry<SelectSide::left >(folder, dbEntryL);
-            const bool changeOnRight = !matchesDbEntry<SelectSide::right>(folder, dbEntryR);
-
-            if (changeOnLeft == changeOnRight)
-                folder.setSyncDirConflict(changeOnLeft ? txtBothSidesChanged_ : txtNoSideChanged_);
-            else if (dbEntry && !stillInSync(*dbEntry))
+            if (dbEntry && !stillInSync(*dbEntry))
                 folder.setSyncDirConflict(txtDbNotInSync_);
             else
-                folder.setSyncDir(changeOnLeft ? SyncDirection::right : SyncDirection::left);
+            {
+                const bool changeOnLeft  = !matchesDbEntry<SelectSide::left >(folder, dbEntryL);
+                const bool changeOnRight = !matchesDbEntry<SelectSide::right>(folder, dbEntryR);
+
+                if (changeOnLeft == changeOnRight)
+                    folder.setSyncDirConflict(changeOnLeft ? txtBothSidesChanged_ : txtNoSideChanged_);
+                else
+                    folder.setSyncDir(changeOnLeft ? SyncDirection::right : SyncDirection::left);
+            }
         }
 
         recurse(folder, dbEntry);
@@ -669,9 +674,9 @@ private:
 
     //need ref-counted strings! see FileSystemObject::syncDirectionConflict_
     const Zstringc txtBothSidesChanged_ = utfTo<Zstringc>(_("Both sides have changed since last synchronization."));
-    const Zstringc txtNoSideChanged_    = utfTo<Zstringc>(_("Cannot determine sync-direction:") + L'\n' + _("No change since last synchronization."));
-    const Zstringc txtDbNotInSync_      = utfTo<Zstringc>(_("Cannot determine sync-direction:") + L'\n' + _("The database entry is not in sync considering current settings."));
-    const Zstringc txtDbAmbiguous_      = utfTo<Zstringc>(_("Cannot determine sync-direction:") + L'\n' + _("The database entry is ambiguous."));
+    const Zstringc txtNoSideChanged_    = utfTo<Zstringc>(_("Cannot determine sync-direction:") + L'\n' + TAB_SPACE + _("No change since last synchronization."));
+    const Zstringc txtDbNotInSync_      = utfTo<Zstringc>(_("Cannot determine sync-direction:") + L'\n' + TAB_SPACE + _("The database entry is not in sync considering current settings."));
+    const Zstringc txtDbAmbiguous_      = utfTo<Zstringc>(_("Cannot determine sync-direction:") + L'\n' + TAB_SPACE + _("The database entry is ambiguous."));
 
     const CompareVariant cmpVar_;
     const int fileTimeTolerance_;
@@ -915,10 +920,9 @@ private:
                 file.setActive(matchSize<SelectSide::left>(file) &&
                                matchTime<SelectSide::left>(file));
             else
-            {
-                //the only case with partially unclear semantics:
-                //file and time filters may match or not match on each side, leaving a total of 16 combinations for both sides!
-                /*
+                /* the only case with partially unclear semantics:
+                   file and time filters may match or not match on each side, leaving a total of 16 combinations for both sides!
+
                                ST S T -       ST := match size and time
                                ---------       S := match size only
                             ST |I|I|I|I|       T := match time only
@@ -929,13 +933,11 @@ private:
                             ------------       ? := unclear
                              - |I|E|E|E|
                             ------------
-                */
-                //let's set ? := E
+                  let's set ? := E                                          */
                 file.setActive((matchSize<SelectSide::right>(file) &&
                                 matchTime<SelectSide::right>(file)) ||
                                (matchSize<SelectSide::left>(file) &&
                                 matchTime<SelectSide::left>(file)));
-            }
         }
     }
 
@@ -1062,15 +1064,15 @@ void fff::applyTimeSpanFilter(FolderComparison& folderCmp, time_t timeFrom, time
 }
 
 
-std::optional<PathDependency> fff::getPathDependency(const AbstractPath& basePathL, const PathFilter& filterL,
-                                                     const AbstractPath& basePathR, const PathFilter& filterR)
+std::optional<PathDependency> fff::getPathDependency(const AbstractPath& folderPathL, const PathFilter& filterL,
+                                                     const AbstractPath& folderPathR, const PathFilter& filterR)
 {
-    if (!AFS::isNullPath(basePathL) && !AFS::isNullPath(basePathR))
+    if (!AFS::isNullPath(folderPathL) && !AFS::isNullPath(folderPathR))
     {
-        if (basePathL.afsDevice == basePathR.afsDevice)
+        if (folderPathL.afsDevice == folderPathR.afsDevice)
         {
-            const std::vector<Zstring> relPathL = split(basePathL.afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip);
-            const std::vector<Zstring> relPathR = split(basePathR.afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip);
+            const std::vector<Zstring> relPathL = split(folderPathL.afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip);
+            const std::vector<Zstring> relPathR = split(folderPathR.afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip);
 
             const bool leftParent = relPathL.size() <= relPathR.size();
 
@@ -1084,8 +1086,6 @@ std::optional<PathDependency> fff::getPathDependency(const AbstractPath& basePat
                 {
                     relDirPath = appendPath(relDirPath, itemName);
                 });
-                const AbstractPath& basePathP = leftParent ? basePathL : basePathR;
-                const AbstractPath& basePathC = leftParent ? basePathR : basePathL;
 
                 const PathFilter& filterP = leftParent ? filterL : filterR;
                 //if there's a dependency, check if the sub directory is (fully) excluded via filter
@@ -1094,7 +1094,7 @@ std::optional<PathDependency> fff::getPathDependency(const AbstractPath& basePat
                 // - user may have manually excluded the conflicting items or changed the filter settings without running a re-compare
                 bool childItemMightMatch = true;
                 if (relDirPath.empty() || filterP.passDirFilter(relDirPath, &childItemMightMatch) || childItemMightMatch)
-                    return PathDependency({basePathP, basePathC, relDirPath});
+                    return PathDependency{leftParent ? folderPathL : folderPathR, relDirPath};
             }
         }
     }
@@ -1231,6 +1231,7 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
                     callback.requestUiUpdate(); //throw X  => not reliably covered by PercentStatReporter::updateStatus()! e.g. during first few seconds: STATUS_PERCENT_DELAY!
                 });
                 //result.errorModTime? => probably irrelevant (behave like Windows Explorer)
+                warn_static("no, should be logged at least!")
             });
             statReporter.updateStatus(1, 0); //throw X
         },

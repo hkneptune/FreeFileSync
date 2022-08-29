@@ -1,4 +1,4 @@
-// *****************************************************************************
+﻿// *****************************************************************************
 // * This file is part of the FreeFileSync project. It is distributed under    *
 // * GNU General Public License: https://www.gnu.org/licenses/gpl-3.0          *
 // * Copyright (C) Zenju (zenju AT freefilesync DOT org) - All Rights Reserved *
@@ -144,6 +144,8 @@ ResolvedBaseFolders initializeBaseFolders(const std::vector<FolderPairCfg>& fpCf
             }
 
         callback.reportWarning(msg, warnings.warnFoldersDifferInCase); //throw X
+
+        //what about /folder and /Folder/subfolder? => yes, inconsistent, but doesn't matter for FFS
     }
     //---------------------------------------------------------------------------
 
@@ -248,15 +250,15 @@ template <SelectSide side, class FileOrLinkPair> inline
 Zstringc getConflictInvalidDate(const FileOrLinkPair& file)
 {
     return utfTo<Zstringc>(replaceCpy(_("File %x has an invalid date."), L"%x", fmtPath(AFS::getDisplayPath(file.template getAbstractPath<side>()))) + L'\n' +
-                           _("Date:") + L' ' + formatUtcToLocalTime(file.template getLastWriteTime<side>()));
+                           TAB_SPACE + _("Date:") + L' ' + formatUtcToLocalTime(file.template getLastWriteTime<side>()));
 }
 
 
 Zstringc getConflictSameDateDiffSize(const FilePair& file)
 {
     return utfTo<Zstringc>(_("Files have the same date but a different size.") + L'\n' +
-                           arrowLeft  + L' ' + _("Date:") + L' ' + formatUtcToLocalTime(file.getLastWriteTime<SelectSide::left >()) + L"    " + _("Size:") + L' ' + formatNumber(file.getFileSize<SelectSide::left>()) + L'\n' +
-                           arrowRight + L' ' + _("Date:") + L' ' + formatUtcToLocalTime(file.getLastWriteTime<SelectSide::right>()) + L"    " + _("Size:") + L' ' + formatNumber(file.getFileSize<SelectSide::right>()));
+                           TAB_SPACE + arrowLeft  + L' ' + _("Date:") + L' ' + formatUtcToLocalTime(file.getLastWriteTime<SelectSide::left >()) + TAB_SPACE + _("Size:") + L' ' + formatNumber(file.getFileSize<SelectSide::left>()) + L'\n' +
+                           TAB_SPACE + arrowRight + L' ' + _("Date:") + L' ' + formatUtcToLocalTime(file.getLastWriteTime<SelectSide::right>()) + TAB_SPACE + _("Size:") + L' ' + formatNumber(file.getFileSize<SelectSide::right>()));
 }
 
 
@@ -269,8 +271,8 @@ Zstringc getConflictSkippedBinaryComparison()
 Zstringc getDescrDiffMetaShortnameCase(const FileSystemObject& fsObj)
 {
     return utfTo<Zstringc>(_("Items differ in attributes only") + L'\n' +
-                           arrowLeft  + L' ' + fmtPath(fsObj.getItemName<SelectSide::left >()) + L'\n' +
-                           arrowRight + L' ' + fmtPath(fsObj.getItemName<SelectSide::right>()));
+                           TAB_SPACE + arrowLeft  + L' ' + fmtPath(fsObj.getItemName<SelectSide::left >()) + L'\n' +
+                           TAB_SPACE + arrowRight + L' ' + fmtPath(fsObj.getItemName<SelectSide::right>()));
 }
 
 
@@ -279,8 +281,8 @@ template <class FileOrLinkPair>
 Zstringc getDescrDiffMetaData(const FileOrLinkPair& file)
 {
     return utfTo<Zstringc>(_("Items differ in attributes only") + L'\n' +
-                           arrowLeft  + L' ' + _("Date:") + L' ' + formatUtcToLocalTime(file.template getLastWriteTime<SelectSide::left >()) + L'\n' +
-                           arrowRight + L' ' + _("Date:") + L' ' + formatUtcToLocalTime(file.template getLastWriteTime<SelectSide::right>()));
+                           TAB_SPACE + arrowLeft  + L' ' + _("Date:") + L' ' + formatUtcToLocalTime(file.template getLastWriteTime<SelectSide::left >()) + L'\n' +
+                           TAB_SPACE + arrowRight + L' ' + _("Date:") + L' ' + formatUtcToLocalTime(file.template getLastWriteTime<SelectSide::right>()));
 }
 #endif
 
@@ -545,7 +547,6 @@ std::vector<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(
         fpWorkload.push_back({posL, posR, std::move(filesToCompareBytewise)});
     };
 
-    //PERF_START;
     std::vector<std::shared_ptr<BaseFolderPair>> output;
 
     const Zstringc txtConflictSkippedBinaryComparison = getConflictSkippedBinaryComparison(); //avoid premature pess.: save memory via ref-counted string
@@ -711,23 +712,19 @@ const Zstringc* MergeSides::checkFailedRead(FileSystemObject& fsObj, const Zstri
 template <class MapType, class Function>
 void forEachSorted(const MapType& fileMap, Function fun)
 {
-    struct FileRef
-    {
-        Zstring upperCaseName;
-        const typename MapType::value_type* ref;
-    };
+    using FileRef = const typename MapType::value_type*;
+
     std::vector<FileRef> fileList;
-    fileList.reserve(fileMap.size()); //perf: ~5% shorter runtime
+    fileList.reserve(fileMap.size());
 
     for (const auto& item : fileMap)
-        fileList.push_back({getUpperCase(item.first), &item});
+        fileList.push_back(&item);
 
-    //primary sort: ignore Unicode normal form and upper/lower case
-    //=> natural default sequence on file grid UI
-    std::sort(fileList.begin(), fileList.end(), [](const FileRef& lhs, const FileRef& rhs) { return lhs.upperCaseName < rhs.upperCaseName; });
+   //sort for natural default sequence on UI file grid:
+    std::sort(fileList.begin(), fileList.end(), [](const FileRef& lhs, const FileRef& rhs) { return compareNoCase(lhs->first /*item name*/, rhs->first) < 0; });
 
     for (const auto& item : fileList)
-        fun(item.ref->first, item.ref->second);
+        fun(item->first, item->second);
 }
 
 
@@ -761,22 +758,22 @@ void matchFolders(const MapType& mapLeft, const MapType& mapRight, ProcessLeftOn
 {
     struct FileRef
     {
-        Zstring upperCaseName; //buffer expensive getUpperCase() calls!!
+        //perf: buffer ZstringNoCase instead of compareNoCase()/equalNoCase()? => makes no (significant) difference!
         const typename MapType::value_type* ref;
         bool leftSide;
     };
     std::vector<FileRef> fileList;
     fileList.reserve(mapLeft.size() + mapRight.size()); //perf: ~5% shorter runtime
 
-    for (const auto& item : mapLeft ) fileList.push_back({getUpperCase(item.first), &item, true });
-    for (const auto& item : mapRight) fileList.push_back({getUpperCase(item.first), &item, false});
+    for (const auto& item : mapLeft ) fileList.push_back({&item, true });
+    for (const auto& item : mapRight) fileList.push_back({&item, false});
 
     //primary sort: ignore Unicode normal form and upper/lower case
-    //bonus: natural default sequence on file grid UI
-    std::sort(fileList.begin(), fileList.end(), [](const FileRef& lhs, const FileRef& rhs) { return lhs.upperCaseName < rhs.upperCaseName; });
+    //bonus: natural default sequence on UI file grid
+    std::sort(fileList.begin(), fileList.end(), [](const FileRef& lhs, const FileRef& rhs) { return compareNoCase(lhs.ref->first /*item name*/, rhs.ref->first) < 0; });
 
     using ItType = typename std::vector<FileRef>::iterator;
-    auto tryMatchRange = [&](ItType it, ItType itLast) //auto? compiler error on VS 17.2...
+    auto tryMatchRange = [&](ItType it, ItType itLast) //auto parameters? compiler error on VS 17.2...
     {
         const size_t equalCountL = std::count_if(it, itLast, [](const FileRef& fr) { return fr.leftSide; });
         const size_t equalCountR = itLast - it - equalCountL;
@@ -800,7 +797,7 @@ void matchFolders(const MapType& mapLeft, const MapType& mapRight, ProcessLeftOn
     for (auto it = fileList.begin(); it != fileList.end();)
     {
         //find equal range: ignore case, ignore Unicode normalization
-        auto itEndEq = std::find_if(it + 1, fileList.end(), [&](const FileRef& fr) { return fr.upperCaseName != it->upperCaseName; });
+        auto itEndEq = std::find_if(it + 1, fileList.end(), [&](const FileRef& fr) { return !equalNoCase(fr.ref->first, it->ref->first); });
         if (!tryMatchRange(it, itEndEq))
         {
             //secondary sort: respect case, ignore unicode normal forms
@@ -1088,25 +1085,31 @@ FolderComparison fff::compare(WarningDialogs& warnings,
                                    _("The corresponding folder will be considered as empty."), warnings.warnInputFieldEmpty);
     }
 
-    //check whether one side is a sub directory of the other side (folder-pair-wise!)
-    //similar check (warnDependentBaseFolders) if one directory is read/written by multiple pairs not before beginning of synchronization
+    //Check whether one side is a sub directory of the other side (folder-pair-wise!)
+    //The similar check (warnDependentBaseFolders) if one directory is read/written by multiple pairs not before beginning of synchronization
     {
         std::wstring msg;
+        bool shouldExclude = false;
 
         for (const auto& [folderPair, fpCfg] : workLoad)
             if (std::optional<PathDependency> pd = getPathDependency(folderPair.folderPathLeft,  fpCfg.filter.nameFilter.ref(),
                                                                      folderPair.folderPathRight, fpCfg.filter.nameFilter.ref()))
             {
                 msg += L"\n\n" +
-                       AFS::getDisplayPath(folderPair.folderPathLeft) + L'\n' +
+                       AFS::getDisplayPath(folderPair.folderPathLeft) + L" <-> " + L'\n' +
                        AFS::getDisplayPath(folderPair.folderPathRight);
                 if (!pd->relPath.empty())
-                    msg += L'\n' + _("Exclude:") + L' ' + utfTo<std::wstring>(FILE_NAME_SEPARATOR + pd->relPath + FILE_NAME_SEPARATOR);
+                {
+                    shouldExclude = true;
+                    msg += std::wstring() + L'\n' + L"⇒ " +
+                           _("Exclude:") + L' ' + utfTo<std::wstring>(FILE_NAME_SEPARATOR + pd->relPath + FILE_NAME_SEPARATOR);
+                }
             }
 
         if (!msg.empty())
-            callback.reportWarning(_("One base folder of a folder pair is contained in the other one.") + L'\n' + //throw X
-                                   _("The folder should be excluded from synchronization via filter.") + msg, warnings.warnDependentFolderPair);
+            callback.reportWarning(_("One base folder of a folder pair is contained in the other one.") +
+                                   (shouldExclude ? L'\n' + _("The folder should be excluded from synchronization via filter.") : L"") +
+                                   msg, warnings.warnDependentFolderPair); //throw X
     }
     //-------------------end of basic checks------------------------------------------
 

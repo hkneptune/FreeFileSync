@@ -39,7 +39,7 @@ Zstring getUnicodeNormalForm(const Zstring& str);
 Zstring getUpperCase(const Zstring& str);
 
 //------------------------------------------------------------------------------------------
-struct ZstringNorm //use as STL container key: avoid needless Unicode normalizations during std::map<>::find()
+struct ZstringNorm //use as STL container key: better than repeated Unicode normalizations during std::map<>::find()
 {
     /*explicit*/ ZstringNorm(const Zstring& str) : normStr(getUnicodeNormalForm(str)) {}
     Zstring normStr;
@@ -51,7 +51,7 @@ template<> struct std::hash<ZstringNorm> { size_t operator()(const ZstringNorm& 
 //struct LessUnicodeNormal { bool operator()(const Zstring& lhs, const Zstring& rhs) const { return getUnicodeNormalForm(lhs) < getUnicodeNormalForm(rhs); } };
 
 //------------------------------------------------------------------------------------------
-struct ZstringNoCase //use as STL container key: avoid needless upper-case conversions during std::map<>::find()
+struct ZstringNoCase //use as STL container key: better than repeated upper-case conversions during std::map<>::find()
 {
     /*explicit*/ ZstringNoCase(const Zstring& str) : upperCase(getUpperCase(str)) {}
     Zstring upperCase;
@@ -60,12 +60,18 @@ struct ZstringNoCase //use as STL container key: avoid needless upper-case conve
 };
 template<> struct std::hash<ZstringNoCase> { size_t operator()(const ZstringNoCase& str) const { return std::hash<Zstring>()(str.upperCase); } };
 
-inline bool equalNoCase(const Zstring& lhs, const Zstring& rhs) { return getUpperCase(lhs) == getUpperCase(rhs); }
+
+std::weak_ordering compareNoCase(const Zstring& lhs, const Zstring& rhs);
+
+inline
+bool equalNoCase(const Zstring& lhs, const Zstring& rhs) { return compareNoCase(lhs, rhs) == std::weak_ordering::equivalent;  }
+//note: the "lhs.size() != rhs.size()" short-cut would require two isAsciiString() checks
+//=> generally SLOWER than starting comparison directly during first pass and breaking on first difference!
 
 //------------------------------------------------------------------------------------------
 std::weak_ordering compareNatural(const Zstring& lhs, const Zstring& rhs);
 
-struct LessNaturalSort { bool operator()(const Zstring& lhs, const Zstring& rhs) const { return std::is_lt(compareNatural(lhs, rhs)); } };
+struct LessNaturalSort { bool operator()(const Zstring& lhs, const Zstring& rhs) const { return compareNatural(lhs, rhs) < 0; } };
 
 
 //------------------------------------------------------------------------------------------
@@ -73,16 +79,18 @@ struct LessNaturalSort { bool operator()(const Zstring& lhs, const Zstring& rhs)
 const wchar_t EN_DASH = L'\u2013';
 const wchar_t EM_DASH = L'\u2014';
     const wchar_t* const SPACED_DASH = L" \u2014 "; //using 'EM DASH'
-const wchar_t LTR_MARK = L'\u200E'; //UTF-8: E2 80 8E
 const wchar_t* const ELLIPSIS = L"\u2026"; //"..."
 const wchar_t MULT_SIGN = L'\u00D7'; //fancy "x"
 //const wchar_t NOBREAK_SPACE = L'\u00A0';
 const wchar_t ZERO_WIDTH_SPACE = L'\u200B';
 
+const wchar_t LTR_MARK = L'\u200E'; //UTF-8: E2 80 8E
 const wchar_t RTL_MARK = L'\u200F'; //UTF-8: E2 80 8F https://www.w3.org/International/questions/qa-bidi-unicode-controls
-const wchar_t BIDI_DIR_ISOLATE_RTL    = L'\u2067'; //UTF-8: E2 81 A7 => not working on Win 10
-const wchar_t BIDI_POP_DIR_ISOLATE    = L'\u2069'; //UTF-8: E2 81 A9 => not working on Win 10
-const wchar_t BIDI_DIR_EMBEDDING_RTL  = L'\u202B'; //UTF-8: E2 80 AB => not working on Win 10
-const wchar_t BIDI_POP_DIR_FORMATTING = L'\u202C'; //UTF-8: E2 80 AC => not working on Win 10
+//const wchar_t BIDI_DIR_ISOLATE_RTL    = L'\u2067'; //=> not working on Win 10
+//const wchar_t BIDI_POP_DIR_ISOLATE    = L'\u2069'; //=> not working on Win 10
+//const wchar_t BIDI_DIR_EMBEDDING_RTL  = L'\u202B'; //=> not working on Win 10
+//const wchar_t BIDI_POP_DIR_FORMATTING = L'\u202C'; //=> not working on Win 10
+
+const wchar_t* const TAB_SPACE = L"    "; //4: the only sensible space count for tabs
 
 #endif //ZSTRING_H_73425873425789

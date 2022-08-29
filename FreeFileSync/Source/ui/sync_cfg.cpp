@@ -15,7 +15,6 @@
 #include <wx+/choice_enum.h>
 #include <wx+/image_tools.h>
 #include <wx+/font_size.h>
-//#include <wx+/std_button_layout.h>
 #include <wx+/popup_dlg.h>
 #include <wx+/image_resources.h>
 #include <wx+/window_tools.h>
@@ -25,7 +24,6 @@
 #include "../base/norm_filter.h"
 #include "../base/file_hierarchy.h"
 #include "../base/icon_loader.h"
-//#include "../log_file.h"
 #include "../afs/concrete.h"
 #include "../base_tools.h"
 
@@ -38,6 +36,7 @@ using namespace fff;
 namespace
 {
 const int CFG_DESCRIPTION_WIDTH_DIP = 230;
+const wchar_t arrowRight[] = L"\u2192"; //"RIGHTWARDS ARROW"
 
 
 void initBitmapRadioButtons(const std::vector<std::pair<ToggleButton*, std::string /*imgName*/>>& buttons, bool alignLeft)
@@ -88,6 +87,113 @@ void initBitmapRadioButtons(const std::vector<std::pair<ToggleButton*, std::stri
         btn->SetMinSize(maxExtent); //get rid of selection border on Windows :)
         //SetMinSize() instead of SetSize() is needed here for wxWindows layout determination to work correctly
     }
+}
+
+
+bool sanitizeFilter(FilterConfig& filterCfg, const std::vector<std::wstring>& folderDisplayPaths, wxWindow* parent)
+{
+    //include filter must not be empty!
+    if (trimCpy(filterCfg.includeFilter).empty())
+        filterCfg.includeFilter = FilterConfig().includeFilter; //no need to show error message, just correct user input
+
+
+    //replace full paths by relative ones: frequent user error => help out: https://freefilesync.org/forum/viewtopic.php?t=9225
+    auto normalizeForSearch = [](Zstring str)
+    {
+        //1. ignore Unicode normalization form 2. ignore case 3. normalize path separator
+        str = getUpperCase(str); //getUnicodeNormalForm() is implied by getUpperCase()
+
+        if constexpr (FILE_NAME_SEPARATOR != Zstr('/' )) std::replace(str.begin(), str.end(), Zstr('/'),  FILE_NAME_SEPARATOR);
+        if constexpr (FILE_NAME_SEPARATOR != Zstr('\\')) std::replace(str.begin(), str.end(), Zstr('\\'), FILE_NAME_SEPARATOR);
+
+        return str;
+    };
+
+    std::vector<Zstring> folderPathsPf; //normalized + postfix path separator
+    {
+        const Zstring includeFilterNorm = normalizeForSearch(filterCfg.includeFilter);
+        const Zstring excludeFilterNorm = normalizeForSearch(filterCfg.excludeFilter);
+
+        for (const std::wstring& displayPath : folderDisplayPaths)
+            if (!displayPath.empty())
+                if (const Zstring pathNormPf = appendSeparator(normalizeForSearch(utfTo<Zstring>(displayPath)));
+                    contains(includeFilterNorm, pathNormPf) || //perf!?
+                    contains(excludeFilterNorm, pathNormPf))   //
+                    folderPathsPf.push_back(pathNormPf);
+
+        removeDuplicates(folderPathsPf);
+    }
+
+    if (!folderPathsPf.empty())
+    {
+        std::vector<std::pair<Zstring /*from*/, Zstring /*to*/>> replacements;
+
+        auto replaceFullPaths = [&](Zstring& filterPhrase)
+        {
+            Zstring filterPhraseNew;
+            const Zchar* itFilterOrig = filterPhrase.begin();
+
+            split2(filterPhrase, [](Zchar c) { return c == FILTER_ITEM_SEPARATOR || c == Zstr('\n'); }, //delimiters
+            [&](const Zchar* blockFirst, const Zchar* blockLast)
+            {
+                std::tie(blockFirst, blockLast) = trimCpy(blockFirst, blockLast, true /*fromLeft*/, true /*fromRight*/, [](Zchar c) { return isWhiteSpace(c); });
+                if (blockFirst != blockLast)
+                {
+                    const Zstring phrase{blockFirst, blockLast};
+
+                    for (const Zstring& pathNormPf : folderPathsPf)
+                        if (startsWith(normalizeForSearch(phrase), pathNormPf))
+                        {
+                            //emulate a "normalized afterFirst()":
+                            ptrdiff_t sepCount = std::count(pathNormPf.begin(), pathNormPf.end(), FILE_NAME_SEPARATOR);
+                            assert(sepCount > 0);
+
+                            for (auto it = phrase.begin(); it != phrase.end(); ++it)
+                                if (*it == Zstr('/') ||
+                                    *it == Zstr('\\'))
+                                    if (--sepCount == 0)
+                                    {
+                                        const Zstring relPath(it, phrase.end()); //include first path separator
+
+                                        filterPhraseNew.append(itFilterOrig, blockFirst);
+                                        filterPhraseNew += relPath;
+                                        itFilterOrig = blockLast;
+
+                                        replacements.emplace_back(phrase, relPath);
+                                        return; //... to next block
+                                    }
+                            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+                        }
+                }
+            });
+            filterPhraseNew.append(itFilterOrig, filterPhrase.cend());
+
+            filterPhrase = filterPhraseNew;
+        };
+        replaceFullPaths(filterCfg.includeFilter);
+        replaceFullPaths(filterCfg.excludeFilter);
+
+        assert(!replacements.empty());
+        if (!replacements.empty())
+        {
+            std::wstring detailsMsg;
+            for (const auto& [from, to] : replacements)
+                detailsMsg += utfTo<std::wstring>(from) + L' ' + arrowRight + L' ' + utfTo<std::wstring>(to) + L'\n';
+            detailsMsg.pop_back();
+
+            switch (showConfirmationDialog(parent, DialogInfoType::info, PopupDialogCfg().
+                                           setMainInstructions(_("Each filter item must be a path relative to the base folders. The following changes are suggested:")).
+                                           setDetailInstructions(detailsMsg), _("&Change")))
+            {
+                case ConfirmationButton::accept: //change
+                    break;
+
+                case ConfirmationButton::cancel:
+                    return false;
+            }
+        }
+    }
+    return true;
 }
 
 //==========================================================================
@@ -255,6 +361,9 @@ private:
     //working copy of ALL config parameters: only one folder pair is selected at a time!
     GlobalPairConfig globalPairCfg_;
     std::vector<LocalPairConfig> localPairCfg_;
+
+    //display paths to fix filter if user pastes full folder paths
+    std::vector<std::wstring> folderDisplayPaths_;
 
     int selectedPairIndexToShow_ = EMPTY_PAIR_INDEX_SELECTED;
     static const int EMPTY_PAIR_INDEX_SELECTED = -2;
@@ -537,12 +646,18 @@ globalLogFolderPhrase_(globalLogFolderPhrase)
     m_listBoxFolderPair->Append(_("All folder pairs"));
     for (const LocalPairConfig& lpc : localPairCfg)
     {
-        std::wstring fpName = getShortDisplayNameForFolderPair(createAbstractPath(lpc.folderPathPhraseLeft ),
-                                                               createAbstractPath(lpc.folderPathPhraseRight));
+        const AbstractPath folderPathL= createAbstractPath(lpc.folderPathPhraseLeft);
+        const AbstractPath folderPathR= createAbstractPath(lpc.folderPathPhraseRight);
+
+        std::wstring fpName = getShortDisplayNameForFolderPair(folderPathL, folderPathR);
         if (trimCpy(fpName).empty())
             fpName = L"<" + _("empty") + L">";
 
-        m_listBoxFolderPair->Append(L"     " + fpName);
+        m_listBoxFolderPair->Append(TAB_SPACE + fpName);
+
+        //collect display paths for filter correction
+        if (!AFS::isNullPath(folderPathL)) folderDisplayPaths_.push_back(AFS::getDisplayPath(folderPathL));
+        if (!AFS::isNullPath(folderPathR)) folderDisplayPaths_.push_back(AFS::getDisplayPath(folderPathR));
     }
 
     if (!showMultipleCfgs)
@@ -553,13 +668,13 @@ globalLogFolderPhrase_(globalLogFolderPhrase)
 
     //temporarily set main config as reference for window height calculations:
     globalPairCfg_ = GlobalPairConfig();
-    globalPairCfg_.syncCfg.directionCfg.var = SyncVariant::mirror;        //
+    globalPairCfg_.syncCfg.directionCfg.var = SyncVariant::mirror;            //
     globalPairCfg_.syncCfg.handleDeletion   = DeletionPolicy::versioning;     //
     globalPairCfg_.syncCfg.versioningFolderPhrase = Zstr("dummy");            //set tentatively for sync dir height calculation below
     globalPairCfg_.syncCfg.versioningStyle  = VersioningStyle::timestampFile; //
     globalPairCfg_.syncCfg.versionMaxAgeDays = 30;                            //
     globalPairCfg_.miscCfg.altLogFolderPathPhrase = Zstr("dummy");            //
-    globalPairCfg_.miscCfg.emailNotifyAddress     =      "dummy";            //
+    globalPairCfg_.miscCfg.emailNotifyAddress     =      "dummy";             //
 
     selectFolderPairConfig(-1);
 
@@ -705,7 +820,7 @@ std::optional<CompConfig> ConfigDialog::getCompConfig() const
 
     CompConfig compCfg;
     compCfg.compareVar = localCmpVar_;
-    compCfg.handleSymlinks = !m_checkBoxSymlinksInclude->GetValue() ? SymLinkHandling::exclude : m_radioBtnSymlinksDirect->GetValue() ? SymLinkHandling::direct : SymLinkHandling::follow;
+    compCfg.handleSymlinks = !m_checkBoxSymlinksInclude->GetValue() ? SymLinkHandling::exclude : m_radioBtnSymlinksDirect->GetValue() ? SymLinkHandling::asLink : SymLinkHandling::follow;
     compCfg.ignoreTimeShiftMinutes = fromTimeShiftPhrase(copyStringTo<std::wstring>(m_textCtrlTimeShift->GetValue()));
 
     return compCfg;
@@ -731,7 +846,7 @@ void ConfigDialog::setCompConfig(const CompConfig* compCfg)
             m_checkBoxSymlinksInclude->SetValue(true);
             m_radioBtnSymlinksFollow->SetValue(true);
             break;
-        case SymLinkHandling::direct:
+        case SymLinkHandling::asLink:
             m_checkBoxSymlinksInclude->SetValue(true);
             m_radioBtnSymlinksDirect->SetValue(true);
             break;
@@ -1497,7 +1612,7 @@ void ConfigDialog::selectFolderPairConfig(int newPairIndexToShow)
     }
     else
     {
-        setCompConfig(get(localPairCfg_[selectedPairIndexToShow_].localCmpCfg ));
+        setCompConfig(get(localPairCfg_[selectedPairIndexToShow_].localCmpCfg));
         setSyncConfig(get(localPairCfg_[selectedPairIndexToShow_].localSyncCfg));
         setFilterConfig  (localPairCfg_[selectedPairIndexToShow_].localFilter);
     }
@@ -1508,9 +1623,9 @@ bool ConfigDialog::unselectFolderPairConfig(bool validateParams)
 {
     assert(selectedPairIndexToShow_ == -1 ||  makeUnsigned(selectedPairIndexToShow_) < localPairCfg_.size());
 
-    std::optional<CompConfig> compCfg   = getCompConfig();
-    std::optional<SyncConfig> syncCfg   = getSyncConfig();
-    FilterConfig              filterCfg = getFilterConfig();
+    std::optional<CompConfig> compCfg =   getCompConfig();
+    std::optional<SyncConfig> syncCfg =   getSyncConfig();
+    FilterConfig            filterCfg = getFilterConfig();
 
     std::optional<MiscSyncConfig> miscCfg;
     if (selectedPairIndexToShow_ < 0)
@@ -1519,9 +1634,13 @@ bool ConfigDialog::unselectFolderPairConfig(bool validateParams)
     //------- parameter validation (BEFORE writing output!) -------
     if (validateParams)
     {
-        //parameter correction: include filter must not be empty!
-        if (trimCpy(filterCfg.includeFilter).empty())
-            filterCfg.includeFilter = FilterConfig().includeFilter; //no need to show error message, just correct user input
+        //parameter validation and correction:
+        if (!sanitizeFilter(filterCfg, folderDisplayPaths_, this))
+        {
+            m_notebook->ChangeSelection(static_cast<size_t>(SyncConfigPanel::filter));
+            m_textCtrlExclude->SetFocus();
+            return false;
+        }
 
         if (syncCfg && syncCfg->handleDeletion == DeletionPolicy::versioning)
         {

@@ -93,7 +93,7 @@ bool Application::OnInit()
         ZEN_ON_SCOPE_EXIT(if (error) ::g_error_free(error));
 
         ::gtk_css_provider_load_from_path(provider, //GtkCssProvider* css_provider,
-                                           appendPath(fff::getResourceDirPath(), fileName).c_str(), //const gchar* path,
+                                          appendPath(fff::getResourceDirPath(), fileName).c_str(), //const gchar* path,
                                           &error); //GError** error
         if (error)
             throw SysError(formatGlibError("gtk_css_provider_load_from_path", error));
@@ -173,28 +173,21 @@ void Application::onEnterEventLoop(wxEvent& event)
     std::vector<Zstring> commandArgs;
     for (int i = 1; i < argc; ++i)
     {
-        Zstring filePath = getResolvedFilePath(utfTo<Zstring>(argv[i]));
-
-        if (!fileAvailable(filePath)) //be a little tolerant
-        {
-            if (fileAvailable(filePath + Zstr(".ffs_real")))
-                filePath += Zstr(".ffs_real");
-            else if (fileAvailable(filePath + Zstr(".ffs_batch")))
-                filePath += Zstr(".ffs_batch");
-            else
-            {
-                showNotificationDialog(nullptr, DialogInfoType::error, PopupDialogCfg().setMainInstructions(replaceCpy(_("Cannot find file %x."), L"%x", fmtPath(filePath))));
-                return;
-            }
-        }
+        const Zstring& filePath = getResolvedFilePath(utfTo<Zstring>(argv[i]));
+#if 0
+        if (!fileAvailable(filePath)) //...be a little tolerant
+            for (const Zchar* ext : {Zstr(".ffs_real"), Zstr(".ffs_batch")})
+                if (fileAvailable(filePath + ext))
+                    filePath += ext;
+#endif
         commandArgs.push_back(filePath);
     }
 
-    Zstring cfgFilename;
+    Zstring cfgFilePath;
     if (!commandArgs.empty())
-        cfgFilename = commandArgs[0];
+        cfgFilePath = commandArgs[0];
 
-    MainDialog::create(cfgFilename);
+    MainDialog::create(cfgFilePath);
 }
 
 

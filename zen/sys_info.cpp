@@ -111,16 +111,20 @@ ComputerModel zen::getComputerModel() //throw FileError
     {
         auto tryGetInfo = [](const Zstring& filePath)
         {
-            if (!fileAvailable(filePath))
-                return std::wstring();
             try
             {
                 const std::string stream = getFileContent(filePath, nullptr /*notifyUnbufferedIO*/); //throw FileError
                 return utfTo<std::wstring>(trimCpy(stream));
             }
-            catch (const FileError& e) { throw SysError(replaceCpy(e.toString(), L"\n\n", L'\n')); } //errors should be further enriched by context info => SysError
+            catch (FileError&)
+            {
+                if (!itemStillExists(filePath)) //throw FileError
+                    return std::wstring();
+
+                throw;
+            }
         };
-        cm.model  = tryGetInfo("/sys/devices/virtual/dmi/id/product_name"); //throw SysError
+        cm.model  = tryGetInfo("/sys/devices/virtual/dmi/id/product_name"); //throw FileError
         cm.vendor = tryGetInfo("/sys/devices/virtual/dmi/id/sys_vendor");   //
 
         //clean up:

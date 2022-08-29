@@ -68,10 +68,10 @@ template <class Iterator, class T, class CompLess>
 Iterator binarySearch(Iterator first, Iterator last, const T& value, CompLess less);
 
 //read-only variant of std::merge; input: two sorted ranges
-template <class Iterator, class FunctionLeftOnly, class FunctionBoth, class FunctionRightOnly>
+template <class Iterator, class FunctionLeftOnly, class FunctionBoth, class FunctionRightOnly, class Compare>
 void mergeTraversal(Iterator first1, Iterator last1,
                     Iterator first2, Iterator last2,
-                    FunctionLeftOnly lo, FunctionBoth bo, FunctionRightOnly ro);
+                    FunctionLeftOnly lo, FunctionBoth bo, FunctionRightOnly ro, Compare compare);
 
 //why, oh why is there no std::optional<T>::get()???
 template <class T> inline       T* get(      std::optional<T>& opt) { return opt ? &*opt : nullptr; }
@@ -255,31 +255,32 @@ BidirectionalIterator1 searchLast(const BidirectionalIterator1 first1,       Bid
 //---------------------------------------------------------------------------------------
 
 //read-only variant of std::merge; input: two sorted ranges
-template <class Iterator, class FunctionLeftOnly, class FunctionBoth, class FunctionRightOnly> inline
-void mergeTraversal(Iterator first1, Iterator last1,
-                    Iterator first2, Iterator last2,
-                    FunctionLeftOnly lo, FunctionBoth bo, FunctionRightOnly ro)
+template <class Iterator, class FunctionLeftOnly, class FunctionBoth, class FunctionRightOnly, class Compare> inline
+void mergeTraversal(Iterator firstL, Iterator lastL,
+                    Iterator firstR, Iterator lastR,
+                    FunctionLeftOnly lo, FunctionBoth bo, FunctionRightOnly ro, Compare compare)
 {
-    auto itL = first1;
-    auto itR = first2;
+    auto itL = firstL;
+    auto itR = firstR;
 
-    auto finishLeft  = [&] { std::for_each(itL, last1, lo); };
-    auto finishRight = [&] { std::for_each(itR, last2, ro); };
+    auto finishLeft  = [&] { std::for_each(itL, lastL, lo); };
+    auto finishRight = [&] { std::for_each(itR, lastR, ro); };
 
-    if (itL == last1) return finishRight();
-    if (itR == last2) return finishLeft ();
+    if (itL == lastL) return finishRight();
+    if (itR == lastR) return finishLeft ();
 
     for (;;)
-        if (itL->first < itR->first)
+        if (const std::weak_ordering cmp = compare(*itL, *itR);
+            cmp < 0)
         {
             lo(*itL);
-            if (++itL == last1)
+            if (++itL == lastL)
                 return finishRight();
         }
-        else if (itR->first < itL->first)
+        else if (cmp > 0)
         {
             ro(*itR);
-            if (++itR == last2)
+            if (++itR == lastR)
                 return finishLeft();
         }
         else
@@ -287,8 +288,8 @@ void mergeTraversal(Iterator first1, Iterator last1,
             bo(*itL, *itR);
             ++itL; //
             ++itR; //increment BOTH before checking for end of range!
-            if (itL == last1) return finishRight();
-            if (itR == last2) return finishLeft ();
+            if (itL == lastL) return finishRight();
+            if (itR == lastR) return finishLeft ();
             //simplify loop by placing both EOB checks at the beginning? => slightly slower
         }
 }

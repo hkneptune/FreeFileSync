@@ -232,7 +232,7 @@ void drawCornerText(wxDC& dc, const wxRect& graphArea, const wxString& txt, Grap
 
 //calculate intersection of polygon with half-plane
 template <class Function, class Function2>
-void cutPoints(std::vector<CurvePoint>& curvePoints, std::vector<char>& oobMarker, Function isInside, Function2 getIntersection, bool doPolygonCut)
+void cutPoints(std::vector<CurvePoint>& curvePoints, std::vector<unsigned char>& oobMarker, Function isInside, Function2 getIntersection, bool doPolygonCut)
 {
     assert(curvePoints.size() == oobMarker.size());
 
@@ -240,8 +240,8 @@ void cutPoints(std::vector<CurvePoint>& curvePoints, std::vector<char>& oobMarke
 
     auto isMarkedOob = [&](size_t index) { return oobMarker[index] != 0; }; //test if point is start of an OOB line
 
-    std::vector<CurvePoint> curvePointsTmp;
-    std::vector<char>       oobMarkerTmp;
+    std::vector<CurvePoint>    curvePointsTmp;
+    std::vector<unsigned char> oobMarkerTmp;
     curvePointsTmp.reserve(curvePoints.size()); //allocating memory for these containers is one
     oobMarkerTmp  .reserve(oobMarker  .size()); //of the more expensive operations of Graph2D!
 
@@ -308,13 +308,13 @@ private:
     const double y_;
 };
 
-void cutPointsOutsideX(std::vector<CurvePoint>& curvePoints, std::vector<char>& oobMarker, double minX, double maxX, bool doPolygonCut)
+void cutPointsOutsideX(std::vector<CurvePoint>& curvePoints, std::vector<unsigned char>& oobMarker, double minX, double maxX, bool doPolygonCut)
 {
     cutPoints(curvePoints, oobMarker, [&](const CurvePoint& pt) { return pt.x >= minX; }, GetIntersectionX(minX), doPolygonCut);
     cutPoints(curvePoints, oobMarker, [&](const CurvePoint& pt) { return pt.x <= maxX; }, GetIntersectionX(maxX), doPolygonCut);
 }
 
-void cutPointsOutsideY(std::vector<CurvePoint>& curvePoints, std::vector<char>& oobMarker, double minY, double maxY, bool doPolygonCut)
+void cutPointsOutsideY(std::vector<CurvePoint>& curvePoints, std::vector<unsigned char>& oobMarker, double minY, double maxY, bool doPolygonCut)
 {
     cutPoints(curvePoints, oobMarker, [&](const CurvePoint& pt) { return pt.y >= minY; }, GetIntersectionY(minY), doPolygonCut);
     cutPoints(curvePoints, oobMarker, [&](const CurvePoint& pt) { return pt.y <= maxY; }, GetIntersectionY(maxY), doPolygonCut);
@@ -615,8 +615,8 @@ void Graph2D::render(wxDC& dc) const
         double minY = attr_.minY ? *attr_.minY :  std::numeric_limits<double>::infinity(); //automatic: ensure values are initialized by first curve
         double maxY = attr_.maxY ? *attr_.maxY : -std::numeric_limits<double>::infinity(); //
 
-        std::vector<std::vector<CurvePoint>> curvePoints(curves_.size());
-        std::vector<std::vector<char>>       oobMarker  (curves_.size()); //effectively a std::vector<bool> marking points that start an out-of-bounds line
+        std::vector<std::vector<CurvePoint>>    curvePoints(curves_.size());
+        std::vector<std::vector<unsigned char>> oobMarker  (curves_.size()); //effectively a std::vector<bool> marking points that start an out-of-bounds line
 
         for (size_t index = 0; index < curves_.size(); ++index)
         {

@@ -9,7 +9,7 @@
 #include "thread.h"
 #include "file_access.h"
 
-#include <zen/sys_info.h>
+    #include <zen/sys_info.h>
     //    #include <stdlib.h> //getenv()
     #include <unistd.h> //getuid()
     #include <pwd.h>    //getpwuid_r()
@@ -63,16 +63,16 @@ Zstring resolveRelativePath(const Zstring& relativePath)
             https://www.gnu.org/software/bash/manual/html_node/Tilde-Expansion.html               */
         if (startsWith(pathTmp, "~/") || pathTmp == "~")
         {
-                try
-                {
-                    const Zstring& homePath = getUserHome(); //throw FileError
+            try
+            {
+                const Zstring& homePath = getUserHome(); //throw FileError
 
                 if (startsWith(pathTmp, "~/"))
                     pathTmp = appendPath(homePath, pathTmp.c_str() + 2);
                 else //pathTmp == "~"
                     pathTmp = homePath;
-                }
-                catch (FileError&) {}
+            }
+            catch (FileError&) {}
             //else: error! no further processing!
         }
         else

@@ -28,7 +28,7 @@ struct TransHeader
 {
     std::string languageName;     //display name: "English (UK)"
     std::string translatorName;   //"Zenju"
-    std::string localeName;       //ISO 639 language code + ISO 3166 country code, e.g. "en_GB", or "en_US"
+    std::string locale;           //ISO 639 language code + (optional) ISO 3166 country code, e.g. "de", "en_GB", or "en_US"
     std::string flagFile;         //"england.png"
     int pluralCount = 0;          //2
     std::string pluralDefinition; //"n == 1 ? 0 : 1"
@@ -166,8 +166,8 @@ enum class TokenType
     langNameEnd,
     transNameBegin,
     transNameEnd,
-    localeNameBegin,
-    localeNameEnd,
+    localeBegin,
+    localeEnd,
     flagFileBegin,
     flagFileEnd,
     pluralCountBegin,
@@ -223,8 +223,8 @@ private:
         {TokenType::langNameEnd,      "</language>"},
         {TokenType::transNameBegin,   "<translator>"},
         {TokenType::transNameEnd,     "</translator>"},
-        {TokenType::localeNameBegin,  "<locale>"},
-        {TokenType::localeNameEnd,    "</locale>"},
+        {TokenType::localeBegin,      "<locale>"},
+        {TokenType::localeEnd,        "</locale>"},
         {TokenType::flagFileBegin,    "<image>"},
         {TokenType::flagFileEnd,      "</image>"},
         {TokenType::pluralCountBegin, "<plural_count>"},
@@ -373,10 +373,10 @@ public:
         consumeToken(TokenType::text);         //throw ParsingError
         consumeToken(TokenType::transNameEnd); //
 
-        consumeToken(TokenType::localeNameBegin); //throw ParsingError
-        header.localeName = token().text;
+        consumeToken(TokenType::localeBegin); //throw ParsingError
+        header.locale = token().text;
         consumeToken(TokenType::text);          //throw ParsingError
-        consumeToken(TokenType::localeNameEnd); //
+        consumeToken(TokenType::localeEnd); //
 
         consumeToken(TokenType::flagFileBegin); //throw ParsingError
         header.flagFile = token().text;
@@ -506,7 +506,7 @@ private:
                 throw ParsingError({L"Source text ends with an ellipsis \"...\", but translation does not", scn_.posRow(), scn_.posCol()});
 
             //check for not-to-be-translated texts
-            for (const char* fixedStr : {"FreeFileSync", "RealTimeSync", "ffs_gui", "ffs_batch", "ffs_tmp", "GlobalSettings.xml"})
+            for (const char* fixedStr : {"FreeFileSync", "RealTimeSync", "ffs_gui", "ffs_batch", "ffs_real", "ffs_tmp", "GlobalSettings.xml"})
                 if (contains(original, fixedStr) && !contains(translation, fixedStr))
                     throw ParsingError({replaceCpy<std::wstring>(L"Misspelled \"%x\" in translation", L"%x", utfTo<std::wstring>(fixedStr)), scn_.posRow(), scn_.posCol()});
 
@@ -757,9 +757,9 @@ std::string generateLng(const TranslationUnorderedList& in, const TransHeader& h
     out += header.translatorName;
     out += tokens.text(TokenType::transNameEnd) + '\n';
 
-    out += '\t' + tokens.text(TokenType::localeNameBegin);
-    out += header.localeName;
-    out += tokens.text(TokenType::localeNameEnd) + '\n';
+    out += '\t' + tokens.text(TokenType::localeBegin);
+    out += header.locale;
+    out += tokens.text(TokenType::localeEnd) + '\n';
 
     out += '\t' + tokens.text(TokenType::flagFileBegin);
     out += header.flagFile;

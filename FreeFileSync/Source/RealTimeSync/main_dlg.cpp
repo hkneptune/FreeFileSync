@@ -62,13 +62,13 @@ private:
 };
 
 
-void MainDialog::create(const Zstring& cfgFile)
+void MainDialog::create(const Zstring& cfgFilePath)
 {
-    /*MainDialog* frame = */ new MainDialog(cfgFile);
+    /*MainDialog* frame = */ new MainDialog(cfgFilePath);
 }
 
 
-MainDialog::MainDialog(const Zstring& cfgFileName) :
+MainDialog::MainDialog(const Zstring& cfgFilePath) :
     MainDlgGenerated(nullptr),
     lastRunConfigPath_(appendPath(fff::getConfigDirPath(), Zstr("LastRun.ffs_real")))
 {
@@ -102,7 +102,7 @@ MainDialog::MainDialog(const Zstring& cfgFileName) :
     //--------------------------- load config values ------------------------------------
     XmlRealConfig newConfig;
 
-    Zstring currentConfigFile = cfgFileName;
+    Zstring currentConfigFile = cfgFilePath;
     if (currentConfigFile.empty())
         try
         {
@@ -128,7 +128,7 @@ MainDialog::MainDialog(const Zstring& cfgFileName) :
             showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
         }
 
-    const bool startWatchingImmediately = loadCfgSuccess && !cfgFileName.empty();
+    const bool startWatchingImmediately = loadCfgSuccess && !cfgFilePath.empty();
 
     setConfiguration(newConfig);
     setLastUsedConfig(currentConfigFile);
@@ -253,7 +253,10 @@ void MainDialog::onConfigSave(wxCommandEvent& event)
                               wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
     if (fileSelector.ShowModal() != wxID_OK)
         return;
-    const Zstring targetFilePath = utfTo<Zstring>(fileSelector.GetPath());
+
+    Zstring targetFilePath = utfTo<Zstring>(fileSelector.GetPath());
+    if (!endsWithAsciiNoCase(targetFilePath, Zstr(".ffs_real"))) //no weird shit!
+        targetFilePath += Zstr(".ffs_real");          //https://freefilesync.org/forum/viewtopic.php?t=9451#p34724
 
     const XmlRealConfig currentCfg = getConfiguration();
     try

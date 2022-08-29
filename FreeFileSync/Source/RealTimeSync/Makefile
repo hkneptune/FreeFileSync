@@ -1,15 +1,16 @@
+CXX ?= g++
 exeName = RealTimeSync_$(shell arch)
 
-cxxFlags = -std=c++2b -pipe -DWXINTL_NO_GETTEXT_MACRO -I../../.. -I../../../zenXml -include "zen/i18n.h" -include "zen/warn_static.h" \
+CXXFLAGS += -std=c++2b -pipe -DWXINTL_NO_GETTEXT_MACRO -I../../.. -I../../../zenXml -include "zen/i18n.h" -include "zen/warn_static.h" \
            -Wall -Wfatal-errors -Wmissing-include-dirs -Wswitch-enum -Wcast-align -Wnon-virtual-dtor -Wno-unused-function -Wshadow -Wno-maybe-uninitialized \
            -O3 -DNDEBUG `wx-config --cxxflags --debug=no` -pthread
 
-linkFlags = -s -no-pie `wx-config --libs std, aui, richtext --debug=no` -pthread
+LDFLAGS += -s -no-pie `wx-config --libs std, aui, richtext --debug=no` -pthread
 
 #Gtk - support "no button border"
-cxxFlags  += `pkg-config --cflags gtk+-2.0`
+CXXFLAGS  += `pkg-config --cflags gtk+-2.0`
 #treat as system headers so that warnings are hidden:
-cxxFlags  += -isystem/usr/include/gtk-2.0
+CXXFLAGS  += -isystem/usr/include/gtk-2.0
 
 cppFiles=
 cppFiles+=application.cpp
@@ -55,11 +56,11 @@ all: ../../Build/Bin/$(exeName)
 
 ../../Build/Bin/$(exeName): $(objFiles)
 	mkdir -p $(dir $@)
-	g++ -o $@ $^ $(linkFlags)
+	$(CXX) -o $@ $^ $(LDFLAGS)
 
 $(tmpPath)/ffs/src/rts/%.o : %
 	mkdir -p $(dir $@)
-	g++ $(cxxFlags) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
 	rm -rf $(tmpPath)

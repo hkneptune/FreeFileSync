@@ -43,30 +43,30 @@ std::vector<Zstring> fff::splitByDelimiter(const Zstring& filterPhrase)
 void NameFilter::parseFilterPhrase(const Zstring& filterPhrase, FilterSet& filter)
 {
     //normalize filter: 1. ignore Unicode normalization form 2. ignore case
-    Zstring filterPhraseFmt = getUpperCase(filterPhrase);
+    Zstring filterPhraseNorm = getUpperCase(filterPhrase);
     //3. fix path separator
-    if constexpr (FILE_NAME_SEPARATOR != Zstr('/' )) replace(filterPhraseFmt, Zstr('/'),  FILE_NAME_SEPARATOR);
-    if constexpr (FILE_NAME_SEPARATOR != Zstr('\\')) replace(filterPhraseFmt, Zstr('\\'), FILE_NAME_SEPARATOR);
+    if constexpr (FILE_NAME_SEPARATOR != Zstr('/' )) replace(filterPhraseNorm, Zstr('/'),  FILE_NAME_SEPARATOR);
+    if constexpr (FILE_NAME_SEPARATOR != Zstr('\\')) replace(filterPhraseNorm, Zstr('\\'), FILE_NAME_SEPARATOR);
 
+    static_assert(FILE_NAME_SEPARATOR == '/');
     const Zstring sepAsterisk = Zstr("/*");
     const Zstring asteriskSep = Zstr("*/");
-    static_assert(FILE_NAME_SEPARATOR == '/');
 
     auto processTail = [&](const Zstring& phrase)
     {
-        if (endsWith(phrase, FILE_NAME_SEPARATOR) || //only relevant for folder filtering
-            endsWith(phrase, sepAsterisk)) // abc\*
+        if (endsWith(phrase, Zstr(':'))) //file-only tag
+            filter.fileMasks.insert({phrase.begin(), phrase.end() - 1});
+        else if (endsWith(phrase, FILE_NAME_SEPARATOR) || //folder-only tag
+                 endsWith(phrase, sepAsterisk)) // abc\*
+            filter.folderMasks.insert(beforeLast(phrase, FILE_NAME_SEPARATOR, IfNotFoundReturn::none));
+        else
         {
-            const Zstring dirPhrase = beforeLast(phrase, FILE_NAME_SEPARATOR, IfNotFoundReturn::none);
-            if (!dirPhrase.empty())
-                filter.folderMasks.insert(dirPhrase);
+            filter.fileMasks  .insert(phrase);
+            filter.folderMasks.insert(phrase);
         }
-        else if (!phrase.empty())
-            filter.fileFolderMasks.insert(phrase);
     };
 
-    for (const Zstring& itemPhrase : splitByDelimiter(filterPhraseFmt))
-    {
+    for (const Zstring& itemPhrase : splitByDelimiter(filterPhraseNorm))
         /*    phrase  | action
             +---------+--------
             | \blah   | remove \
@@ -78,15 +78,17 @@ void NameFilter::parseFilterPhrase(const Zstring& filterPhrase, FilterSet& filte
             | *\blah  | -> add blah
             | *\*blah | -> add *blah
             +---------+--------
-            | blah\   | remove \; folder only
-            | blah*\  | remove \; folder only
-            | blah\*\ | remove \; folder only
+            | blah:   | remove : (file only)
+            | blah\*: | remove : (file only)
+            +---------+--------
+            | blah\   | remove \ (folder only)
+            | blah*\  | remove \ (folder only)
+            | blah\*\ | remove \ (folder only)
             +---------+--------
             | blah*   |
-            | blah\*  | remove \*; folder only
-            | blah*\* | remove \*; folder only
+            | blah\*  | remove \* (folder only)
+            | blah*\* | remove \* (folder only)
             +---------+--------                    */
-
         if (startsWith(itemPhrase, FILE_NAME_SEPARATOR)) // \abc
             processTail(afterFirst(itemPhrase, FILE_NAME_SEPARATOR, IfNotFoundReturn::none));
         else
@@ -95,13 +97,15 @@ void NameFilter::parseFilterPhrase(const Zstring& filterPhrase, FilterSet& filte
             if (startsWith(itemPhrase, asteriskSep)) // *\abc
                 processTail(afterFirst(itemPhrase, asteriskSep, IfNotFoundReturn::none));
         }
-    }
 }
 
 
 void NameFilter::MaskMatcher::insert(const Zstring& mask)
 {
     assert(mask == getUpperCase(mask));
+    if (mask.empty())
+        return;
+
     if (contains(mask, Zstr('?')) ||
         contains(mask, Zstr('*')))
         realMasks_.insert(mask);
@@ -256,11 +260,11 @@ bool NameFilter::passFileFilter(const Zstring& relFilePath) const
 
     const Zchar* sepPos = findLast(pathFmt.begin(), pathFmt.end(), FILE_NAME_SEPARATOR);
 
-    if (excludeFilter.fileFolderMasks.matches(pathFmt.begin(), pathFmt.end()) || //either match on file or any parent folder
+    if (excludeFilter.fileMasks.matches(pathFmt.begin(), pathFmt.end()) || //either match on file or any parent folder
         (sepPos != pathFmt.end() && excludeFilter.folderMasks.matches(pathFmt.begin(), sepPos))) //match on any parent folder only
         return false;
 
-    return includeFilter.fileFolderMasks.matches(pathFmt.begin(), pathFmt.end()) ||
+    return includeFilter.fileMasks.matches(pathFmt.begin(), pathFmt.end()) ||
            (sepPos != pathFmt.end() && includeFilter.folderMasks.matches(pathFmt.begin(), sepPos));
 }
 
@@ -273,8 +277,7 @@ bool NameFilter::passDirFilter(const Zstring& relDirPath, bool* childItemMightMa
     //normalize input: 1. ignore Unicode normalization form 2. ignore case
     const Zstring& pathFmt = getUpperCase(relDirPath);
 
-    if (excludeFilter.fileFolderMasks.matches(pathFmt.begin(), pathFmt.end()) ||
-        excludeFilter.folderMasks    .matches(pathFmt.begin(), pathFmt.end()))
+    if (excludeFilter.folderMasks.matches(pathFmt.begin(), pathFmt.end()))
     {
         if (childItemMightMatch)
             *childItemMightMatch = false; //perf: no need to traverse deeper; subfolders/subfiles would be excluded by filter anyway!
@@ -286,13 +289,12 @@ bool NameFilter::passDirFilter(const Zstring& relDirPath, bool* childItemMightMa
         return false;
     }
 
-    if (includeFilter.fileFolderMasks.matches(pathFmt.begin(), pathFmt.end()) ||
-        includeFilter.folderMasks    .matches(pathFmt.begin(), pathFmt.end()))
+    if (includeFilter.folderMasks.matches(pathFmt.begin(), pathFmt.end()))
         return true;
 
     if (childItemMightMatch)
-        *childItemMightMatch = includeFilter.fileFolderMasks.matchesBegin(pathFmt) || //might match a file  or folder in subdirectory
-                               includeFilter.folderMasks    .matchesBegin(pathFmt);   //
+        *childItemMightMatch = includeFilter.fileMasks  .matchesBegin(pathFmt) || //might match a file  or folder in subdirectory
+                               includeFilter.folderMasks.matchesBegin(pathFmt);   //
     return false;
 }
 

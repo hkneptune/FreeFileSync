@@ -283,20 +283,18 @@ template <class ColorDistance>
 FORCE_INLINE //detect blend direction
 BlendResult preProcessCorners(const Kernel_4x4& ker, const xbrz::ScalerCfg& cfg) //result: E, F, H, I corners of "GradientType"
 {
-
-    BlendResult result = {};
-
     if ((ker.e == ker.f &&
          ker.h == ker.i) ||
         (ker.e == ker.h &&
          ker.f == ker.i))
-        return result;
+        return {};
 
     auto dist = [&](uint32_t pix1, uint32_t pix2) { return ColorDistance::dist(pix1, pix2, cfg.testAttribute); };
 
     const double hf = dist(ker.g, ker.e) + dist(ker.e, ker.c) + dist(ker.k, ker.i) + dist(ker.i, ker.o) + cfg.centerDirectionBias * dist(ker.h, ker.f);
     const double ei = dist(ker.d, ker.h) + dist(ker.h, ker.l) + dist(ker.b, ker.f) + dist(ker.f, ker.n) + cfg.centerDirectionBias * dist(ker.e, ker.i);
 
+    BlendResult result = {};
     if (hf < ei) //test sample: 70% of values max(hf, ei) / min(hf, ei) are between 1.1 and 3.7 with median being 1.8
     {
         const bool dominantGradient = cfg.dominantDirectionThreshold * hf < ei;

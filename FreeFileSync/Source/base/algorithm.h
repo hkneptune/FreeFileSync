@@ -41,12 +41,11 @@ void setActiveStatus(bool newStatus, FileSystemObject& fsObj);     //activate or
 
 struct PathDependency
 {
-    AbstractPath basePathParent;
-    AbstractPath basePathChild;
+    AbstractPath folderPathParent;
     Zstring relPath; //filled if child path is subfolder of parent path; empty if child path == parent path
 };
-std::optional<PathDependency> getPathDependency(const AbstractPath& basePathL, const PathFilter& filterL,
-                                                const AbstractPath& basePathR, const PathFilter& filterR);
+std::optional<PathDependency> getPathDependency(const AbstractPath& folderPathL, const PathFilter& filterL,
+                                                const AbstractPath& folderPathR, const PathFilter& filterR);
 
 std::pair<std::wstring, int> getSelectedItemsAsString( //returns string with item names and total count of selected(!) items, NOT total files/dirs!
     std::span<const FileSystemObject* const> selectionLeft,   //all pointers need to be bound!

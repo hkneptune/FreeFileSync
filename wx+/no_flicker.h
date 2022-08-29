@@ -85,20 +85,26 @@ void setTextWithUrls(wxRichTextCtrl& richCtrl, const wxString& newText)
     urlStyle.SetTextColour(*wxBLUE);
     urlStyle.SetFontUnderlined(true);
 
-    for (const auto& [type, text] : blocks)
+    for (auto& [type, text] : blocks)
         switch (type)
         {
             case BlockType::text:
+                if (endsWith(text, L"\n\n")) //bug: multiple newlines before a URL are condensed to only one;
+                    //Why? fuck knows why! no such issue with double newlines *after* URL => hack this shit
+                    text.RemoveLast().Append(ZERO_WIDTH_SPACE).Append(L'\n');
+
                 richCtrl.WriteText(text);
                 break;
 
             case BlockType::url:
+            {
                 richCtrl.BeginStyle(urlStyle);
                 ZEN_ON_SCOPE_EXIT(richCtrl.EndStyle());
                 richCtrl.BeginURL(text);
                 ZEN_ON_SCOPE_EXIT(richCtrl.EndURL());
                 richCtrl.WriteText(text);
-                break;
+            }
+            break;
         }
 
     if (std::any_of(blocks.begin(), blocks.end(), [](const auto& item) { return item.first == BlockType::url; }))

@@ -26,6 +26,7 @@ enum class BuildArch
 static_assert((BuildArch::program == BuildArch::bit32 ? 32 : 64) == sizeof(void*) * 8);
 
 
+//harmonize with os_arch enum in update_checks table:
 constexpr const char* cpuArchName = BuildArch::program == BuildArch::bit32 ? "i686": "x86-64";
 
 }

@@ -468,62 +468,58 @@ void LogPanel::onGridButtonEvent(wxKeyEvent& event)
 
 void LogPanel::onLocalKeyEvent(wxKeyEvent& event) //process key events without explicit menu entry :)
 {
-    if (processingKeyEventHandler_) //avoid recursion
+    if (!processingKeyEventHandler_) //avoid recursion
     {
-        event.Skip();
-        return;
+        processingKeyEventHandler_ = true;
+        ZEN_ON_SCOPE_EXIT(processingKeyEventHandler_ = false);
+
+        const int keyCode = event.GetKeyCode();
+
+        if (event.ControlDown())
+            switch (keyCode)
+            {
+                case 'A':
+                    m_gridMessages->SetFocus();
+                    m_gridMessages->selectAllRows(GridEventPolicy::allow);
+                    return; // -> swallow event! don't allow default grid commands!
+
+                    //case 'C': -> already implemented by "Grid" class
+            }
+        else
+            switch (keyCode)
+            {
+                //redirect certain (unhandled) keys directly to grid!
+                case WXK_UP:
+                case WXK_DOWN:
+                case WXK_LEFT:
+                case WXK_RIGHT:
+                case WXK_PAGEUP:
+                case WXK_PAGEDOWN:
+                case WXK_HOME:
+                case WXK_END:
+
+                case WXK_NUMPAD_UP:
+                case WXK_NUMPAD_DOWN:
+                case WXK_NUMPAD_LEFT:
+                case WXK_NUMPAD_RIGHT:
+                case WXK_NUMPAD_PAGEUP:
+                case WXK_NUMPAD_PAGEDOWN:
+                case WXK_NUMPAD_HOME:
+                case WXK_NUMPAD_END:
+                    if (!isComponentOf(wxWindow::FindFocus(), m_gridMessages) && //don't propagate keyboard commands if grid is already in focus
+                        m_gridMessages->IsEnabled())
+                        if (wxEvtHandler* evtHandler = m_gridMessages->getMainWin().GetEventHandler())
+                        {
+                            m_gridMessages->SetFocus();
+
+                            event.SetEventType(wxEVT_KEY_DOWN); //the grid event handler doesn't expect wxEVT_CHAR_HOOK!
+                            evtHandler->ProcessEvent(event); //propagating event catched at wxTheApp to child leads to recursion, but we prevented it...
+                            event.Skip(false); //definitively handled now!
+                            return;
+                        }
+                    break;
+            }
     }
-    processingKeyEventHandler_ = true;
-    ZEN_ON_SCOPE_EXIT(processingKeyEventHandler_ = false);
-
-
-    const int keyCode = event.GetKeyCode();
-
-    if (event.ControlDown())
-        switch (keyCode)
-        {
-            case 'A':
-                m_gridMessages->SetFocus();
-                m_gridMessages->selectAllRows(GridEventPolicy::allow);
-                return; // -> swallow event! don't allow default grid commands!
-
-                //case 'C': -> already implemented by "Grid" class
-        }
-    else
-        switch (keyCode)
-        {
-            //redirect certain (unhandled) keys directly to grid!
-            case WXK_UP:
-            case WXK_DOWN:
-            case WXK_LEFT:
-            case WXK_RIGHT:
-            case WXK_PAGEUP:
-            case WXK_PAGEDOWN:
-            case WXK_HOME:
-            case WXK_END:
-
-            case WXK_NUMPAD_UP:
-            case WXK_NUMPAD_DOWN:
-            case WXK_NUMPAD_LEFT:
-            case WXK_NUMPAD_RIGHT:
-            case WXK_NUMPAD_PAGEUP:
-            case WXK_NUMPAD_PAGEDOWN:
-            case WXK_NUMPAD_HOME:
-            case WXK_NUMPAD_END:
-                if (!isComponentOf(wxWindow::FindFocus(), m_gridMessages) && //don't propagate keyboard commands if grid is already in focus
-                    m_gridMessages->IsEnabled())
-                    if (wxEvtHandler* evtHandler = m_gridMessages->getMainWin().GetEventHandler())
-                    {
-                        m_gridMessages->SetFocus();
-
-                        event.SetEventType(wxEVT_KEY_DOWN); //the grid event handler doesn't expect wxEVT_CHAR_HOOK!
-                        evtHandler->ProcessEvent(event); //propagating event catched at wxTheApp to child leads to recursion, but we prevented it...
-                        event.Skip(false); //definitively handled now!
-                        return;
-                    }
-                break;
-        }
-
     event.Skip();
 }
 

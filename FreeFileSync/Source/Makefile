@@ -1,30 +1,31 @@
+CXX ?= g++
 exeName = FreeFileSync_$(shell arch)
 
-cxxFlags = -std=c++2b -pipe -DWXINTL_NO_GETTEXT_MACRO -I../.. -I../../zenXml -include "zen/i18n.h" -include "zen/warn_static.h" \
+CXXFLAGS += -std=c++2b -pipe -DWXINTL_NO_GETTEXT_MACRO -I../.. -I../../zenXml -include "zen/i18n.h" -include "zen/warn_static.h" \
            -Wall -Wfatal-errors -Wmissing-include-dirs -Wswitch-enum -Wcast-align -Wnon-virtual-dtor -Wno-unused-function -Wshadow -Wno-maybe-uninitialized \
            -O3 -DNDEBUG `wx-config --cxxflags --debug=no` -pthread
 
-linkFlags = -s -no-pie `wx-config --libs std, aui, richtext --debug=no` -pthread
+LDFLAGS += -s -no-pie `wx-config --libs std, aui, richtext --debug=no` -pthread
 
 
-cxxFlags  += `pkg-config --cflags openssl`
-linkFlags += `pkg-config --libs   openssl`
+CXXFLAGS  += `pkg-config --cflags openssl`
+LDFLAGS += `pkg-config --libs   openssl`
 
-cxxFlags  += `pkg-config --cflags libcurl`
-linkFlags += `pkg-config --libs   libcurl`
+CXXFLAGS  += `pkg-config --cflags libcurl`
+LDFLAGS += `pkg-config --libs   libcurl`
 
-cxxFlags  += `pkg-config --cflags libssh2`
-linkFlags += `pkg-config --libs   libssh2`
+CXXFLAGS  += `pkg-config --cflags libssh2`
+LDFLAGS += `pkg-config --libs   libssh2`
 
-cxxFlags  += `pkg-config --cflags gtk+-2.0`
+CXXFLAGS  += `pkg-config --cflags gtk+-2.0`
 #treat as system headers so that warnings are hidden:
-cxxFlags  += -isystem/usr/include/gtk-2.0
+CXXFLAGS  += -isystem/usr/include/gtk-2.0
 
 #support for SELinux (optional)
 SELINUX_EXISTING=$(shell pkg-config --exists libselinux && echo YES)
 ifeq ($(SELINUX_EXISTING),YES)
-cxxFlags  += `pkg-config --cflags libselinux` -DHAVE_SELINUX
-linkFlags += `pkg-config --libs libselinux`
+CXXFLAGS  += `pkg-config --cflags libselinux` -DHAVE_SELINUX
+LDFLAGS += `pkg-config --libs libselinux`
 endif
 
 cppFiles=
@@ -116,11 +117,11 @@ all: ../Build/Bin/$(exeName)
 
 ../Build/Bin/$(exeName): $(objFiles)
 	mkdir -p $(dir $@)
-	g++ -o $@ $^ $(linkFlags)
+	$(CXX) -o $@ $^ $(LDFLAGS)
 
 $(tmpPath)/ffs/src/%.o : %
 	mkdir -p $(dir $@)
-	g++ $(cxxFlags) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
 	rm -rf $(tmpPath)

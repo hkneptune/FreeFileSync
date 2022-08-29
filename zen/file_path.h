@@ -40,7 +40,7 @@ std::weak_ordering compareNativePath(const Zstring& lhs, const Zstring& rhs);
 
 inline bool equalNativePath(const Zstring& lhs, const Zstring& rhs) { return compareNativePath(lhs, rhs) == std::weak_ordering::equivalent; }
 
-struct LessNativePath { bool operator()(const Zstring& lhs, const Zstring& rhs) const { return std::is_lt(compareNativePath(lhs, rhs)); } };
+struct LessNativePath { bool operator()(const Zstring& lhs, const Zstring& rhs) const { return compareNativePath(lhs, rhs) < 0; } };
 //------------------------------------------------------------------------------------------
 
 

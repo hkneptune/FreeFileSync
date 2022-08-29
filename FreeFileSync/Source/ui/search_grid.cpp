@@ -16,10 +16,10 @@ using namespace fff;
 namespace
 {
 template <bool respectCase>
-void normalizeForSeach(std::wstring& str);
+void normalizeForSearch(std::wstring& str);
 
 template <> inline
-void normalizeForSeach<true /*respectCase*/>(std::wstring& str)
+void normalizeForSearch<true /*respectCase*/>(std::wstring& str)
 {
     for (wchar_t& c : str)
         if (!isAsciiChar(c))
@@ -33,7 +33,7 @@ void normalizeForSeach<true /*respectCase*/>(std::wstring& str)
 }
 
 template <> inline
-void normalizeForSeach<false /*respectCase*/>(std::wstring& str)
+void normalizeForSearch<false /*respectCase*/>(std::wstring& str)
 {
     for (wchar_t& c : str)
         if (!isAsciiChar(c))
@@ -53,14 +53,14 @@ template <bool respectCase>
 class MatchFound
 {
 public:
-    MatchFound(const std::wstring& textToFind) : textToFind_(textToFind)
+    explicit MatchFound(const std::wstring& textToFind) : textToFind_(textToFind)
     {
-        normalizeForSeach<respectCase>(textToFind_);
+        normalizeForSearch<respectCase>(textToFind_);
     }
 
     bool operator()(std::wstring&& phrase) const
     {
-        normalizeForSeach<respectCase>(phrase);
+        normalizeForSearch<respectCase>(phrase);
         return contains(phrase, textToFind_);
     }
 

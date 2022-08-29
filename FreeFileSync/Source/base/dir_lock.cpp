@@ -167,9 +167,11 @@ struct LockInformation //throw FileError
 
 LockInformation getLockInfoFromCurrentProcess() //throw FileError
 {
-    LockInformation lockInfo = {};
-    lockInfo.lockId = generateGUID();
-    lockInfo.userId = utfTo<std::string>(getLoginUser()); //throw FileError
+    LockInformation lockInfo =
+    {
+        .lockId = generateGUID(),
+        .userId = utfTo<std::string>(getLoginUser()), //throw FileError
+    };
 
     const std::string osName = "Linux";
 

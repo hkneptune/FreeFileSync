@@ -944,7 +944,6 @@ void SyncProgressDialogImpl<TopLevelDialog>::onLocalKeyEvent(wxKeyEvent& event)
             activeButton.Command(dummy); //simulate click
             return;
         }
-        break;
     }
 
     event.Skip();
@@ -1644,7 +1643,6 @@ void SyncProgressDialogImpl<TopLevelDialog>::resumeFromSystray(bool userRequeste
 
         updateStaticGui();                        //restore Windows 7 task bar status   (e.g. required in pause mode)
         updateProgressGui(false  /*allowYield*/); //restore Windows 7 task bar progress (e.g. required in pause mode)
-
 
         if (userRequested)
         {

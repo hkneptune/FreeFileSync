@@ -399,7 +399,7 @@ std::weak_ordering fff::operator<=>(const VersioningLimitFolder& lhs, const Vers
 
 
 void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimits,
-                               PhaseCallback& callback /*throw X*/)
+                               PhaseCallback& callback /*throw X*/) //throw X
 {
     //--------- determine existing folder paths for traversal ---------
     std::set<DirectoryKey> foldersToRead;
@@ -423,7 +423,7 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
                                                                    false /*allowUserInteraction*/, callback); //throw X
             foldersToRead.clear();
             for (const AbstractPath& folderPath : status.existing)
-                foldersToRead.insert(DirectoryKey({folderPath, makeSharedRef<NullFilter>(), SymLinkHandling::direct}));
+                foldersToRead.insert(DirectoryKey({folderPath, makeSharedRef<NullFilter>(), SymLinkHandling::asLink}));
 
             if (!status.failedChecks.empty())
             {

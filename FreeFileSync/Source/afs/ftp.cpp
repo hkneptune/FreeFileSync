@@ -35,10 +35,12 @@ const int FTP_STREAM_BUFFER_SIZE = 512 * 1024; //unit: [byte]
 
 const Zchar ftpPrefix[] = Zstr("ftp:");
 
+
 enum class ServerEncoding
 {
+    unknown,
     utf8,
-    ansi
+    ansi,
 };
 
 
@@ -120,34 +122,6 @@ std::string utfToAnsiEncoding(const Zstring& str) //throw SysError
 
     return {ansiStr, bytesWritten};
 
-}
-
-
-Zstring serverToUtfEncoding(const std::string& str, ServerEncoding enc) //throw SysError
-{
-    switch (enc)
-    {
-        case ServerEncoding::utf8:
-            return utfTo<Zstring>(str);
-        case ServerEncoding::ansi:
-            return ansiToUtfEncoding(str); //throw SysError
-    }
-    assert(false);
-    return {};
-}
-
-
-std::string utfToServerEncoding(const Zstring& str, ServerEncoding enc) //throw SysError
-{
-    switch (enc)
-    {
-        case ServerEncoding::utf8:
-            return utfTo<std::string>(str);
-        case ServerEncoding::ansi:
-            return utfToAnsiEncoding(str); //throw SysError
-    }
-    assert(false);
-    return {};
 }
 
 
@@ -302,7 +276,7 @@ public:
                         const std::vector<CurlOption>& extraOptions, bool requiresUtf8) //throw SysError
     {
         if (requiresUtf8) //avoid endless recursion
-            ensureUtf8(); //throw SysError
+            requestUtf8(); //throw SysError
 
         if (!easyHandle_)
         {
@@ -605,8 +579,7 @@ public:
                                 else
                                 {
                                     const std::string homePathRaw = replaceCpy(std::string{itBegin, it}, "\"\"", '"');
-                                    const ServerEncoding enc = getServerEncoding(); //throw SysError
-                                    const Zstring homePathUtf = serverToUtfEncoding(homePathRaw, enc); //throw SysError
+                                    const Zstring homePathUtf = serverToUtfEncoding(homePathRaw); //throw SysError
                                     return sanitizeDeviceRelativePath(homePathUtf);
                                 }
                             }
@@ -627,13 +600,13 @@ public:
 
         //make sure our binary-enabled session is still there (== libcurl behaves as we expect)
         std::optional<curl_socket_t> currentSocket = getActiveSocket(); //throw SysError
-        if (!currentSocket)
-            throw SysError(L"Curl failed to cache FTP session."); //why is libcurl not caching the session???
-
-        binaryEnabledSocket_ = *currentSocket; //remember what we did
+        if (currentSocket)
+            binaryEnabledSocket_ = *currentSocket; //remember what we did
         //libcurl already buffers "conn->proto.ftpc.transfertype" but selfishly keeps it for itself!
         //=> pray libcurl doesn't internally set "TYPE A"!
         //=> this seems to be the only place where it does: https://github.com/curl/curl/issues/4342
+        else
+            throw SysError(L"Curl failed to cache FTP session."); //why is libcurl not caching the session???
     }
 
     //------------------------------------------------------------------------------------------------------------
@@ -641,8 +614,6 @@ public:
     bool supportsMfmt() { return getFeatureSupport(&Features::mfmt); } //throw SysError
     bool supportsClnt() { return getFeatureSupport(&Features::clnt); } //
     bool supportsUtf8() { return getFeatureSupport(&Features::utf8); } //
-
-    ServerEncoding getServerEncoding() { return supportsUtf8() ? ServerEncoding::utf8 : ServerEncoding::ansi; } //throw SysError
 
     bool isHealthy() const
     {
@@ -653,12 +624,68 @@ public:
     {
         const Zstring serverPath = getServerRelPath(afsPath);
 
-        if (afsPath.value.empty()) //endless recursion caveat!! getServerEncoding() transitively depends on getServerPathInternal()
+        if (afsPath.value.empty()) //endless recursion caveat!! utfToServerEncoding() transitively depends on getServerPathInternal()
             return utfTo<std::string>(serverPath);
 
-        const ServerEncoding encoding = getServerEncoding(); //throw SysError
+        return utfToServerEncoding(serverPath); //throw SysError
+    }
 
-        return utfToServerEncoding(serverPath, encoding); //throw SysError
+    Zstring serverToUtfEncoding(const std::string& str) //throw SysError
+    {
+        if (isAsciiString(str)) //fast path
+            return {str.begin(), str.end()};
+
+        switch (encoding_) //throw SysError
+        {
+            case ServerEncoding::unknown:
+                /* "UTF-8 encodings [2] contain enough internal structure that it is always, in practice, possible to determine whether a UTF-8 or raw encoding has been used"
+                    - https://www.rfc-editor.org/rfc/rfc3659#section-2.2
+                  "encoding rules make it very unlikely that a character sequence from a different character set will be mistaken for a UTF-8 encoded character sequence."
+                    - https://www.rfc-editor.org/rfc/rfc2640#section-2.2
+
+                  => auto-detect encoding even if FEAT does not advertize UTF8: https://freefilesync.org/forum/viewtopic.php?t=9564       */
+                encoding_ = supportsUtf8() || isValidUtf(str) ? ServerEncoding::utf8 : ServerEncoding::ansi;
+                return serverToUtfEncoding(str); //throw SysError
+
+            case ServerEncoding::utf8:
+                if (!isValidUtf(str))
+                    throw SysError(_("Invalid character encoding:") + L" [UTF-8] " + utfTo<std::wstring>(str));
+
+                return utfTo<Zstring>(str);
+
+            case ServerEncoding::ansi:
+                return ansiToUtfEncoding(str); //throw SysError
+        }
+        assert(false);
+        return {};
+    }
+
+    std::string utfToServerEncoding(const Zstring& str) //throw SysError
+    {
+        if (isAsciiString(str)) //fast path
+            return {str.begin(), str.end()};
+        switch (encoding_) //throw SysError
+        {
+            case ServerEncoding::unknown:
+                if (!supportsUtf8())
+                    throw SysError(_("Failed to auto-detect character encoding:") + L' ' + utfTo<std::wstring>(str)); //might be ANSI or UTF8 with non-compliant server...
+
+                encoding_ = ServerEncoding::utf8;
+                return utfToServerEncoding(str); //throw SysError
+
+            case ServerEncoding::utf8:
+                //validate! we consider REPLACEMENT_CHAR as indication for server using ANSI encoding in serverToUtfEncoding()
+                if (!isValidUtf(str))
+                    throw SysError(_("Invalid character encoding:") + (sizeof(str[0]) == 1 ? L" [UTF-8] " : L" [UTF-16] ") + utfTo<std::wstring>(str));
+                static_assert(sizeof(str[0]) == 1 || sizeof(str[0]) == 2);
+
+                return utfTo<std::string>(str);
+
+            case ServerEncoding::ansi:
+                return utfToAnsiEncoding(str); //throw SysError
+        }
+        assert(false);
+        return {};
     }
 
 private:
@@ -693,36 +720,37 @@ private:
         return path;
     }
 
-    void ensureUtf8() //throw SysError
+    void requestUtf8() //throw SysError
     {
+        //Some RFC-2640-non-compliant servers require UTF8 to be explicitly enabled: https://wiki.filezilla-project.org/Character_Encoding#Conflicting_specification
+        //e.g. this one (Microsoft FTP Service): https://freefilesync.org/forum/viewtopic.php?t=4303
+
+        //check supportsUtf8()? no, let's *always* request UTF8, even if server does not set UTF8 in FEAT response! e.g. like https://freefilesync.org/forum/viewtopic.php?t=9564
+        //=> should not hurt + we rely on auto-encoding detection anyway; see serverToUtfEncoding()
+
         //"OPTS UTF8 ON" needs to be activated each time libcurl internally creates a new session
         //hopyfully libcurl will offer a better solution: https://github.com/curl/curl/issues/1457
 
-        //Some RFC-2640-non-compliant servers require UTF8 to be explicitly enabled: https://wiki.filezilla-project.org/Character_Encoding#Conflicting_specification
-        //e.g. this one (Microsoft FTP Service): https://freefilesync.org/forum/viewtopic.php?t=4303
-        if (supportsUtf8()) //throw SysError
-        {
-            //[!] supportsUtf8() is buffered! => FTP session might not yet exist (or was closed by libcurl after a failure)
-            if (std::optional<curl_socket_t> currentSocket = getActiveSocket()) //throw SysError
-                if (*currentSocket == utf8EnabledSocket_) //caveat: a non-UTF8-enabled session might already exist, e.g. from a previous call to supportsMlsd()
-                    return;
+        if (std::optional<curl_socket_t> currentSocket = getActiveSocket()) //throw SysError
+            if (*currentSocket == utf8RequestedSocket_) //caveat: a non-UTF8-enabled session might already exist, e.g. from a previous call to supportsMlsd()
+                return;
 
-            //some servers even require "CLNT" before accepting "OPTS UTF8 ON": https://social.msdn.microsoft.com/Forums/en-US/d602574f-8a69-4d69-b337-52b6081902cf/problem-with-ftpwebrequestopts-utf8-on-501-please-clnt-first
-            if (supportsClnt()) //throw SysError
-                runSingleFtpCommand("CLNT FreeFileSync", false /*requiresUtf8*/); //throw SysError
+        //some servers even require "CLNT" before accepting "OPTS UTF8 ON": https://social.msdn.microsoft.com/Forums/en-US/d602574f-8a69-4d69-b337-52b6081902cf/problem-with-ftpwebrequestopts-utf8-on-501-please-clnt-first
+        if (supportsClnt()) //throw SysError
+            runSingleFtpCommand("CLNT FreeFileSync", false /*requiresUtf8*/); //throw SysError
 
-            //"prefix the command with an asterisk to make libcurl continue even if the command fails"
-            //-> ignore if server does not know this legacy command (but report all *other* issues; else getActiveSocket() below won't return value and hide real error!)
-            //"If an RFC 2640 compliant client sends OPTS UTF-8 ON, it has to use UTF-8 regardless whether OPTS UTF-8 ON succeeds or not. "
-            runSingleFtpCommand("*OPTS UTF8 ON", false /*requiresUtf8*/); //throw SysError
+        //"prefix the command with an asterisk to make libcurl continue even if the command fails"
+        //-> ignore if server does not know this legacy command (but report all *other* issues; else getActiveSocket() below won't return value and hide real error!)
+        //"If an RFC 2640 compliant client sends OPTS UTF-8 ON, it has to use UTF-8 regardless whether OPTS UTF-8 ON succeeds or not. "
+        runSingleFtpCommand("*OPTS UTF8 ON", false /*requiresUtf8*/); //throw SysError
 
-            //make sure our unicode-enabled session is still there (== libcurl behaves as we expect)
-            std::optional<curl_socket_t> currentSocket = getActiveSocket(); //throw SysError
-            if (!currentSocket)
-                throw SysError(L"Curl failed to cache FTP session."); //why is libcurl not caching the session???
+        //make sure our Unicode-enabled session is still there (== libcurl behaves as we expect)
+        std::optional<curl_socket_t> currentSocket = getActiveSocket(); //throw SysError
+        if (currentSocket)
+            utf8RequestedSocket_ = *currentSocket; //remember what we did
+        else
+            throw SysError(L"Curl failed to cache FTP session."); //why is libcurl not caching the session???
 
-            utf8EnabledSocket_ = *currentSocket; //remember what we did
-        }
     }
 
     std::optional<curl_socket_t> getActiveSocket() //throw SysError
@@ -765,7 +793,7 @@ private:
             {
                 //*: ignore error if server does not support/allow FEAT
                 featureCache_ = parseFeatResponse(runSingleFtpCommand("*FEAT", false /*requiresUtf8*/)); //throw SysError
-                //used by ensureUtf8()! => requiresUtf8 = false!!!
+                //used by requestUtf8()! => requiresUtf8 = false!!!
 
                 sf->access([&](FeatureList& feat) { feat[sessionId_.server] = featureCache_; });
             }
@@ -822,8 +850,10 @@ private:
     const FtpSessionId sessionId_;
     CURL* easyHandle_ = nullptr;
 
-    curl_socket_t utf8EnabledSocket_ = 0;
+    curl_socket_t utf8RequestedSocket_ = 0;
     curl_socket_t binaryEnabledSocket_ = 0;
+
+    ServerEncoding encoding_ = ServerEncoding::unknown;
 
     std::optional<Features> featureCache_;
     std::optional<AfsPath> homePathCached_;
@@ -1098,11 +1128,10 @@ public:
 
                 session.perform(afsDirPath, true /*isDir*/, pathMethod, options, true /*requiresUtf8*/); //throw SysError
 
-                const ServerEncoding encoding = session.getServerEncoding(); //throw SysError
                 if (session.supportsMlsd()) //throw SysError
-                    output = parseMlsd(rawListing, encoding); //throw SysError
+                    output = parseMlsd(rawListing, session); //throw SysError
                 else
-                    output = parseUnknown(rawListing, encoding); //throw SysError
+                    output = parseUnknown(rawListing, session); //throw SysError
             });
         }
         catch (const SysError& e)
@@ -1116,12 +1145,12 @@ private:
     FtpDirectoryReader           (const FtpDirectoryReader&) = delete;
     FtpDirectoryReader& operator=(const FtpDirectoryReader&) = delete;
 
-    static std::vector<FtpItem> parseMlsd(const std::string& buf, ServerEncoding enc) //throw SysError
+    static std::vector<FtpItem> parseMlsd(const std::string& buf, FtpSession& session) //throw SysError
     {
         std::vector<FtpItem> output;
         for (const std::string& line : splitFtpResponse(buf))
         {
-            const FtpItem item = parseMlstLine(line, enc); //throw SysError
+            const FtpItem item = parseMlstLine(line, session); //throw SysError
             if (item.itemName != Zstr(".") &&
                 item.itemName != Zstr(".."))
                 output.push_back(item);
@@ -1129,7 +1158,7 @@ private:
         return output;
     }
 
-    static FtpItem parseMlstLine(const std::string& rawLine, ServerEncoding enc) //throw SysError
+    static FtpItem parseMlstLine(const std::string& rawLine, FtpSession& session) //throw SysError
     {
         /*  https://tools.ietf.org/html/rfc3659
             type=cdir;sizd=4096;modify=20170116230740;UNIX.mode=0755;UNIX.uid=874;UNIX.gid=869;unique=902g36e1c55; .
@@ -1148,7 +1177,7 @@ private:
                 throw SysError(L"Item name not available.");
 
             const std::string facts(itBegin, itBlank);
-            item.itemName = serverToUtfEncoding(std::string(itBlank + 1, rawLine.end()), enc); //throw SysError
+            item.itemName = session.serverToUtfEncoding(std::string(itBlank + 1, rawLine.end())); //throw SysError
 
             std::string typeFact;
             std::optional<uint64_t> fileSize;
@@ -1220,15 +1249,15 @@ private:
         }
     }
 
-    static std::vector<FtpItem> parseUnknown(const std::string& buf, ServerEncoding enc) //throw SysError
+    static std::vector<FtpItem> parseUnknown(const std::string& buf, FtpSession& session) //throw SysError
     {
         if (!buf.empty() && isDigit(buf[0])) //lame test to distinguish Unix/Dos formats as internally used by libcurl
-            return parseWindows(buf, enc); //throw SysError
-        return parseUnix(buf, enc);        //
+            return parseWindows(buf, session); //throw SysError
+        return parseUnix(buf, session);        //
     }
 
     //"ls -l"
-    static std::vector<FtpItem> parseUnix(const std::string& buf, ServerEncoding enc) //throw SysError
+    static std::vector<FtpItem> parseUnix(const std::string& buf, FtpSession& session) //throw SysError
     {
         const std::vector<std::string> lines = splitFtpResponse(buf);
         auto it = lines.begin();
@@ -1254,14 +1283,14 @@ private:
             {
                 try
                 {
-                    parseUnixLine(*it, utcTimeNow, utcCurrentYear, true /*haveGroup*/, enc); //throw SysError
+                    parseUnixLine(*it, utcTimeNow, utcCurrentYear, true /*haveGroup*/, session); //throw SysError
                     return true;
                 }
                 catch (SysError&)
                 {
                     try
                     {
-                        parseUnixLine(*it, utcTimeNow, utcCurrentYear, false /*haveGroup*/, enc); //throw SysError
+                        parseUnixLine(*it, utcTimeNow, utcCurrentYear, false /*haveGroup*/, session); //throw SysError
                         return false;
                     }
                     catch (SysError&) {}
@@ -1269,7 +1298,7 @@ private:
                 }
             }();
 
-            const FtpItem item = parseUnixLine(*it, utcTimeNow, utcCurrentYear, *unixListingHaveGroup_, enc); //throw SysError
+            const FtpItem item = parseUnixLine(*it, utcTimeNow, utcCurrentYear, *unixListingHaveGroup_, session); //throw SysError
             if (item.itemName != Zstr(".") &&
                 item.itemName != Zstr(".."))
                 output.push_back(item);
@@ -1278,7 +1307,7 @@ private:
         return output;
     }
 
-    static FtpItem parseUnixLine(const std::string& rawLine, time_t utcTimeNow, int utcCurrentYear, bool haveGroup, ServerEncoding enc) //throw SysError
+    static FtpItem parseUnixLine(const std::string& rawLine, time_t utcTimeNow, int utcCurrentYear, bool haveGroup, FtpSession& session) //throw SysError
     {
         /*  total 4953                                                  <- optional first line
             drwxr-xr-x 1 root root    4096 Jan 10 11:58 version
@@ -1413,7 +1442,7 @@ private:
             else
                 item.fileSize = fileSize;
 
-            item.itemName = serverToUtfEncoding(itemName, enc); //throw SysError
+            item.itemName = session.serverToUtfEncoding(itemName); //throw SysError
             item.modTime = modTime;
 
             return item;
@@ -1426,7 +1455,7 @@ private:
 
 
     //"dir"
-    static std::vector<FtpItem> parseWindows(const std::string& buf, ServerEncoding enc) //throw SysError
+    static std::vector<FtpItem> parseWindows(const std::string& buf, FtpSession& session) //throw SysError
     {
         /*  Test server: test.rebex.net username:demo pw:password  useTls = true
 
@@ -1541,7 +1570,7 @@ private:
                     FtpItem item;
                     if (isDir)
                         item.type = AFS::ItemType::folder;
-                    item.itemName = serverToUtfEncoding(itemName, enc); //throw SysError
+                    item.itemName = session.serverToUtfEncoding(itemName); //throw SysError
                     item.fileSize = fileSize;
                     item.modTime  = modTime;
 

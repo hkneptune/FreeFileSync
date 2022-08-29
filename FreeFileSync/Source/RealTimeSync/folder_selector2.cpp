@@ -133,9 +133,16 @@ void FolderSelector2::onSelectDir(wxCommandEvent& event)
     //IFileDialog requirements for default path: 1. accepts native paths only!!! 2. path must exist!
     Zstring defaultFolderPath;
     {
-        auto folderExistsTimed = [waitEndTime = std::chrono::steady_clock::now() + FOLDER_SELECTED_EXISTENCE_CHECK_TIME_MAX](const Zstring& folderPath)
+        auto folderAccessible = [waitEndTime = std::chrono::steady_clock::now() + FOLDER_SELECTED_EXISTENCE_CHECK_TIME_MAX](const Zstring& folderPath)
         {
-            auto ft = runAsync([folderPath] { return dirAvailable(folderPath); });
+            auto ft = runAsync([folderPath]
+            {
+                try
+                {
+                    return getItemType(folderPath) != ItemType::file; //throw FileError
+                }
+                catch (FileError&) { return false; }
+            });
 
             return ft.wait_until(waitEndTime) == std::future_status::ready && ft.get(); //potentially slow network access: wait 200ms at most
         };
@@ -145,7 +152,7 @@ void FolderSelector2::onSelectDir(wxCommandEvent& event)
 
             if (const Zstring folderPath = getResolvedFilePath(folderPathPhrase);
                 !folderPath.empty())
-                if (folderExistsTimed(folderPath))
+                if (folderAccessible(folderPath))
                     defaultFolderPath = folderPath;
         };
 

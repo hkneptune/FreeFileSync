@@ -433,8 +433,8 @@ private:
             const Zstring itemName = readItemName(); //
             const auto cmpVar = static_cast<CompareVariant>(readNumber<int32_t>(streamInSmallNum_)); //
 
-            const InSyncDescrLink dataL(readNumber<int64_t>(streamInBigNum_)); //throw SysErrorUnexpectedEos
-            const InSyncDescrLink dataT(readNumber<int64_t>(streamInBigNum_)); //
+            const InSyncDescrLink dataL{static_cast<time_t>(readNumber<int64_t>(streamInBigNum_))}; //throw SysErrorUnexpectedEos
+            const InSyncDescrLink dataT{static_cast<time_t>(readNumber<int64_t>(streamInBigNum_))}; //
 
             container.addSymlink(itemName,
                                  selectParam<leadSide>(dataL, dataT),
@@ -456,7 +456,7 @@ private:
 
     InSyncDescrFile readFileDescr() //throw SysErrorUnexpectedEos
     {
-        const auto modTime = readNumber<int64_t>(streamInBigNum_); //throw SysErrorUnexpectedEos
+        const auto modTime = static_cast<time_t>(readNumber<int64_t>(streamInBigNum_)); //throw SysErrorUnexpectedEos
 
         AFS::FingerPrint filePrint = 0;
         if (streamVersion_ == 3) //TODO: remove migration code at some time! 2021-02-14
@@ -473,7 +473,7 @@ private:
         else
             filePrint = readNumber<AFS::FingerPrint>(streamInBigNum_); //throw SysErrorUnexpectedEos
 
-        return InSyncDescrFile(modTime, filePrint);
+        return {modTime, filePrint};
     }
 
     //TODO: remove migration code at some time! 2017-02-01
@@ -495,11 +495,11 @@ private:
                 const Zstring itemName = utfTo<Zstring>(readContainer<std::string>(inputBoth_));
                 const auto cmpVar = static_cast<CompareVariant>(readNumber<int32_t>(inputBoth_));
                 const uint64_t fileSize = readNumber<uint64_t>(inputBoth_);
-                const auto modTimeL = readNumber<int64_t>(inputLeft_);
+                const auto modTimeL = static_cast<time_t>(readNumber<int64_t>(inputLeft_));
                 /*const auto fileIdL =*/ readContainer<std::string>(inputLeft_);
-                const auto modTimeR = readNumber<int64_t>(inputRight_);
+                const auto modTimeR = static_cast<time_t>(readNumber<int64_t>(inputRight_));
                 /*const auto fileIdR =*/ readContainer<std::string>(inputRight_);
-                container.addFile(itemName, InSyncDescrFile(modTimeL, AFS::FingerPrint()), InSyncDescrFile(modTimeR, AFS::FingerPrint()), cmpVar, fileSize);
+                container.addFile(itemName, InSyncDescrFile{modTimeL, AFS::FingerPrint()}, InSyncDescrFile{modTimeR, AFS::FingerPrint()}, cmpVar, fileSize);
             }
 
             size_t linkCount = readNumber<uint32_t>(inputBoth_);
@@ -507,9 +507,9 @@ private:
             {
                 const Zstring itemName = utfTo<Zstring>(readContainer<std::string>(inputBoth_));
                 const auto cmpVar = static_cast<CompareVariant>(readNumber<int32_t>(inputBoth_));
-                const auto modTimeL = readNumber<int64_t>(inputLeft_);
-                const auto modTimeR = readNumber<int64_t>(inputRight_);
-                container.addSymlink(itemName, InSyncDescrLink(modTimeL), InSyncDescrLink(modTimeR), cmpVar);
+                const auto modTimeL = static_cast<time_t>(readNumber<int64_t>(inputLeft_));
+                const auto modTimeR = static_cast<time_t>(readNumber<int64_t>(inputRight_));
+                container.addSymlink(itemName, InSyncDescrLink{modTimeL}, InSyncDescrLink{modTimeR}, cmpVar);
             }
 
             size_t dirCount = readNumber<uint32_t>(inputBoth_);
@@ -578,10 +578,10 @@ private:
 
                     //create or update new "in-sync" state
                     dbFiles.insert_or_assign(file.getItemNameAny(),
-                                             InSyncFile(InSyncDescrFile(file.getLastWriteTime<SelectSide::left >(),
-                                                                        file.getFilePrint    <SelectSide::left >()),
-                                                        InSyncDescrFile(file.getLastWriteTime<SelectSide::right>(),
-                                                                        file.getFilePrint    <SelectSide::right>()),
+                                             InSyncFile(InSyncDescrFile{file.getLastWriteTime<SelectSide::left >(),
+                                                                        file.getFilePrint    <SelectSide::left >()},
+                                                        InSyncDescrFile{file.getLastWriteTime<SelectSide::right>(),
+                                                                        file.getFilePrint    <SelectSide::right>()},
                                                         activeCmpVar_,
                                                         file.getFileSize<SelectSide::left>()));
                     toPreserve.insert(file.getItemNameAny());
@@ -618,8 +618,8 @@ private:
 
                     //create or update new "in-sync" state
                     dbSymlinks.insert_or_assign(symlink.getItemNameAny(),
-                                                InSyncSymlink(InSyncDescrLink(symlink.getLastWriteTime<SelectSide::left >()),
-                                                              InSyncDescrLink(symlink.getLastWriteTime<SelectSide::right>()),
+                                                InSyncSymlink(InSyncDescrLink{symlink.getLastWriteTime<SelectSide::left >()},
+                                                              InSyncDescrLink{symlink.getLastWriteTime<SelectSide::right>()},
                                                               activeCmpVar_));
                     toPreserve.insert(symlink.getItemNameAny());
                 }

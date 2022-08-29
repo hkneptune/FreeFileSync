@@ -25,7 +25,7 @@ const int SEPARATION_LINE_LEN = 40;
 
 std::string generateLogHeaderTxt(const ProcessSummary& s, const ErrorLog& log, int logPreviewFailsMax)
 {
-    const std::string tabSpace(4, ' '); //4: the only sensible space count for tabs
+    const auto tabSpace = utfTo<std::string>(TAB_SPACE);
 
     std::string headerLine;
     for (const std::wstring& jobName : s.jobNames)

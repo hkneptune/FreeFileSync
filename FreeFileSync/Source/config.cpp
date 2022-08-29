@@ -23,7 +23,7 @@ using namespace fff; //required for correct overload resolution!
 namespace
 {
 //-------------------------------------------------------------------------------------------------------------------------------
-const int XML_FORMAT_GLOBAL_CFG = 24; //2022-04-29
+const int XML_FORMAT_GLOBAL_CFG = 25; //2022-08-26
 const int XML_FORMAT_SYNC_CFG   = 17; //2020-10-14
 //-------------------------------------------------------------------------------------------------------------------------------
 }
@@ -37,53 +37,6 @@ const ExternalApp fff::extCommandFileManager
 
 const ExternalApp fff::extCommandOpenDefault
 {L"Open with default application", "xdg-open \"%local_path%\""};
-
-
-XmlType getXmlTypeNoThrow(const XmlDoc& doc) //noexcept
-{
-    if (doc.root().getName() == "FreeFileSync")
-    {
-        std::string type;
-        if (doc.root().getAttribute("XmlType", type))
-        {
-            if (type == "GUI")
-                return XmlType::gui;
-            else if (type == "BATCH")
-                return XmlType::batch;
-            else if (type == "GLOBAL")
-                return XmlType::global;
-        }
-    }
-    return XmlType::other;
-}
-
-
-XmlType fff::getXmlType(const Zstring& filePath) //throw FileError
-{
-    //quick exit if file is not an XML
-    XmlDoc doc = loadXml(filePath); //throw FileError
-    return ::getXmlTypeNoThrow(doc);
-}
-
-
-void setXmlType(XmlDoc& doc, XmlType type) //throw()
-{
-    switch (type)
-    {
-        case XmlType::gui:
-            doc.root().setAttribute("XmlType", "GUI");
-            break;
-        case XmlType::batch:
-            doc.root().setAttribute("XmlType", "BATCH");
-            break;
-        case XmlType::global:
-            doc.root().setAttribute("XmlType", "GLOBAL");
-            break;
-        case XmlType::other:
-            assert(false);
-            break;
-    }
-}
 
 
 
@@ -436,7 +389,7 @@ void writeText(const SymLinkHandling& value, std::string& output)
         case SymLinkHandling::exclude:
             output = "Exclude";
             break;
-        case SymLinkHandling::direct:
+        case SymLinkHandling::asLink:
             output = "Direct";
             break;
         case SymLinkHandling::follow:
@@ -452,7 +405,7 @@ bool readText(const std::string& input, SymLinkHandling& value)
     if (tmp == "Exclude")
         value = SymLinkHandling::exclude;
     else if (tmp == "Direct")
-        value = SymLinkHandling::direct;
+        value = SymLinkHandling::asLink;
     else if (tmp == "Follow")
         value = SymLinkHandling::follow;
     else
@@ -1271,32 +1224,32 @@ void readConfig(const XmlIn& in, LocalPairConfig& lpc, std::map<AfsDevice, size_
 
 void readConfig(const XmlIn& in, MainConfiguration& mainCfg, int formatVer)
 {
-    XmlIn inMain = formatVer < 10 ? in["MainConfig"] : in; //TODO: remove if parameter migration after some time! 2018-02-25
+    XmlIn in2 = formatVer < 10 ? in["MainConfig"] : in; //TODO: remove if parameter migration after some time! 2018-02-25
 
     if (formatVer < 10) //TODO: remove if parameter migration after some time! 2018-02-25
-        readConfig(inMain["Comparison"], mainCfg.cmpCfg);
+        readConfig(in2["Comparison"], mainCfg.cmpCfg);
     else
-        readConfig(inMain["Compare"], mainCfg.cmpCfg);
+        readConfig(in2["Compare"], mainCfg.cmpCfg);
     //###########################################################
 
     //read sync configuration
     if (formatVer < 10) //TODO: remove if parameter migration after some time! 2018-02-25
-        readConfig(inMain["SyncConfig"], mainCfg.syncCfg, mainCfg.deviceParallelOps, formatVer);
+        readConfig(in2["SyncConfig"], mainCfg.syncCfg, mainCfg.deviceParallelOps, formatVer);
     else
-        readConfig(inMain["Synchronize"], mainCfg.syncCfg, mainCfg.deviceParallelOps, formatVer);
+        readConfig(in2["Synchronize"], mainCfg.syncCfg, mainCfg.deviceParallelOps, formatVer);
 
     //###########################################################
 
     //read filter settings
     if (formatVer < 10) //TODO: remove if parameter migration after some time! 2018-02-25
-        readConfig(inMain["GlobalFilter"], mainCfg.globalFilter);
+        readConfig(in2["GlobalFilter"], mainCfg.globalFilter);
     else
-        readConfig(inMain["Filter"], mainCfg.globalFilter);
+        readConfig(in2["Filter"], mainCfg.globalFilter);
 
     //###########################################################
     //read folder pairs
     bool firstItem = true;
-    for (XmlIn inPair = inMain["FolderPairs"]["Pair"]; inPair; inPair.next())
+    for (XmlIn inPair = in2["FolderPairs"]["Pair"]; inPair; inPair.next())
     {
         LocalPairConfig lpc;
         readConfig(inPair, lpc, mainCfg.deviceParallelOps, formatVer);
@@ -1317,28 +1270,28 @@ void readConfig(const XmlIn& in, MainConfiguration& mainCfg, int formatVer)
     else
         //TODO: remove if parameter migration after some time! 2018-02-24
         if (formatVer < 10)
-            inMain["IgnoreErrors"](mainCfg.ignoreErrors);
+            in2["IgnoreErrors"](mainCfg.ignoreErrors);
         else
         {
-            inMain["Errors"].attribute("Ignore", mainCfg.ignoreErrors);
-            inMain["Errors"].attribute("Retry",  mainCfg.autoRetryCount);
-            inMain["Errors"].attribute("Delay",  mainCfg.autoRetryDelay);
+            in2["Errors"].attribute("Ignore", mainCfg.ignoreErrors);
+            in2["Errors"].attribute("Retry",  mainCfg.autoRetryCount);
+            in2["Errors"].attribute("Delay",  mainCfg.autoRetryDelay);
         }
 
     //TODO: remove if parameter migration after some time! 2017-10-24
     if (formatVer < 8)
-        inMain["OnCompletion"](mainCfg.postSyncCommand);
+        in2["OnCompletion"](mainCfg.postSyncCommand);
     else
     {
-        inMain["PostSyncCommand"](mainCfg.postSyncCommand);
-        inMain["PostSyncCommand"].attribute("Condition", mainCfg.postSyncCondition);
+        in2["PostSyncCommand"](mainCfg.postSyncCommand);
+        in2["PostSyncCommand"].attribute("Condition", mainCfg.postSyncCondition);
     }
 
     //TODO: remove if parameter migration after some time! 2018-08-13
     if (formatVer < 14)
         ; //path will be extracted from BatchExclusiveConfig
     else
-        inMain["LogFolder"](mainCfg.altLogFolderPathPhrase);
+        in2["LogFolder"](mainCfg.altLogFolderPathPhrase);
 
     //TODO: remove after migration! 2020-04-24
     if (formatVer < 16)
@@ -1349,8 +1302,8 @@ void readConfig(const XmlIn& in, MainConfiguration& mainCfg, int formatVer)
         ;
     else
     {
-        inMain["EmailNotification"](mainCfg.emailNotifyAddress);
-        inMain["EmailNotification"].attribute("Condition", mainCfg.emailNotifyCondition);
+        in2["EmailNotification"](mainCfg.emailNotifyAddress);
+        in2["EmailNotification"].attribute("Condition", mainCfg.emailNotifyCondition);
     }
 }
 
@@ -1593,6 +1546,10 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
         inOpt["WarnDirectoryLockFailed"       ].attribute("Show", cfg.warnDlgs.warnDirectoryLockFailed);
         inOpt["WarnVersioningFolderPartOfSync"].attribute("Show", cfg.warnDlgs.warnVersioningFolderPartOfSync);
     }
+
+    //TODO: remove after migration! 2022-08-26
+    if (formatVer < 25)
+        cfg.warnDlgs.warnDependentBaseFolders = true; //new semantics! should not be ignored
 
     //TODO: remove after migration! 2021-12-02
     if (formatVer < 23)
@@ -2100,11 +2057,21 @@ std::pair<ConfigType, std::wstring /*warningMsg*/> parseConfig(const XmlDoc& doc
 
 
 template <class ConfigType>
-std::pair<ConfigType, std::wstring /*warningMsg*/> readConfig(const Zstring& filePath, XmlType type, int currentXmlFormatVer) //throw FileError
+std::pair<ConfigType, std::wstring /*warningMsg*/> readConfig(const Zstring& filePath, const char* expectedCfgType, int currentXmlFormatVer) //throw FileError
 {
     XmlDoc doc = loadXml(filePath); //throw FileError
 
-    if (getXmlTypeNoThrow(doc) != type) //noexcept
+    const std::string cfgType =[&]
+    {
+        if (doc.root().getName() == "FreeFileSync")
+        {
+            std::string type;
+            if (doc.root().getAttribute("XmlType", type))
+                return type;
+        }
+        return std::string();
+    }();
+    if (cfgType != expectedCfgType)
         throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)));
 
     return parseConfig<ConfigType>(doc, filePath, currentXmlFormatVer);
@@ -2114,19 +2081,19 @@ std::pair<ConfigType, std::wstring /*warningMsg*/> readConfig(const Zstring& fil
 
 std::pair<XmlGuiConfig, std::wstring /*warningMsg*/> fff::readGuiConfig(const Zstring& filePath)
 {
-    return readConfig<XmlGuiConfig>(filePath, XmlType::gui, XML_FORMAT_SYNC_CFG); //throw FileError
+    return readConfig<XmlGuiConfig>(filePath, "GUI", XML_FORMAT_SYNC_CFG); //throw FileError
 }
 
 
 std::pair<XmlBatchConfig, std::wstring /*warningMsg*/> fff::readBatchConfig(const Zstring& filePath)
 {
-    return readConfig<XmlBatchConfig>(filePath, XmlType::batch, XML_FORMAT_SYNC_CFG); //throw FileError
+    return readConfig<XmlBatchConfig>(filePath, "BATCH", XML_FORMAT_SYNC_CFG); //throw FileError
 }
 
 
 std::pair<XmlGlobalSettings, std::wstring /*warningMsg*/> fff::readGlobalConfig(const Zstring& filePath)
 {
-    return readConfig<XmlGlobalSettings>(filePath, XmlType::global, XML_FORMAT_GLOBAL_CFG); //throw FileError
+    return readConfig<XmlGlobalSettings>(filePath, "GLOBAL", XML_FORMAT_GLOBAL_CFG); //throw FileError
 }
 
 
@@ -2140,41 +2107,31 @@ std::pair<XmlGuiConfig, std::wstring /*warningMsg*/> fff::readAnyConfig(const st
 
     for (auto it = filePaths.begin(); it != filePaths.end(); ++it)
     {
-        const Zstring& filePath = *it;
         const bool firstItem = it == filePaths.begin(); //init all non-"mainCfg" settings with first config file
+        const Zstring& filePath = *it;
 
-        XmlDoc doc = loadXml(filePath); //throw FileError
-
-        switch (getXmlTypeNoThrow(doc))
+        if (endsWithAsciiNoCase(filePath, Zstr(".ffs_gui")))
         {
-            case XmlType::gui:
-            {
-                const auto& [guiCfg, warningMsg] = parseConfig<XmlGuiConfig>(doc, filePath, XML_FORMAT_SYNC_CFG); //nothrow
-                if (firstItem)
-                    cfg = guiCfg;
-                mainCfgs.push_back(guiCfg.mainCfg);
+            const auto& [guiCfg, warningMsg] = readGuiConfig(filePath); //throw FileError
+            if (firstItem)
+                cfg = guiCfg;
+            mainCfgs.push_back(guiCfg.mainCfg);
 
-                if (!warningMsg.empty())
-                    warningMsgAll += warningMsg + L"\n\n";
-            }
-            break;
-
-            case XmlType::batch:
-            {
-                const auto& [batchCfg, warningMsg] = parseConfig<XmlBatchConfig>(doc, filePath, XML_FORMAT_SYNC_CFG); //nothrow
-                if (firstItem)
-                    cfg = convertBatchToGui(batchCfg);
-                mainCfgs.push_back(batchCfg.mainCfg);
-
-                if (!warningMsg.empty())
-                    warningMsgAll += warningMsg + L"\n\n";
-            }
-            break;
-
-            case XmlType::global:
-            case XmlType::other:
-                throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)));
+            if (!warningMsg.empty())
+                warningMsgAll += warningMsg + L"\n\n";
         }
+        else if (endsWithAsciiNoCase(filePath, Zstr(".ffs_batch")))
+        {
+            const auto& [batchCfg, warningMsg] = readBatchConfig(filePath); //throw FileError
+            if (firstItem)
+                cfg = convertBatchToGui(batchCfg);
+            mainCfgs.push_back(batchCfg.mainCfg);
+
+            if (!warningMsg.empty())
+                warningMsgAll += warningMsg + L"\n\n";
+        }
+        else
+            throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)));
     }
     cfg.mainCfg = merge(mainCfgs);
 
@@ -2293,41 +2250,36 @@ void writeConfig(const LocalPairConfig& lpc, const std::map<AfsDevice, size_t>& 
 
 void writeConfig(const MainConfiguration& mainCfg, XmlOut& out)
 {
-    XmlOut outMain = out;
-
-    XmlOut outCmp = outMain["Compare"];
-
+    XmlOut outCmp = out["Compare"];
     writeConfig(mainCfg.cmpCfg, outCmp);
     //###########################################################
 
-    XmlOut outSync = outMain["Synchronize"];
-
+    XmlOut outSync = out["Synchronize"];
     writeConfig(mainCfg.syncCfg, mainCfg.deviceParallelOps, outSync);
     //###########################################################
 
-    XmlOut outFilter = outMain["Filter"];
-    //write filter settings
+    XmlOut outFilter = out["Filter"];
     writeConfig(mainCfg.globalFilter, outFilter);
 
     //###########################################################
-    XmlOut outFp = outMain["FolderPairs"];
+    XmlOut outFp = out["FolderPairs"];
     //write folder pairs
     writeConfig(mainCfg.firstPair, mainCfg.deviceParallelOps, outFp);
 
     for (const LocalPairConfig& lpc : mainCfg.additionalPairs)
         writeConfig(lpc, mainCfg.deviceParallelOps, outFp);
 
-    outMain["Errors"].attribute("Ignore", mainCfg.ignoreErrors);
-    outMain["Errors"].attribute("Retry",  mainCfg.autoRetryCount);
-    outMain["Errors"].attribute("Delay",  mainCfg.autoRetryDelay);
+    out["Errors"].attribute("Ignore", mainCfg.ignoreErrors);
+    out["Errors"].attribute("Retry",  mainCfg.autoRetryCount);
+    out["Errors"].attribute("Delay",  mainCfg.autoRetryDelay);
 
-    outMain["PostSyncCommand"](mainCfg.postSyncCommand);
-    outMain["PostSyncCommand"].attribute("Condition", mainCfg.postSyncCondition);
+    out["PostSyncCommand"](mainCfg.postSyncCommand);
+    out["PostSyncCommand"].attribute("Condition", mainCfg.postSyncCondition);
 
-    outMain["LogFolder"](mainCfg.altLogFolderPathPhrase);
+    out["LogFolder"](mainCfg.altLogFolderPathPhrase);
 
-    outMain["EmailNotification"](mainCfg.emailNotifyAddress);
-    outMain["EmailNotification"].attribute("Condition", mainCfg.emailNotifyCondition);
+    out["EmailNotification"](mainCfg.emailNotifyAddress);
+    out["EmailNotification"].attribute("Condition", mainCfg.emailNotifyCondition);
 }
 
 
@@ -2528,11 +2480,10 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
 
 
 template <class ConfigType>
-void writeConfig(const ConfigType& cfg, XmlType type, int xmlFormatVer, const Zstring& filePath)
+void writeConfig(const ConfigType& cfg, const char* cfgType, int xmlFormatVer, const Zstring& filePath)
 {
     XmlDoc doc("FreeFileSync");
-    setXmlType(doc, type); //throw()
-
+    doc.root().setAttribute("XmlType", cfgType);
     doc.root().setAttribute("XmlFormat", xmlFormatVer);
 
     XmlOut out(doc);
@@ -2544,19 +2495,19 @@ void writeConfig(const ConfigType& cfg, XmlType type, int xmlFormatVer, const Zs
 
 void fff::writeConfig(const XmlGuiConfig& cfg, const Zstring& filePath)
 {
-    ::writeConfig(cfg, XmlType::gui, XML_FORMAT_SYNC_CFG, filePath); //throw FileError
+    ::writeConfig(cfg, "GUI", XML_FORMAT_SYNC_CFG, filePath); //throw FileError
 }
 
 
 void fff::writeConfig(const XmlBatchConfig& cfg, const Zstring& filePath)
 {
-    ::writeConfig(cfg, XmlType::batch, XML_FORMAT_SYNC_CFG, filePath); //throw FileError
+    ::writeConfig(cfg, "BATCH", XML_FORMAT_SYNC_CFG, filePath); //throw FileError
 }
 
 
 void fff::writeConfig(const XmlGlobalSettings& cfg, const Zstring& filePath)
 {
-    ::writeConfig(cfg, XmlType::global, XML_FORMAT_GLOBAL_CFG, filePath); //throw FileError
+    ::writeConfig(cfg, "GLOBAL", XML_FORMAT_GLOBAL_CFG, filePath); //throw FileError
 }
 
 

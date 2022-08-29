@@ -70,7 +70,7 @@ std::optional<ItemType> zen::itemStillExists(const Zstring& itemPath) //throw Fi
             try
             {
                 traverseFolder(*parentPath,
-                [&](const    FileInfo& fi) { if (fi.itemName == itemName) throw ItemType::file;    },
+                [&](const    FileInfo& fi) { if (fi.itemName == itemName) throw ItemType::file;    }, //case-sensitive! itemPath must be normalized!
                 [&](const  FolderInfo& fi) { if (fi.itemName == itemName) throw ItemType::folder;  },
                 [&](const SymlinkInfo& si) { if (si.itemName == itemName) throw ItemType::symlink; },
                 [](const std::wstring& errorMsg) { throw FileError(errorMsg); });
@@ -233,7 +233,6 @@ void zen::removeDirectoryPlainRecursion(const Zstring& dirPath) //throw FileErro
 
 namespace
 {
-
 /* Usage overview: (avoid circular pattern!)
 
   moveAndRenameItem() --> moveAndRenameFileSub()
@@ -319,18 +318,20 @@ void setWriteTimeNative(const Zstring& itemPath, const timespec& modTime, ProcSy
             => utimens: https://github.com/coreutils/gnulib/blob/master/lib/utimens.c
         touch: https://github.com/coreutils/coreutils/blob/master/src/touch.c
             => fdutimensat: https://github.com/coreutils/gnulib/blob/master/lib/fdutimensat.c                  */
-    timespec newTimes[2] = {};
-    newTimes[0].tv_sec = ::time(nullptr); //access time; don't use UTIME_NOW/UTIME_OMIT: more bugs! https://freefilesync.org/forum/viewtopic.php?t=1701
-    newTimes[1] = modTime; //modification time
+    const timespec newTimes[2]
+    {
+        {.tv_sec = ::time(nullptr)}, //access time; don't use UTIME_NOW/UTIME_OMIT: more bugs! https://freefilesync.org/forum/viewtopic.php?t=1701
+        modTime,
+    };
     //test: even modTime == 0 is correctly applied (no NOOP!) test2: same behavior for "utime()"
 
     //hell knows why files on gvfs-mounted Samba shares fail to open(O_WRONLY) returning EOPNOTSUPP:
     //https://freefilesync.org/forum/viewtopic.php?t=2803 => utimensat() works (but not for gvfs SFTP)
-    if (::utimensat(AT_FDCWD, itemPath.c_str(), newTimes, procSl == ProcSymlink::direct ? AT_SYMLINK_NOFOLLOW : 0) == 0)
+    if (::utimensat(AT_FDCWD, itemPath.c_str(), newTimes, procSl == ProcSymlink::asLink ? AT_SYMLINK_NOFOLLOW : 0) == 0)
         return;
     try
     {
-        if (procSl == ProcSymlink::direct)
+        if (procSl == ProcSymlink::asLink)
             try
             {
                 if (getItemType(itemPath) == ItemType::symlink) //throw FileError
@@ -554,7 +555,7 @@ void zen::copySymlink(const Zstring& sourcePath, const Zstring& targetPath) //th
     if (::lstat(sourcePath.c_str(), &sourceInfo) != 0)
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(sourcePath)), "lstat");
 
-    setWriteTimeNative(targetPath, sourceInfo.st_mtim, ProcSymlink::direct); //throw FileError
+    setWriteTimeNative(targetPath, sourceInfo.st_mtim, ProcSymlink::asLink); //throw FileError
 }
 
 

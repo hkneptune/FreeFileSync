@@ -35,7 +35,7 @@ struct FileAttributes
         static_assert(std::is_signed_v<time_t>, "... and signed!");
     }
 
-    time_t modTime = 0; //number of seconds since Jan. 1st 1970 UTC
+    time_t modTime = 0; //number of seconds since Jan. 1st 1970 GMT
     uint64_t fileSize = 0;
     AFS::FingerPrint filePrint = 0; //optional
     bool isFollowedSymlink = false;
@@ -49,7 +49,7 @@ struct LinkAttributes
     LinkAttributes() {}
     explicit LinkAttributes(time_t modTimeIn) : modTime(modTimeIn) {}
 
-    time_t modTime = 0; //number of seconds since Jan. 1st 1970 UTC
+    time_t modTime = 0; //number of seconds since Jan. 1st 1970 GMT
 };
 
 
@@ -75,7 +75,7 @@ constexpr SelectSide getOtherSide = side == SelectSide::left ? SelectSide::right
 
 
 template <SelectSide side, class T> inline
-static T& selectParam(T& left, T& right)
+T& selectParam(T& left, T& right)
 {
     if constexpr (side == SelectSide::left)
         return left;
@@ -155,7 +155,7 @@ class FileSystemObject;
 
 ------------------------------------------------------------------*/
 
-struct PathInformation //diamond-shaped inheritence!
+struct PathInformation //diamond-shaped inheritance!
 {
     virtual ~PathInformation() {}
 
@@ -296,10 +296,10 @@ public:
     template <SelectSide side> BaseFolderStatus getFolderStatus() const; //base folder status at the time of comparison!
     template <SelectSide side> void setFolderStatus(BaseFolderStatus value); //update after creating the directory in FFS
 
-    //get settings which were used while creating BaseFolderPair
+    //get settings which were used while creating BaseFolderPair:
     const PathFilter&   getFilter() const { return filter_.ref(); }
     CompareVariant getCompVariant() const { return cmpVar_; }
-    int  getFileTimeTolerance() const { return fileTimeTolerance_; }
+    int      getFileTimeTolerance() const { return fileTimeTolerance_; }
     const std::vector<unsigned int>& getIgnoredTimeShift() const { return ignoreTimeShiftMinutes_; }
 
     void flip() override;
@@ -703,6 +703,9 @@ public:
     }
 
 private:
+    RecursiveObjectVisitor           (const RecursiveObjectVisitor&) = delete;
+    RecursiveObjectVisitor& operator=(const RecursiveObjectVisitor&) = delete;
+
     const Function1 onFolder_;
     const Function2 onFile_;
     const Function3 onSymlink_;

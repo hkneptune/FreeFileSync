@@ -1727,8 +1727,8 @@ public:
             //=> Next keyboard input on left does *not* emit focus change event, but still "scrollMaster" needs to change
             //=> hook keyboard input instead of focus event:
             grid.getMainWin().Bind(wxEVT_CHAR,     handler);
-            grid.getMainWin().Bind(wxEVT_KEY_UP,   handler);
             grid.getMainWin().Bind(wxEVT_KEY_DOWN, handler);
+            //grid.getMainWin().Bind(wxEVT_KEY_UP, handler); -> superfluous?
 
             grid.getMainWin().Bind(wxEVT_LEFT_DOWN,   handler);
             grid.getMainWin().Bind(wxEVT_LEFT_DCLICK, handler);

@@ -445,11 +445,14 @@ GdriveAccessInfo gdriveExchangeAuthCode(const GdriveAuthCode& authCode, int time
 GdriveAccessInfo gdriveAuthorizeAccess(const std::string& gdriveLoginHint, const std::function<void()>& updateGui /*throw X*/, int timeoutSec) //throw SysError, X
 {
     //spin up a web server to wait for the HTTP GET after Google authentication
-    ::addrinfo hints = {};
-    hints.ai_family   = AF_INET; //make sure our server is reached by IPv4 127.0.0.1, not IPv6 [::1]
-    hints.ai_socktype = SOCK_STREAM; //we *do* care about this one!
-    hints.ai_flags    = AI_PASSIVE; //the returned socket addresses will be suitable for bind(2)ing a socket that will accept(2) connections.
-    hints.ai_flags |= AI_ADDRCONFIG; //no such issue on Linux: https://bugs.chromium.org/p/chromium/issues/detail?id=5234
+    const ::addrinfo hints 
+    {
+    .ai_flags    = AI_PASSIVE //the returned socket addresses will be suitable for bind(2)ing a socket that will accept(2) connections.
+    | AI_ADDRCONFIG //no such issue on Linux: https://bugs.chromium.org/p/chromium/issues/detail?id=5234
+    ,
+    .ai_family   = AF_INET, //make sure our server is reached by IPv4 127.0.0.1, not IPv6 [::1]
+    .ai_socktype = SOCK_STREAM, //we *do* care about this one!
+    };
     ::addrinfo* servinfo = nullptr;
     ZEN_ON_SCOPE_EXIT(if (servinfo) ::freeaddrinfo(servinfo));
 
@@ -1860,12 +1863,12 @@ public:
             if (itemId.empty())
                 break;
 
-            GdriveItemDetails details = {};
+            GdriveItemDetails details = {}; //read in correct sequence!
             details.itemName = utfTo<Zstring>(readContainer<std::string>(stream)); //
             details.type     = readNumber<GdriveItemType>(stream); //
             details.owner    = readNumber     <FileOwner>(stream); //
             details.fileSize = readNumber      <uint64_t>(stream); //SysErrorUnexpectedEos
-            details.modTime  = readNumber       <int64_t>(stream); //
+            details.modTime  = static_cast<time_t>(readNumber<int64_t>(stream)); //
             details.targetId = readContainer<std::string>(stream); //
 
             size_t parentsCount = readNumber<uint32_t>(stream); //SysErrorUnexpectedEos
@@ -1964,10 +1967,12 @@ public:
     {
         if (afsPath.value.empty()) //location root not covered by itemDetails_
         {
-            GdriveItemDetails rootDetails = {};
-            rootDetails.type = GdriveItemType::folder;
-            //rootDetails.itemName =... => better leave empty for a root item!
-            rootDetails.owner = sharedDriveName_.empty() ? FileOwner::me : FileOwner::none;
+            GdriveItemDetails rootDetails
+            {
+                .type = GdriveItemType::folder,
+                //.itemName =... => better leave empty for a root item!
+                .owner = sharedDriveName_.empty() ? FileOwner::me : FileOwner::none,
+            };
             return {locationRootId, std::move(rootDetails)};
         }
 
@@ -2038,12 +2043,14 @@ public:
 
     void notifyFolderCreated(const FileStateDelta& stateDelta, const std::string& folderId, const Zstring& folderName, const std::string& parentId)
     {
-        GdriveItemDetails details = {};
-        details.itemName = folderName;
-        details.type = GdriveItemType::folder;
-        details.owner = FileOwner::me;
-        details.modTime = std::time(nullptr);
-        details.parentIds.push_back(parentId);
+        GdriveItemDetails details
+        {
+            .itemName = folderName,
+            .modTime = std::time(nullptr),
+            .type = GdriveItemType::folder,
+            .owner = FileOwner::me,
+            .parentIds{parentId},
+        };
 
         //avoid needless conflicts due to different Google Drive folder modTime!
         if (auto it = itemDetails_.find(folderId); it != itemDetails_.end())
@@ -2054,13 +2061,15 @@ public:
 
     void notifyShortcutCreated(const FileStateDelta& stateDelta, const std::string& shortcutId, const Zstring& shortcutName, const std::string& parentId, const std::string& targetId)
     {
-        GdriveItemDetails details = {};
-        details.itemName = shortcutName;
-        details.type = GdriveItemType::shortcut;
-        details.owner = FileOwner::me;
-        details.modTime = std::time(nullptr);
-        details.targetId = targetId;
-        details.parentIds.push_back(parentId);
+        GdriveItemDetails details
+        {
+            .itemName = shortcutName,
+            .modTime = std::time(nullptr),
+            .type = GdriveItemType::shortcut,
+            .owner = FileOwner::me,
+            .targetId = targetId,
+            .parentIds{parentId},
+        };
 
         //avoid needless conflicts due to different Google Drive folder modTime!
         if (auto it = itemDetails_.find(shortcutId); it != itemDetails_.end())
@@ -3207,12 +3216,16 @@ struct OutputStreamGdrive : public AFS::OutputStreamImpl
                 //already existing: creates duplicate
 
                 //buffer new file state ASAP (don't wait GDRIVE_SYNC_INTERVAL)
-                GdriveItem newFileItem = {};
-                newFileItem.itemId = fileIdNew;
-                newFileItem.details.itemName = fileName;
-                newFileItem.details.type = GdriveItemType::file;
-                newFileItem.details.owner = FileOwner::me;
-                newFileItem.details.fileSize = asyncStreamIn->getTotalBytesRead();
+                GdriveItem newFileItem
+                {
+                    .itemId = fileIdNew,
+                    .details{
+                        .itemName = fileName,
+                        .fileSize = asyncStreamIn->getTotalBytesRead(),
+                        .type = GdriveItemType::file,
+                        .owner = FileOwner::me,
+                    }
+                };
                 if (modTime) //else: whatever modTime Google Drive selects will be notified after GDRIVE_SYNC_INTERVAL
                     newFileItem.details.modTime = *modTime;
                 newFileItem.details.parentIds.push_back(parentId);
@@ -3611,14 +3624,18 @@ private:
             //buffer new file state ASAP (don't wait GDRIVE_SYNC_INTERVAL)
             accessGlobalFileState(fsTarget.gdriveLogin_, [&](GdriveFileStateAtLocation& fileState) //throw SysError
             {
-                GdriveItem newFileItem = {};
-                newFileItem.itemId = fileIdTrg;
-                newFileItem.details.itemName = itemNameNew;
-                newFileItem.details.type = GdriveItemType::file;
-                newFileItem.details.owner = fileState.all().getSharedDriveName().empty() ? FileOwner::me : FileOwner::none;
-                newFileItem.details.fileSize = itemDetailsSrc.fileSize;
-                newFileItem.details.modTime = itemDetailsSrc.modTime;
-                newFileItem.details.parentIds.push_back(parentIdTrg);
+                const GdriveItem newFileItem
+                {
+                    .itemId = fileIdTrg,
+                    .details{
+                        .itemName = itemNameNew,
+                        .fileSize = itemDetailsSrc.fileSize,
+                        .modTime = itemDetailsSrc.modTime,
+                        .type = GdriveItemType::file,
+                        .owner = fileState.all().getSharedDriveName().empty() ? FileOwner::me : FileOwner::none,
+                        .parentIds{parentIdTrg},
+                    }
+                };
                 fileState.all().notifyItemCreated(aaiTrg.stateDelta, newFileItem);
             });
 

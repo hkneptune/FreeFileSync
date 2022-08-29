@@ -362,7 +362,7 @@ DirCallback::HandleLink DirCallback::onSymlink(const AFS::SymlinkInfo& si) //thr
         case SymLinkHandling::exclude:
             return HandleLink::skip;
 
-        case SymLinkHandling::direct:
+        case SymLinkHandling::asLink:
             if (cfg_.filter.ref().passFileFilter(relPath)) //always use file filter: Link type may not be "stable" on Linux!
             {
                 output_.addSubLink(si.itemName, LinkAttributes(si.modTime));

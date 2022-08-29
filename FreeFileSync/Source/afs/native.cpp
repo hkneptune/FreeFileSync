@@ -174,7 +174,7 @@ std::vector<FsItem> getDirContentFlat(const Zstring& dirPath) //throw FileError
 struct FsItemDetails
 {
     ItemType type;
-    time_t   modTime; //number of seconds since Jan. 1st 1970 UTC
+    time_t   modTime; //number of seconds since Jan. 1st 1970 GMT
     uint64_t fileSize; //unit: bytes!
     AFS::FingerPrint filePrint;
 };
@@ -605,7 +605,7 @@ private:
         catch (FileError&) {});
 
         if (copyFilePermissions)
-            copyItemPermissions(getNativePath(afsSource), nativePathTarget, ProcSymlink::direct); //throw FileError
+            copyItemPermissions(getNativePath(afsSource), nativePathTarget, ProcSymlink::asLink); //throw FileError
     }
 
     //already existing: undefined behavior! (e.g. fail/overwrite)

@@ -41,7 +41,7 @@ template <class S, class T> bool endsWithAsciiNoCase(const S& str, const T& post
 template <class S, class T> bool equalString     (const S& lhs, const T& rhs);
 template <class S, class T> bool equalAsciiNoCase(const S& lhs, const T& rhs);
 
-//template <class S, class T> std::strong_ordering compareString(const S& lhs, const T& rhs);
+template <class S, class T> std::strong_ordering compareString(const S& lhs, const T& rhs);
 template <class S, class T> std::weak_ordering compareAsciiNoCase(const S& lhs, const T& rhs); //basic case-insensitive comparison (considering A-Z only!)
 
 //STL container predicates for std::map, std::unordered_set/map
@@ -269,10 +269,12 @@ bool equalAsciiNoCase(const S& lhs, const T& rhs)
 }
 
 
-#if 0
-//support embedded 0, unlike strncmp/wcsncmp:
+namespace impl
+{
+//support embedded 0 (unlike strncmp/wcsncmp) + compare unsigned[!] char
 inline std::strong_ordering strcmpWithNulls(const char*    ptr1, const char*    ptr2, size_t num) { return std:: memcmp(ptr1, ptr2, num) <=> 0; }
 inline std::strong_ordering strcmpWithNulls(const wchar_t* ptr1, const wchar_t* ptr2, size_t num) { return std::wmemcmp(ptr1, ptr2, num) <=> 0; }
+}
 
 template <class S, class T> inline
 std::strong_ordering compareString(const S& lhs, const T& rhs)
@@ -280,13 +282,12 @@ std::strong_ordering compareString(const S& lhs, const T& rhs)
     const size_t lhsLen = strLength(lhs);
     const size_t rhsLen = strLength(rhs);
 
-    //length check *after* strcmpWithNulls(): we DO care about natural ordering: e.g. for "compareString(getUpperCase(lhs), getUpperCase(rhs))"
+    //length check *after* strcmpWithNulls(): we DO care about natural ordering
     if (const std::strong_ordering cmp = impl::strcmpWithNulls(strBegin(lhs), strBegin(rhs), std::min(lhsLen, rhsLen));
         cmp != std::strong_ordering::equal)
         return cmp;
     return lhsLen <=> rhsLen;
 }
-#endif
 
 
 template <class S, class T> inline
@@ -587,7 +588,7 @@ struct CopyStringToString
     T copy(const S& src) const
     {
         static_assert(!std::is_same_v<std::decay_t<S>, std::decay_t<T>>);
-        return T(strBegin(src), strLength(src));
+        return {strBegin(src), strLength(src)};
     }
 };
 
@@ -626,11 +627,10 @@ S printNumber(const T& format, const Num& number) //format a single number using
 #endif
     static_assert(std::is_same_v<GetCharTypeT<S>, GetCharTypeT<T>>);
 
-    const int BUFFER_SIZE = 128;
-    GetCharTypeT<S> buffer[BUFFER_SIZE]; //zero-initialize?
-    const int charsWritten = impl::saferPrintf(buffer, BUFFER_SIZE, strBegin(format), number);
+    GetCharTypeT<S> buf[128]; //zero-initialize?
+    const int charsWritten = impl::saferPrintf(buf, std::size(buf), strBegin(format), number);
 
-    return 0 < charsWritten && charsWritten < BUFFER_SIZE ? S(buffer, charsWritten) : S();
+    return 0 < charsWritten && charsWritten < std::ssize(buf) ? S(buf, charsWritten) : S();
 }
 
 
@@ -944,7 +944,7 @@ Num hashString(const S& str)
 
 struct StringHash
 {
-    using is_transparent = int; //allow heterogenous lookup!
+    using is_transparent = int; //enable heterogenous lookup!
 
     template <class String>
     size_t operator()(const String& str) const { return hashString<size_t>(str); }
@@ -953,7 +953,7 @@ struct StringHash
 
 struct StringEqual
 {
-    using is_transparent = int; //allow heterogenous lookup!
+    using is_transparent = int; //enable heterogenous lookup!
 
     template <class String1, class String2>
     bool operator()(const String1& lhs, const String2& rhs) const { return equalString(lhs, rhs); }
@@ -963,7 +963,7 @@ struct StringEqual
 struct LessAsciiNoCase
 {
     template <class String>
-    bool operator()(const String& lhs, const String& rhs) const { return std::is_lt(compareAsciiNoCase(lhs, rhs)); }
+    bool operator()(const String& lhs, const String& rhs) const { return compareAsciiNoCase(lhs, rhs) < 0; }
 };
 
 

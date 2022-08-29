@@ -59,25 +59,25 @@ void fff::logNonDefaultSettings(const XmlGlobalSettings& activeSettings, PhaseCa
     std::wstring changedSettingsMsg;
 
     if (activeSettings.failSafeFileCopy != defaultSettings.failSafeFileCopy)
-        changedSettingsMsg += L"\n    " + _("Fail-safe file copy") + L" - " + (activeSettings.failSafeFileCopy ? _("Enabled") : _("Disabled"));
+        changedSettingsMsg += L"\n" + (TAB_SPACE + _("Fail-safe file copy")) + L" - " + (activeSettings.failSafeFileCopy ? _("Enabled") : _("Disabled"));
 
     if (activeSettings.copyLockedFiles != defaultSettings.copyLockedFiles)
-        changedSettingsMsg += L"\n    " + _("Copy locked files") + L" - " + (activeSettings.copyLockedFiles ? _("Enabled") : _("Disabled"));
+        changedSettingsMsg += L"\n" + (TAB_SPACE + _("Copy locked files")) + L" - " + (activeSettings.copyLockedFiles ? _("Enabled") : _("Disabled"));
 
     if (activeSettings.copyFilePermissions != defaultSettings.copyFilePermissions)
-        changedSettingsMsg += L"\n    " + _("Copy file access permissions") + L" - " + (activeSettings.copyFilePermissions ? _("Enabled") : _("Disabled"));
+        changedSettingsMsg += L"\n" + (TAB_SPACE + _("Copy file access permissions")) + L" - " + (activeSettings.copyFilePermissions ? _("Enabled") : _("Disabled"));
 
     if (activeSettings.fileTimeTolerance != defaultSettings.fileTimeTolerance)
-        changedSettingsMsg += L"\n    " + _("File time tolerance") + L" - " + numberTo<std::wstring>(activeSettings.fileTimeTolerance);
+        changedSettingsMsg += L"\n" + (TAB_SPACE + _("File time tolerance")) + L" - " + numberTo<std::wstring>(activeSettings.fileTimeTolerance);
 
     if (activeSettings.runWithBackgroundPriority != defaultSettings.runWithBackgroundPriority)
-        changedSettingsMsg += L"\n    " + _("Run with background priority") + L" - " + (activeSettings.runWithBackgroundPriority ? _("Enabled") : _("Disabled"));
+        changedSettingsMsg += L"\n" + (TAB_SPACE + _("Run with background priority")) + L" - " + (activeSettings.runWithBackgroundPriority ? _("Enabled") : _("Disabled"));
 
     if (activeSettings.createLockFile != defaultSettings.createLockFile)
-        changedSettingsMsg += L"\n    " + _("Lock directories during sync") + L" - " + (activeSettings.createLockFile ? _("Enabled") : _("Disabled"));
+        changedSettingsMsg += L"\n" + (TAB_SPACE + _("Lock directories during sync")) + L" - " + (activeSettings.createLockFile ? _("Enabled") : _("Disabled"));
 
     if (activeSettings.verifyFileCopy != defaultSettings.verifyFileCopy)
-        changedSettingsMsg += L"\n    " + _("Verify copied files") + L" - " + (activeSettings.verifyFileCopy ? _("Enabled") : _("Disabled"));
+        changedSettingsMsg += L"\n" + (TAB_SPACE + _("Verify copied files")) + L" - " + (activeSettings.verifyFileCopy ? _("Enabled") : _("Disabled"));
 
     if (!changedSettingsMsg.empty())
         callback.logInfo(_("Using non-default global settings:") + changedSettingsMsg); //throw X

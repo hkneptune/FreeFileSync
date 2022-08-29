@@ -168,12 +168,27 @@ std::wstring zen::formatNumber(int64_t n)
 
 std::wstring zen::formatUtcToLocalTime(time_t utcTime)
 {
-    auto errorMsg = [&] { return _("Error") + L" (time_t: " + numberTo<std::wstring>(utcTime) + L')'; };
+    auto fmtFallback = [utcTime] //don't take "no" for an answer!
+    {
+        if (const TimeComp tc = getUtcTime(utcTime);
+            tc != TimeComp())
+        {
+            wchar_t buf[128] = {}; //the only way to format abnormally large or invalid modTime: std::strftime() will fail!
+            if (const int rv = std::swprintf(buf, std::size(buf), L"%d-%02d-%02d  %02d:%02d:%02d GMT", tc.year, tc.month, tc.day, tc.hour, tc.minute, tc.second);
+                0 < rv && rv < std::ssize(buf))
+                return std::wstring(buf, rv);
+        }
+
+        return L"time_t = " + numberTo<std::wstring>(utcTime);
+    };
 
     const TimeComp& loc = getLocalTime(utcTime); //returns TimeComp() on error
 
-    std::wstring dateString = utfTo<std::wstring>(formatTime(Zstr("%x  %X"), loc));
-    return !dateString.empty() ? dateString : errorMsg();
+    /*const*/ std::wstring dateTimeFmt = utfTo<std::wstring>(formatTime(Zstr("%x  %X"), loc));
+    if (dateTimeFmt.empty())
+        return fmtFallback();
+
+    return dateTimeFmt;
 }
 
 
@@ -188,9 +203,9 @@ WeekDay impl::getFirstDayOfWeekImpl() //throw SysError
     const char* firstDay = ::nl_langinfo(_NL_TIME_FIRST_WEEKDAY); //[1-Sunday, 7-Saturday]
     ASSERT_SYSERROR(firstDay && 1 <= *firstDay && *firstDay <= 7);
 
-    const int weekDayStartSunday = *firstDay;
-    const int weekDayStartMonday = (weekDayStartSunday - 1 + 6) % 7; //+6 == -1 in Z_7
-    // [0-Monday, 6-Sunday]
+    const int weekDayStartSunday = *firstDay;                        //[1-Sunday, 7-Saturday]
+    const int weekDayStartMonday = (weekDayStartSunday - 2 + 7) % 7; //[0-Monday, 6-Sunday]  7 == 0 in Z_7
+
     return static_cast<WeekDay>(weekDayStartMonday);
 }
 

@@ -10,7 +10,6 @@
 #include <memory>
 #include <numeric>
 #include <optional>
-//#include <set>
 #include <vector>
 #include <zen/stl_tools.h>
 #include <wx/scrolwin.h>

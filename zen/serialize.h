@@ -8,9 +8,6 @@
 #define SERIALIZE_H_839405783574356
 
 #include <functional>
-//#include <cstdint>
-//#include <stdexcept>
-//#include "string_base.h"
 #include "sys_error.h"
 //keep header clean from specific stream implementations! (e.g.file_io.h)! used by abstract.h!
 
@@ -19,36 +16,35 @@ namespace zen
 {
 /* high-performance unformatted serialization (avoiding wxMemoryOutputStream/wxMemoryInputStream inefficiencies)
 
---------------------------
-|Binary Container Concept|
---------------------------
-binary container for data storage: must support "basic" std::vector interface (e.g. std::vector<std::byte>, std::string, Zbase<char>)
+    ----------------------------
+    | Binary Container Concept |
+    ----------------------------
+        binary container for data storage: must support "basic" std::vector interface (e.g. std::vector<std::byte>, std::string, Zbase<char>)
 
+    ---------------------------------
+    | Buffered Input Stream Concept |
+    ---------------------------------
+        struct BufferedInputStream
+        {
+            size_t read(void* buffer, size_t bytesToRead); //throw X; return "bytesToRead" bytes unless end of stream!
 
--------------------------------
-|Buffered Input Stream Concept|
--------------------------------
-struct BufferedInputStream
-{
-    size_t read(void* buffer, size_t bytesToRead); //throw X; return "bytesToRead" bytes unless end of stream!
+            Optional: support stream-copying
+            --------------------------------
+            size_t getBlockSize() const;
+            const IoCallback& notifyUnbufferedIO
+        };
 
-Optional: support stream-copying
---------------------------------
-    size_t getBlockSize() const;
-    const IoCallback& notifyUnbufferedIO
-};
+    ----------------------------------
+    | Buffered Output Stream Concept |
+    ----------------------------------
+        struct BufferedOutputStream
+        {
+            void write(const void* buffer, size_t bytesToWrite); //throw X
 
---------------------------------
-|Buffered Output Stream Concept|
---------------------------------
-struct BufferedOutputStream
-{
-    void write(const void* buffer, size_t bytesToWrite); //throw X
-
-Optional: support stream-copying
---------------------------------
-    const IoCallback& notifyUnbufferedIO
-};                                                                           */
+            Optional: support stream-copying
+            --------------------------------
+            const IoCallback& notifyUnbufferedIO
+        };                                                                           */
 using IoCallback = std::function<void(int64_t bytesDelta)>; //throw X
 
 
@@ -116,6 +112,7 @@ private:
     size_t pos_ = 0;
 };
 
+
 template <class BinContainer>
 struct MemoryStreamOut
 {
@@ -139,9 +136,6 @@ private:
 
     BinContainer buffer_;
 };
-
-
-
 
 
 
@@ -214,10 +208,13 @@ void writeNumber(BufferedOutputStream& stream, const N& num)
 template <class C, class BufferedOutputStream> inline
 void writeContainer(BufferedOutputStream& stream, const C& cont) //don't even consider UTF8 conversions here, we're handling arbitrary binary data!
 {
-    const auto len = cont.size();
-    writeNumber(stream, static_cast<uint32_t>(len));
-    if (len > 0)
-        writeArray(stream, &cont[0], sizeof(typename C::value_type) * len); //don't use c_str(), but access uniformly via STL interface
+    const auto size = cont.size();
+
+    assert(size <= INT32_MAX);
+    writeNumber(stream, static_cast<int32_t>(size)); //use *signed* integer to help catch data corruption
+
+    if (size > 0)
+        writeArray(stream, &cont[0], sizeof(typename C::value_type) * size); //don't use c_str(), but access uniformly via STL interface
 }
 
 
@@ -244,18 +241,21 @@ N readNumber(BufferedInputStream& stream) //throw SysErrorUnexpectedEos
 template <class C, class BufferedInputStream> inline
 C readContainer(BufferedInputStream& stream) //throw SysErrorUnexpectedEos
 {
+    const auto size = readNumber<int32_t>(stream); //throw SysErrorUnexpectedEos
+    if (size < 0) //most likely due to data corruption!
+        throw SysErrorUnexpectedEos();
+
     C cont;
-    auto strLength = readNumber<uint32_t>(stream); //throw SysErrorUnexpectedEos
-    if (strLength > 0)
+    if (size > 0)
     {
         try
         {
-            cont.resize(strLength); //throw std::length_error, std::bad_alloc
+            cont.resize(size); //throw std::length_error, std::bad_alloc
         }
-        catch (std::length_error&) { throw SysErrorUnexpectedEos(); } //most likely this is due to data corruption!
+        catch (std::length_error&) { throw SysErrorUnexpectedEos(); } //most likely due to data corruption!
         catch (   std::bad_alloc&) { throw SysErrorUnexpectedEos(); } //
 
-        readArray(stream, &cont[0], sizeof(typename C::value_type) * strLength); //throw SysErrorUnexpectedEos
+        readArray(stream, &cont[0], sizeof(typename C::value_type) * size); //throw SysErrorUnexpectedEos
     }
     return cont;
 }

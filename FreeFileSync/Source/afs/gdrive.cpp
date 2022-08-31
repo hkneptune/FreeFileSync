@@ -2808,7 +2808,7 @@ private:
                 if (!std::equal(std::begin(tmp2), std::end(tmp2), std::begin(DB_FILE_DESCR_OLD)))
                     throw SysError(_("File content is corrupted.") + L" (invalid header)");
 
-                const int version = readNumber<int32_t>(streamIn2);
+                const int version = readNumber<int32_t>(streamIn2); //throw SysErrorUnexpectedEos
                 if (version != 1 && //TODO: remove migration code at some time! 2019-12-05
                     version != 2 && //TODO: remove migration code at some time! 2020-06-11
                     version != 3)   //TODO: remove migration code at some time! 2020-07-03
@@ -2826,7 +2826,7 @@ private:
                 if (!std::equal(std::begin(tmp), std::end(tmp), std::begin(DB_FILE_DESCR)))
                     throw SysError(_("File content is corrupted.") + L" (invalid header)");
 
-                const int version = readNumber<int32_t>(streamIn);
+                const int version = readNumber<int32_t>(streamIn); //throw SysErrorUnexpectedEos
                 if (version != 4 &&
                     version != DB_FILE_VERSION)
                     throw SysError(_("Unsupported data format.") + L' ' + replaceCpy(_("Version: %x"), L"%x", numberTo<std::wstring>(version)));
@@ -2843,6 +2843,7 @@ private:
                     else
                         return makeSharedRef<GdriveDrivesBuffer>(streamInBody, accessBuf.ref()); //throw SysError
                 }();
+
                 return UserSession{accessBuf, drivesBuf};
             }
         }

@@ -15,7 +15,7 @@ Zstring getUnicodeNormalFormNonAscii(const Zstring& str)
 {
     //Example: const char* decomposed  = "\x6f\xcc\x81";
     //         const char* precomposed = "\xc3\xb3";
-    assert(!isAsciiString(str));
+    assert(!isAsciiString(str)); //includes "not-empty" check
     assert(str.find(Zchar('\0')) == Zstring::npos); //don't expect embedded nulls!
 
     try
@@ -51,14 +51,14 @@ Zstring getUpperCaseNonAscii(const Zstring& str)
     Zstring strNorm = getUnicodeNormalFormNonAscii(str);
     try
     {
-        static_assert(sizeof(impl::CodePoint) == sizeof(gunichar));
         Zstring output;
         output.reserve(strNorm.size());
 
         UtfDecoder<char> decoder(strNorm.c_str(), strNorm.size());
         while (const std::optional<impl::CodePoint> cp = decoder.getNext())
-            impl::codePointToUtf<char>(::g_unichar_toupper(*cp), [&](char c) { output += c; }); //don't use std::towupper: *incomplete* and locale-dependent!
+            codePointToUtf<char>(::g_unichar_toupper(*cp), [&](char c) { output += c; }); //don't use std::towupper: *incomplete* and locale-dependent!
 
+        static_assert(sizeof(impl::CodePoint) == sizeof(gunichar));
         return output;
 
     }
@@ -89,6 +89,10 @@ namespace
 {
 std::weak_ordering compareNoCaseUtf8(const char* lhs, size_t lhsLen, const char* rhs, size_t rhsLen)
 {
+    //expect Unicode normalized strings!
+    assert(std::string(lhs, lhsLen) == getUnicodeNormalForm(std::string(lhs, lhsLen)));
+    assert(std::string(rhs, rhsLen) == getUnicodeNormalForm(std::string(rhs, rhsLen)));
+
     //- strncasecmp implements ASCII CI-comparsion only! => signature is broken for UTF8-input; toupper() similarly doesn't support Unicode
     //- wcsncasecmp: https://opensource.apple.com/source/Libc/Libc-763.12/string/wcsncasecmp-fbsd.c
     // => re-implement comparison based on g_unichar_tolower() to avoid memory allocations
@@ -103,12 +107,13 @@ std::weak_ordering compareNoCaseUtf8(const char* lhs, size_t lhsLen, const char*
             return !cpR <=> !cpL;
 
         static_assert(sizeof(gunichar) == sizeof(impl::CodePoint));
+        static_assert(std::is_unsigned_v<gunichar>, "unsigned char-comparison is the convention!");
 
         //ordering: "to lower" converts to higher code points than "to upper"
         const gunichar charL = ::g_unichar_toupper(*cpL); //note: tolower can be ambiguous, so don't use:
         const gunichar charR = ::g_unichar_toupper(*cpR); //e.g. "Σ" (upper case) can be lower-case "ς" in the end of the word or "σ" in the middle.
         if (charL != charR)
-            return makeUnsigned(charL) <=> makeUnsigned(charR); //unsigned char-comparison is the convention!
+            return charL <=> charR;
     }
 }
 }
@@ -206,25 +211,48 @@ std::weak_ordering compareNatural(const Zstring& lhs, const Zstring& rhs)
 
 std::weak_ordering compareNoCase(const Zstring& lhs, const Zstring& rhs)
 {
-    //fast path: no need for extra memory allocations => ~ 6x speedup
-    const size_t minSize = std::min(lhs.size(), rhs.size());
-
-    size_t i = 0;
-    for (; i < minSize; ++i)
+    //fast path: no memory allocations => ~ 6x speedup
+    if (isAsciiString(lhs) && isAsciiString(rhs))
     {
-        const Zchar l = lhs[i];
-        const Zchar r = rhs[i];
-        if (!isAsciiChar(l) || !isAsciiChar(r))
-            goto slowPath; //=> let's NOT make assumptions how getUpperCase() compares "ASCII <=> non-ASCII"
-
-        const Zchar lUp = asciiToUpper(l); //
-        const Zchar rUp = asciiToUpper(r); //no surprises: emulate getUpperCase() [verified!]
-        if (lUp != rUp)                    //
-            return lUp <=> rUp;            //
+        const size_t minSize = std::min(lhs.size(), rhs.size());
+        for (size_t i = 0; i < minSize; ++i)
+        {
+            //ordering: do NOT call compareAsciiNoCase(), which uses asciiToLower()!
+            const Zchar lUp = asciiToUpper(lhs[i]); //
+            const Zchar rUp = asciiToUpper(rhs[i]); //no surprises: emulate getUpperCase() [verified!]
+            if (lUp != rUp)                         //
+                return lUp <=> rUp;                 //
+        }
+        return lhs.size() <=> rhs.size();
     }
-    return lhs.size() <=> rhs.size();
-slowPath: //--------------------------------------
+    //--------------------------------------
 
-    return compareNoCaseUtf8(lhs.c_str() + i, lhs.size() - i, 
-                             rhs.c_str() + i, rhs.size() - i);
+    //can't we instead skip isAsciiString() and compare chars as long as isAsciiChar()?
+    // => NOPE! e.g. decomposed Unicode! A seemingly single isAsciiChar() might be followed by a combining character!!!
+
+    return getUpperCase(lhs) <=> getUpperCase(rhs);
+}
+
+
+bool equalNoCase(const Zstring& lhs, const Zstring& rhs)
+{
+    //fast-path: no need for extra memory allocations
+    const bool isAsciiL = isAsciiString(lhs);
+    const bool isAsciiR = isAsciiString(rhs);
+    if (isAsciiL != isAsciiR)
+        return false;
+
+    if (isAsciiL)
+    {
+        if (lhs.size() != rhs.size())
+            return false;
+
+        for (size_t i = 0; i < lhs.size(); ++i)
+            if (asciiToUpper(lhs[i]) !=
+                asciiToUpper(rhs[i]))
+                return false;
+        return true;
+    }
+
+    return getUpperCaseNonAscii(lhs) == getUpperCaseNonAscii(rhs);
 }

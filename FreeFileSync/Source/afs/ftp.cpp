@@ -79,6 +79,8 @@ Zstring concatenateFtpFolderPathPhrase(const FtpLogin& login, const AfsPath& afs
 
 Zstring ansiToUtfEncoding(const std::string& str) //throw SysError
 {
+    if (str.empty()) return {};
+
     gsize bytesWritten = 0; //not including the terminating null
 
     GError* error = nullptr;
@@ -104,6 +106,8 @@ Zstring ansiToUtfEncoding(const std::string& str) //throw SysError
 
 std::string utfToAnsiEncoding(const Zstring& str) //throw SysError
 {
+    if (str.empty()) return {};
+
     gsize bytesWritten = 0; //not including the terminating null
 
     GError* error = nullptr;

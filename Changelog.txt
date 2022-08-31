@@ -1,5 +1,10 @@
-FreeFileSync 11.25
-------------------
+FreeFileSync 11.25 [2022-08-31]
+-------------------------------
+Fixed crash when normalizing Unicode non-characters
+Fixed crash when accesssing Google Drive
+Fixed regession for decomposed Unicode comparison
+Fixed "exit code 106: --sign is required" error on macOS
+Reset icon cache after each comparison
 
 
 FreeFileSync 11.24 [2022-08-28]

@@ -63,10 +63,7 @@ template<> struct std::hash<ZstringNoCase> { size_t operator()(const ZstringNoCa
 
 std::weak_ordering compareNoCase(const Zstring& lhs, const Zstring& rhs);
 
-inline
-bool equalNoCase(const Zstring& lhs, const Zstring& rhs) { return compareNoCase(lhs, rhs) == std::weak_ordering::equivalent;  }
-//note: the "lhs.size() != rhs.size()" short-cut would require two isAsciiString() checks
-//=> generally SLOWER than starting comparison directly during first pass and breaking on first difference!
+bool equalNoCase(const Zstring& lhs, const Zstring& rhs);
 
 //------------------------------------------------------------------------------------------
 std::weak_ordering compareNatural(const Zstring& lhs, const Zstring& rhs);

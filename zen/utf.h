@@ -222,15 +222,9 @@ private:
 
 //----------------------------------------------------------------------------------------------------------------
 
-template <class Function> inline void codePointToUtf(CodePoint cp, Function writeOutput, std::integral_constant<int, 1>) { codePointToUtf8 (cp, writeOutput); } //UTF8-char
-template <class Function> inline void codePointToUtf(CodePoint cp, Function writeOutput, std::integral_constant<int, 2>) { codePointToUtf16(cp, writeOutput); } //Windows: UTF16-wchar_t
-template <class Function> inline void codePointToUtf(CodePoint cp, Function writeOutput, std::integral_constant<int, 4>) { writeOutput(cp); } //other OS: UTF32-wchar_t
-
-template <class CharType, class Function> inline
-void codePointToUtf(CodePoint cp, Function writeOutput) //"writeOutput" is a unary function taking a CharType
-{
-    return codePointToUtf(cp, writeOutput, std::integral_constant<int, sizeof(CharType)>());
-}
+template <class Function> inline void codePointToUtfImpl(CodePoint cp, Function writeOutput, std::integral_constant<int, 1>) { codePointToUtf8 (cp, writeOutput); } //UTF8-char
+template <class Function> inline void codePointToUtfImpl(CodePoint cp, Function writeOutput, std::integral_constant<int, 2>) { codePointToUtf16(cp, writeOutput); } //Windows: UTF16-wchar_t
+template <class Function> inline void codePointToUtfImpl(CodePoint cp, Function writeOutput, std::integral_constant<int, 4>) { writeOutput(cp); } //other OS: UTF32-wchar_t
 
 //----------------------------------------------------------------------------------------------------------------
 
@@ -277,8 +271,17 @@ private:
 };
 }
 
+
 template <class CharType>
 using UtfDecoder = impl::UtfDecoderImpl<CharType, sizeof(CharType)>;
+
+
+template <class CharType, class Function> inline
+void codePointToUtf(impl::CodePoint cp, Function writeOutput) //"writeOutput" is a unary function taking a CharType
+{
+    return impl::codePointToUtfImpl(cp, writeOutput, std::integral_constant<int, sizeof(CharType)>());
+}
+
 
 //-------------------------------------------------------------------------------------------
 

@@ -313,7 +313,7 @@ void updateTopButton(wxBitmapButton& btn, const wxImage& img, const wxString& va
              stackImages(btnIconImg, btnImg, ImageStackLayout::horizontal, ImageStackAlignment::center, fastFromDIP(5)) :
              stackImages(btnImg, btnIconImg, ImageStackLayout::horizontal, ImageStackAlignment::center, fastFromDIP(5));
 
-    wxSize btnSize = btnImg.GetSize();
+    wxSize btnSize = btnImg.GetSize() + wxSize(fastFromDIP(10), 0) /*border space*/;
     btnSize.x = std::max(btnSize.x, fastFromDIP(TOP_BUTTON_OPTIMAL_WIDTH_DIP));
 
     btnImg = resizeCanvas(btnImg, btnSize, wxALIGN_CENTER);
@@ -411,7 +411,6 @@ void MainDialog::create(const Zstring& globalConfigFilePath,
                         const std::vector<Zstring>& referenceFiles,
                         bool startComparison)
 {
-
     const XmlGlobalSettings globSett = globalSettings ? *globalSettings : tryLoadGlobalConfig(globalConfigFilePath);
 
     try
@@ -4200,6 +4199,9 @@ void MainDialog::onCompare(wxCommandEvent& event)
             updateConfigLastRunStats(std::chrono::system_clock::to_time_t(r.summary.startTime), r.summary.syncResult, getNullPath() /*logFilePath*/);
         }
     }
+
+    //reset icon cache (IconBuffer) after *each* comparison!
+    filegrid::setupIcons(*m_gridMainL, *m_gridMainC, *m_gridMainR, globalCfg_.mainDlg.showIcons, convert(globalCfg_.mainDlg.iconSize));
 }
 
 

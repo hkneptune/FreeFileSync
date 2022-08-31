@@ -263,7 +263,7 @@ bool equalString(const S& lhs, const T& rhs)
 template <class S, class T> inline
 bool equalAsciiNoCase(const S& lhs, const T& rhs)
 {
-    assert(isAsciiString(lhs) || isAsciiString(rhs));
+    //assert(isAsciiString(lhs) || isAsciiString(rhs));
     const size_t lhsLen = strLength(lhs);
     return lhsLen == strLength(rhs) && impl::strcmpAsciiNoCase(strBegin(lhs), strBegin(rhs), lhsLen) == std::weak_ordering::equivalent;
 }

@@ -19,7 +19,7 @@ using namespace zen;
 
 Zstring zen::escapeCommandArg(const Zstring& arg)
 {
-//*INDENT-OFF*
+//*INDENT-OFF*    if not put exactly here, Astyle will seriously mess this .cpp file up!
     Zstring output;
     for (const Zchar c : arg)
         switch (c)
@@ -27,7 +27,7 @@ Zstring zen::escapeCommandArg(const Zstring& arg)
             case  '"': output += "\\\""; break; //Windows: not needed; " cannot be used as file name
             case '\\': output += "\\\\"; break; //Windows: path separator! => don't escape
             case '`':  output += "\\`";  break; //yes, used in some paths => Windows: no escaping required
-            default: output += c; break;
+            default:   output += c; break;
         }
 //*INDENT-ON*
     if (contains(output, Zstr(' ')))

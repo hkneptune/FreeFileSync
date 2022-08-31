@@ -45,7 +45,7 @@ void normalizeForSearch<false /*respectCase*/>(std::wstring& str)
         else if (c == L'\\')
             c = L'/';
         else
-            c = asciiToUpper(c);
+            c = asciiToUpper(c); //caveat, decomposed Unicode form! c might be followed by combining character! Still, should be fine...
 }
 
 

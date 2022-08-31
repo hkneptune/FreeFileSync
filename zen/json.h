@@ -140,7 +140,7 @@ namespace
         {
             UtfDecoder<impl::Char16> decoder(utf16Buf.c_str(), utf16Buf.size());
             while (std::optional<impl::CodePoint> cp = decoder.getNext())
-                impl::codePointToUtf<char>(*cp, [&](char c) { output += c; });
+                codePointToUtf<char>(*cp, [&](char c) { output += c; });
             utf16Buf.clear();
         }
     };

@@ -138,8 +138,8 @@ public:
     {
         std::lock_guard dummy(lockCurrentStatus_);
 
-        [[maybe_unused]] const auto it = activeThreadIdxs_.emplace(threadIdx, parallelOps);
-        assert(it.second);
+        [[maybe_unused]] const auto [it, inserted] = activeThreadIdxs_.emplace(threadIdx, parallelOps);
+        assert(inserted);
 
         notifyingThreadIdx_ = activeThreadIdxs_.begin()->first;
     }
@@ -223,11 +223,11 @@ class DirCallback : public AFS::TraverserCallback
 {
 public:
     DirCallback(TraverserConfig& cfg,
-                const Zstring& parentRelPathPf, //postfixed with FILE_NAME_SEPARATOR!
+                Zstring&& parentRelPathPf, //postfixed with FILE_NAME_SEPARATOR (or empty!)
                 FolderContainer& output,
                 int level) :
         cfg_(cfg),
-        parentRelPathPf_(parentRelPathPf),
+        parentRelPathPf_(std::move(parentRelPathPf)),
         output_(output),
         level_(level) {} //MUST NOT use cfg_ during construction! see BaseDirCallback()
 
@@ -289,18 +289,7 @@ void DirCallback::onFile(const AFS::FileInfo& fi) //throw ThreadStopRequest
     //apply filter before processing (use relative name!)
     if (!cfg_.filter.ref().passFileFilter(relPath))
         return;
-
-    //sync.ffs_db database and lock files are excluded via filter!
-
-    //    std::string fileId = details.fileSize >=  1024 * 1024U ? util::retrieveFileID(filepath) : std::string();
-
-    /* Perf test Windows 7, SSD, 350k files, 50k dirs, files > 1MB: 7000
-            regular:            6.9s
-            ID per file:       43.9s
-            ID per file > 1MB:  7.2s
-            ID per dir:         8.4s
-
-        Linux: retrieveFileID takes about 50% longer in VM! (avoidable because of redundant stat() call!)       */
+    //note: sync.ffs_db database and lock files are excluded via path filter!
 
     output_.addSubFile(fi.itemName, FileAttributes(fi.modTime, fi.fileSize, fi.filePrint, fi.isFollowedSymlink));
 
@@ -312,7 +301,7 @@ std::shared_ptr<AFS::TraverserCallback> DirCallback::onFolder(const AFS::FolderI
 {
     interruptionPoint(); //throw ThreadStopRequest
 
-    const Zstring& relPath = parentRelPathPf_ + fi.itemName;
+    Zstring relPath = parentRelPathPf_ + fi.itemName;
 
     //update status information no matter if item is excluded or not!
     if (cfg_.acb.mayReportCurrentFile(cfg_.threadIdx, cfg_.lastReportTime))
@@ -324,7 +313,7 @@ std::shared_ptr<AFS::TraverserCallback> DirCallback::onFolder(const AFS::FolderI
     const bool passFilter = cfg_.filter.ref().passDirFilter(relPath, &childItemMightMatch);
     if (!passFilter && !childItemMightMatch)
         return nullptr; //do NOT traverse subdirs
-    //else: attention! ensure directory filtering is applied later to exclude actually filtered directories
+    //else: ensure directory filtering is applied later to exclude actually filtered directories!!!
 
     FolderContainer& subFolder = output_.addSubFolder(fi.itemName, FolderAttributes(fi.isFollowedSymlink));
     if (passFilter)
@@ -343,7 +332,7 @@ std::shared_ptr<AFS::TraverserCallback> DirCallback::onFolder(const AFS::FolderI
                     return nullptr;
             }
 
-    return std::make_shared<DirCallback>(cfg_, relPath + FILE_NAME_SEPARATOR, subFolder, level_ + 1);
+    return std::make_shared<DirCallback>(cfg_, std::move(relPath += FILE_NAME_SEPARATOR), subFolder, level_ + 1);
 }
 
 
@@ -434,7 +423,7 @@ std::map<DirectoryKey, DirectoryValue> fff::parallelDeviceTraversal(const std::s
     for (const auto& [afsDevice, dirKeys] : perDeviceFolders)
     {
         const int threadIdx = static_cast<int>(worker.size());
-        Zstring threadName = Zstr("Comp Device[") + numberTo<Zstring>(threadIdx + 1) + Zstr('/') + numberTo<Zstring>(perDeviceFolders.size()) + Zstr("] ") +
+        Zstring threadName = Zstr("Compare[") + numberTo<Zstring>(threadIdx + 1) + Zstr('/') + numberTo<Zstring>(perDeviceFolders.size()) + Zstr("] ") +
                              utfTo<Zstring>(AFS::getDisplayPath({afsDevice, AfsPath()}));
 
         const size_t parallelOps = 1;

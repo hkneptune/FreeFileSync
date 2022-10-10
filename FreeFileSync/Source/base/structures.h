@@ -175,7 +175,7 @@ inline
 bool effectivelyEqual(const CompConfig& lhs, const CompConfig& rhs) { return lhs == rhs; } //no change in behavior
 
 
-enum class DeletionPolicy
+enum class DeletionVariant
 {
     permanent,
     recycler,
@@ -194,7 +194,7 @@ struct SyncConfig
     //sync direction settings
     SyncDirectionConfig directionCfg;
 
-    DeletionPolicy handleDeletion = DeletionPolicy::recycler; //use Recycle Bin, delete permanently or move to user-defined location
+    DeletionVariant deletionVariant = DeletionVariant::recycler; //use Recycle Bin, delete permanently or move to user-defined location
 
     //versioning options
     Zstring versioningFolderPhrase;
@@ -211,7 +211,7 @@ inline
 bool operator==(const SyncConfig& lhs, const SyncConfig& rhs)
 {
     return lhs.directionCfg           == rhs.directionCfg      &&
-           lhs.handleDeletion         == rhs.handleDeletion    &&      //!= DeletionPolicy::versioning => still consider versioningFolderPhrase: e.g. user temporarily
+           lhs.deletionVariant        == rhs.deletionVariant   &&      //!= DeletionVariant::versioning => still consider versioningFolderPhrase: e.g. user temporarily
            lhs.versioningFolderPhrase == rhs.versioningFolderPhrase && //switched to "permanent" deletion and accidentally saved cfg => versioning folder is easily restored
            lhs.versioningStyle        == rhs.versioningStyle   &&
            (lhs.versioningStyle == VersioningStyle::replace ||
@@ -229,8 +229,8 @@ inline
 bool effectivelyEqual(const SyncConfig& lhs, const SyncConfig& rhs)
 {
     return effectivelyEqual(lhs.directionCfg, rhs.directionCfg) &&
-           lhs.handleDeletion == rhs.handleDeletion &&
-           (lhs.handleDeletion != DeletionPolicy::versioning || //only evaluate versioning folder if required!
+           lhs.deletionVariant == rhs.deletionVariant &&
+           (lhs.deletionVariant != DeletionVariant::versioning || //only evaluate versioning folder if required!
             (
                 lhs.versioningFolderPhrase == rhs.versioningFolderPhrase &&
                 lhs.versioningStyle        == rhs.versioningStyle        &&
@@ -388,7 +388,7 @@ size_t getDeviceParallelOps(const std::map<AfsDevice, size_t>& deviceParallelOps
 void   setDeviceParallelOps(      std::map<AfsDevice, size_t>& deviceParallelOps, const Zstring& folderPathPhrase, size_t parallelOps);
 
 
-std::optional<CompareVariant>           getCompVariant(const MainConfiguration& mainCfg);
+std::optional<CompareVariant> getCompVariant(const MainConfiguration& mainCfg);
 std::optional<SyncVariant> getSyncVariant(const MainConfiguration& mainCfg);
 
 
@@ -401,7 +401,6 @@ struct WarningDialogs
     bool warnSignificantDifference      = true;
     bool warnNotEnoughDiskSpace         = true;
     bool warnUnresolvedConflicts        = true;
-    bool warnModificationTimeError      = true;
     bool warnRecyclerMissing            = true;
     bool warnInputFieldEmpty            = true;
     bool warnDirectoryLockFailed        = true;

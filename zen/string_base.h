@@ -61,11 +61,11 @@ protected:
     ~StorageDeepCopy() {}
 
     Char* create(size_t size) { return create(size, size); }
-    Char* create(size_t size, size_t minCapacity)
+    Char* create(size_t size, size_t capacity)
     {
-        assert(size <= minCapacity);
-        const size_t newCapacity = AP::calcCapacity(minCapacity);
-        assert(newCapacity >= minCapacity);
+        assert(size <= capacity);
+        const size_t newCapacity = AP::calcCapacity(capacity);
+        assert(newCapacity >= capacity);
 
         Descriptor* const newDescr = static_cast<Descriptor*>(this->allocate(sizeof(Descriptor) + (newCapacity + 1) * sizeof(Char))); //throw std::bad_alloc
         new (newDescr) Descriptor(size, newCapacity);
@@ -124,18 +124,18 @@ protected:
     ~StorageRefCountThreadSafe() {}
 
     Char* create(size_t size) { return create(size, size); }
-    Char* create(size_t size, size_t minCapacity)
+    Char* create(size_t size, size_t capacity)
     {
-        assert(size <= minCapacity);
+        assert(size <= capacity);
 
-        if (minCapacity == 0) //perf: avoid memory allocation for empty string
+        if (capacity == 0) //perf: avoid memory allocation for empty string
         {
             ++globalEmptyString.descr.refCount;
             return &globalEmptyString.nullTerm;
         }
 
-        const size_t newCapacity = AP::calcCapacity(minCapacity);
-        assert(newCapacity >= minCapacity);
+        const size_t newCapacity = AP::calcCapacity(capacity);
+        assert(newCapacity >= capacity);
 
         Descriptor* const newDescr = static_cast<Descriptor*>(this->allocate(sizeof(Descriptor) + (newCapacity + 1) * sizeof(Char))); //throw std::bad_alloc
         new (newDescr) Descriptor(size, newCapacity);
@@ -259,6 +259,7 @@ public:
     size_t length() const;
     size_t size  () const { return length(); }
     const Char* c_str() const { return rawStr_; } //C-string format with 0-termination
+    /**/  Char* data() { return &*begin(); }
     const Char& operator[](size_t pos) const;
     /**/  Char& operator[](size_t pos);
     bool empty() const { return length() == 0; }
@@ -558,7 +559,7 @@ void Zbase<Char, SP>::reserve(size_t minCapacity) //make unshared and check capa
         //allocate a new string
         const size_t len = length();
         Char* newStr = this->create(len, std::max(len, minCapacity)); //reserve() must NEVER shrink the string: logical const!
-        std::copy(rawStr_, rawStr_ + len + 1, newStr); //include 0-termination
+        std::copy(rawStr_, rawStr_ + len + 1 /*0-termination*/, newStr);
 
         this->destroy(rawStr_);
         rawStr_ = newStr;

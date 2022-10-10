@@ -30,6 +30,7 @@ private:
 DEFINE_NEW_FILE_ERROR(ErrorTargetExisting)
 DEFINE_NEW_FILE_ERROR(ErrorFileLocked)
 DEFINE_NEW_FILE_ERROR(ErrorMoveUnsupported)
+DEFINE_NEW_FILE_ERROR(RecycleBinUnavailable)
 
 
 //CAVEAT: thread-local Win32 error code is easily overwritten => evaluate *before* making any (indirect) system calls:

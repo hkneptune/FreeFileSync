@@ -28,8 +28,8 @@ OutputIterator encodeBase64(InputIterator first, InputIterator last, OutputItera
 template <class InputIterator, class OutputIterator>
 OutputIterator decodeBase64(InputIterator first, InputIterator last, OutputIterator result); //nothrow!
 
-std::string stringEncodeBase64(const std::string& str);
-std::string stringDecodeBase64(const std::string& str);
+std::string stringEncodeBase64(const std::string_view& str);
+std::string stringDecodeBase64(const std::string_view& str);
 
 
 
@@ -156,7 +156,7 @@ OutputIterator decodeBase64(InputIterator first, InputIterator last, OutputItera
 
 
 inline
-std::string stringEncodeBase64(const std::string& str)
+std::string stringEncodeBase64(const std::string_view& str)
 {
     std::string out;
     encodeBase64(str.begin(), str.end(), std::back_inserter(out));
@@ -165,7 +165,7 @@ std::string stringEncodeBase64(const std::string& str)
 
 
 inline
-std::string stringDecodeBase64(const std::string& str)
+std::string stringDecodeBase64(const std::string_view& str)
 {
     std::string out;
     decodeBase64(str.begin(), str.end(), std::back_inserter(out));

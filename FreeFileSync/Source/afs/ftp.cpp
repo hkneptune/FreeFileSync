@@ -29,9 +29,11 @@ namespace
 
 constexpr std::chrono::seconds FTP_SESSION_MAX_IDLE_TIME  (20);
 constexpr std::chrono::seconds FTP_SESSION_CLEANUP_INTERVAL(4);
-const int FTP_STREAM_BUFFER_SIZE = 512 * 1024; //unit: [byte]
-//FTP stream buffer should be at least as big as the biggest AFS block size (currently 256 KB for MTP),
-//but there seems to be no reason for an upper limit
+
+const size_t FTP_BLOCK_SIZE_DOWNLOAD = 64 * 1024; //libcurl returns blocks of only 16 kB as returned by recv() even if we request larger blocks via CURLOPT_BUFFERSIZE
+const size_t FTP_BLOCK_SIZE_UPLOAD   = 64 * 1024; //libcurl requests blocks of 64 kB. larger blocksizes set via CURLOPT_UPLOAD_BUFFERSIZE do not seem to make a difference
+const size_t FTP_STREAM_BUFFER_SIZE = 1024 * 1024; //unit: [byte]
+//stream buffer should be big enough to facilitate prefetching during alternating read/write operations => e.g. see serialize.h::unbufferedStreamCopy()
 
 const Zchar ftpPrefix[] = Zstr("ftp:");
 
@@ -74,7 +76,7 @@ std::weak_ordering operator<=>(const FtpSessionId& lhs, const FtpSessionId& rhs)
 
 namespace
 {
-Zstring concatenateFtpFolderPathPhrase(const FtpLogin& login, const AfsPath& afsPath); //noexcept
+Zstring concatenateFtpFolderPathPhrase(const FtpLogin& login, const AfsPath& itemPath); //noexcept
 
 
 Zstring ansiToUtfEncoding(const std::string& str) //throw SysError
@@ -95,7 +97,7 @@ Zstring ansiToUtfEncoding(const std::string& str) //throw SysError
                                 &bytesWritten, //gsize* bytes_written
                                 &error);       //GError** error
     if (!utfStr)
-        throw SysError(formatGlibError("g_convert(" + utfTo<std::string>(str) + ')', error));
+        throw SysError(formatGlibError("g_convert(" + utfTo<std::string>(str) + ", LATIN1 -> UTF-8)", error));
     ZEN_ON_SCOPE_EXIT(::g_free(utfStr));
 
     return {utfStr, bytesWritten};
@@ -108,20 +110,23 @@ std::string utfToAnsiEncoding(const Zstring& str) //throw SysError
 {
     if (str.empty()) return {};
 
+    const Zstring& strNorm = getUnicodeNormalForm(str); //convert to pre-composed *before* attempting conversion
+
     gsize bytesWritten = 0; //not including the terminating null
 
     GError* error = nullptr;
     ZEN_ON_SCOPE_EXIT(if (error) ::g_error_free(error));
 
-    gchar* ansiStr = ::g_convert(str.c_str(),   //const gchar* str
-                                 str.size(),    //gssize len
-                                 "LATIN1",      //const gchar* to_codeset
-                                 "UTF-8",       //const gchar* from_codeset
-                                 nullptr,       //gsize* bytes_read
-                                 &bytesWritten, //gsize* bytes_written
-                                 &error);       //GError** error
+    //fails for: 1. broken UTF-8 2. not-ANSI-encodable Unicode
+    gchar* ansiStr = ::g_convert(strNorm.c_str(), //const gchar* str
+                                 strNorm.size(),  //gssize len
+                                 "LATIN1",        //const gchar* to_codeset
+                                 "UTF-8",         //const gchar* from_codeset
+                                 nullptr,         //gsize* bytes_read
+                                 &bytesWritten,   //gsize* bytes_written
+                                 &error);         //GError** error
     if (!ansiStr)
-        throw SysError(formatGlibError("g_convert(" + utfTo<std::string>(str) + ')', error));
+        throw SysError(formatGlibError("g_convert(" + utfTo<std::string>(strNorm) + ", UTF-8 -> LATIN1)", error));
     ZEN_ON_SCOPE_EXIT(::g_free(ansiStr));
 
     return {ansiStr, bytesWritten};
@@ -129,7 +134,7 @@ std::string utfToAnsiEncoding(const Zstring& str) //throw SysError
 }
 
 
-std::wstring getCurlDisplayPath(const FtpSessionId& sessionId, const AfsPath& afsPath)
+std::wstring getCurlDisplayPath(const FtpSessionId& sessionId, const AfsPath& itemPath)
 {
     Zstring displayPath = Zstring(ftpPrefix) + Zstr("//");
 
@@ -142,7 +147,7 @@ std::wstring getCurlDisplayPath(const FtpSessionId& sessionId, const AfsPath& af
         port != DEFAULT_PORT_FTP)
         displayPath += Zstr(':') + numberTo<Zstring>(port);
 
-    const Zstring& relPath = getServerRelPath(afsPath);
+    const Zstring& relPath = getServerRelPath(itemPath);
     if (relPath != Zstr("/"))
         displayPath += relPath;
 
@@ -276,7 +281,7 @@ public:
     void setContextTimeout(const std::weak_ptr<int>& timeoutSec) { timeoutSec_ = timeoutSec; }
 
     //returns server response (header data)
-    std::string perform(const AfsPath& afsPath, bool isDir, curl_ftpmethod pathMethod,
+    std::string perform(const AfsPath& itemPath, bool isDir, curl_ftpmethod pathMethod,
                         const std::vector<CurlOption>& extraOptions, bool requiresUtf8) //throw SysError
     {
         if (requiresUtf8) //avoid endless recursion
@@ -297,8 +302,7 @@ public:
         options.emplace_back(CURLOPT_ERRORBUFFER, curlErrorBuf);
 
         std::string headerData;
-        using CbType =    size_t (*)(const char* buffer, size_t size, size_t nitems, void* callbackData);
-        CbType onHeaderReceived = [](const char* buffer, size_t size, size_t nitems, void* callbackData)
+        curl_write_callback onHeaderReceived = [](/*const*/ char* buffer, size_t size, size_t nitems, void* callbackData)
         {
             auto& output = *static_cast<std::string*>(callbackData);
             output.append(buffer, size * nitems);
@@ -308,7 +312,7 @@ public:
         options.emplace_back(CURLOPT_HEADERFUNCTION, onHeaderReceived);
 
         //lifetime: keep alive until after curl_easy_setopt() below
-        const std::string curlPath = getCurlUrlPath(afsPath, isDir); //throw SysError
+        const std::string curlPath = getCurlUrlPath(itemPath, isDir); //throw SysError
         options.emplace_back(CURLOPT_URL, curlPath.c_str());
 
         assert(pathMethod != CURLFTPMETHOD_MULTICWD); //too slow!
@@ -342,7 +346,7 @@ public:
         options.emplace_back(CURLOPT_LOW_SPEED_LIMIT, 1); //[bytes], can't use "0" which means "inactive", so use some low number
 
         //unlike CURLOPT_TIMEOUT, this one is NOT a limit on the total transfer time
-        options.emplace_back(CURLOPT_FTP_RESPONSE_TIMEOUT, *timeoutSec); //== alias of CURLOPT_SERVER_RESPONSE_TIMEOUT
+        options.emplace_back(CURLOPT_SERVER_RESPONSE_TIMEOUT, *timeoutSec); //== alias of CURLOPT_SERVER_RESPONSE_TIMEOUT
 
         //CURLOPT_ACCEPTTIMEOUT_MS? => only relevant for "active" FTP connections
 
@@ -624,11 +628,11 @@ public:
         return std::chrono::steady_clock::now() - lastSuccessfulUseTime_ <= FTP_SESSION_MAX_IDLE_TIME;
     }
 
-    std::string getServerPathInternal(const AfsPath& afsPath) //throw SysError
+    std::string getServerPathInternal(const AfsPath& itemPath) //throw SysError
     {
-        const Zstring serverPath = getServerRelPath(afsPath);
+        const Zstring serverPath = getServerRelPath(itemPath);
 
-        if (afsPath.value.empty()) //endless recursion caveat!! utfToServerEncoding() transitively depends on getServerPathInternal()
+        if (itemPath.value.empty()) //endless recursion caveat!! utfToServerEncoding() transitively depends on getServerPathInternal()
             return utfTo<std::string>(serverPath);
 
         return utfToServerEncoding(serverPath); //throw SysError
@@ -696,11 +700,11 @@ private:
     FtpSession           (const FtpSession&) = delete;
     FtpSession& operator=(const FtpSession&) = delete;
 
-    std::string getCurlUrlPath(const AfsPath& afsPath /*optional*/, bool isDir) //throw SysError
+    std::string getCurlUrlPath(const AfsPath& itemPath /*optional*/, bool isDir) //throw SysError
     {
         std::string curlRelPath; //libcurl expects encoded paths (except for '/' char!!!) => bug: https://github.com/curl/curl/pull/4423
 
-        for (const std::string& comp : split(getServerPathInternal(afsPath), '/', SplitOnEmpty::skip)) //throw SysError
+        for (const std::string& comp : split(getServerPathInternal(itemPath), '/', SplitOnEmpty::skip)) //throw SysError
         {
             char* compFmt = ::curl_easy_escape(easyHandle_, comp.c_str(), static_cast<int>(comp.size()));
             if (!compFmt)
@@ -1081,8 +1085,7 @@ public:
     {
         std::string rawListing; //get raw FTP directory listing
 
-        using CbType =   size_t (*)(const char* buffer, size_t size, size_t nitems, void* callbackData);
-        CbType onBytesReceived = [](const char* buffer, size_t size, size_t nitems, void* callbackData)
+        curl_write_callback onBytesReceived = [](/*const*/ char* buffer, size_t size, size_t nitems, void* callbackData)
         {
             auto& listing = *static_cast<std::string*>(callbackData);
             listing.append(buffer, size * nitems);
@@ -1679,25 +1682,24 @@ void ftpFileDownload(const FtpLogin& login, const AfsPath& afsFilePath, //throw 
 {
     std::exception_ptr exception;
 
-    auto onBytesReceived = [&](const void* buffer, size_t len)
+    auto onBytesReceived = [&](const void* buffer, size_t bytesToWrite)
     {
         try
         {
-            writeBlock(buffer, len); //throw X
-            return len;
+            writeBlock(buffer, bytesToWrite); //throw X
+            //[!] let's NOT use "incomplete write Posix semantics" for libcurl!
+            //who knows if libcurl buffers properly, or if it sends incomplete packages!?
+            return bytesToWrite;
         }
         catch (...)
         {
             exception = std::current_exception();
-            return len + 1; //signal error condition => CURLE_WRITE_ERROR
+            return bytesToWrite + 1; //signal error condition => CURLE_WRITE_ERROR
         }
     };
-
-    using CbType = decltype(onBytesReceived);
-    using CbWrapperType =          size_t (*)(const void* buffer, size_t size, size_t nitems, CbType* callbackData); //needed for cdecl function pointer cast
-    CbWrapperType onBytesReceivedWrapper = [](const void* buffer, size_t size, size_t nitems, CbType* callbackData)
+    curl_write_callback onBytesReceivedWrapper = [](char* buffer, size_t size, size_t nitems, void* callbackData)
     {
-        return (*callbackData)(buffer, size * nitems); //free this poor little C-API from its shackles and redirect to a proper lambda
+        return (*static_cast<decltype(onBytesReceived)*>(callbackData))(buffer, size * nitems); //free this poor little C-API from its shackles and redirect to a proper lambda
     };
 
     try
@@ -1709,6 +1711,9 @@ void ftpFileDownload(const FtpLogin& login, const AfsPath& afsFilePath, //throw 
                 {CURLOPT_WRITEDATA, &onBytesReceived},
                 {CURLOPT_WRITEFUNCTION, onBytesReceivedWrapper},
                 {CURLOPT_IGNORE_CONTENT_LENGTH, 1L}, //skip FTP "SIZE" command before download (=> download until actual EOF if file size changes)
+
+                //{CURLOPT_BUFFERSIZE, 256 * 1024} -> defaults is 16 kB which seems to correspond to SSL packet size
+                //=> setting larget buffers size does nothing (recv still returns only 16 kB)
             }, true /*requiresUtf8*/); //throw SysError
         });
     }
@@ -1726,18 +1731,22 @@ void ftpFileDownload(const FtpLogin& login, const AfsPath& afsFilePath, //throw 
     freefilesync.org: overwrites
     FileZilla Server: overwrites
     Windows IIS:      overwrites                          */
-void ftpFileUpload(const FtpLogin& login, const AfsPath& afsFilePath, //throw FileError, X
-                   const std::function<size_t(void* buffer, size_t bytesToRead)>& readBlock /*throw X*/) //returning 0 signals EOF: Posix read() semantics
+void ftpFileUpload(const FtpLogin& login, const AfsPath& afsFilePath,
+                   const std::function<size_t(void* buffer, size_t bytesToRead)>& readBlock /*throw X*/) //throw FileError, X; return "bytesToRead" bytes unless end of stream
 {
     std::exception_ptr exception;
 
-    auto getBytesToSend = [&](void* buffer, size_t len) -> size_t
+    auto getBytesToSend = [&](void* buffer, size_t bytesToRead) -> size_t
     {
         try
         {
-            //libcurl calls back until 0 bytes are returned (Posix read() semantics), or,
-            //if CURLOPT_INFILESIZE_LARGE was set, after exactly this amount of bytes
-            const size_t bytesRead = readBlock(buffer, len);//throw X; return "bytesToRead" bytes unless end of stream!
+            /*  libcurl calls back until 0 bytes are returned (Posix read() semantics), or,
+                if CURLOPT_INFILESIZE_LARGE was set, after exactly this amount of bytes
+
+                [!] let's NOT use "incomplete read Posix semantics" for libcurl!
+                who knows if libcurl buffers properly, or if it requests incomplete packages!?     */
+            const size_t bytesRead = readBlock(buffer, bytesToRead); //throw X; return "bytesToRead" bytes unless end of stream
+            assert(bytesRead == bytesToRead || bytesRead == 0 || readBlock(buffer, bytesToRead) == 0);
             return bytesRead;
         }
         catch (...)
@@ -1746,32 +1755,30 @@ void ftpFileUpload(const FtpLogin& login, const AfsPath& afsFilePath, //throw Fi
             return CURL_READFUNC_ABORT; //signal error condition => CURLE_ABORTED_BY_CALLBACK
         }
     };
-
-    using CbType = decltype(getBytesToSend);
-    using CbWrapperType =         size_t (*)(void* buffer, size_t size, size_t nitems, CbType* callbackData);
-    CbWrapperType getBytesToSendWrapper = [](void* buffer, size_t size, size_t nitems, CbType* callbackData)
+    curl_read_callback getBytesToSendWrapper = [](char* buffer, size_t size, size_t nitems, void* callbackData)
     {
-        return (*callbackData)(buffer, size * nitems); //free this poor little C-API from its shackles and redirect to a proper lambda
+        return (*static_cast<decltype(getBytesToSend)*>(callbackData))(buffer, size * nitems); //free this poor little C-API from its shackles and redirect to a proper lambda
     };
 
     try
     {
         accessFtpSession(login, [&](FtpSession& session) //throw SysError
         {
-            /*
-                curl_slist* quote = nullptr;
+            /*  curl_slist* quote = nullptr;
                 ZEN_ON_SCOPE_EXIT(::curl_slist_free_all(quote));
 
                 //"prefix the command with an asterisk to make libcurl continue even if the command fails"
                 quote = ::curl_slist_append(quote, ("*DELE " + session.getServerPathInternal(afsFilePath)).c_str()); //throw SysError
 
-                //optimize fail-safe copy with RNFR/RNTO as CURLOPT_POSTQUOTE? -> even slightly *slower* than RNFR/RNTO as additional curl_easy_perform()
-            */
+                //optimize fail-safe copy with RNFR/RNTO as CURLOPT_POSTQUOTE? -> even slightly *slower* than RNFR/RNTO as additional curl_easy_perform()   */
+
             session.perform(afsFilePath, false /*isDir*/, CURLFTPMETHOD_NOCWD, //are there any servers that require CURLFTPMETHOD_SINGLECWD? let's find out
             {
                 {CURLOPT_UPLOAD, 1L},
                 {CURLOPT_READDATA, &getBytesToSend},
                 {CURLOPT_READFUNCTION, getBytesToSendWrapper},
+
+                //{CURLOPT_UPLOAD_BUFFERSIZE, 256 * 1024} -> defaults is 64 kB. apparently no performance improvement for larger buffers like 256 kB
 
                 //{CURLOPT_INFILESIZE_LARGE, static_cast<curl_off_t>(inputBuffer.size())},
                 //=> CURLOPT_INFILESIZE_LARGE does not issue a specific FTP command, but is used by libcurl only!
@@ -1794,21 +1801,18 @@ void ftpFileUpload(const FtpLogin& login, const AfsPath& afsFilePath, //throw Fi
 
 struct InputStreamFtp : public AFS::InputStream
 {
-    InputStreamFtp(const FtpLogin& login,
-                   const AfsPath& afsPath,
-                   const IoCallback& notifyUnbufferedIO /*throw X*/) :
-        notifyUnbufferedIO_(notifyUnbufferedIO)
+    InputStreamFtp(const FtpLogin& login, const AfsPath& filePath)
     {
-        worker_ = InterruptibleThread([asyncStreamOut = this->asyncStreamIn_, login, afsPath]
+        worker_ = InterruptibleThread([asyncStreamOut = this->asyncStreamIn_, login, filePath]
         {
-            setCurrentThreadName(Zstr("Istream[FTP] ") + utfTo<Zstring>(getCurlDisplayPath(login, afsPath)));
+            setCurrentThreadName(Zstr("Istream ") + utfTo<Zstring>(getCurlDisplayPath(login, filePath)));
             try
             {
                 auto writeBlock = [&](const void* buffer, size_t bytesToWrite)
                 {
-                    return asyncStreamOut->write(buffer, bytesToWrite); //throw ThreadStopRequest
+                    asyncStreamOut->write(buffer, bytesToWrite); //throw ThreadStopRequest
                 };
-                ftpFileDownload(login, afsPath, writeBlock); //throw FileError, ThreadStopRequest
+                ftpFileDownload(login, filePath, writeBlock); //throw FileError, ThreadStopRequest
 
                 asyncStreamOut->closeStream();
             }
@@ -1821,33 +1825,31 @@ struct InputStreamFtp : public AFS::InputStream
         asyncStreamIn_->setReadError(std::make_exception_ptr(ThreadStopRequest()));
     }
 
-    size_t read(void* buffer, size_t bytesToRead) override //throw FileError, (ErrorFileLocked), X; return "bytesToRead" bytes unless end of stream!
+    size_t getBlockSize() override { return FTP_BLOCK_SIZE_DOWNLOAD; } //throw (FileError)
+
+    //may return short; only 0 means EOF! CONTRACT: bytesToRead > 0!
+    size_t tryRead(void* buffer, size_t bytesToRead, const IoCallback& notifyUnbufferedIO /*throw X*/) override //throw FileError, (ErrorFileLocked), X
     {
-        const size_t bytesRead = asyncStreamIn_->read(buffer, bytesToRead); //throw FileError
-        reportBytesProcessed(); //throw X
+        const size_t bytesRead = asyncStreamIn_->tryRead(buffer, bytesToRead); //throw FileError
+        reportBytesProcessed(notifyUnbufferedIO); //throw X
         return bytesRead;
         //no need for asyncStreamIn_->checkWriteErrors(): once end of stream is reached, asyncStreamOut->closeStream() was called => no errors occured
     }
 
-    size_t getBlockSize() const override { return 64 * 1024; } //non-zero block size is AFS contract!
-
-    std::optional<AFS::StreamAttributes> getAttributesBuffered() override //throw FileError
-    {
-        return {}; //there is no stream handle => no buffered attribute access!
-        //PERF: get attributes during file download?
-        //  CURLOPT_FILETIME:                                           test case 77 files, 4MB: overall copy time increases by 12%
-        //  CURLOPT_PREQUOTE/CURLOPT_PREQUOTE/CURLOPT_POSTQUOTE + MDTM: test case 77 files, 4MB: overall copy time increases by 12%
-    }
+    std::optional<AFS::StreamAttributes> tryGetAttributesFast() override { return {}; }//throw FileError
+    //there is no stream handle => no buffered attribute access!
+    //PERF: get attributes during file download?
+    //  CURLOPT_FILETIME:                                           test case 77 files, 4MB: overall copy time increases by 12%
+    //  CURLOPT_PREQUOTE/CURLOPT_PREQUOTE/CURLOPT_POSTQUOTE + MDTM: test case 77 files, 4MB: overall copy time increases by 12%
 
 private:
-    void reportBytesProcessed() //throw X
+    void reportBytesProcessed(const IoCallback& notifyUnbufferedIO /*throw X*/) //throw X
     {
-        const int64_t totalBytesDownloaded = asyncStreamIn_->getTotalBytesWritten();
-        if (notifyUnbufferedIO_) notifyUnbufferedIO_(totalBytesDownloaded - totalBytesReported_); //throw X
-        totalBytesReported_ = totalBytesDownloaded;
+        const int64_t bytesDelta = makeSigned(asyncStreamIn_->getTotalBytesWritten()) - totalBytesReported_;
+        totalBytesReported_ += bytesDelta;
+        if (notifyUnbufferedIO) notifyUnbufferedIO(bytesDelta); //throw X
     }
 
-    const IoCallback notifyUnbufferedIO_; //throw X
     int64_t totalBytesReported_ = 0;
     std::shared_ptr<AsyncStreamBuffer> asyncStreamIn_ = std::make_shared<AsyncStreamBuffer>(FTP_STREAM_BUFFER_SIZE);
     InterruptibleThread worker_;
@@ -1860,30 +1862,27 @@ private:
 struct OutputStreamFtp : public AFS::OutputStreamImpl
 {
     OutputStreamFtp(const FtpLogin& login,
-                    const AfsPath& afsPath,
-                    std::optional<time_t> modTime,
-                    const IoCallback& notifyUnbufferedIO /*throw X*/) :
+                    const AfsPath& filePath,
+                    std::optional<time_t> modTime) :
         login_(login),
-        afsPath_(afsPath),
-        modTime_(modTime),
-        notifyUnbufferedIO_(notifyUnbufferedIO)
+        filePath_(filePath),
+        modTime_(modTime)
     {
         std::promise<void> pUploadDone;
         futUploadDone_ = pUploadDone.get_future();
 
-        worker_ = InterruptibleThread([login, afsPath,
+        worker_ = InterruptibleThread([login, filePath,
                                               asyncStreamIn = this->asyncStreamOut_,
                                               pUploadDone   = std::move(pUploadDone)]() mutable
         {
-            setCurrentThreadName(Zstr("Ostream[FTP] ") + utfTo<Zstring>(getCurlDisplayPath(login, afsPath)));
+            setCurrentThreadName(Zstr("Ostream ") + utfTo<Zstring>(getCurlDisplayPath(login, filePath)));
             try
             {
                 auto readBlock = [&](void* buffer, size_t bytesToRead)
                 {
-                    //returns "bytesToRead" bytes unless end of stream! => maps nicely into Posix read() semantics expected by ftpFileUpload()
                     return asyncStreamIn->read(buffer, bytesToRead); //throw ThreadStopRequest
                 };
-                ftpFileUpload(login, afsPath, readBlock); //throw FileError, ThreadStopRequest
+                ftpFileUpload(login, filePath, readBlock); //throw FileError, ThreadStopRequest
                 assert(asyncStreamIn->getTotalBytesRead() == asyncStreamIn->getTotalBytesWritten());
 
                 pUploadDone.set_value();
@@ -1900,28 +1899,36 @@ struct OutputStreamFtp : public AFS::OutputStreamImpl
 
     ~OutputStreamFtp()
     {
-        asyncStreamOut_->setWriteError(std::make_exception_ptr(ThreadStopRequest()));
+        if (asyncStreamOut_) //finalize() was not called (successfully)
+            asyncStreamOut_->setWriteError(std::make_exception_ptr(ThreadStopRequest()));
     }
 
-    void write(const void* buffer, size_t bytesToWrite) override //throw FileError, X
+    size_t getBlockSize() override { return FTP_BLOCK_SIZE_UPLOAD; } //throw (FileError)
+
+    size_t tryWrite(const void* buffer, size_t bytesToWrite, const IoCallback& notifyUnbufferedIO /*throw X*/) override //throw FileError, X; may return short! CONTRACT: bytesToWrite > 0
     {
-        asyncStreamOut_->write(buffer, bytesToWrite); //throw FileError
-        reportBytesProcessed(); //throw X
+        const size_t bytesWritten = asyncStreamOut_->tryWrite(buffer, bytesToWrite); //throw FileError
+        reportBytesProcessed(notifyUnbufferedIO); //throw X
+        return bytesWritten;
     }
 
-    AFS::FinalizeResult finalize() override //throw FileError, X
+    AFS::FinalizeResult finalize(const IoCallback& notifyUnbufferedIO /*throw X*/) override //throw FileError, X
     {
+        if (!asyncStreamOut_)
+            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+
         asyncStreamOut_->closeStream();
 
         while (futUploadDone_.wait_for(std::chrono::milliseconds(50)) == std::future_status::timeout)
-            reportBytesProcessed(); //throw X
-        reportBytesProcessed(); //[!] once more, now that *all* bytes were written
-
-        asyncStreamOut_->checkReadErrors(); //throw FileError
-        //--------------------------------------------------------------------
+            reportBytesProcessed(notifyUnbufferedIO); //throw X
+        reportBytesProcessed(notifyUnbufferedIO); //[!] once more, now that *all* bytes were written
 
         assert(isReady(futUploadDone_));
         futUploadDone_.get(); //throw FileError
+
+        //asyncStreamOut_->checkReadErrors(); //throw FileError -> not needed after *successful* upload
+        asyncStreamOut_.reset(); //do NOT reset on failure, so that ~OutputStreamFtp() will request worker thread to stop
+        //--------------------------------------------------------------------
 
         AFS::FinalizeResult result;
         //result.filePrint = ... -> yet unknown at this point
@@ -1937,11 +1944,11 @@ struct OutputStreamFtp : public AFS::OutputStreamImpl
     }
 
 private:
-    void reportBytesProcessed() //throw X
+    void reportBytesProcessed(const IoCallback& notifyUnbufferedIO /*throw X*/) //throw X
     {
-        const int64_t totalBytesUploaded = asyncStreamOut_->getTotalBytesRead();
-        if (notifyUnbufferedIO_) notifyUnbufferedIO_(totalBytesUploaded - totalBytesReported_); //throw X
-        totalBytesReported_ = totalBytesUploaded;
+        const int64_t bytesDelta = makeSigned(asyncStreamOut_->getTotalBytesRead()) - totalBytesReported_;
+        totalBytesReported_ += bytesDelta;
+        if (notifyUnbufferedIO) notifyUnbufferedIO(bytesDelta); //throw X
     }
 
     void setModTimeIfAvailable() const //throw FileError, follows symlinks
@@ -1959,21 +1966,20 @@ private:
                     if (!session.supportsMfmt()) //throw SysError
                         throw SysError(L"Server does not support the MFMT command.");
 
-                    session.runSingleFtpCommand("MFMT " + isoTime + ' ' + session.getServerPathInternal(afsPath_),
+                    session.runSingleFtpCommand("MFMT " + isoTime + ' ' + session.getServerPathInternal(filePath_),
                                                 true /*requiresUtf8*/); //throw SysError
                     //not relevant for OutputStreamFtp, but: does MFMT follow symlinks? for Linux FTP server (using utime) it does
                 });
             }
             catch (const SysError& e)
             {
-                throw FileError(replaceCpy(_("Cannot write modification time of %x."), L"%x", fmtPath(getCurlDisplayPath(login_, afsPath_))), e.toString());
+                throw FileError(replaceCpy(_("Cannot write modification time of %x."), L"%x", fmtPath(getCurlDisplayPath(login_, filePath_))), e.toString());
             }
     }
 
     const FtpLogin login_;
-    const AfsPath afsPath_;
+    const AfsPath filePath_;
     const std::optional<time_t> modTime_;
-    const IoCallback notifyUnbufferedIO_; //throw X
     int64_t totalBytesReported_ = 0;
     std::shared_ptr<AsyncStreamBuffer> asyncStreamOut_ = std::make_shared<AsyncStreamBuffer>(FTP_STREAM_BUFFER_SIZE);
     InterruptibleThread worker_;
@@ -1991,11 +1997,11 @@ public:
     const FtpLogin& getLogin() const { return login_; }
 
 private:
-    Zstring getInitPathPhrase(const AfsPath& afsPath) const override { return concatenateFtpFolderPathPhrase(login_, afsPath); }
+    Zstring getInitPathPhrase(const AfsPath& itemPath) const override { return concatenateFtpFolderPathPhrase(login_, itemPath); }
 
-    std::vector<Zstring> getPathPhraseAliases(const AfsPath& afsPath) const override { return {getInitPathPhrase(afsPath)}; }
+    std::vector<Zstring> getPathPhraseAliases(const AfsPath& itemPath) const override { return {getInitPathPhrase(itemPath)}; }
 
-    std::wstring getDisplayPath(const AfsPath& afsPath) const override { return getCurlDisplayPath(login_, afsPath); }
+    std::wstring getDisplayPath(const AfsPath& itemPath) const override { return getCurlDisplayPath(login_, itemPath); }
 
     bool isNullFileSystem() const override { return login_.server.empty(); }
 
@@ -2019,11 +2025,11 @@ private:
     }
 
     //----------------------------------------------------------------------------------------------------------------
-    ItemType getItemType(const AfsPath& afsPath) const override //throw FileError
+    ItemType getItemType(const AfsPath& itemPath) const override //throw FileError
     {
         //don't use MLST: broken for Pure-FTPd: https://freefilesync.org/forum/viewtopic.php?t=4287
 
-        const std::optional<AfsPath> parentAfsPath = getParentPath(afsPath);
+        const std::optional<AfsPath> parentAfsPath = getParentPath(itemPath);
         if (!parentAfsPath) //device root => do a quick access tests to see if the server responds at all!
             try
             {
@@ -2033,9 +2039,9 @@ private:
                 });
                 return ItemType::folder;
             }
-            catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(getCurlDisplayPath(login_, afsPath))), e.toString()); }
+            catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(getCurlDisplayPath(login_, itemPath))), e.toString()); }
 
-        const Zstring itemName = getItemName(afsPath);
+        const Zstring itemName = getItemName(itemPath);
         assert(!itemName.empty());
         try
         {
@@ -2048,16 +2054,16 @@ private:
         }
         catch (const ItemType& type) { return type; } //yes, exceptions for control-flow are bad design... but, but...
 
-        throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getDisplayPath(afsPath))), L"File not found.");
+        throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getDisplayPath(itemPath))), L"File not found.");
     }
 
-    std::optional<ItemType> itemStillExists(const AfsPath& afsPath) const override //throw FileError
+    std::optional<ItemType> itemStillExists(const AfsPath& itemPath) const override //throw FileError
     {
-        const std::optional<AfsPath> parentAfsPath = getParentPath(afsPath);
+        const std::optional<AfsPath> parentAfsPath = getParentPath(itemPath);
         if (!parentAfsPath) //device root
-            return getItemType(afsPath); //throw FileError; do a simple access test
+            return getItemType(itemPath); //throw FileError; do a simple access test
 
-        const Zstring itemName = getItemName(afsPath);
+        const Zstring itemName = getItemName(itemPath);
         assert(!itemName.empty());
         try
         {
@@ -2082,46 +2088,46 @@ private:
     //      freefilesync.org: "550 Can't create directory: File exists"
     //      FileZilla Server: "550 Directory already exists"
     //      Windows IIS:      "550 Cannot create a file when that file already exists"
-    void createFolderPlain(const AfsPath& afsPath) const override //throw FileError
+    void createFolderPlain(const AfsPath& folderPath) const override //throw FileError
     {
         try
         {
             accessFtpSession(login_, [&](FtpSession& session) //throw SysError
             {
-                session.runSingleFtpCommand("MKD " + session.getServerPathInternal(afsPath),
+                session.runSingleFtpCommand("MKD " + session.getServerPathInternal(folderPath),
                                             true /*requiresUtf8*/); //throw SysError
             });
         }
         catch (const SysError& e)
         {
-            throw FileError(replaceCpy(_("Cannot create directory %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString());
+            throw FileError(replaceCpy(_("Cannot create directory %x."), L"%x", fmtPath(getDisplayPath(folderPath))), e.toString());
         }
     }
 
-    void removeFilePlain(const AfsPath& afsPath) const override //throw FileError
+    void removeFilePlain(const AfsPath& filePath) const override //throw FileError
     {
         try
         {
             accessFtpSession(login_, [&](FtpSession& session) //throw SysError
             {
-                session.runSingleFtpCommand("DELE " + session.getServerPathInternal(afsPath),
+                session.runSingleFtpCommand("DELE " + session.getServerPathInternal(filePath),
                                             true /*requiresUtf8*/); //throw SysError
             });
         }
         catch (const SysError& e)
         {
-            throw FileError(replaceCpy(_("Cannot delete file %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString());
+            throw FileError(replaceCpy(_("Cannot delete file %x."), L"%x", fmtPath(getDisplayPath(filePath))), e.toString());
         }
     }
 
-    void removeSymlinkPlain(const AfsPath& afsPath) const override //throw FileError
+    void removeSymlinkPlain(const AfsPath& linkPath) const override //throw FileError
     {
-        this->removeFilePlain(afsPath); //throw FileError
+        this->removeFilePlain(linkPath); //throw FileError
         //works fine for Linux hosts, but what about Windows-hosted FTP??? Distinguish DELE/RMD?
         //Windows test, FileZilla Server and Windows IIS FTP: all symlinks are reported as regular folders
     }
 
-    void removeFolderPlain(const AfsPath& afsPath) const override //throw FileError
+    void removeFolderPlain(const AfsPath& folderPath) const override //throw FileError
     {
         try
         {
@@ -2131,7 +2137,7 @@ private:
             {
                 try
                 {
-                    session.runSingleFtpCommand("RMD " + session.getServerPathInternal(afsPath),
+                    session.runSingleFtpCommand("RMD " + session.getServerPathInternal(folderPath),
                                                 true /*requiresUtf8*/); //throw SysError
                 }
                 catch (const SysError& e) { delError = e; }
@@ -2142,59 +2148,58 @@ private:
                 //Windows test, FileZilla Server and Windows IIS FTP: all symlinks are reported as regular folders
                 //tested freefilesync.org: RMD will fail for symlinks!
                 bool symlinkExists = false;
-                try { symlinkExists = getItemType(afsPath) == ItemType::symlink; } /*throw FileError*/ catch (FileError&) {} //previous exception is more relevant
+                try { symlinkExists = getItemType(folderPath) == ItemType::symlink; } /*throw FileError*/ catch (FileError&) {} //previous exception is more relevant
 
                 if (symlinkExists)
-                    return removeSymlinkPlain(afsPath); //throw FileError
+                    return removeSymlinkPlain(folderPath); //throw FileError
                 else
                     throw* delError;
             }
         }
         catch (const SysError& e)
         {
-            throw FileError(replaceCpy(_("Cannot delete directory %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString());
+            throw FileError(replaceCpy(_("Cannot delete directory %x."), L"%x", fmtPath(getDisplayPath(folderPath))), e.toString());
         }
     }
 
-    void removeFolderIfExistsRecursion(const AfsPath& afsPath, //throw FileError
+    void removeFolderIfExistsRecursion(const AfsPath& folderPath, //throw FileError
                                        const std::function<void (const std::wstring& displayPath)>& onBeforeFileDeletion /*throw X*/, //optional
                                        const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion) const override //one call for each object!
     {
         //default implementation: folder traversal
-        AFS::removeFolderIfExistsRecursion(afsPath, onBeforeFileDeletion, onBeforeFolderDeletion); //throw FileError, X
+        AFS::removeFolderIfExistsRecursion(folderPath, onBeforeFileDeletion, onBeforeFolderDeletion); //throw FileError, X
     }
 
     //----------------------------------------------------------------------------------------------------------------
-    AbstractPath getSymlinkResolvedPath(const AfsPath& afsPath) const override //throw FileError
+    AbstractPath getSymlinkResolvedPath(const AfsPath& linkPath) const override //throw FileError
     {
-        throw FileError(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtPath(getDisplayPath(afsPath))), _("Operation not supported by device."));
+        throw FileError(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtPath(getDisplayPath(linkPath))), _("Operation not supported by device."));
     }
 
-    bool equalSymlinkContentForSameAfsType(const AfsPath& afsLhs, const AbstractPath& apRhs) const override //throw FileError
+    bool equalSymlinkContentForSameAfsType(const AfsPath& linkPathL, const AbstractPath& linkPathR) const override //throw FileError
     {
-        throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(getDisplayPath(afsLhs))), _("Operation not supported by device."));
+        throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(getDisplayPath(linkPathL))), _("Operation not supported by device."));
     }
     //----------------------------------------------------------------------------------------------------------------
 
     //return value always bound:
-    std::unique_ptr<InputStream> getInputStream(const AfsPath& afsPath, const IoCallback& notifyUnbufferedIO /*throw X*/) const override //throw FileError, (ErrorFileLocked)
+    std::unique_ptr<InputStream> getInputStream(const AfsPath& filePath) const override //throw FileError, (ErrorFileLocked)
     {
-        return std::make_unique<InputStreamFtp>(login_, afsPath, notifyUnbufferedIO);
+        return std::make_unique<InputStreamFtp>(login_, filePath);
     }
 
     //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
     //=> actual behavior: fail(+delete!)/overwrite/auto-rename
-    std::unique_ptr<OutputStreamImpl> getOutputStream(const AfsPath& afsPath, //throw FileError
+    std::unique_ptr<OutputStreamImpl> getOutputStream(const AfsPath& filePath, //throw FileError
                                                       std::optional<uint64_t> streamSize,
-                                                      std::optional<time_t> modTime,
-                                                      const IoCallback& notifyUnbufferedIO /*throw X*/) const override
+                                                      std::optional<time_t> modTime) const override
     {
         /* most FTP servers overwrite, but some (e.g. IIS) can be configured to fail, others (pureFTP) can be configured to auto-rename:
            https://download.pureftpd.org/pub/pure-ftpd/doc/README
            '-r': Never overwrite existing files. Uploading a file whose name already exists causes an automatic rename. Files are called xyz, xyz.1, xyz.2, xyz.3, etc. */
 
         //already existing: fail (+ delete!!!)
-        return std::make_unique<OutputStreamFtp>(login_, afsPath, modTime, notifyUnbufferedIO);
+        return std::make_unique<OutputStreamFtp>(login_, filePath, modTime);
     }
 
     //----------------------------------------------------------------------------------------------------------------
@@ -2206,34 +2211,34 @@ private:
 
     //symlink handling: follow
     //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
-    FileCopyResult copyFileForSameAfsType(const AfsPath& afsSource, const StreamAttributes& attrSource, //throw FileError, (ErrorFileLocked), X
-                                          const AbstractPath& apTarget, bool copyFilePermissions, const IoCallback& notifyUnbufferedIO /*throw X*/) const override
+    FileCopyResult copyFileForSameAfsType(const AfsPath& sourcePath, const StreamAttributes& attrSource, //throw FileError, (ErrorFileLocked), X
+                                          const AbstractPath& targetPath, bool copyFilePermissions, const IoCallback& notifyUnbufferedIO /*throw X*/) const override
     {
         //no native FTP file copy => use stream-based file copy:
         if (copyFilePermissions)
-            throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(apTarget))), _("Operation not supported by device."));
+            throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(targetPath))), _("Operation not supported by device."));
 
         //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
-        return copyFileAsStream(afsSource, attrSource, apTarget, notifyUnbufferedIO); //throw FileError, (ErrorFileLocked), X
+        return copyFileAsStream(sourcePath, attrSource, targetPath, notifyUnbufferedIO); //throw FileError, (ErrorFileLocked), X
     }
 
     //symlink handling: follow
     //already existing: fail
-    void copyNewFolderForSameAfsType(const AfsPath& afsSource, const AbstractPath& apTarget, bool copyFilePermissions) const override //throw FileError
+    void copyNewFolderForSameAfsType(const AfsPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions) const override //throw FileError
     {
         if (copyFilePermissions)
-            throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(apTarget))), _("Operation not supported by device."));
+            throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(targetPath))), _("Operation not supported by device."));
 
         //already existing: fail
-        AFS::createFolderPlain(apTarget); //throw FileError
+        AFS::createFolderPlain(targetPath); //throw FileError
     }
 
     //already existing: fail
-    void copySymlinkForSameAfsType(const AfsPath& afsSource, const AbstractPath& apTarget, bool copyFilePermissions) const override
+    void copySymlinkForSameAfsType(const AfsPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions) const override
     {
         throw FileError(replaceCpy(replaceCpy(_("Cannot copy symbolic link %x to %y."),
-                                              L"%x", L'\n' + fmtPath(getDisplayPath(afsSource))),
-                                   L"%y", L'\n' + fmtPath(AFS::getDisplayPath(apTarget))), _("Operation not supported by device."));
+                                              L"%x", L'\n' + fmtPath(getDisplayPath(sourcePath))),
+                                   L"%y", L'\n' + fmtPath(AFS::getDisplayPath(targetPath))), _("Operation not supported by device."));
     }
 
     //already existing: undefined behavior! (e.g. fail/overwrite)
@@ -2273,12 +2278,12 @@ private:
         }
     }
 
-    bool supportsPermissions(const AfsPath& afsPath) const override { return false; } //throw FileError
+    bool supportsPermissions(const AfsPath& folderPath) const override { return false; } //throw FileError
     //wait until there is real demand for copying from and to FTP with permissions => use stream-based file copy:
 
     //----------------------------------------------------------------------------------------------------------------
-    FileIconHolder getFileIcon      (const AfsPath& afsPath, int pixelSize) const override { return {}; } //throw FileError; optional return value
-    ImageHolder    getThumbnailImage(const AfsPath& afsPath, int pixelSize) const override { return {}; } //throw FileError; optional return value
+    FileIconHolder getFileIcon      (const AfsPath& filePath, int pixelSize) const override { return {}; } //throw FileError; optional return value
+    ImageHolder    getThumbnailImage(const AfsPath& filePath, int pixelSize) const override { return {}; } //throw FileError; optional return value
 
     void authenticateAccess(bool allowUserInteraction) const override {} //throw FileError
 
@@ -2287,20 +2292,18 @@ private:
     bool hasNativeTransactionalCopy() const override { return false; }
     //----------------------------------------------------------------------------------------------------------------
 
-    int64_t getFreeDiskSpace(const AfsPath& afsPath) const override { return -1; } //throw FileError, returns < 0 if not available
+    int64_t getFreeDiskSpace(const AfsPath& folderPath) const override { return -1; } //throw FileError, returns < 0 if not available
 
-    bool supportsRecycleBin(const AfsPath& afsPath) const override { return false; } //throw FileError
-
-    std::unique_ptr<RecycleSession> createRecyclerSession(const AfsPath& afsPath) const override //throw FileError, return value must be bound!
+    std::unique_ptr<RecycleSession> createRecyclerSession(const AfsPath& folderPath) const override //throw FileError, RecycleBinUnavailable
     {
-        assert(false); //see supportsRecycleBin()
-        throw FileError(L"Recycle bin not supported by device.");
+        throw RecycleBinUnavailable(replaceCpy(_("The recycle bin is not available for %x."), L"%x", fmtPath(getDisplayPath(folderPath))),
+                                    _("Operation not supported by device."));
     }
 
-    void recycleItemIfExists(const AfsPath& afsPath) const override //throw FileError
+    void moveToRecycleBin(const AfsPath& itemPath) const override //throw FileError, RecycleBinUnavailable
     {
-        assert(false); //see supportsRecycleBin()
-        throw FileError(replaceCpy(_("Unable to move %x to the recycle bin."), L"%x", fmtPath(getDisplayPath(afsPath))), _("Operation not supported by device."));
+        throw RecycleBinUnavailable(replaceCpy(_("The recycle bin is not available for %x."), L"%x", fmtPath(getDisplayPath(itemPath))),
+                                    _("Operation not supported by device."));
     }
 
     const FtpLogin login_;
@@ -2309,7 +2312,7 @@ private:
 //===========================================================================================================================
 
 //expects "clean" login data
-Zstring concatenateFtpFolderPathPhrase(const FtpLogin& login, const AfsPath& afsPath) //noexcept
+Zstring concatenateFtpFolderPathPhrase(const FtpLogin& login, const AfsPath& folderPath) //noexcept
 {
     Zstring username;
     if (!login.username.empty())
@@ -2319,7 +2322,7 @@ Zstring concatenateFtpFolderPathPhrase(const FtpLogin& login, const AfsPath& afs
     if (login.port > 0)
         port = Zstr(':') + numberTo<Zstring>(login.port);
 
-    Zstring relPath = getServerRelPath(afsPath);
+    Zstring relPath = getServerRelPath(folderPath);
     if (relPath == Zstr("/"))
         relPath.clear();
 

@@ -64,10 +64,16 @@ void copyToAlternateFolder(std::span<const FileSystemObject* const> rowsToCopyOn
 void deleteFromGridAndHD(const std::vector<FileSystemObject*>& rowsToDeleteOnLeft,  //refresh GUI grid after deletion to remove invalid rows
                          const std::vector<FileSystemObject*>& rowsToDeleteOnRight, //all pointers need to be bound!
                          const std::vector<std::pair<BaseFolderPair*, SyncDirectionConfig>>& directCfgs, //attention: rows will be physically deleted!
-                         bool useRecycleBin,
+                         bool moveToRecycler,
                          //global warnings:
                          bool& warnRecyclerMissing,
                          ProcessCallback& callback /*throw X*/); //throw X
+
+void deleteListOfFiles(const std::vector<Zstring>& filesToDeletePaths,
+                       std::vector<Zstring>& deletedPaths,
+                       bool moveToRecycler,
+                       bool& warnRecyclerMissing,
+                       ProcessCallback& callback /*throw X*/); //throw X
 
 struct FileDescriptor
 {

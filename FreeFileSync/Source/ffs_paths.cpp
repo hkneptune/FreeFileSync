@@ -81,7 +81,8 @@ Zstring fff::getConfigDirPath()
         catch (const FileError& e)
         {
             assert(false);
-            std::cerr << utfTo<std::string>(e.toString()) << '\n';
+            std::cerr << utfTo<std::string>(e.toString()) + '\n';
+            warn_static("at least log on failure!")
         }
         return configPath;
     }();

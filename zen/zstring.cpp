@@ -11,16 +11,18 @@
 using namespace zen;
 
 
-Zstring getUnicodeNormalFormNonAscii(const Zstring& str)
+namespace
 {
-    //Example: const char* decomposed  = "\x6f\xcc\x81";
-    //         const char* precomposed = "\xc3\xb3";
+Zstring getUnicodeNormalForm_NonAsciiValidUtf(const Zstring& str, UnicodeNormalForm form)
+{
+    //Example: const char* decomposed  = "\x6f\xcc\x81"; //ó
+    //         const char* precomposed = "\xc3\xb3"; //ó
     assert(!isAsciiString(str)); //includes "not-empty" check
     assert(str.find(Zchar('\0')) == Zstring::npos); //don't expect embedded nulls!
 
     try
     {
-        gchar* outStr = ::g_utf8_normalize(str.c_str(), str.length(), G_NORMALIZE_DEFAULT_COMPOSE);
+        gchar* outStr = ::g_utf8_normalize(str.c_str(), str.length(), form == UnicodeNormalForm::nfc ? G_NORMALIZE_NFC : G_NORMALIZE_NFD);
         if (!outStr)
             throw SysError(formatSystemError("g_utf8_normalize", L"", L"Conversion failed."));
         ZEN_ON_SCOPE_EXIT(::g_free(outStr));
@@ -29,26 +31,53 @@ Zstring getUnicodeNormalFormNonAscii(const Zstring& str)
     }
     catch (const SysError& e)
     {
-        throw std::runtime_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Error normalizing string:" +
-                                 '\n' + utfTo<std::string>(str)  + "\n\n" + utfTo<std::string>(e.toString()));
+        throw std::runtime_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Error normalizing string:" + '\n' +
+                                 utfTo<std::string>(str)  + "\n\n" + utfTo<std::string>(e.toString()));
     }
 }
 
 
-Zstring getUnicodeNormalForm(const Zstring& str)
+Zstring getUnicodeNormalFormNonAscii(const Zstring& str, UnicodeNormalForm form)
 {
-    //fast pre-check:
-    if (isAsciiString(str)) //perf: in the range of 3.5ns
-        return str;
-    static_assert(std::is_same_v<decltype(str), const Zbase<Zchar>&>, "god bless our ref-counting! => save output string memory consumption!");
+    /*  1. do NOT fail on broken UTF encoding, instead normalize using REPLACEMENT_CHAR!
+        2. NormalizeString() haateeez them Unicode non-characters: ERROR_NO_UNICODE_TRANSLATION! http://www.unicode.org/faq/private_use.html#nonchar1
+         - No such issue on Linux/macOS with g_utf8_normalize(), and CFStringGetFileSystemRepresentation()
+            -> still, probably good idea to "normalize" Unicode non-characters cross-platform
+         - consistency for compareNoCase(): let's *unconditionally* check before other normalization operations, not just in error case!   */
+    using impl::CodePoint;
+    auto isUnicodeNonCharacter = [](CodePoint cp) { assert(cp <= impl::CODE_POINT_MAX); return (0xfdd0 <= cp && cp <= 0xfdef) || cp % 0x10'000 >= 0xfffe; };
 
-    return getUnicodeNormalFormNonAscii(str);
+    const bool invalidUtf = [&] //pre-check: avoid memory allocation if valid UTF
+    {
+        UtfDecoder<Zchar> decoder(str.c_str(), str.size());
+        while (const std::optional<CodePoint> cp = decoder.getNext())
+            if (*cp == impl::REPLACEMENT_CHAR || //marks broken UTF encoding
+                isUnicodeNonCharacter(*cp))
+                return true;
+        return false;
+    }();
+
+    if (invalidUtf) //band-aid broken UTF encoding with REPLACEMENT_CHAR
+    {
+        Zstring validStr; //don't want extra memory allocations in the standard case (valid UTF)
+        UtfDecoder<Zchar> decoder(str.c_str(), str.size());
+        while (std::optional<CodePoint> cp = decoder.getNext())
+        {
+            if (isUnicodeNonCharacter(*cp))   //
+                *cp = impl::REPLACEMENT_CHAR; //"normalize" Unicode non-characters
+
+            codePointToUtf<Zchar>(*cp, [&](Zchar ch) { validStr += ch; });
+        }
+        return getUnicodeNormalForm_NonAsciiValidUtf(validStr, form);
+    }
+    else
+        return getUnicodeNormalForm_NonAsciiValidUtf(str, form);
 }
 
 
 Zstring getUpperCaseNonAscii(const Zstring& str)
 {
-    Zstring strNorm = getUnicodeNormalFormNonAscii(str);
+    Zstring strNorm = getUnicodeNormalFormNonAscii(str, UnicodeNormalForm::native);
     try
     {
         Zstring output;
@@ -64,9 +93,21 @@ Zstring getUpperCaseNonAscii(const Zstring& str)
     }
     catch (const SysError& e)
     {
-        throw std::runtime_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Error converting string to upper case:" +
-                                 '\n' + utfTo<std::string>(str)  + "\n\n" + utfTo<std::string>(e.toString()));
+        throw std::runtime_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Error converting string to upper case:" + '\n' +
+                                 utfTo<std::string>(str)  + "\n\n" + utfTo<std::string>(e.toString()));
     }
+}
+}
+
+
+Zstring getUnicodeNormalForm(const Zstring& str, UnicodeNormalForm form)
+{
+    //fast pre-check:
+    if (isAsciiString(str)) //perf: in the range of 3.5ns
+        return str;
+    static_assert(std::is_same_v<decltype(str), const Zbase<Zchar>&>, "god bless our ref-counting! => save needless memory allocation!");
+
+    return getUnicodeNormalFormNonAscii(str, form);
 }
 
 
@@ -90,8 +131,8 @@ namespace
 std::weak_ordering compareNoCaseUtf8(const char* lhs, size_t lhsLen, const char* rhs, size_t rhsLen)
 {
     //expect Unicode normalized strings!
-    assert(std::string(lhs, lhsLen) == getUnicodeNormalForm(std::string(lhs, lhsLen)));
-    assert(std::string(rhs, rhsLen) == getUnicodeNormalForm(std::string(rhs, rhsLen)));
+    assert(Zstring(lhs, lhsLen) == getUnicodeNormalForm(Zstring(lhs, lhsLen), UnicodeNormalForm::nfd));
+    assert(Zstring(rhs, rhsLen) == getUnicodeNormalForm(Zstring(rhs, rhsLen), UnicodeNormalForm::nfd));
 
     //- strncasecmp implements ASCII CI-comparsion only! => signature is broken for UTF8-input; toupper() similarly doesn't support Unicode
     //- wcsncasecmp: https://opensource.apple.com/source/Libc/Libc-763.12/string/wcsncasecmp-fbsd.c
@@ -121,14 +162,14 @@ std::weak_ordering compareNoCaseUtf8(const char* lhs, size_t lhsLen, const char*
 
 std::weak_ordering compareNatural(const Zstring& lhs, const Zstring& rhs)
 {
-    /* Unicode normal forms:
-          Windows: CompareString() already ignores NFD/NFC differences: nice...
-          Linux:  g_unichar_toupper() can't ignore differences
-          macOS:  CFStringCompare() considers differences */
     try
     {
-        const Zstring& lhsNorm = getUnicodeNormalForm(lhs);
-        const Zstring& rhsNorm = getUnicodeNormalForm(rhs);
+        /* Unicode normal forms:
+              Windows: CompareString() ignores NFD/NFC differences and converts to NFD
+              Linux:  g_unichar_toupper() can't ignore differences
+              macOS:  CFStringCompare() considers differences */
+        const Zstring& lhsNorm = getUnicodeNormalForm(lhs, UnicodeNormalForm::nfd); //normalize: - broken UTF encoding
+        const Zstring& rhsNorm = getUnicodeNormalForm(rhs, UnicodeNormalForm::nfd); //           - Unicode non-characters
 
         const char* strL = lhsNorm.c_str();
         const char* strR = rhsNorm.c_str();

@@ -299,9 +299,9 @@ private:
     void onDifferent      (wxCommandEvent& event) override;
     void onConflict       (wxCommandEvent& event) override;
 
-    void onDeletionPermanent  (wxCommandEvent& event) override { handleDeletion_ = DeletionPolicy::permanent;  updateSyncGui(); }
-    void onDeletionRecycler   (wxCommandEvent& event) override { handleDeletion_ = DeletionPolicy::recycler;   updateSyncGui(); }
-    void onDeletionVersioning (wxCommandEvent& event) override { handleDeletion_ = DeletionPolicy::versioning; updateSyncGui(); }
+    void onDeletionPermanent  (wxCommandEvent& event) override { deletionVariant_ = DeletionVariant::permanent;  updateSyncGui(); }
+    void onDeletionRecycler   (wxCommandEvent& event) override { deletionVariant_ = DeletionVariant::recycler;   updateSyncGui(); }
+    void onDeletionVersioning (wxCommandEvent& event) override { deletionVariant_ = DeletionVariant::versioning; updateSyncGui(); }
 
     void onToggleMiscOption(wxCommandEvent& event) override { updateMiscGui(); }
     void onToggleMiscEmail (wxCommandEvent& event) override
@@ -323,7 +323,7 @@ private:
 
     //parameters with ownership NOT within GUI controls!
     SyncDirectionConfig directionCfg_;
-    DeletionPolicy handleDeletion_ = DeletionPolicy::recycler; //use Recycler, delete permanently or move to user-defined location
+    DeletionVariant deletionVariant_ = DeletionVariant::recycler; //use Recycler, delete permanently or move to user-defined location
 
     const std::function<size_t(const Zstring& folderPathPhrase)>                     getDeviceParallelOps_;
     const std::function<void  (const Zstring& folderPathPhrase, size_t parallelOps)> setDeviceParallelOps_;
@@ -666,15 +666,16 @@ globalLogFolderPhrase_(globalLogFolderPhrase)
         m_staticTextFolderPairLabel->Hide();
     }
 
-    //temporarily set main config as reference for window height calculations:
+    //temporarily set main config as reference for window min size calculations:
     globalPairCfg_ = GlobalPairConfig();
-    globalPairCfg_.syncCfg.directionCfg.var = SyncVariant::mirror;            //
-    globalPairCfg_.syncCfg.handleDeletion   = DeletionPolicy::versioning;     //
-    globalPairCfg_.syncCfg.versioningFolderPhrase = Zstr("dummy");            //set tentatively for sync dir height calculation below
-    globalPairCfg_.syncCfg.versioningStyle  = VersioningStyle::timestampFile; //
-    globalPairCfg_.syncCfg.versionMaxAgeDays = 30;                            //
-    globalPairCfg_.miscCfg.altLogFolderPathPhrase = Zstr("dummy");            //
-    globalPairCfg_.miscCfg.emailNotifyAddress     =      "dummy";             //
+    globalPairCfg_.syncCfg.directionCfg.var = SyncVariant::mirror;
+    globalPairCfg_.syncCfg.deletionVariant = DeletionVariant::versioning;
+    globalPairCfg_.syncCfg.versioningFolderPhrase = Zstr("dummy");
+    globalPairCfg_.syncCfg.versioningStyle  = VersioningStyle::timestampFile;
+    globalPairCfg_.syncCfg.versionMaxAgeDays = 30;
+    globalPairCfg_.miscCfg.autoRetryCount = 1;
+    globalPairCfg_.miscCfg.altLogFolderPathPhrase = Zstr("dummy");
+    globalPairCfg_.miscCfg.emailNotifyAddress     =      "dummy";
 
     selectFolderPairConfig(-1);
 
@@ -1191,7 +1192,7 @@ std::optional<SyncConfig> ConfigDialog::getSyncConfig() const
 
     SyncConfig syncCfg;
     syncCfg.directionCfg           = directionCfg_;
-    syncCfg.handleDeletion         = handleDeletion_;
+    syncCfg.deletionVariant        = deletionVariant_;
     syncCfg.versioningFolderPhrase = versioningFolder_.getPath();
     syncCfg.versioningStyle        = getEnumVal(enumVersioningStyle_, *m_choiceVersioningStyle);
     if (syncCfg.versioningStyle != VersioningStyle::replace)
@@ -1212,7 +1213,7 @@ void ConfigDialog::setSyncConfig(const SyncConfig* syncCfg)
     const SyncConfig tmpCfg = syncCfg ? *syncCfg : globalPairCfg_.syncCfg;
 
     directionCfg_   = tmpCfg.directionCfg; //make working copy; ownership *not* on GUI
-    handleDeletion_ = tmpCfg.handleDeletion;
+    deletionVariant_ = tmpCfg.deletionVariant;
     versioningFolder_.setPath(tmpCfg.versioningFolderPhrase);
     setEnumVal(enumVersioningStyle_, *m_choiceVersioningStyle, tmpCfg.versioningStyle);
 
@@ -1281,13 +1282,13 @@ void ConfigDialog::updateSyncGui()
     m_buttonCustom->setActive(SyncVariant::custom == directionCfg_.var && syncOptionsEnabled);
     //syncOptionsEnabled: nudge wxWidgets to render inactive config state (needed on Windows, NOT on Linux!)
 
-    m_buttonRecycler  ->setActive(DeletionPolicy::recycler    == handleDeletion_ && syncOptionsEnabled);
-    m_buttonPermanent ->setActive(DeletionPolicy::permanent   == handleDeletion_ && syncOptionsEnabled);
-    m_buttonVersioning->setActive(DeletionPolicy::versioning  == handleDeletion_ && syncOptionsEnabled);
+    m_buttonRecycler  ->setActive(DeletionVariant::recycler    == deletionVariant_ && syncOptionsEnabled);
+    m_buttonPermanent ->setActive(DeletionVariant::permanent   == deletionVariant_ && syncOptionsEnabled);
+    m_buttonVersioning->setActive(DeletionVariant::versioning  == deletionVariant_ && syncOptionsEnabled);
 
-    switch (handleDeletion_) //unconditionally update image, including "local options off"
+    switch (deletionVariant_) //unconditionally update image, including "local options off"
     {
-        case DeletionPolicy::recycler:
+        case DeletionVariant::recycler:
         {
             wxImage imgTrash = loadImage("delete_recycler");
             //use system icon if available (can fail on Linux??)
@@ -1298,17 +1299,17 @@ void ConfigDialog::updateSyncGui()
             setText(*m_staticTextDeletionTypeDescription, _("Retain deleted and overwritten files in the recycle bin"));
         }
         break;
-        case DeletionPolicy::permanent:
+        case DeletionVariant::permanent:
             setImage(*m_bitmapDeletionType, greyScaleIfDisabled(loadImage("delete_permanently"), syncOptionsEnabled));
             setText(*m_staticTextDeletionTypeDescription, _("Delete and overwrite files permanently"));
             break;
-        case DeletionPolicy::versioning:
+        case DeletionVariant::versioning:
             setImage(*m_bitmapVersioning, greyScaleIfDisabled(loadImage("delete_versioning"), syncOptionsEnabled));
             break;
     }
     //m_staticTextDeletionTypeDescription->Wrap(fastFromDIP(200)); //needs to be reapplied after SetLabel()
 
-    const bool versioningSelected = handleDeletion_ == DeletionPolicy::versioning;
+    const bool versioningSelected = deletionVariant_ == DeletionVariant::versioning;
 
     m_bitmapDeletionType               ->Show(!versioningSelected);
     m_staticTextDeletionTypeDescription->Show(!versioningSelected);
@@ -1575,14 +1576,9 @@ void ConfigDialog::selectFolderPairConfig(int newPairIndexToShow)
     bSizerSyncMisc   ->Show(mainConfigSelected);
 
     if (mainConfigSelected)
+    {
         m_hyperlinkPerfDeRequired->Show(!enableExtraFeatures_); //keep after bSizerPerformance->Show()
 
-    m_panelCompSettingsTab  ->Layout(); //fix comp panel glitch on Win 7 125% font size + perf panel
-    m_panelFilterSettingsTab->Layout();
-    m_panelSyncSettingsTab  ->Layout();
-
-    if (mainConfigSelected)
-    {
         //update the devices list for "parallel file operations" before calling setMiscSyncOptions():
         //  => should be enough to do this when selecting the main config
         //  => to be "perfect" we'd have to update already when the user drags & drops a different versioning folder
@@ -1598,10 +1594,10 @@ void ConfigDialog::selectFolderPairConfig(int newPairIndexToShow)
             addDevicePath(fpCfg.folderPathPhraseLeft);
             addDevicePath(fpCfg.folderPathPhraseRight);
 
-            if (fpCfg.localSyncCfg && fpCfg.localSyncCfg->handleDeletion == DeletionPolicy::versioning)
+            if (fpCfg.localSyncCfg && fpCfg.localSyncCfg->deletionVariant == DeletionVariant::versioning)
                 addDevicePath(fpCfg.localSyncCfg->versioningFolderPhrase);
         }
-        if (globalPairCfg_.syncCfg.handleDeletion == DeletionPolicy::versioning) //let's always add, even if *all* folder pairs use a local sync config (=> strange!)
+        if (globalPairCfg_.syncCfg.deletionVariant == DeletionVariant::versioning) //let's always add, even if *all* folder pairs use a local sync config (=> strange!)
             addDevicePath(globalPairCfg_.syncCfg.versioningFolderPhrase);
         //---------------------------------------------------------------------------------------------------------------
 
@@ -1616,6 +1612,10 @@ void ConfigDialog::selectFolderPairConfig(int newPairIndexToShow)
         setSyncConfig(get(localPairCfg_[selectedPairIndexToShow_].localSyncCfg));
         setFilterConfig  (localPairCfg_[selectedPairIndexToShow_].localFilter);
     }
+
+    m_panelCompSettingsTab  ->Layout(); //fix comp panel glitch on Win 7 125% font size + perf panel
+    m_panelFilterSettingsTab->Layout();
+    m_panelSyncSettingsTab  ->Layout();
 }
 
 
@@ -1642,7 +1642,7 @@ bool ConfigDialog::unselectFolderPairConfig(bool validateParams)
             return false;
         }
 
-        if (syncCfg && syncCfg->handleDeletion == DeletionPolicy::versioning)
+        if (syncCfg && syncCfg->deletionVariant == DeletionVariant::versioning)
         {
             if (AFS::isNullPath(createAbstractPath(syncCfg->versioningFolderPhrase)))
             {

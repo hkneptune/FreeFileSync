@@ -730,7 +730,7 @@ void Graph2D::render(wxDC& dc) const
                         //unlike wxDC::DrawRectangle() which just widens inner area!
                         wxDCPenChanger   dummy (dc, wxPen(it->second.fillColor, 1 /*[!] width*/));
                         wxDCBrushChanger dummy2(dc, it->second.fillColor);
-                        dc.DrawPolygon(static_cast<int>(points.size()), &points[0]);
+                        dc.DrawPolygon(static_cast<int>(points.size()), points.data());
                     }
 
             //2. draw all currently set mouse selections (including active selection)

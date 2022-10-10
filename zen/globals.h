@@ -10,7 +10,6 @@
 #include <atomic>
 #include <memory>
 #include "scope_guard.h"
-#include "legacy_compiler.h"
 
 
 namespace zen
@@ -188,7 +187,7 @@ void registerGlobalForDestruction(CleanUpEntry& entry)
     static struct
     {
         PodSpinMutex  spinLock;
-        CleanUpEntry* head;
+        CleanUpEntry* head = nullptr;
     } cleanUpList;
 
     static_assert(std::is_trivially_destructible_v<decltype(cleanUpList)>, "we must not generate code for magic statics!");

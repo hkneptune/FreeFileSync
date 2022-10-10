@@ -369,36 +369,29 @@ std::string generateLogFooterHtml(const std::wstring& logFilePath /*optional*/, 
 //-> Astyle fucks up! => no INDENT-ON
 
 
-void streamToLogFile(const ProcessSummary& summary, //throw FileError
+    //write log items in blocks instead of creating one big string: memory allocation might fail; think 1 million entries!
+template <class Function> 
+void streamToLogFile(const ProcessSummary& summary, 
                      const ErrorLog& log,
-                     AFS::OutputStream& streamOut,
-                     LogFileFormat logFormat)
+                     Function stringOut /*(const std::string& s); throw X*/,
+                     LogFileFormat logFormat) //throw FileError, X
 {
     const int logItemsTotal = log.end() - log.begin();
     const int logPreviewItemsMax = std::numeric_limits<int>::max();
 
-    std::string buffer = logFormat == LogFileFormat::html ? 
+    stringOut(logFormat == LogFileFormat::html ? 
                          generateLogHeaderHtml(summary, log, LOG_PREVIEW_FAIL_MAX) :
-                         generateLogHeaderTxt (summary, log, LOG_PREVIEW_FAIL_MAX);
+                         generateLogHeaderTxt (summary, log, LOG_PREVIEW_FAIL_MAX)); //throw X
 
-    //write log items in blocks instead of creating one big string: memory allocation might fail; think 1 million entries!
     for (const LogEntry& entry : log)
-    {
-        buffer += logFormat == LogFileFormat::html ?
+        stringOut(logFormat == LogFileFormat::html ?
                   formatMessageHtml(entry) :
-                  formatMessage    (entry);
+                  formatMessage    (entry)); //throw X
 
-        streamOut.write(&buffer[0], buffer.size()); //throw FileError, X
-        buffer.clear();
-    }
-
-    buffer += logFormat == LogFileFormat::html ? 
-              generateLogFooterHtml(std::wstring() /*logFilePath*/, logItemsTotal, logPreviewItemsMax) : //throw FileError
-              generateLogFooterTxt (std::wstring() /*logFilePath*/, logItemsTotal, logPreviewItemsMax);  //throw FileError
+    stringOut(logFormat == LogFileFormat::html ? 
+              generateLogFooterHtml(std::wstring() /*logFilePath*/, logItemsTotal, logPreviewItemsMax) /*throw FileError*/: 
+              generateLogFooterTxt (std::wstring() /*logFilePath*/, logItemsTotal, logPreviewItemsMax) /*throw FileError*/); //throw FileError, X
     //=> log file path is irrelevant, except when sending email!
-
-    //don't forget to flush:
-    streamOut.write(&buffer[0], buffer.size()); //throw FileError, X
 }
 
 
@@ -430,9 +423,21 @@ void saveNewLogFile(const AbstractPath& logFilePath, //throw FileError, X
     };
 
     //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
-    std::unique_ptr<AFS::OutputStream> logFileStream = AFS::getOutputStream(logFilePath, std::nullopt /*streamSize*/, std::nullopt /*modTime*/, notifyUnbufferedIO); //throw FileError
-    streamToLogFile(summary, log, *logFileStream, logFormat); //throw FileError, X
-    logFileStream->finalize();                                //throw FileError, X
+    std::unique_ptr<AFS::OutputStream> logFileOut = AFS::getOutputStream(logFilePath, 
+        std::nullopt /*streamSize*/, 
+        std::nullopt /*modTime*/); //throw FileError
+
+    BufferedOutputStream streamOut([&](const void* buffer, size_t bytesToWrite)
+    {
+        return logFileOut->tryWrite(buffer, bytesToWrite, notifyUnbufferedIO); //throw FileError, X
+    },
+    logFileOut->getBlockSize());
+
+    auto stringOut = [&](const std::string& str){ streamOut.write(str.data(), str.size()); }; //throw FileError, X
+    streamToLogFile(summary, log, stringOut, logFormat); //throw FileError, X
+    streamOut.flushBuffer(); //throw FileError, X
+
+    logFileOut->finalize(notifyUnbufferedIO); //throw FileError, X
 }
 
 

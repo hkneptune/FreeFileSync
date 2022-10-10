@@ -8,7 +8,7 @@
 #define FILE_IO_H_89578342758342572345
 
 #include "file_access.h"
-//#include "serialize.h"
+#include "serialize.h"
 #include "crc.h"
 #include "guid.h"
 
@@ -17,7 +17,7 @@ namespace zen
 {
     const char LINE_BREAK[] = "\n"; //since OS X Apple uses newline, too
 
-/* OS-buffered file IO optimized for
+/*  OS-buffered file I/O:
     - sequential read/write accesses
     - better error reporting
     - long path support
@@ -30,17 +30,21 @@ public:
 
     FileHandle getHandle() { return hFile_; }
 
-    //Windows: use 64kB ?? https://docs.microsoft.com/en-us/previous-versions/windows/it-pro/windows-2000-server/cc938632%28v=technet.10%29
-    //macOS, Linux: use st_blksize?
-    static size_t getBlockSize() { return 128 * 1024; };
-
     const Zstring& getFilePath() const { return filePath_; }
+
+    size_t getBlockSize(); //throw FileError
+
+    static constexpr size_t defaultBlockSize = 256 * 1024;
+
+    void close(); //throw FileError -> good place to catch errors when closing stream, otherwise called in ~FileBase()!
+
+    const struct stat& getStatBuffered(); //throw FileError
 
 protected:
     FileBase(FileHandle handle, const Zstring& filePath) : hFile_(handle), filePath_(filePath) {}
     ~FileBase();
 
-    void close(); //throw FileError -> optional, but good place to catch errors when closing stream!
+    void setStatBuffered(const struct stat& fileInfo) { statBuf_ = fileInfo; }
 
 private:
     FileBase           (const FileBase&) = delete;
@@ -48,88 +52,125 @@ private:
 
     FileHandle hFile_ = invalidFileHandle;
     const Zstring filePath_;
+    size_t blockSizeBuf_ = 0;
+    std::optional<struct stat> statBuf_;
 };
 
 //-----------------------------------------------------------------------------------------------
 
-class FileInput : public FileBase
+class FileInputPlain : public FileBase
 {
 public:
-    FileInput(                   const Zstring& filePath, const IoCallback& notifyUnbufferedIO /*throw X*/); //throw FileError, ErrorFileLocked
-    FileInput(FileHandle handle, const Zstring& filePath, const IoCallback& notifyUnbufferedIO /*throw X*/); //takes ownership!
+    FileInputPlain(                   const Zstring& filePath); //throw FileError, ErrorFileLocked
+    FileInputPlain(FileHandle handle, const Zstring& filePath); //takes ownership!
 
-    size_t read(void* buffer, size_t bytesToRead); //throw FileError, ErrorFileLocked, X; return "bytesToRead" bytes unless end of stream!
+    //may return short, only 0 means EOF! CONTRACT: bytesToRead > 0!
+    size_t tryRead(void* buffer, size_t bytesToRead); //throw FileError, ErrorFileLocked
 
 private:
-    size_t tryRead(void* buffer, size_t bytesToRead); //throw FileError, ErrorFileLocked; may return short, only 0 means EOF! =>  CONTRACT: bytesToRead > 0!
-
-    const IoCallback notifyUnbufferedIO_; //throw X
-
-    std::vector<std::byte> memBuf_ = std::vector<std::byte>(getBlockSize());
-    size_t bufPos_   = 0;
-    size_t bufPosEnd_= 0;
+    FileInputPlain(const std::pair<FileBase::FileHandle, struct stat>& fileDetails, const Zstring& filePath);
 };
 
 
-class FileOutput : public FileBase
+class FileOutputPlain : public FileBase
 {
 public:
-    FileOutput(                   const Zstring& filePath, const IoCallback& notifyUnbufferedIO /*throw X*/); //throw FileError, ErrorTargetExisting
-    FileOutput(FileHandle handle, const Zstring& filePath, const IoCallback& notifyUnbufferedIO /*throw X*/); //takes ownership!
-    ~FileOutput();
+    FileOutputPlain(                   const Zstring& filePath); //throw FileError, ErrorTargetExisting
+    FileOutputPlain(FileHandle handle, const Zstring& filePath); //takes ownership!
+    ~FileOutputPlain();
 
+    //preallocate disk space & reduce fragmentation
     void reserveSpace(uint64_t expectedSize); //throw FileError
 
-    void write(const void* buffer, size_t bytesToWrite); //throw FileError, X
-    void flushBuffers();                                 //throw FileError, X
-    //caveat: does NOT flush OS or hard disk buffers like e.g. FlushFileBuffers()!
+    //may return short! CONTRACT: bytesToWrite > 0
+    size_t tryWrite(const void* buffer, size_t bytesToWrite); //throw FileError
 
-    void finalize(); /*= flushBuffers() + close()*/      //throw FileError, X
+    //close() when done, or else file is considered incomplete and will be deleted!
 
 private:
-    size_t tryWrite(const void* buffer, size_t bytesToWrite); //throw FileError; may return short! CONTRACT: bytesToWrite > 0
-
-    IoCallback notifyUnbufferedIO_; //throw X
-    std::vector<std::byte> memBuf_ = std::vector<std::byte>(getBlockSize());
-    size_t bufPos_    = 0;
-    size_t bufPosEnd_ = 0;
 };
-//-----------------------------------------------------------------------------------------------
-//native stream I/O convenience functions:
 
-class TempFileOutput
+//--------------------------------------------------------------------
+
+namespace impl
+{
+inline
+auto makeTryRead(FileInputPlain& fip, const IoCallback& notifyUnbufferedIO /*throw X*/)
+{
+    return [&](void* buffer, size_t bytesToRead)
+    {
+        const size_t bytesRead = fip.tryRead(buffer, bytesToRead); //throw FileError, ErrorFileLocked; may return short, only 0 means EOF! =>  CONTRACT: bytesToRead > 0!
+        if (notifyUnbufferedIO) notifyUnbufferedIO(bytesRead); //throw X
+        return bytesRead;
+    };
+}
+
+
+inline
+auto makeTryWrite(FileOutputPlain& fop, const IoCallback& notifyUnbufferedIO /*throw X*/)
+{
+    return [&](const void* buffer, size_t bytesToWrite)
+    {
+        const size_t bytesWritten = fop.tryWrite(buffer, bytesToWrite); //throw FileError
+        if (notifyUnbufferedIO) notifyUnbufferedIO(bytesWritten); //throw X
+        return bytesWritten;
+    };
+}
+}
+
+//--------------------------------------------------------------------
+
+class FileInputBuffered
 {
 public:
-    TempFileOutput( const Zstring& filePath, const IoCallback& notifyUnbufferedIO /*throw X*/) : //throw FileError
-        filePath_(filePath),
-        tmpFile_(tmpFilePath_, notifyUnbufferedIO) {} //throw FileError, (ErrorTargetExisting)
+    FileInputBuffered(const Zstring& filePath, const IoCallback& notifyUnbufferedIO /*throw X*/) : //throw FileError, ErrorFileLocked
+        fileIn_(filePath), //throw FileError, ErrorFileLocked
+        notifyUnbufferedIO_(notifyUnbufferedIO) {}
 
-    void reserveSpace(uint64_t expectedSize) { tmpFile_.reserveSpace(expectedSize); } //throw FileError
+    //return "bytesToRead" bytes unless end of stream!
+    size_t read(void* buffer, size_t bytesToRead) { return streamIn_.read(buffer, bytesToRead); } //throw FileError, ErrorFileLocked, X
 
-    void write(const void* buffer, size_t bytesToWrite) { tmpFile_.write(buffer, bytesToWrite); } //throw FileError, X
+private:
+    FileInputPlain fileIn_;
+    const IoCallback notifyUnbufferedIO_; //throw X
 
-    FileOutput& refTempFile() { return tmpFile_; }
+    BufferedInputStream<FunctionReturnTypeT<decltype(&impl::makeTryRead)>>
+    streamIn_{impl::makeTryRead(fileIn_, notifyUnbufferedIO_), fileIn_.getBlockSize()}; //throw FileError
+};
 
-    void commit() //throw FileError, X
+
+class FileOutputBuffered
+{
+public:
+    FileOutputBuffered(const Zstring& filePath, const IoCallback& notifyUnbufferedIO /*throw X*/) : //throw FileError, ErrorTargetExisting
+        fileOut_(filePath), //throw FileError, ErrorTargetExisting
+        notifyUnbufferedIO_(notifyUnbufferedIO) {}
+
+    void write(const void* buffer, size_t bytesToWrite) { streamOut_.write(buffer, bytesToWrite); } //throw FileError, X
+
+    void finalize() //throw FileError, X
     {
-        tmpFile_.finalize(); //throw FileError, X
-
-        //take ownership:
-        ZEN_ON_SCOPE_FAIL( try { removeFilePlain(tmpFilePath_); /*throw FileError*/ }
-        catch (FileError&) {});
-
-        //operation finished: move temp file transactionally
-        moveAndRenameItem(tmpFilePath_, filePath_, true /*replaceExisting*/); //throw FileError, (ErrorMoveUnsupported), (ErrorTargetExisting)
+        streamOut_.flushBuffer(); //throw FileError, X
+        fileOut_.close(); //throw FileError
     }
 
 private:
-    //generate (hopefully) unique file name to avoid clashing with unrelated tmp file
-    const Zstring filePath_;
-    const Zstring shortGuid_ = printNumber<Zstring>(Zstr("%04x"), static_cast<unsigned int>(getCrc16(generateGUID())));
-    const Zstring tmpFilePath_ = filePath_ + Zstr('.') + shortGuid_ + Zstr(".tmp");
-    FileOutput tmpFile_;
-};
+    FileOutputPlain fileOut_;
+    const IoCallback notifyUnbufferedIO_; //throw X
 
+    BufferedOutputStream<FunctionReturnTypeT<decltype(&impl::makeTryWrite)>>
+    streamOut_{impl::makeTryWrite(fileOut_, notifyUnbufferedIO_), fileOut_.getBlockSize()}; //throw FileError
+};
+//-----------------------------------------------------------------------------------------------
+
+//stream I/O convenience functions:
+
+inline
+Zstring getPathWithTempName(const Zstring& filePath) //generate (hopefully) unique file name
+{
+    const Zstring shortGuid_ = printNumber<Zstring>(Zstr("%04x"), static_cast<unsigned int>(getCrc16(generateGUID())));
+    return filePath + Zstr('.') + shortGuid_ + Zstr(".tmp");
+}
 
 [[nodiscard]] std::string getFileContent(const Zstring& filePath, const IoCallback& notifyUnbufferedIO /*throw X*/); //throw FileError, X
 

@@ -43,7 +43,7 @@ Zstring zen::getLoginUser() //throw FileError
         passwd* pwEntry = nullptr;
         if (const int rv = ::getpwuid_r(userIdNo,   //uid_t uid
                                         &buf2,      //struct passwd* pwd
-                                        &buf[0],    //char* buf
+                                        buf.data(), //char* buf
                                         buf.size(), //size_t buflen
                                         &pwEntry);  //struct passwd** result
             rv != 0 || !pwEntry)
@@ -82,10 +82,10 @@ Zstring zen::getUserDescription() //throw FileError
     const Zstring computerName = []() -> Zstring //throw FileError
     {
         std::vector<char> buf(10000);
-        if (::gethostname(&buf[0], buf.size()) != 0)
+        if (::gethostname(buf.data(), buf.size()) != 0)
             THROW_LAST_FILE_ERROR(_("Cannot get process information."), "gethostname");
 
-        Zstring hostName = &buf[0];
+        Zstring hostName = buf.data();
         if (endsWithAsciiNoCase(hostName, ".local")) //strip fluff (macOS) => apparently not added on Linux?
             hostName = beforeLast(hostName, '.', IfNotFoundReturn::none);
 
@@ -204,7 +204,7 @@ Zstring zen::getUserHome() //throw FileError
     passwd* pwEntry = nullptr;
     if (const int rv = ::getpwnam_r(loginUser.c_str(), //const char *name
                                     &buf2,      //struct passwd* pwd
-                                    &buf[0],    //char* buf
+                                    buf.data(), //char* buf
                                     buf.size(), //size_t buflen
                                     &pwEntry);  //struct passwd** result
         rv != 0 || !pwEntry)

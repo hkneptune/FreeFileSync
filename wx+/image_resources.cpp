@@ -35,8 +35,8 @@ ImageHolder xbrzScale(int width, int height, const unsigned char* imageRgb, cons
 
     //get rid of allocation and buffer std::vector<> at thread-level? => no discernable perf improvement
     std::vector<uint32_t> buf(hqWidth * hqHeight + width * height);
-    uint32_t* const argbSrc = &buf[0] + hqWidth * hqHeight;
-    uint32_t* const xbrTrg  = &buf[0];
+    uint32_t* const argbSrc = buf.data() + hqWidth * hqHeight;
+    uint32_t* const xbrTrg  = buf.data();
 
     //convert RGB (RGB byte order) to ARGB (BGRA byte order)
     {

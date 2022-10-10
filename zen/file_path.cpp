@@ -70,7 +70,7 @@ std::optional<Zstring> zen::getParentFolderPath(const Zstring& itemPath)
 
         return appendPath(pc->rootPath, beforeLast(pc->relPath, FILE_NAME_SEPARATOR, IfNotFoundReturn::none));
     }
-    assert(false);
+    assert(itemPath.empty());
     return std::nullopt;
 }
 

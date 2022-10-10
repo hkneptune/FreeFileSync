@@ -13,6 +13,7 @@
 #include <wx/event.h>
 #include <wx/log.h>
 #include <wx/tooltip.h>
+#include <wx+/app_main.h>
 #include <wx+/popup_dlg.h>
 #include <wx+/image_resources.h>
 #include "config.h"
@@ -59,7 +60,7 @@ void notifyAppError(const std::wstring& msg, FfsExitCode rc)
                                (msgTypeName.empty() ? L"" : SPACED_DASH + msgTypeName);
 
     //error handling strategy unknown and no sync log output available at this point!
-    std::cerr << '[' + utfTo<std::string>(title) + "] " + utfTo<std::string>(msg) << '\n';
+    std::cerr << '[' + utfTo<std::string>(title) + "] " + utfTo<std::string>(msg) + '\n';
     //alternative0: std::wcerr: cannot display non-ASCII at all, so why does it exist???
     //alternative1: wxSafeShowMessage => NO console output on Debian x86, WTF!
     //alternative2: wxMessageBox() => works, but we probably shouldn't block during command line usage
@@ -169,25 +170,41 @@ void Application::onEnterEventLoop(wxEvent& event)
     [[maybe_unused]] bool ubOk = Unbind(EVENT_ENTER_EVENT_LOOP, &Application::onEnterEventLoop, this);
     assert(ubOk);
 
+    //wxWidgets app exit handling is weird... we want to exit only if the logical main window is closed, not just *any* window!
+    wxTheApp->SetExitOnFrameDelete(false); //prevent popup-windows from becoming temporary top windows leading to program exit after closure
+    ZEN_ON_SCOPE_EXIT(if (!globalWindowWasSet()) wxTheApp->ExitMainLoop()); //quit application, if no main window was set (batch silent mode)
+
     //try to set config/batch- filepath set by %1 parameter
     std::vector<Zstring> commandArgs;
-    for (int i = 1; i < argc; ++i)
+
+    try
     {
-        const Zstring& filePath = getResolvedFilePath(utfTo<Zstring>(argv[i]));
+        for (int i = 1; i < argc; ++i)
+        {
+            const Zstring& filePath = getResolvedFilePath(utfTo<Zstring>(argv[i]));
 #if 0
-        if (!fileAvailable(filePath)) //...be a little tolerant
-            for (const Zchar* ext : {Zstr(".ffs_real"), Zstr(".ffs_batch")})
-                if (fileAvailable(filePath + ext))
-                    filePath += ext;
+            if (!fileAvailable(filePath)) //...be a little tolerant
+                for (const Zchar* ext : {Zstr(".ffs_real"), Zstr(".ffs_batch")})
+                    if (fileAvailable(filePath + ext))
+                        filePath += ext;
 #endif
-        commandArgs.push_back(filePath);
+            if (endsWithAsciiNoCase(filePath, Zstr(".ffs_real")))
+                commandArgs.push_back(filePath);
+            else
+                throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)),
+                                _("Unexpected file extension:") + L' ' + fmtPath(getFileExtension(filePath)));
+        }
+
+        Zstring cfgFilePath;
+        if (!commandArgs.empty())
+            cfgFilePath = commandArgs[0];
+
+        MainDialog::create(cfgFilePath);
     }
-
-    Zstring cfgFilePath;
-    if (!commandArgs.empty())
-        cfgFilePath = commandArgs[0];
-
-    MainDialog::create(cfgFilePath);
+    catch (const FileError& e)
+    {
+        notifyAppError(e.toString(), FfsExitCode::aborted);
+    }
 }
 
 

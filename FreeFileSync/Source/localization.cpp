@@ -169,6 +169,7 @@ std::vector<TranslationInfo> loadTranslations(const Zstring& zipPath) //throw Fi
             });
         }
         catch (lng::ParsingError&) { assert(false); }
+    warn_static("at least log on failure!")
 
     std::sort(translations.begin(), translations.end(), [](const TranslationInfo& lhs, const TranslationInfo& rhs)
     {
@@ -301,7 +302,7 @@ public:
 
 private:
     const wxString canonicalName_;
-    MemoryStreamOut<std::string> moBuf_;
+    MemoryStreamOut moBuf_;
 };
 
 

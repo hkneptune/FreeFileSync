@@ -5,12 +5,50 @@
 // *****************************************************************************
 
 #include "file_io.h"
-
     #include <sys/stat.h>
     #include <fcntl.h>  //open
     #include <unistd.h> //close, read, write
 
 using namespace zen;
+
+
+size_t FileBase::getBlockSize() //throw FileError
+{
+    if (blockSizeBuf_ == 0)
+    {
+        /*  - statfs::f_bsize  - "optimal transfer block size"
+            - stat::st_blksize - "blocksize for file system I/O. Writing in smaller chunks may cause an inefficient read-modify-rewrite."
+
+            e.g. local disk: f_bsize  4096   st_blksize  4096
+                 USB memory: f_bsize 32768   st_blksize 32768     */
+        const auto st_blksize = getStatBuffered().st_blksize; //throw FileError
+        if (st_blksize > 0)             //st_blksize is signed!
+            blockSizeBuf_ = st_blksize; //
+
+        blockSizeBuf_ = std::max(blockSizeBuf_, defaultBlockSize);
+        //ha, convergent evolution! https://github.com/coreutils/coreutils/blob/master/src/ioblksize.h#L74
+    }
+    return blockSizeBuf_;
+}
+
+
+const struct stat& FileBase::getStatBuffered() //throw FileError
+{
+    if (!statBuf_)
+        try
+        {
+            if (hFile_ == invalidFileHandle)
+                throw SysError(L"Contract error: getStatBuffered() called after close().");
+
+            struct stat fileInfo = {};
+            if (::fstat(hFile_, &fileInfo) != 0)
+                THROW_LAST_SYS_ERROR("fstat");
+            statBuf_ = std::move(fileInfo);
+        }
+        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(filePath_)), e.toString()); }
+
+    return *statBuf_;
+}
 
 
 FileBase::~FileBase()
@@ -21,29 +59,37 @@ FileBase::~FileBase()
             close(); //throw FileError
         }
         catch (FileError&) { assert(false); }
+    warn_static("log it!")
 }
 
 
 void FileBase::close() //throw FileError
 {
-    if (hFile_ == invalidFileHandle)
-        throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getFilePath())), L"Contract error: close() called more than once.");
-    ZEN_ON_SCOPE_EXIT(hFile_ = invalidFileHandle);
-
-    if (::close(hFile_) != 0)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getFilePath())), "close");
+    try
+    {
+        if (hFile_ == invalidFileHandle)
+            throw SysError(L"Contract error: close() called more than once.");
+        if (::close(hFile_) != 0)
+            THROW_LAST_SYS_ERROR("close");
+        hFile_ = invalidFileHandle; //do NOT set on failure! => ~FileOutputPlain() still wants to (try to) delete the file!
+    }
+    catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getFilePath())), e.toString()); }
 }
 
 //----------------------------------------------------------------------------------------------------
 
 namespace
 {
-FileBase::FileHandle openHandleForRead(const Zstring& filePath) //throw FileError, ErrorFileLocked
+    std::pair<FileBase::FileHandle, struct stat>
+openHandleForRead(const Zstring& filePath) //throw FileError, ErrorFileLocked
 {
-    //caveat: check for file types that block during open(): character device, block device, named pipe
-    struct stat fileInfo = {};
-    if (::stat(filePath.c_str(), &fileInfo) == 0) //follows symlinks
+    try
     {
+        //caveat: check for file types that block during open(): character device, block device, named pipe
+        struct stat fileInfo = {};
+        if (::stat(filePath.c_str(), &fileInfo) != 0) //follows symlinks
+            THROW_LAST_SYS_ERROR("stat");
+
         if (!S_ISREG(fileInfo.st_mode) &&
             !S_ISDIR(fileInfo.st_mode) && //open() will fail with "EISDIR: Is a directory" => nice
             !S_ISLNK(fileInfo.st_mode)) //?? shouldn't be possible after successful stat()
@@ -59,103 +105,77 @@ FileBase::FileHandle openHandleForRead(const Zstring& filePath) //throw FileErro
                     name += L", ";
                 return name + printNumber<std::wstring>(L"0%06o", m & S_IFMT);
             }();
-            throw FileError(replaceCpy(_("Cannot open file %x."), L"%x", fmtPath(filePath)),
-                            _("Unsupported item type.") + L" [" + typeName + L']');
+            throw SysError(_("Unsupported item type.") + L" [" + typeName + L']');
         }
+
+        //don't use O_DIRECT: https://yarchive.net/comp/linux/o_direct.html
+        const int fdFile = ::open(filePath.c_str(), O_RDONLY | O_CLOEXEC);
+        if (fdFile == -1) //don't check "< 0" -> docu seems to allow "-2" to be a valid file handle
+            THROW_LAST_SYS_ERROR("open");
+        return {fdFile /*pass ownership*/, fileInfo};
     }
-    //else: let ::open() fail for errors like "not existing"
-
-    //don't use O_DIRECT: https://yarchive.net/comp/linux/o_direct.html
-    const int fdFile = ::open(filePath.c_str(), O_RDONLY | O_CLOEXEC);
-    if (fdFile == -1) //don't check "< 0" -> docu seems to allow "-2" to be a valid file handle
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot open file %x."), L"%x", fmtPath(filePath)), "open");
-    return fdFile; //pass ownership
+    catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot open file %x."), L"%x", fmtPath(filePath)), e.toString()); }
 }
 }
 
 
-FileInput::FileInput(FileHandle handle, const Zstring& filePath, const IoCallback& notifyUnbufferedIO) :
-    FileBase(handle, filePath), notifyUnbufferedIO_(notifyUnbufferedIO) {}
+FileInputPlain::FileInputPlain(const Zstring& filePath) :
+    FileInputPlain(openHandleForRead(filePath), filePath) {} //throw FileError, ErrorFileLocked
 
 
-FileInput::FileInput(const Zstring& filePath, const IoCallback& notifyUnbufferedIO) :
-    FileBase(openHandleForRead(filePath), filePath), //throw FileError, ErrorFileLocked
-    notifyUnbufferedIO_(notifyUnbufferedIO)
+FileInputPlain::FileInputPlain(const std::pair<FileBase::FileHandle, struct stat>& fileDetails, const Zstring& filePath) :
+    FileInputPlain(fileDetails.first, filePath)
+{
+    setStatBuffered(fileDetails.second);
+}
+
+
+FileInputPlain::FileInputPlain(FileHandle handle, const Zstring& filePath) :
+    FileBase(handle, filePath)
 {
     //optimize read-ahead on input file:
-    if (::posix_fadvise(getHandle(), 0, 0, POSIX_FADV_SEQUENTIAL) != 0)
+    if (::posix_fadvise(getHandle(), 0 /*offset*/, 0 /*len*/, POSIX_FADV_SEQUENTIAL) != 0) //"len == 0" means "end of the file"
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(filePath)), "posix_fadvise(POSIX_FADV_SEQUENTIAL)");
+
+    /*  - POSIX_FADV_SEQUENTIAL is like POSIX_FADV_NORMAL, but with twice the read-ahead buffer size
+        - POSIX_FADV_NOREUSE "since  kernel  2.6.18 this flag is a no-op" WTF!?
+        - POSIX_FADV_DONTNEED may be used to clear the OS file system cache (offset and len must be page-aligned!)
+            => does nothing, unless data was already written to disk: https://insights.oetiker.ch/linux/fadvise/
+        - POSIX_FADV_WILLNEED: issue explicit read-ahead; almost the same as readahead(), but with weaker error checking
+          https://unix.stackexchange.com/questions/681188/difference-between-posix-fadvise-and-readahead
+
+          clear file system cache manually:     sync; echo 3 > /proc/sys/vm/drop_caches              */
 
 }
 
 
-size_t FileInput::tryRead(void* buffer, size_t bytesToRead) //throw FileError, ErrorFileLocked; may return short, only 0 means EOF!
+//may return short, only 0 means EOF! =>  CONTRACT: bytesToRead > 0!
+size_t FileInputPlain::tryRead(void* buffer, size_t bytesToRead) //throw FileError, ErrorFileLocked
 {
     if (bytesToRead == 0) //"read() with a count of 0 returns zero" => indistinguishable from end of file! => check!
         throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
-    assert(bytesToRead == getBlockSize());
-
-    ssize_t bytesRead = 0;
-    do
+    assert(bytesToRead % getBlockSize() == 0);
+    try
     {
-        bytesRead = ::read(getHandle(), buffer, bytesToRead);
+        ssize_t bytesRead = 0;
+        do
+        {
+            bytesRead = ::read(getHandle(), buffer, bytesToRead);
+        }
+        while (bytesRead < 0 && errno == EINTR); //Compare copy_reg() in copy.c: ftp://ftp.gnu.org/gnu/coreutils/coreutils-8.23.tar.xz
+        //EINTR is not checked on macOS' copyfile: https://opensource.apple.com/source/copyfile/copyfile-173.40.2/copyfile.c.auto.html
+        //read() on macOS: https://developer.apple.com/legacy/library/documentation/Darwin/Reference/ManPages/man2/read.2.html
+
+        if (bytesRead < 0)
+            THROW_LAST_SYS_ERROR("read");
+        if (makeUnsigned(bytesRead) > bytesToRead) //better safe than sorry
+            throw SysError(formatSystemError("ReadFile", L"", L"Buffer overflow."));
+
+        //if ::read is interrupted (EINTR) right in the middle, it will return successfully with "bytesRead < bytesToRead"
+
+        return bytesRead; //"zero indicates end of file"
     }
-    while (bytesRead < 0 && errno == EINTR); //Compare copy_reg() in copy.c: ftp://ftp.gnu.org/gnu/coreutils/coreutils-8.23.tar.xz
-    //EINTR is not checked on macOS' copyfile: https://opensource.apple.com/source/copyfile/copyfile-146/copyfile.c.auto.html
-    //read() on macOS: https://developer.apple.com/legacy/library/documentation/Darwin/Reference/ManPages/man2/read.2.html
-
-    if (bytesRead < 0)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(getFilePath())), "read");
-    if (static_cast<size_t>(bytesRead) > bytesToRead) //better safe than sorry
-        throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(getFilePath())), formatSystemError("ReadFile", L"", L"Buffer overflow."));
-
-    //if ::read is interrupted (EINTR) right in the middle, it will return successfully with "bytesRead < bytesToRead"
-
-    return bytesRead; //"zero indicates end of file"
-}
-
-
-size_t FileInput::read(void* buffer, size_t bytesToRead) //throw FileError, ErrorFileLocked, X; return "bytesToRead" bytes unless end of stream!
-{
-    /*
-        FFS 8.9-9.5 perf issues on macOS: https://freefilesync.org/forum/viewtopic.php?t=4808
-            app-level buffering is essential to optimize random data sizes; e.g. "export file list":
-                => big perf improvement on Windows, Linux. No significant improvement on macOS in tests
-            impact on stream-based file copy:
-                => no drawback vs block-wise copy loop on Linux, HOWEVER: big perf issue on macOS!
-
-        Possible cause of macOS perf issue unclear:
-            - getting rid of std::vector::resize() and std::vector::erase() "fixed" the problem
-                => costly zero-initializing memory? problem with inlining? QOI issue of std:vector on clang/macOS?
-            - replacing std::copy() with memcpy() also *seems* to have improved speed "somewhat"
-    */
-
-    const size_t blockSize = getBlockSize();
-    assert(memBuf_.size() >= blockSize);
-    assert(bufPos_ <= bufPosEnd_ && bufPosEnd_ <= memBuf_.size());
-
-    auto       it    = static_cast<std::byte*>(buffer);
-    const auto itEnd = it + bytesToRead;
-    for (;;)
-    {
-        const size_t junkSize = std::min(static_cast<size_t>(itEnd - it), bufPosEnd_ - bufPos_);
-        std::memcpy(it, &memBuf_[0] + bufPos_ /*caveat: vector debug checks*/, junkSize);
-        bufPos_ += junkSize;
-        it      += junkSize;
-
-        if (it == itEnd)
-            break;
-        //--------------------------------------------------------------------
-        const size_t bytesRead = tryRead(&memBuf_[0], blockSize); //throw FileError, ErrorFileLocked; may return short, only 0 means EOF! => CONTRACT: bytesToRead > 0
-        bufPos_ = 0;
-        bufPosEnd_ = bytesRead;
-
-        if (notifyUnbufferedIO_) notifyUnbufferedIO_(bytesRead); //throw X
-
-        if (bytesRead == 0) //end of file
-            break;
-    }
-    return it - static_cast<std::byte*>(buffer);
+    catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(getFilePath())), e.toString()); }
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -164,170 +184,153 @@ namespace
 {
 FileBase::FileHandle openHandleForWrite(const Zstring& filePath) //throw FileError, ErrorTargetExisting
 {
-    //checkForUnsupportedType(filePath); -> not needed, open() + O_WRONLY should fail fast
-
-    const mode_t lockFileMode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH; //0666 => umask will be applied implicitly!
-
-    //O_EXCL contains a race condition on NFS file systems: https://linux.die.net/man/2/open
-    const int fdFile = ::open(filePath.c_str(), //const char* pathname
-                              O_CREAT |         //int flags
-                              /*access == FileOutput::ACC_OVERWRITE ? O_TRUNC : */ O_EXCL | O_WRONLY  | O_CLOEXEC,
-                              lockFileMode);    //mode_t mode
-    if (fdFile == -1)
+    try
     {
-        const int ec = errno; //copy before making other system calls!
-        const std::wstring errorMsg = replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(filePath));
-        const std::wstring errorDescr = formatSystemError("open", ec);
+        //checkForUnsupportedType(filePath); -> not needed, open() + O_WRONLY should fail fast
 
-        if (ec == EEXIST)
-            throw ErrorTargetExisting(errorMsg, errorDescr);
-        //if (ec == ENOENT) throw ErrorTargetPathMissing(errorMsg, errorDescr);
+        const mode_t lockFileMode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH; //0666 => umask will be applied implicitly!
 
-        throw FileError(errorMsg, errorDescr);
+        //O_EXCL contains a race condition on NFS file systems: https://linux.die.net/man/2/open
+        const int fdFile = ::open(filePath.c_str(), //const char* pathname
+                                  O_CREAT |         //int flags
+                                  /*access == FileOutput::ACC_OVERWRITE ? O_TRUNC : */ O_EXCL | O_WRONLY  | O_CLOEXEC,
+                                  lockFileMode);    //mode_t mode
+        if (fdFile == -1)
+        {
+            const int ec = errno; //copy before making other system calls!
+            if (ec == EEXIST)
+                throw ErrorTargetExisting(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(filePath)), formatSystemError("open", ec));
+            //if (ec == ENOENT) throw ErrorTargetPathMissing(errorMsg, errorDescr);
+
+            THROW_LAST_SYS_ERROR("open");
+        }
+        return fdFile; //pass ownership
     }
-    return fdFile; //pass ownership
+    catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(filePath)), e.toString()); }
 }
 }
 
 
-FileOutput::FileOutput(FileHandle handle, const Zstring& filePath, const IoCallback& notifyUnbufferedIO) :
-    FileBase(handle, filePath), notifyUnbufferedIO_(notifyUnbufferedIO)
+FileOutputPlain::FileOutputPlain(const Zstring& filePath) :
+    FileOutputPlain(openHandleForWrite(filePath), filePath) {} //throw FileError, ErrorTargetExisting
+
+
+FileOutputPlain::FileOutputPlain(FileHandle handle, const Zstring& filePath) :
+    FileBase(handle, filePath)
 {
 }
 
 
-FileOutput::FileOutput(const Zstring& filePath, const IoCallback& notifyUnbufferedIO) :
-    FileBase(openHandleForWrite(filePath), filePath), notifyUnbufferedIO_(notifyUnbufferedIO) {} //throw FileError, ErrorTargetExisting
-
-
-FileOutput::~FileOutput()
+FileOutputPlain::~FileOutputPlain()
 {
 
     if (getHandle() != invalidFileHandle) //not finalized => clean up garbage
-    {
-        //"deleting while handle is open" == FILE_FLAG_DELETE_ON_CLOSE
-        if (::unlink(getFilePath().c_str()) != 0)
+        try
+        {
+            //"deleting while handle is open" == FILE_FLAG_DELETE_ON_CLOSE
+            if (::unlink(getFilePath().c_str()) != 0)
+                THROW_LAST_SYS_ERROR("unlink");
+        }
+        catch (const SysError&)
+        {
             assert(false);
-    }
+            warn_static("at least log on failure!")
+        }
 }
 
 
-size_t FileOutput::tryWrite(const void* buffer, size_t bytesToWrite) //throw FileError; may return short! CONTRACT: bytesToWrite > 0
+void FileOutputPlain::reserveSpace(uint64_t expectedSize) //throw FileError
+{
+    //NTFS: "If you set the file allocation info [...] the file contents will be forced into nonresident data, even if it would have fit inside the MFT."
+    if (expectedSize < 1024) //https://docs.microsoft.com/en-us/archive/blogs/askcore/the-four-stages-of-ntfs-file-growth
+        return;
+
+    try
+    {
+        //don't use ::posix_fallocate which uses horribly inefficient fallback if FS doesn't support it (EOPNOTSUPP) and changes files size!
+        //FALLOC_FL_KEEP_SIZE => allocate only, file size is NOT changed!
+        if (::fallocate(getHandle(),         //int fd
+                        FALLOC_FL_KEEP_SIZE, //int mode
+                        0,                   //off_t offset
+                        expectedSize) != 0)  //off_t len
+            if (errno != EOPNOTSUPP) //possible, unlike with posix_fallocate()
+                THROW_LAST_SYS_ERROR("fallocate");
+
+    }
+    catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getFilePath())), e.toString()); }
+}
+
+
+//may return short! CONTRACT: bytesToWrite > 0
+size_t FileOutputPlain::tryWrite(const void* buffer, size_t bytesToWrite) //throw FileError
 {
     if (bytesToWrite == 0)
         throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
-    assert(bytesToWrite <= getBlockSize());
-
-    ssize_t bytesWritten = 0;
-    do
+    assert(bytesToWrite % getBlockSize() == 0 || bytesToWrite < getBlockSize());
+    try
     {
-        bytesWritten = ::write(getHandle(), buffer, bytesToWrite);
-    }
-    while (bytesWritten < 0 && errno == EINTR);
-    //write() on macOS: https://developer.apple.com/legacy/library/documentation/Darwin/Reference/ManPages/man2/write.2.html
-
-    if (bytesWritten <= 0)
-    {
-        if (bytesWritten == 0) //comment in safe-read.c suggests to treat this as an error due to buggy drivers
-            errno = ENOSPC;
-
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getFilePath())), "write");
-    }
-    if (bytesWritten > static_cast<ssize_t>(bytesToWrite)) //better safe than sorry
-        throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getFilePath())), formatSystemError("write", L"", L"Buffer overflow."));
-
-    //if ::write() is interrupted (EINTR) right in the middle, it will return successfully with "bytesWritten < bytesToWrite"!
-    return bytesWritten;
-}
-
-
-void FileOutput::write(const void* buffer, size_t bytesToWrite) //throw FileError, X
-{
-    const size_t blockSize = getBlockSize();
-    assert(memBuf_.size() >= blockSize);
-    assert(bufPos_ <= bufPosEnd_ && bufPosEnd_ <= memBuf_.size());
-
-    auto       it    = static_cast<const std::byte*>(buffer);
-    const auto itEnd = it + bytesToWrite;
-    for (;;)
-    {
-        if (memBuf_.size() - bufPos_ < blockSize) //support memBuf_.size() > blockSize to reduce memmove()s, but perf test shows: not really needed!
-            // || bufPos_ == bufPosEnd_) -> not needed while memBuf_.size() == blockSize
+        ssize_t bytesWritten = 0;
+        do
         {
-            std::memmove(&memBuf_[0], &memBuf_[0] + bufPos_, bufPosEnd_ - bufPos_);
-            bufPosEnd_ -= bufPos_;
-            bufPos_ = 0;
+            bytesWritten = ::write(getHandle(), buffer, bytesToWrite);
         }
+        while (bytesWritten < 0 && errno == EINTR);
+        //write() on macOS: https://developer.apple.com/legacy/library/documentation/Darwin/Reference/ManPages/man2/write.2.html
 
-        const size_t junkSize = std::min(static_cast<size_t>(itEnd - it), blockSize - (bufPosEnd_ - bufPos_));
-        std::memcpy(&memBuf_[0] + bufPosEnd_ /*caveat: vector debug checks*/, it, junkSize);
-        bufPosEnd_ += junkSize;
-        it         += junkSize;
+        if (bytesWritten <= 0)
+        {
+            if (bytesWritten == 0) //comment in safe-read.c suggests to treat this as an error due to buggy drivers
+                errno = ENOSPC;
 
-        if (it == itEnd)
-            return;
-        //--------------------------------------------------------------------
-        const size_t bytesWritten = tryWrite(&memBuf_[bufPos_], blockSize); //throw FileError; may return short! CONTRACT: bytesToWrite > 0
-        bufPos_ += bytesWritten;
-        if (notifyUnbufferedIO_) notifyUnbufferedIO_(bytesWritten); //throw X!
+            THROW_LAST_SYS_ERROR("write");
+        }
+        if (bytesWritten > static_cast<ssize_t>(bytesToWrite)) //better safe than sorry
+            throw SysError(formatSystemError("write", L"", L"Buffer overflow."));
+
+        //if ::write() is interrupted (EINTR) right in the middle, it will return successfully with "bytesWritten < bytesToWrite"!
+        return bytesWritten;
     }
+    catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getFilePath())), e.toString()); }
 }
 
-
-void FileOutput::flushBuffers() //throw FileError, X
-{
-    assert(bufPosEnd_ - bufPos_ <= getBlockSize());
-    assert(bufPos_ <= bufPosEnd_ && bufPosEnd_ <= memBuf_.size());
-    while (bufPos_ != bufPosEnd_)
-    {
-        const size_t bytesWritten = tryWrite(&memBuf_[bufPos_], bufPosEnd_ - bufPos_); //throw FileError; may return short! CONTRACT: bytesToWrite > 0
-        bufPos_ += bytesWritten;
-        if (notifyUnbufferedIO_) notifyUnbufferedIO_(bytesWritten); //throw X!
-    }
-}
-
-
-void FileOutput::finalize() //throw FileError, X
-{
-    flushBuffers(); //throw FileError, X
-    close();        //throw FileError
-    //~FileBase() calls this one, too, but we want to propagate errors if any
-}
-
-
-void FileOutput::reserveSpace(uint64_t expectedSize) //throw FileError
-{
-    //NTFS: "If you set the file allocation info [...] the file contents will be forced into nonresident data, even if it would have fit inside the MFT."
-    if (expectedSize < 1024) //https://www.sciencedirect.com/topics/computer-science/master-file-table
-        return;
-
-    //don't use ::posix_fallocate which uses horribly inefficient fallback if FS doesn't support it (EOPNOTSUPP) and changes files size!
-    //FALLOC_FL_KEEP_SIZE => allocate only, file size is NOT changed!
-    if (::fallocate(getHandle(),         //int fd
-                    FALLOC_FL_KEEP_SIZE, //int mode
-                    0,                   //off_t offset
-                    expectedSize) != 0)  //off_t len
-        if (errno != EOPNOTSUPP) //possible, unlike with posix_fallocate()
-            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getFilePath())), "fallocate");
-
-}
-
+//----------------------------------------------------------------------------------------------------
 
 std::string zen::getFileContent(const Zstring& filePath, const IoCallback& notifyUnbufferedIO /*throw X*/) //throw FileError, X
 {
-    FileInput streamIn(filePath, notifyUnbufferedIO); //throw FileError, ErrorFileLocked
-    return bufferedLoad<std::string>(streamIn); //throw FileError, X
+    FileInputPlain fileIn(filePath); //throw FileError, ErrorFileLocked
+
+    return unbufferedLoad<std::string>([&](void* buffer, size_t bytesToRead)
+    {
+        const size_t bytesRead = fileIn.tryRead(buffer, bytesToRead); //throw FileError; may return short, only 0 means EOF! =>  CONTRACT: bytesToRead > 0!
+        if (notifyUnbufferedIO) notifyUnbufferedIO(bytesRead); //throw X!
+        return bytesRead;
+    },
+    fileIn.getBlockSize()); //throw FileError, X
 }
 
 
 void zen::setFileContent(const Zstring& filePath, const std::string& byteStream, const IoCallback& notifyUnbufferedIO /*throw X*/) //throw FileError, X
 {
-    TempFileOutput fileOut(filePath, notifyUnbufferedIO); //throw FileError
-    if (!byteStream.empty())
+    const Zstring tmpFilePath = getPathWithTempName(filePath);
+
+    FileOutputPlain tmpFile(tmpFilePath); //throw FileError, (ErrorTargetExisting)
+
+    tmpFile.reserveSpace(byteStream.size()); //throw FileError
+
+    unbufferedSave(byteStream, [&](const void* buffer, size_t bytesToWrite)
     {
-        //preallocate disk space & reduce fragmentation
-        fileOut.reserveSpace(byteStream.size()); //throw FileError
-        fileOut.write(&byteStream[0], byteStream.size()); //throw FileError, X
-    }
-    fileOut.commit(); //throw FileError, X
+        const size_t bytesWritten = tmpFile.tryWrite(buffer, bytesToWrite); //throw FileError; may return short! CONTRACT: bytesToWrite > 0
+        if (notifyUnbufferedIO) notifyUnbufferedIO(bytesWritten); //throw X!
+        return bytesWritten;
+    },
+    tmpFile.getBlockSize()); //throw FileError, X
+
+    tmpFile.close(); //throw FileError
+    //take over ownership:
+    ZEN_ON_SCOPE_FAIL( try { removeFilePlain(tmpFilePath); /*throw FileError*/ }
+    catch (FileError&) {});
+    warn_static("log it!")
+
+    //operation finished: move temp file transactionally
+    moveAndRenameItem(tmpFilePath, filePath, true /*replaceExisting*/); //throw FileError, (ErrorMoveUnsupported), (ErrorTargetExisting)
 }

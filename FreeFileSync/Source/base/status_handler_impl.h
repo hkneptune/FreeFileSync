@@ -49,22 +49,16 @@ public:
     //blocking call: context of worker thread
     //=> indirect support for "pause": logInfo() is called under singleThread lock,
     //   so all other worker threads will wait when coming out of parallel I/O (trying to lock singleThread)
-    void logInfo(const std::wstring& msg) //throw ThreadStopRequest
+    void logMessage(const std::wstring& msg, PhaseCallback::MsgType type) //throw ThreadStopRequest
     {
         assert(!zen::runningOnMainThread());
-        std::unique_lock dummy(lockRequest_);
-        zen::interruptibleWait(conditionReadyForNewRequest_, dummy, [this] { return !logInfoRequest_; }); //throw ThreadStopRequest
+        {
+            std::unique_lock dummy(lockRequest_);
+            zen::interruptibleWait(conditionReadyForNewRequest_, dummy, [this] { return !logMsgRequest_; }); //throw ThreadStopRequest
 
-        logInfoRequest_ = /*std::move(taskPrefix) + */ msg;
-
-        dummy.unlock(); //optimization for condition_variable::notify_all()
+            logMsgRequest_ = LogMsgRequest{msg, type};
+        }
         conditionNewRequest.notify_all();
-    }
-
-    void reportInfo(std::wstring&& msg) //throw ThreadStopRequest
-    {
-        logInfo(msg);                 //throw ThreadStopRequest
-        updateStatus(std::move(msg)); //
     }
 
     //blocking call: context of worker thread
@@ -89,6 +83,27 @@ public:
         return rv;
     }
 
+    //blocking call: context of worker thread
+    void reportWarning(const std::wstring& msg, bool& warningActive) //throw ThreadStopRequest
+    {
+        assert(!zen::runningOnMainThread());
+        {
+            std::unique_lock dummy(lockRequest_);
+            zen::interruptibleWait(conditionReadyForNewRequest_, dummy, [this] { return !warningRequest_ && !warningResponse_; }); //throw ThreadStopRequest
+
+            warningRequest_ = WarningRequest{msg, warningActive};
+            conditionNewRequest.notify_all();
+
+            zen::interruptibleWait(conditionHaveResponse_, dummy, [this] { return static_cast<bool>(warningResponse_); }); //throw ThreadStopRequest
+
+            warningActive = warningResponse_->warningActive;
+
+            warningRequest_  = std::nullopt;
+            warningResponse_ = std::nullopt;
+        }
+        conditionReadyForNewRequest_.notify_all(); //=> spurious wake-up for AsyncCallback::logInfo()
+    }
+
     //context of main thread
     void waitUntilDone(std::chrono::milliseconds cbInterval, PhaseCallback& cb) //throw X
     {
@@ -99,21 +114,32 @@ public:
 
             for (std::unique_lock dummy(lockRequest_);;) //process all errors without delay
             {
-                const bool rv = conditionNewRequest.wait_until(dummy, callbackTime, [this] { return (errorRequest_ && !errorResponse_) || logInfoRequest_ || finishNowRequest_; });
+                const bool rv = conditionNewRequest.wait_until(dummy, callbackTime, [this]
+                {
+                    return logMsgRequest_ || (errorRequest_ && !errorResponse_) || (warningRequest_ && !warningResponse_) || finishNowRequest_;
+                });
                 if (!rv) //time-out + condition not met
                     break;
 
+                if (logMsgRequest_)
+                {
+                    cb.logMessage(logMsgRequest_->msg, logMsgRequest_->type); //throw X
+                    logMsgRequest_ = {};
+                    conditionReadyForNewRequest_.notify_all(); //=> spurious wake-up for AsyncCallback::reportError()
+                }
                 if (errorRequest_ && !errorResponse_)
                 {
                     assert(!finishNowRequest_);
                     errorResponse_ = cb.reportError(*errorRequest_); //throw X
                     conditionHaveResponse_.notify_all(); //instead of notify_one(); work around bug: https://svn.boost.org/trac/boost/ticket/7796
                 }
-                if (logInfoRequest_)
+                if (warningRequest_ && !warningResponse_)
                 {
-                    cb.logInfo(*logInfoRequest_); //throw X
-                    logInfoRequest_ = {};
-                    conditionReadyForNewRequest_.notify_all(); //=> spurious wake-up for AsyncCallback::reportError()
+                    assert(!finishNowRequest_);
+                    bool warningActive = warningRequest_->warningActive;
+                    cb.reportWarning(warningRequest_->msg, warningActive); //throw X
+                    warningResponse_ = WarningResponse{warningActive};
+                    conditionHaveResponse_.notify_all();
                 }
                 if (finishNowRequest_)
                 {
@@ -175,10 +201,12 @@ public:
 
     void notifyAllDone() //noexcept
     {
-        std::lock_guard dummy(lockRequest_);
-        assert(!finishNowRequest_);
-        finishNowRequest_ = true;
-        conditionNewRequest.notify_all(); //perf: should unlock mutex before notify!? (insignificant)
+        {
+            std::lock_guard dummy(lockRequest_);
+            assert(!finishNowRequest_);
+            finishNowRequest_ = true;
+        }
+        conditionNewRequest.notify_all();
     }
 
 private:
@@ -263,14 +291,28 @@ private:
             return statusMsg;
     }
 
+    struct LogMsgRequest
+    {
+        std::wstring msg;
+        PhaseCallback::MsgType type = PhaseCallback::MsgType::error;
+    };
+    struct WarningRequest
+    {
+        std::wstring msg;
+        bool warningActive = false;
+    };
+    struct WarningResponse { bool warningActive = false; };
+
     //---- main <-> worker communication channel ----
     std::mutex lockRequest_;
     std::condition_variable conditionReadyForNewRequest_;
     std::condition_variable conditionNewRequest;
     std::condition_variable conditionHaveResponse_;
+    std::optional<LogMsgRequest>            logMsgRequest_;
     std::optional<PhaseCallback::ErrorInfo> errorRequest_;
     std::optional<PhaseCallback::Response > errorResponse_;
-    std::optional<std::wstring>             logInfoRequest_;
+    std::optional<WarningRequest>  warningRequest_;
+    std::optional<WarningResponse> warningResponse_;
     bool finishNowRequest_ = false;
 
     //---- status updates ----
@@ -311,6 +353,10 @@ public:
 
     void updateStatus(std::wstring&& msg) { cb_.updateStatus(std::move(msg)); } //throw X
 
+    void logMessage(const std::wstring& msg, PhaseCallback::MsgType type) { cb_.logMessage(msg, type); } //throw X
+
+    void reportWarning(const std::wstring& msg, bool& warningActive) { cb_.reportWarning(msg, warningActive); }//throw X
+
     void reportDelta(int itemsDelta, int64_t bytesDelta) //noexcept!
     {
         cb_.updateDataProcessed(itemsDelta, bytesDelta); //noexcept!
@@ -329,9 +375,6 @@ public:
             bytesReported_ = bytesExpected_;
         }
     }
-
-    int64_t getBytesReported() const { return bytesReported_; }
-    int64_t getBytesExpected() const { return bytesExpected_; }
 
 private:
     int itemsReported_ = 0;
@@ -354,38 +397,35 @@ constexpr std::chrono::seconds STATUS_PERCENT_SPEED_WINDOW(10);
 template <class Callback>
 struct PercentStatReporter
 {
-    PercentStatReporter(std::wstring&& statusMsg, int64_t bytesExpected, Callback& cb) : //throw X
+    PercentStatReporter(const std::wstring& statusMsg, int64_t bytesExpected, ItemStatReporter<Callback>& statReporter) :
         msgPrefix_(statusMsg + L"... "),
-        statReporter_(1 /*itemsExpected*/, bytesExpected, cb)
-    {
-        statReporter_.updateStatus(std::move(statusMsg)); //throw X
-    }
+        bytesExpected_(bytesExpected),
+        statReporter_(statReporter) {}
+    //[!] no "updateStatus() /*throw X*/" in constructor! let caller decide
 
-    void updateStatus(int itemsDelta, int64_t bytesDelta) //throw X
+    void updateDeltaAndStatus(int64_t bytesDelta) //throw X
     {
-        statReporter_.reportDelta(itemsDelta, bytesDelta);
+        statReporter_.reportDelta(0 /*itemsDelta*/, bytesDelta);
+        bytesCopied_ += bytesDelta;
 
         const auto now = std::chrono::steady_clock::now();
         if (now >= lastUpdate_ + UI_UPDATE_INTERVAL / 2) //every ~50 ms
         {
             lastUpdate_ = now;
 
-            const int64_t bytesCopied = statReporter_.getBytesReported();
-            const int64_t bytesTotal  = statReporter_.getBytesExpected();
-
-            if (!showPercent_ && bytesCopied > 0)
+            if (!showPercent_ && bytesCopied_ > 0)
             {
                 if (startTime_ == std::chrono::steady_clock::time_point())
                 {
                     startTime_ = now; //get higher-quality perf stats when starting timing here rather than constructor!?
-                    speedTest_.addSample(std::chrono::seconds(0), 0 /*itemsCurrent*/, bytesCopied);
+                    speedTest_.addSample(std::chrono::seconds(0), 0 /*itemsCurrent*/, bytesCopied_);
                 }
                 else if (const std::chrono::nanoseconds elapsed = now - startTime_;
                          elapsed >= STATUS_PERCENT_DELAY)
                 {
-                    speedTest_.addSample(elapsed, 0 /*itemsCurrent*/, bytesCopied);
+                    speedTest_.addSample(elapsed, 0 /*itemsCurrent*/, bytesCopied_);
 
-                    if (const std::optional<double> remSecs = speedTest_.getRemainingSec(0, bytesTotal - bytesCopied))
+                    if (const std::optional<double> remSecs = speedTest_.getRemainingSec(0 /*itemsRemaining*/, bytesExpected_ - bytesCopied_))
                         if (*remSecs > std::chrono::duration<double>(STATUS_PERCENT_MIN_DURATION).count())
                         {
                             showPercent_ = true;
@@ -395,16 +435,14 @@ struct PercentStatReporter
             }
             if (showPercent_)
             {
-                speedTest_.addSample(now - startTime_, 0 /*itemsCurrent*/, bytesCopied);
+                speedTest_.addSample(now - startTime_, 0 /*itemsCurrent*/, bytesCopied_);
                 const std::optional<double> bps = speedTest_.getBytesPerSec();
 
-                statReporter_.updateStatus(msgPrefix_ + formatPercent(std::min(static_cast<double>(bytesCopied) / bytesTotal, 1.0), //> 100% possible! see process_callback.h notes
-                                                                      bps ? *bps : 0, bytesTotal)); //throw X
+                statReporter_.updateStatus(msgPrefix_ + formatPercent(std::min(static_cast<double>(bytesCopied_) / bytesExpected_, 1.0), //> 100% possible! see process_callback.h notes
+                                                                      bps ? *bps : 0, bytesExpected_)); //throw X
             }
         }
     }
-
-    void updateStatus(std::wstring&& msg) { statReporter_.updateStatus(std::move(msg)); } //throw X
 
 private:
     static std::wstring formatPercent(double fraction, double bytesPerSec, int64_t bytesTotal)
@@ -424,18 +462,26 @@ private:
 
     bool showPercent_ = false;
     const std::wstring msgPrefix_;
+    const int64_t bytesExpected_;
+    int64_t bytesCopied_ = 0;
     std::chrono::steady_clock::time_point startTime_;
     std::chrono::steady_clock::time_point lastUpdate_;
     SpeedTest speedTest_{STATUS_PERCENT_SPEED_WINDOW};
-    ItemStatReporter<Callback> statReporter_;
+    ItemStatReporter<Callback>& statReporter_;
 };
-
-using AsyncPercentStatReporter = PercentStatReporter<AsyncCallback>;
 
 //=====================================================================================================================
 
+template <class Callback> inline
+void reportInfo(std::wstring&& msg, Callback& cb /*throw X*/) //throw X
+{
+    cb.logMessage(msg, PhaseCallback::MsgType::info); //throw X
+    cb.updateStatus(std::move(msg));                  //
+}
+
+
 template <class Function, class Callback> inline //return ignored error message if available
-std::wstring tryReportingError(Function cmd /*throw FileError*/, Callback& cb /*throw X*/)
+std::wstring tryReportingError(Function cmd /*throw FileError*/, Callback& cb /*throw X*/) //throw X
 {
     for (size_t retryNumber = 0;; ++retryNumber)
         try

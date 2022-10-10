@@ -12,16 +12,17 @@
 
 namespace zen
 {
-/*  - thread-safe! (Window/Linux/macOS)
-    - Linux/macOS: init libcurl before use!   */
+/*  - Linux/macOS: init libcurl before use!
+    - safe to use on worker thread     */
 class HttpInputStream
 {
 public:
-    //support zen/serialize.h buffered input stream concept
-    size_t read(void* buffer, size_t bytesToRead); //throw SysError, X; return "bytesToRead" bytes unless end of stream!
-    std::string readAll();                         //throw SysError, X
+    //zen/serialize.h unbuffered input stream concept:
+    size_t tryRead(void* buffer, size_t bytesToRead); //throw SysError; may return short; only 0 means EOF! CONTRACT: bytesToRead > 0!
 
     size_t getBlockSize() const;
+
+    std::string readAll(const IoCallback& notifyUnbufferedIO /*throw X*/); //throw SysError, X
 
     class Impl;
     HttpInputStream(std::unique_ptr<Impl>&& pimpl);
@@ -35,20 +36,17 @@ private:
 
 HttpInputStream sendHttpGet(const Zstring& url,
                             const Zstring& userAgent,
-                            const Zstring& caCertFilePath /*optional: enable certificate validation*/,
-                            const IoCallback& notifyUnbufferedIO /*throw X*/); //throw SysError, X
+                            const Zstring& caCertFilePath /*optional: enable certificate validation*/); //throw SysError
 
 HttpInputStream sendHttpPost(const Zstring& url,
-                             const std::vector<std::pair<std::string, std::string>>& postParams,
+                             const std::vector<std::pair<std::string, std::string>>& postParams, const IoCallback& notifyUnbufferedIO /*throw X*/,
                              const Zstring& userAgent,
-                             const Zstring& caCertFilePath /*optional: enable certificate validation*/,
-                             const IoCallback& notifyUnbufferedIO /*throw X*/); //throw SysError, X
+                             const Zstring& caCertFilePath /*optional: enable certificate validation*/); //throw SysError, X
 
 HttpInputStream sendHttpPost(const Zstring& url,
-                             const std::string& postBuf, const std::string& contentType,
+                             const std::string& postBuf, const std::string& contentType, const IoCallback& notifyUnbufferedIO /*throw X*/,
                              const Zstring& userAgent,
-                             const Zstring& caCertFilePath /*optional: enable certificate validation*/,
-                             const IoCallback& notifyUnbufferedIO /*throw X*/); //throw SysError, X
+                             const Zstring& caCertFilePath /*optional: enable certificate validation*/); //throw SysError, X
 
 bool internetIsAlive(); //noexcept
 std::wstring formatHttpError(int httpStatus);

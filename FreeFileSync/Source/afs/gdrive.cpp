@@ -77,7 +77,10 @@ constexpr std::chrono::seconds HTTP_SESSION_MAX_IDLE_TIME  (20);
 constexpr std::chrono::seconds HTTP_SESSION_CLEANUP_INTERVAL(4);
 constexpr std::chrono::seconds GDRIVE_SYNC_INTERVAL         (5);
 
-const int GDRIVE_STREAM_BUFFER_SIZE = 512 * 1024; //unit: [byte]
+const size_t GDRIVE_BLOCK_SIZE_DOWNLOAD =  64 * 1024; //libcurl returns blocks of only 16 kB as returned by recv() even if we request larger blocks via CURLOPT_BUFFERSIZE
+const size_t GDRIVE_BLOCK_SIZE_UPLOAD   =  64 * 1024; //libcurl requests blocks of 64 kB. larger blocksizes set via CURLOPT_UPLOAD_BUFFERSIZE do not seem to make a difference
+const size_t GDRIVE_STREAM_BUFFER_SIZE = 1024 * 1024; //unit: [byte]
+//stream buffer should be big enough to facilitate prefetching during alternating read/write operations => e.g. see serialize.h::unbufferedStreamCopy()
 
 const Zchar gdrivePrefix[] = Zstr("gdrive:");
 const char gdriveFolderMimeType  [] = "application/vnd.google-apps.folder";
@@ -312,8 +315,8 @@ HttpSession::Result googleHttpsRequest(const Zstring& serverName, const std::str
                                        const std::vector<std::string>& extraHeaders,
                                        std::vector<CurlOption> extraOptions,
                                        const std::function<void  (std::span<const char> buf)>& writeResponse /*throw X*/, //optional
-                                       const std::function<size_t(std::span<      char> buf)>& readRequest   /*throw X*/, //optional; returning 0 signals EOF
-                                       const std::function<void  (const std::string_view& header)>& receiveHeader /*throw X*/, //optional
+                                       const std::function<size_t(std::span<      char> buf)>& readRequest   /*throw X*/, //optional; return "bytesToRead" bytes unless end of stream!
+                                       const std::function<void (const std::string_view& header)>& receiveHeader /*throw X*/, //optional
                                        int timeoutSec)
 {
     //https://developers.google.com/drive/api/v3/performance
@@ -339,7 +342,7 @@ HttpSession::Result gdriveHttpsRequest(const std::string& serverRelPath, //throw
                                        std::vector<std::string> extraHeaders,
                                        const std::vector<CurlOption>& extraOptions,
                                        const std::function<void  (std::span<const char> buf)>& writeResponse /*throw X*/, //optional
-                                       const std::function<size_t(std::span<      char> buf)>& readRequest   /*throw X*/, //optional; returning 0 signals EOF
+                                       const std::function<size_t(std::span<      char> buf)>& readRequest   /*throw X*/, //optional; return "bytesToRead" bytes unless end of stream!
                                        const std::function<void  (const std::string_view& header)>& receiveHeader /*throw X*/, //optional
                                        const GdriveAccess& access)
 {
@@ -349,7 +352,7 @@ HttpSession::Result gdriveHttpsRequest(const std::string& serverRelPath, //throw
                               extraHeaders,
                               extraOptions,
                               writeResponse /*throw X*/,
-                              readRequest   /*throw X*/,
+                              readRequest /*throw X*/,
                               receiveHeader /*throw X*/, access.timeoutSec); //throw SysError, X
 }
 
@@ -475,6 +478,7 @@ GdriveAccessInfo gdriveAuthorizeAccess(const std::string& gdriveLoginHint, const
         if (testSocket == invalidSocket)
             THROW_LAST_SYS_ERROR_WSA("socket");
         ZEN_ON_SCOPE_FAIL(closeSocket(testSocket));
+        warn_static("log on error!")
 
         if (::bind(testSocket, ai.ai_addr, static_cast<int>(ai.ai_addrlen)) != 0)
             THROW_LAST_SYS_ERROR_WSA("bind");
@@ -1509,25 +1513,28 @@ void gdriveDownloadFileImpl(const std::string& fileId, const std::function<void(
     if (acknowledgeAbuse) //apply on demand only! https://freefilesync.org/forum/viewtopic.php?t=7520")
         queryParams += '&' + xWwwFormUrlEncode({{"acknowledgeAbuse", "true"}});
 
-    std::string responseHead; //save front part of the response in case we get an error
-    bool headFlushed = false;
+    std::string headBytes;
+    bool headBytesWritten = false;
 
     const HttpSession::Result httpResult = gdriveHttpsRequest("/drive/v3/files/" + fileId + '?' + queryParams, {} /*extraHeaders*/, {} /*extraOptions*/,
                                                               [&](std::span<const char> buf)
+                                                              /*  libcurl feeds us a shitload of tiny kB-sized zlib-decompressed pieces of data!
+                                                                  libcurls zlib buffer is sized at ridiculous 16 kB!
+                                                                  => if this ever becomes a perf issue: roll our own zlib decompression!   */
     {
-        if (responseHead.size() < 10000) //don't access writeBlock() in case of error! (=> support acknowledgeAbuse retry handling)
-            responseHead.append(buf.data(), buf.size());
+        if (headBytes.size() < 16 * 1024) //don't access writeBlock() yet in case of error! (=> support acknowledgeAbuse retry handling)
+            headBytes.append(buf.data(), buf.size());
         else
         {
-            if (!headFlushed)
+            if (!headBytesWritten)
             {
-                headFlushed = true;
-                writeBlock(responseHead.c_str(), responseHead.size()); //throw X
+                headBytesWritten = true;
+                writeBlock(headBytes.c_str(), headBytes.size()); //throw X
             }
 
             writeBlock(buf.data(), buf.size()); //throw X
         }
-    }, nullptr /*readRequest*/, nullptr /*receiveHeader*/, access); //throw SysError, X
+    }, nullptr /*tryReadRequest*/, nullptr /*receiveHeader*/, access); //throw SysError, X
 
     if (httpResult.statusCode / 100 != 2)
     {
@@ -1536,16 +1543,15 @@ void gdriveDownloadFileImpl(const std::string& fileId, const std::function<void(
                                       "reason": "cannotDownloadAbusiveFile",
                                       "message": "This file has been identified as malware or spam and cannot be downloaded." }],
                          "code": 403,
-                         "message": "This file has been identified as malware or spam and cannot be downloaded." }}
-        */
-        if (!headFlushed && httpResult.statusCode == 403 && contains(responseHead, "\"cannotDownloadAbusiveFile\""))
-            throw SysErrorAbusiveFile(formatGdriveErrorRaw(responseHead));
+                         "message": "This file has been identified as malware or spam and cannot be downloaded." }}       */
+        if (!headBytesWritten && httpResult.statusCode == 403 && contains(headBytes, "\"cannotDownloadAbusiveFile\""))
+            throw SysErrorAbusiveFile(formatGdriveErrorRaw(headBytes));
 
-        throw SysError(formatGdriveErrorRaw(responseHead));
+        throw SysError(formatGdriveErrorRaw(headBytes));
     }
 
-    if (!headFlushed)
-        writeBlock(responseHead.c_str(), responseHead.size()); //throw X
+    if (!headBytesWritten)
+        writeBlock(headBytes.c_str(), headBytes.size()); //throw X
 }
 
 
@@ -1568,7 +1574,7 @@ void gdriveDownloadFile(const std::string& fileId, const std::function<void(cons
 //note: Google Drive upload is already transactional!
 //upload "small files" (5 MB or less; enforced by Google?) in a single round-trip
 std::string /*itemId*/ gdriveUploadSmallFile(const Zstring& fileName, const std::string& parentId, uint64_t streamSize, std::optional<time_t> modTime, //throw SysError, X
-                                             const std::function<size_t(void* buffer, size_t bytesToRead)>& readBlock /*throw X*/, //returning 0 signals EOF: Posix read() semantics
+                                             const std::function<size_t(void* buffer, size_t bytesToRead)>& readBlock /*throw X; return "bytesToRead" bytes unless end of stream*/,
                                              const GdriveAccess& access)
 {
     //https://developers.google.com/drive/api/v3/folder#inserting_a_file_in_a_folder
@@ -1602,38 +1608,39 @@ std::string /*itemId*/ gdriveUploadSmallFile(const Zstring& fileName, const std:
 
     auto readMultipartBlock = [&, headPos = size_t(0), eof = false, tailPos = size_t(0)](void* buffer, size_t bytesToRead) mutable -> size_t
     {
-        auto       it    = static_cast<std::byte*>(buffer);
-        const auto itEnd = it + bytesToRead;
+        const auto bufStart = buffer;
 
         if (headPos < postBufHead.size())
         {
-            const size_t junkSize = std::min<ptrdiff_t>(postBufHead.size() - headPos, itEnd - it);
-            std::memcpy(it, &postBufHead[headPos], junkSize);
+            const size_t junkSize = std::min<ptrdiff_t>(postBufHead.size() - headPos, bytesToRead);
+            std::memcpy(buffer, postBufHead.c_str() + headPos, junkSize);
             headPos += junkSize;
-            it      += junkSize;
+            buffer = static_cast<std::byte*>(buffer) + junkSize;
+            bytesToRead -= junkSize;
         }
-        if (it != itEnd)
+        if (bytesToRead > 0)
         {
             if (!eof) //don't assume readBlock() will return streamSize bytes as promised => exhaust and let Google Drive fail if there is a mismatch in Content-Length!
             {
-                const size_t junkSize = readBlock(it, itEnd - it); //throw X
-                it += junkSize;
+                const size_t bytesRead = readBlock(buffer, bytesToRead); //throw X; return "bytesToRead" bytes unless end of stream
+                buffer = static_cast<std::byte*>(buffer) + bytesRead;
+                bytesToRead -= bytesRead;
 
-                if (junkSize != 0)
-                    return it - static_cast<std::byte*>(buffer); //perf: if input stream is at the end, should we immediately append postBufTail (and avoid extra TCP package)? => negligible!
-                else
+                if (bytesToRead > 0)
                     eof = true;
             }
-            if (it != itEnd)
+            if (bytesToRead > 0)
                 if (tailPos < postBufTail.size())
                 {
-                    const size_t junkSize = std::min<ptrdiff_t>(postBufTail.size() - tailPos, itEnd - it);
-                    std::memcpy(it, &postBufTail[tailPos], junkSize);
+                    const size_t junkSize = std::min<ptrdiff_t>(postBufTail.size() - tailPos, bytesToRead);
+                    std::memcpy(buffer, postBufTail.c_str() + tailPos, junkSize);
                     tailPos += junkSize;
-                    it      += junkSize;
+                    buffer = static_cast<std::byte*>(buffer) + junkSize;
+                    bytesToRead -= junkSize;
                 }
         }
-        return it - static_cast<std::byte*>(buffer);
+        return static_cast<std::byte*>(buffer) -
+               static_cast<std::byte*>(bufStart);
     };
 
 TODO:
@@ -1651,8 +1658,8 @@ TODO:
         "Content-Length: " + numberTo<std::string>(postBufHead.size() + streamSize + postBufTail.size())
     },
     {{CURLOPT_POST, 1}}, //otherwise HttpSession::perform() will PUT
-    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, readMultipartBlock,
-    nullptr /*receiveHeader*/, access); //throw SysError, X
+    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); },
+    readMultipartBlock, nullptr /*receiveHeader*/, access); //throw SysError, X
 
     JsonValue jresponse;
     try { jresponse = parseJson(response); }
@@ -1670,7 +1677,7 @@ TODO:
 //file name already existing? => duplicate file created!
 //note: Google Drive upload is already transactional!
 std::string /*itemId*/ gdriveUploadFile(const Zstring& fileName, const std::string& parentId, std::optional<time_t> modTime, //throw SysError, X
-                                        const std::function<size_t(void* buffer, size_t bytesToRead)>& readBlock /*throw X*/, //returning 0 signals EOF: Posix read() semantics
+                                        const std::function<size_t(void* buffer, size_t bytesToRead)>& tryReadBlock /*throw X*/, //returning 0 signals EOF: Posix read() semantics
                                         const GdriveAccess& access)
 {
     //https://developers.google.com/drive/api/v3/folder#inserting_a_file_in_a_folder
@@ -1729,14 +1736,13 @@ std::string /*itemId*/ gdriveUploadFile(const Zstring& fileName, const std::stri
     //step 2: upload file content
 
     //not officially documented, but Google Drive supports compressed file upload when "Content-Encoding: gzip" is set! :)))
-    InputStreamAsGzip gzipStream(readBlock); //throw SysError
+    InputStreamAsGzip gzipStream(tryReadBlock, GDRIVE_BLOCK_SIZE_UPLOAD); //throw SysError
 
-    auto readBlockAsGzip = [&](std::span<char> buf) { return gzipStream.read(buf.data(), buf.size()); }; //throw SysError, X
-    //returns "bytesToRead" bytes unless end of stream! => fits into "0 signals EOF: Posix read() semantics"
+    auto readRequest = [&](std::span<char> buf) { return gzipStream.read(buf.data(), buf.size()); }; //throw SysError, X
 
     std::string response; //don't need "Authorization: Bearer":
     googleHttpsRequest(GOOGLE_REST_API_SERVER, uploadUrlRelative, { "Content-Encoding: gzip" }, {} /*extraOptions*/,
-    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, readBlockAsGzip,
+    [&](std::span<const char> buf) { response.append(buf.data(), buf.size()); }, readRequest,
     nullptr /*receiveHeader*/, access.timeoutSec); //throw SysError, X
 
     JsonValue jresponse;
@@ -1758,7 +1764,7 @@ public:
     explicit GdriveAccessBuffer(const GdriveAccessInfo& accessInfo) :
         accessInfo_(accessInfo) {}
 
-    GdriveAccessBuffer(MemoryStreamIn<std::string>& stream) //throw SysError
+    GdriveAccessBuffer(MemoryStreamIn& stream) //throw SysError
     {
         accessInfo_.accessToken.validUntil = readNumber<int64_t>(stream);                             //
         accessInfo_.accessToken.value      = readContainer<std::string>(stream);                      //
@@ -1767,7 +1773,7 @@ public:
         accessInfo_.userInfo.email         =                     readContainer<std::string>(stream);  //
     }
 
-    void serialize(MemoryStreamOut<std::string>& stream) const
+    void serialize(MemoryStreamOut& stream) const
     {
         writeNumber<int64_t>(stream, accessInfo_.accessToken.validUntil);
         static_assert(sizeof(accessInfo_.accessToken.validUntil) <= sizeof(int64_t)); //ensure cross-platform compatibility!
@@ -1842,7 +1848,7 @@ public:
         sharedDriveName_(sharedDriveName),
         accessBuf_(accessBuf) { assert(!driveId.empty() && sharedDriveName != Zstr("My Drive")); }
 
-    GdriveFileState(MemoryStreamIn<std::string>& stream, GdriveAccessBuffer& accessBuf) : //throw SysError
+    GdriveFileState(MemoryStreamIn& stream, GdriveAccessBuffer& accessBuf) : //throw SysError
         accessBuf_(accessBuf)
     {
         lastSyncToken_   = readContainer<std::string>(stream); //
@@ -1879,7 +1885,7 @@ public:
         }
     }
 
-    void serialize(MemoryStreamOut<std::string>& stream) const
+    void serialize(MemoryStreamOut& stream) const
     {
         writeContainer(stream, lastSyncToken_);
         writeContainer(stream, driveId_);
@@ -1944,28 +1950,28 @@ public:
         AfsPath existingPath;         //input path =: existingPath + relPath
         std::vector<Zstring> relPath; //
     };
-    PathStatus getPathStatus(const std::string& locationRootId, const AfsPath& afsPath, bool followLeafShortcut) //throw SysError
+    PathStatus getPathStatus(const std::string& locationRootId, const AfsPath& itemPath, bool followLeafShortcut) //throw SysError
     {
-        const std::vector<Zstring> relPath = split(afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip);
+        const std::vector<Zstring> relPath = split(itemPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip);
         if (relPath.empty())
             return {locationRootId, GdriveItemType::folder, AfsPath(), {}};
         else
             return getPathStatusSub(locationRootId, AfsPath(), relPath, followLeafShortcut); //throw SysError
     }
 
-    std::string /*itemId*/ getItemId(const std::string& locationRootId, const AfsPath& afsPath, bool followLeafShortcut) //throw SysError
+    std::string /*itemId*/ getItemId(const std::string& locationRootId, const AfsPath& itemPath, bool followLeafShortcut) //throw SysError
     {
-        const GdriveFileState::PathStatus& ps = getPathStatus(locationRootId, afsPath, followLeafShortcut); //throw SysError
+        const GdriveFileState::PathStatus& ps = getPathStatus(locationRootId, itemPath, followLeafShortcut); //throw SysError
         if (ps.relPath.empty())
             return ps.existingItemId;
 
-        const AfsPath afsPathMissingChild(appendPath(ps.existingPath.value, ps.relPath.front()));
-        throw SysError(replaceCpy(_("Cannot find %x."), L"%x", fmtPath(getShortDisplayPath(afsPathMissingChild))));
+        const AfsPath itemPathMissingChild(appendPath(ps.existingPath.value, ps.relPath.front()));
+        throw SysError(replaceCpy(_("Cannot find %x."), L"%x", fmtPath(getShortDisplayPath(itemPathMissingChild))));
     }
 
-    std::pair<std::string /*itemId*/, GdriveItemDetails> getFileAttributes(const std::string& locationRootId, const AfsPath& afsPath, bool followLeafShortcut) //throw SysError
+    std::pair<std::string /*itemId*/, GdriveItemDetails> getFileAttributes(const std::string& locationRootId, const AfsPath& itemPath, bool followLeafShortcut) //throw SysError
     {
-        if (afsPath.value.empty()) //location root not covered by itemDetails_
+        if (itemPath.value.empty()) //location root not covered by itemDetails_
         {
             GdriveItemDetails rootDetails
             {
@@ -1976,7 +1982,7 @@ public:
             return {locationRootId, std::move(rootDetails)};
         }
 
-        const std::string itemId = getItemId(locationRootId, afsPath, followLeafShortcut); //throw SysError
+        const std::string itemId = getItemId(locationRootId, itemPath, followLeafShortcut); //throw SysError
         if (auto it = itemDetails_.find(itemId);
             it != itemDetails_.end())
             return *it;
@@ -2118,9 +2124,9 @@ private:
 
     friend class GdriveDrivesBuffer;
 
-    std::wstring getShortDisplayPath(const AfsPath& afsPath) const
+    std::wstring getShortDisplayPath(const AfsPath& itemPath) const
     {
-        return utfTo<std::wstring>(FILE_NAME_SEPARATOR + afsPath.value); //sufficient info for SysError + we don't have a locationName anyway
+        return utfTo<std::wstring>(FILE_NAME_SEPARATOR + itemPath.value); //sufficient info for SysError + we don't have a locationName anyway
     }
 
     void notifyItemUpdated(const FileStateDelta& stateDelta, const std::string& itemId, const GdriveItemDetails* details)
@@ -2350,19 +2356,19 @@ class GdriveFileStateAtLocation
 public:
     GdriveFileStateAtLocation(GdriveFileState& fileState, const std::string& locationRootId) : fileState_(fileState), locationRootId_(locationRootId) {}
 
-    GdriveFileState::PathStatus getPathStatus(const AfsPath& afsPath, bool followLeafShortcut) //throw SysError
+    GdriveFileState::PathStatus getPathStatus(const AfsPath& itemPath, bool followLeafShortcut) //throw SysError
     {
-        return fileState_.getPathStatus(locationRootId_, afsPath, followLeafShortcut); //throw SysError
+        return fileState_.getPathStatus(locationRootId_, itemPath, followLeafShortcut); //throw SysError
     }
 
-    std::string /*itemId*/ getItemId(const AfsPath& afsPath, bool followLeafShortcut) //throw SysError
+    std::string /*itemId*/ getItemId(const AfsPath& itemPath, bool followLeafShortcut) //throw SysError
     {
-        return fileState_.getItemId(locationRootId_, afsPath, followLeafShortcut); //throw SysError
+        return fileState_.getItemId(locationRootId_, itemPath, followLeafShortcut); //throw SysError
     }
 
-    std::pair<std::string /*itemId*/, GdriveItemDetails> getFileAttributes(const AfsPath& afsPath, bool followLeafShortcut) //throw SysError
+    std::pair<std::string /*itemId*/, GdriveItemDetails> getFileAttributes(const AfsPath& itemPath, bool followLeafShortcut) //throw SysError
     {
-        return fileState_.getFileAttributes(locationRootId_, afsPath, followLeafShortcut); //throw SysError
+        return fileState_.getFileAttributes(locationRootId_, itemPath, followLeafShortcut); //throw SysError
     }
 
     GdriveFileState& all() { return fileState_; }
@@ -2380,7 +2386,7 @@ public:
         accessBuf_(accessBuf),
         myDrive_(getMyDriveId(accessBuf.getAccessToken()), Zstring() /*sharedDriveName*/, accessBuf) {} //throw SysError
 
-    GdriveDrivesBuffer(MemoryStreamIn<std::string>& stream, GdriveAccessBuffer& accessBuf) : //throw SysError
+    GdriveDrivesBuffer(MemoryStreamIn& stream, GdriveAccessBuffer& accessBuf) : //throw SysError
         accessBuf_(accessBuf),
         myDrive_(stream, accessBuf) //throw SysError
     {
@@ -2392,7 +2398,7 @@ public:
         }
     }
 
-    void serialize(MemoryStreamOut<std::string>& stream) const
+    void serialize(MemoryStreamOut& stream) const
     {
         myDrive_.serialize(stream);
 
@@ -2755,11 +2761,11 @@ private:
 
     static void saveSession(const Zstring& dbFilePath, const UserSession& userSession) //throw FileError
     {
-        MemoryStreamOut<std::string> streamOut;
+        MemoryStreamOut streamOut;
         writeArray(streamOut, DB_FILE_DESCR, sizeof(DB_FILE_DESCR));
         writeNumber<int32_t>(streamOut, DB_FILE_VERSION);
 
-        MemoryStreamOut<std::string> streamOutBody;
+        MemoryStreamOut streamOutBody;
         userSession.accessBuf.ref().serialize(streamOutBody);
         userSession.drivesBuf.ref().serialize(streamOutBody);
 
@@ -2799,7 +2805,8 @@ private:
             //TODO: remove migration code at some time! 2020-07-03
             if (!std::equal(std::begin(tmp), std::end(tmp), std::begin(DB_FILE_DESCR)))
             {
-                MemoryStreamIn streamIn2(decompress(byteStream)); //throw SysError
+                const std::string& uncompressedStream = decompress(byteStream); //throw SysError
+                MemoryStreamIn streamIn2(uncompressedStream);
                 //-------- file format header --------
                 const char DB_FILE_DESCR_OLD[] = "FreeFileSync: Google Drive Database";
                 char tmp2[sizeof(DB_FILE_DESCR_OLD)] = {};
@@ -2831,7 +2838,8 @@ private:
                     version != DB_FILE_VERSION)
                     throw SysError(_("Unsupported data format.") + L' ' + replaceCpy(_("Version: %x"), L"%x", numberTo<std::wstring>(version)));
 
-                MemoryStreamIn streamInBody(decompress(std::string(byteStream.begin() + streamIn.pos(), byteStream.end()))); //throw SysError
+                const std::string& uncompressedStream = decompress(makeStringView(byteStream.begin() + streamIn.pos(), byteStream.end())); //throw SysError
+                MemoryStreamIn streamInBody(uncompressedStream);
 
                 auto accessBuf = makeSharedRef<GdriveAccessBuffer>(streamInBody); //throw SysError
                 accessBuf.ref().setContextTimeout(timeoutSec2); //not used by GdriveDrivesBuffer(), but let's be consistent
@@ -2874,6 +2882,7 @@ private:
         try //let's not lose Google Drive data due to unexpected system shutdown:
         { saveActiveSessions(); } //throw FileError
         catch (FileError&) { assert(false); }
+        warn_static("at least log on failure!")
     });
 };
 //==========================================================================================
@@ -3078,13 +3087,12 @@ void gdriveTraverseFolderRecursive(const GdriveLogin& gdriveLogin, const std::ve
 
 struct InputStreamGdrive : public AFS::InputStream
 {
-    InputStreamGdrive(const GdrivePath& gdrivePath, const IoCallback& notifyUnbufferedIO /*throw X*/) :
-        gdrivePath_(gdrivePath),
-        notifyUnbufferedIO_(notifyUnbufferedIO)
+    explicit InputStreamGdrive(const GdrivePath& gdrivePath) :
+        gdrivePath_(gdrivePath)
     {
         worker_ = InterruptibleThread([asyncStreamOut = this->asyncStreamIn_, gdrivePath]
         {
-            setCurrentThreadName(Zstr("Istream[Gdrive] ") + utfTo<Zstring>(getGdriveDisplayPath(gdrivePath)));
+            setCurrentThreadName(Zstr("Istream ") + utfTo<Zstring>(getGdriveDisplayPath(gdrivePath)));
             try
             {
                 GdriveAccess access;
@@ -3100,12 +3108,11 @@ struct InputStreamGdrive : public AFS::InputStream
 
                 try
                 {
-                    auto writeBlock = [&](const void* buffer, size_t bytesToWrite)
+                    auto tryWriteBlock = [&](const void* buffer, size_t bytesToWrite)
                     {
-                        return asyncStreamOut->write(buffer, bytesToWrite); //throw ThreadStopRequest
+                        return asyncStreamOut->tryWrite(buffer, bytesToWrite); //throw ThreadStopRequest
                     };
-
-                    gdriveDownloadFile(fileId, writeBlock, access); //throw SysError, ThreadStopRequest
+                    gdriveDownloadFile(fileId, tryWriteBlock, access); //throw SysError, ThreadStopRequest
                 }
                 catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(getGdriveDisplayPath(gdrivePath))), e.toString()); }
 
@@ -3120,17 +3127,18 @@ struct InputStreamGdrive : public AFS::InputStream
         asyncStreamIn_->setReadError(std::make_exception_ptr(ThreadStopRequest()));
     }
 
-    size_t read(void* buffer, size_t bytesToRead) override //throw FileError, (ErrorFileLocked), X; return "bytesToRead" bytes unless end of stream!
+    size_t getBlockSize() override { return GDRIVE_BLOCK_SIZE_DOWNLOAD; } //throw (FileError)
+
+    //may return short; only 0 means EOF! CONTRACT: bytesToRead > 0!
+    size_t tryRead(void* buffer, size_t bytesToRead, const IoCallback& notifyUnbufferedIO /*throw X*/) override //throw FileError, (ErrorFileLocked), X
     {
-        const size_t bytesRead = asyncStreamIn_->read(buffer, bytesToRead); //throw FileError
-        reportBytesProcessed(); //throw X
+        const size_t bytesRead = asyncStreamIn_->tryRead(buffer, bytesToRead); //throw FileError
+        reportBytesProcessed(notifyUnbufferedIO); //throw X
         return bytesRead;
         //no need for asyncStreamIn_->checkWriteErrors(): once end of stream is reached, asyncStreamOut->closeStream() was called => no errors occured
     }
 
-    size_t getBlockSize() const override { return 64 * 1024; } //non-zero block size is AFS contract!
-
-    std::optional<AFS::StreamAttributes> getAttributesBuffered() override //throw FileError
+    std::optional<AFS::StreamAttributes> tryGetAttributesFast() override //throw FileError
     {
         AFS::StreamAttributes attr = {};
         try
@@ -3148,15 +3156,14 @@ struct InputStreamGdrive : public AFS::InputStream
     }
 
 private:
-    void reportBytesProcessed() //throw X
+    void reportBytesProcessed(const IoCallback& notifyUnbufferedIO /*throw X*/) //throw X
     {
-        const int64_t totalBytesDownloaded = asyncStreamIn_->getTotalBytesWritten();
-        if (notifyUnbufferedIO_) notifyUnbufferedIO_(totalBytesDownloaded - totalBytesReported_); //throw X
-        totalBytesReported_ = totalBytesDownloaded;
+        const int64_t bytesDelta = makeSigned(asyncStreamIn_->getTotalBytesWritten()) - totalBytesReported_;
+        totalBytesReported_ += bytesDelta;
+        if (notifyUnbufferedIO) notifyUnbufferedIO(bytesDelta); //throw X
     }
 
     const GdrivePath gdrivePath_;
-    const IoCallback notifyUnbufferedIO_; //throw X
     int64_t totalBytesReported_ = 0;
     std::shared_ptr<AsyncStreamBuffer> asyncStreamIn_ = std::make_shared<AsyncStreamBuffer>(GDRIVE_STREAM_BUFFER_SIZE);
     InterruptibleThread worker_;
@@ -3167,12 +3174,10 @@ private:
 //already existing: 1. fails or 2. creates duplicate
 struct OutputStreamGdrive : public AFS::OutputStreamImpl
 {
-    OutputStreamGdrive(const GdrivePath& gdrivePath, //throw SysError
+    OutputStreamGdrive(const GdrivePath& gdrivePath,
                        std::optional<uint64_t> /*streamSize*/,
                        std::optional<time_t> modTime,
-                       const IoCallback& notifyUnbufferedIO /*throw X*/,
-                       std::unique_ptr<PathAccessLock>&& pal) :
-        notifyUnbufferedIO_(notifyUnbufferedIO)
+                       std::unique_ptr<PathAccessLock>&& pal) //throw SysError
     {
         std::promise<AFS::FingerPrint> pFilePrint;
         futFilePrint_ = pFilePrint.get_future();
@@ -3200,19 +3205,18 @@ struct OutputStreamGdrive : public AFS::OutputStreamImpl
                                                    pal        = std::move(pal)]() mutable
         {
             assert(pal); //bind life time to worker thread!
-            setCurrentThreadName(Zstr("Ostream[Gdrive] ") + utfTo<Zstring>(getGdriveDisplayPath(gdrivePath)));
+            setCurrentThreadName(Zstr("Ostream ") + utfTo<Zstring>(getGdriveDisplayPath(gdrivePath)));
             try
             {
-                auto readBlock = [&](void* buffer, size_t bytesToRead)
+                auto tryReadBlock = [&](void* buffer, size_t bytesToRead) //may return short, only 0 means EOF!
                 {
-                    //returns "bytesToRead" bytes unless end of stream! => maps nicely into Posix read() semantics expected by gdriveUploadFile()
-                    return asyncStreamIn->read(buffer, bytesToRead); //throw ThreadStopRequest
+                    return asyncStreamIn->tryRead(buffer, bytesToRead); //throw ThreadStopRequest
                 };
                 //for whatever reason, gdriveUploadFile() is slightly faster than gdriveUploadSmallFile()! despite its two roundtrips! even when file sizes are 0!
                 //=> 1. issue likely on Google's side => 2. persists even after having fixed "Expect: 100-continue"
                 const std::string fileIdNew = //streamSize && *streamSize < 5 * 1024 * 1024 ?
-                    //gdriveUploadSmallFile(fileName, parentId, *streamSize, modTime, readBlock, aai.access) : //throw SysError, ThreadStopRequest
-                    gdriveUploadFile       (fileName, parentId,              modTime, readBlock, aai.access);  //throw SysError, ThreadStopRequest
+                    //gdriveUploadSmallFile(fileName, parentId, *streamSize, modTime,    readBlock, aai.access) : //throw SysError, ThreadStopRequest
+                    gdriveUploadFile       (fileName, parentId,              modTime, tryReadBlock, aai.access);  //throw SysError, ThreadStopRequest
                 assert(asyncStreamIn->getTotalBytesRead() == asyncStreamIn->getTotalBytesWritten());
                 //already existing: creates duplicate
 
@@ -3251,42 +3255,50 @@ struct OutputStreamGdrive : public AFS::OutputStreamImpl
 
     ~OutputStreamGdrive()
     {
-        asyncStreamOut_->setWriteError(std::make_exception_ptr(ThreadStopRequest()));
+        if (asyncStreamOut_) //finalize() was not called (successfully)
+            asyncStreamOut_->setWriteError(std::make_exception_ptr(ThreadStopRequest()));
     }
 
-    void write(const void* buffer, size_t bytesToWrite) override //throw FileError, X
+    size_t getBlockSize() override { return GDRIVE_BLOCK_SIZE_UPLOAD; } //throw (FileError)
+
+    size_t tryWrite(const void* buffer, size_t bytesToWrite, const IoCallback& notifyUnbufferedIO /*throw X*/) override //throw FileError, X; may return short! CONTRACT: bytesToWrite > 0
     {
-        asyncStreamOut_->write(buffer, bytesToWrite); //throw FileError
-        reportBytesProcessed(); //throw X
+        const size_t bytesWritten = asyncStreamOut_->tryWrite(buffer, bytesToWrite); //throw FileError
+        reportBytesProcessed(notifyUnbufferedIO); //throw X
+        return bytesWritten;
     }
 
-    AFS::FinalizeResult finalize() override //throw FileError, X
+    AFS::FinalizeResult finalize(const IoCallback& notifyUnbufferedIO /*throw X*/) override //throw FileError, X
     {
+        if (!asyncStreamOut_)
+            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+
         asyncStreamOut_->closeStream();
 
         while (futFilePrint_.wait_for(std::chrono::milliseconds(50)) == std::future_status::timeout)
-            reportBytesProcessed(); //throw X
-        reportBytesProcessed(); //[!] once more, now that *all* bytes were written
-
-        asyncStreamOut_->checkReadErrors(); //throw FileError
-        //--------------------------------------------------------------------
+            reportBytesProcessed(notifyUnbufferedIO); //throw X
+        reportBytesProcessed(notifyUnbufferedIO); //[!] once more, now that *all* bytes were written
 
         AFS::FinalizeResult result;
         assert(isReady(futFilePrint_));
         result.filePrint = futFilePrint_.get(); //throw FileError
+
+        //asyncStreamOut_->checkReadErrors(); //throw FileError -> not needed after *successful* upload
+        asyncStreamOut_.reset(); //do NOT reset on failure, so that ~OutputStreamGdrive() will request worker thread to stop
+        //--------------------------------------------------------------------
+
         //result.errorModTime -> already (successfully) set during file creation
         return result;
     }
 
 private:
-    void reportBytesProcessed() //throw X
+    void reportBytesProcessed(const IoCallback& notifyUnbufferedIO /*throw X*/) //throw X
     {
-        const int64_t totalBytesUploaded = asyncStreamOut_->getTotalBytesRead();
-        if (notifyUnbufferedIO_) notifyUnbufferedIO_(totalBytesUploaded - totalBytesReported_); //throw X
-        totalBytesReported_ = totalBytesUploaded;
+        const int64_t bytesDelta = makeSigned(asyncStreamOut_->getTotalBytesRead()) - totalBytesReported_;
+        totalBytesReported_ += bytesDelta;
+        if (notifyUnbufferedIO) notifyUnbufferedIO(bytesDelta); //throw X
     }
 
-    const IoCallback notifyUnbufferedIO_; //throw X
     int64_t totalBytesReported_ = 0;
     std::shared_ptr<AsyncStreamBuffer> asyncStreamOut_ = std::make_shared<AsyncStreamBuffer>(GDRIVE_STREAM_BUFFER_SIZE);
     InterruptibleThread worker_;
@@ -3324,11 +3336,11 @@ public:
     }
 
 private:
-    GdrivePath getGdrivePath(const AfsPath& afsPath) const { return {gdriveLogin_, afsPath}; }
+    GdrivePath getGdrivePath(const AfsPath& itemPath) const { return {gdriveLogin_, itemPath}; }
 
-    GdriveRawPath getGdriveRawPath(const AfsPath& afsPath) const //throw SysError
+    GdriveRawPath getGdriveRawPath(const AfsPath& itemPath) const //throw SysError
     {
-        const std::optional<AfsPath> parentPath = getParentPath(afsPath);
+        const std::optional<AfsPath> parentPath = getParentPath(itemPath);
         if (!parentPath)
             throw SysError(L"Item is device root");
 
@@ -3337,14 +3349,14 @@ private:
         {
             parentId = fileState.getItemId(*parentPath, true /*followLeafShortcut*/); //throw SysError
         });
-        return { std::move(parentId), getItemName(afsPath)};
+        return { std::move(parentId), getItemName(itemPath)};
     }
 
-    Zstring getInitPathPhrase(const AfsPath& afsPath) const override { return concatenateGdriveFolderPathPhrase(getGdrivePath(afsPath)); }
+    Zstring getInitPathPhrase(const AfsPath& itemPath) const override { return concatenateGdriveFolderPathPhrase(getGdrivePath(itemPath)); }
 
-    std::vector<Zstring> getPathPhraseAliases(const AfsPath& afsPath) const override { return {getInitPathPhrase(afsPath)}; }
+    std::vector<Zstring> getPathPhraseAliases(const AfsPath& itemPath) const override { return {getInitPathPhrase(itemPath)}; }
 
-    std::wstring getDisplayPath(const AfsPath& afsPath) const override { return getGdriveDisplayPath(getGdrivePath(afsPath)); }
+    std::wstring getDisplayPath(const AfsPath& itemPath) const override { return getGdriveDisplayPath(getGdrivePath(itemPath)); }
 
     bool isNullFileSystem() const override { return gdriveLogin_.email.empty(); }
 
@@ -3361,21 +3373,21 @@ private:
     }
 
     //----------------------------------------------------------------------------------------------------------------
-    ItemType getItemType(const AfsPath& afsPath) const override //throw FileError
+    ItemType getItemType(const AfsPath& itemPath) const override //throw FileError
     {
-        if (const std::optional<ItemType> type = itemStillExists(afsPath)) //throw FileError
+        if (const std::optional<ItemType> type = itemStillExists(itemPath)) //throw FileError
             return *type;
-        throw FileError(replaceCpy(_("Cannot find %x."), L"%x", fmtPath(getDisplayPath(afsPath))));
+        throw FileError(replaceCpy(_("Cannot find %x."), L"%x", fmtPath(getDisplayPath(itemPath))));
     }
 
-    std::optional<ItemType> itemStillExists(const AfsPath& afsPath) const override //throw FileError
+    std::optional<ItemType> itemStillExists(const AfsPath& itemPath) const override //throw FileError
     {
         try
         {
             GdriveFileState::PathStatus ps;
             accessGlobalFileState(gdriveLogin_, [&](GdriveFileStateAtLocation& fileState) //throw SysError
             {
-                ps = fileState.getPathStatus(afsPath, false /*followLeafShortcut*/); //throw SysError
+                ps = fileState.getPathStatus(itemPath, false /*followLeafShortcut*/); //throw SysError
             });
             if (ps.relPath.empty())
                 switch (ps.existingType)
@@ -3388,23 +3400,23 @@ private:
                 }
             return {};
         }
-        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString()); }
+        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getDisplayPath(itemPath))), e.toString()); }
     }
     //----------------------------------------------------------------------------------------------------------------
 
     //already existing: 1. fails or 2. creates duplicate (unlikely)
-    void createFolderPlain(const AfsPath& afsPath) const override //throw FileError
+    void createFolderPlain(const AfsPath& folderPath) const override //throw FileError
     {
         try
         {
             //avoid duplicate Google Drive item creation by multiple threads
-            PathAccessLock pal(getGdriveRawPath(afsPath), PathBlockType::otherWait); //throw SysError
+            PathAccessLock pal(getGdriveRawPath(folderPath), PathBlockType::otherWait); //throw SysError
 
-            const Zstring folderName = getItemName(afsPath);
+            const Zstring folderName = getItemName(folderPath);
             std::string parentId;
             const GdrivePersistentSessions::AsyncAccessInfo aai = accessGlobalFileState(gdriveLogin_, [&](GdriveFileStateAtLocation& fileState) //throw SysError
             {
-                const GdriveFileState::PathStatus& ps = fileState.getPathStatus(afsPath, false /*followLeafShortcut*/); //throw SysError
+                const GdriveFileState::PathStatus& ps = fileState.getPathStatus(folderPath, false /*followLeafShortcut*/); //throw SysError
                 if (ps.relPath.empty())
                     throw SysError(replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(folderName)));
 
@@ -3422,20 +3434,20 @@ private:
                 fileState.all().notifyFolderCreated(aai.stateDelta, folderIdNew, folderName, parentId);
             });
         }
-        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot create directory %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString()); }
+        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot create directory %x."), L"%x", fmtPath(getDisplayPath(folderPath))), e.toString()); }
     }
 
-    void removeItemPlainImpl(const AfsPath& afsPath, bool permanent /*...or move to trash*/) const //throw SysError
+    void removeItemPlainImpl(const AfsPath& folderPath, bool permanent /*...or move to trash*/) const //throw SysError
     {
         std::string itemId;
         std::optional<std::string> parentIdToUnlink;
         const GdrivePersistentSessions::AsyncAccessInfo aai = accessGlobalFileState(gdriveLogin_, [&](GdriveFileStateAtLocation& fileState) //throw SysError
         {
-            const std::optional<AfsPath> parentPath = getParentPath(afsPath);
+            const std::optional<AfsPath> parentPath = getParentPath(folderPath);
             if (!parentPath) throw SysError(L"Item is device root");
 
             GdriveItemDetails itemDetails;
-            std::tie(itemId, itemDetails) = fileState.getFileAttributes(afsPath, false /*followLeafShortcut*/); //throw SysError
+            std::tie(itemId, itemDetails) = fileState.getFileAttributes(folderPath, false /*followLeafShortcut*/); //throw SysError
             assert(std::find(itemDetails.parentIds.begin(), itemDetails.parentIds.end(), fileState.getItemId(*parentPath, true /*followLeafShortcut*/)) != itemDetails.parentIds.end());
 
             //hard-link handling applies to shared files as well: 1. it's the right thing (TM) 2. if we're not the owner: deleting would fail
@@ -3468,59 +3480,59 @@ private:
         }
     }
 
-    void removeFilePlain(const AfsPath& afsPath) const override //throw FileError
+    void removeFilePlain(const AfsPath& filePath) const override //throw FileError
     {
-        try { removeItemPlainImpl(afsPath, true /*permanent*/); /*throw SysError*/ }
-        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot delete file %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString()); }
+        try { removeItemPlainImpl(filePath, true /*permanent*/); /*throw SysError*/ }
+        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot delete file %x."), L"%x", fmtPath(getDisplayPath(filePath))), e.toString()); }
     }
 
-    void removeSymlinkPlain(const AfsPath& afsPath) const override //throw FileError
+    void removeSymlinkPlain(const AfsPath& linkPath) const override //throw FileError
     {
-        try { removeItemPlainImpl(afsPath, true /*permanent*/); /*throw SysError*/ }
-        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot delete symbolic link %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString()); }
+        try { removeItemPlainImpl(linkPath, true /*permanent*/); /*throw SysError*/ }
+        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot delete symbolic link %x."), L"%x", fmtPath(getDisplayPath(linkPath))), e.toString()); }
     }
 
-    void removeFolderPlain(const AfsPath& afsPath) const override //throw FileError
+    void removeFolderPlain(const AfsPath& folderPath) const override //throw FileError
     {
-        try { removeItemPlainImpl(afsPath, true /*permanent*/); /*throw SysError*/ }
-        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot delete directory %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString()); }
+        try { removeItemPlainImpl(folderPath, true /*permanent*/); /*throw SysError*/ }
+        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot delete directory %x."), L"%x", fmtPath(getDisplayPath(folderPath))), e.toString()); }
     }
 
-    void removeFolderIfExistsRecursion(const AfsPath& afsPath, //throw FileError
+    void removeFolderIfExistsRecursion(const AfsPath& folderPath, //throw FileError
                                        const std::function<void (const std::wstring& displayPath)>& onBeforeFileDeletion /*throw X*/, //optional
                                        const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion) const override //one call for each object!
     {
-        if (onBeforeFolderDeletion) onBeforeFolderDeletion(getDisplayPath(afsPath)); //throw X
+        if (onBeforeFolderDeletion) onBeforeFolderDeletion(getDisplayPath(folderPath)); //throw X
         try
         {
             //deletes recursively with a single call!
-            removeFolderPlain(afsPath); //throw FileError
+            removeFolderPlain(folderPath); //throw FileError
         }
         catch (const FileError&)
         {
-            if (itemStillExists(afsPath)) //throw FileError
+            if (itemStillExists(folderPath)) //throw FileError
                 throw;
         }
     }
 
     //----------------------------------------------------------------------------------------------------------------
-    AbstractPath getSymlinkResolvedPath(const AfsPath& afsPath) const override //throw FileError
+    AbstractPath getSymlinkResolvedPath(const AfsPath& linkPath) const override //throw FileError
     {
         //this function doesn't make sense for Google Drive: Shortcuts do not refer by path, but ID!
         //even if it were possible to determine a path, doing anything with the target file (e.g. delete + recreate) would break other Shortcuts!
-        throw FileError(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtPath(getDisplayPath(afsPath))), _("Operation not supported by device."));
+        throw FileError(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtPath(getDisplayPath(linkPath))), _("Operation not supported by device."));
     }
 
-    bool equalSymlinkContentForSameAfsType(const AfsPath& afsLhs, const AbstractPath& apRhs) const override //throw FileError
+    bool equalSymlinkContentForSameAfsType(const AfsPath& linkPathL, const AbstractPath& linkPathR) const override //throw FileError
     {
-        auto getTargetId = [](const GdriveFileSystem& gdriveFs, const AfsPath& afsPath)
+        auto getTargetId = [](const GdriveFileSystem& gdriveFs, const AfsPath& linkPath)
         {
             try
             {
                 std::string targetId;
                 const GdrivePersistentSessions::AsyncAccessInfo aai = accessGlobalFileState(gdriveFs.gdriveLogin_, [&](GdriveFileStateAtLocation& fileState) //throw SysError
                 {
-                    const GdriveItemDetails& itemDetails = fileState.getFileAttributes(afsPath, false /*followLeafShortcut*/).second; //throw SysError
+                    const GdriveItemDetails& itemDetails = fileState.getFileAttributes(linkPath, false /*followLeafShortcut*/).second; //throw SysError
                     if (itemDetails.type != GdriveItemType::shortcut)
                         throw SysError(L"Not a Google Drive Shortcut.");
 
@@ -3528,39 +3540,38 @@ private:
                 });
                 return targetId;
             }
-            catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(gdriveFs.getDisplayPath(afsPath))), e.toString()); }
+            catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(gdriveFs.getDisplayPath(linkPath))), e.toString()); }
         };
 
-        return getTargetId(*this, afsLhs) == getTargetId(static_cast<const GdriveFileSystem&>(apRhs.afsDevice.ref()), apRhs.afsPath);
+        return getTargetId(*this, linkPathL) == getTargetId(static_cast<const GdriveFileSystem&>(linkPathR.afsDevice.ref()), linkPathR.afsPath);
     }
 
     //----------------------------------------------------------------------------------------------------------------
 
     //return value always bound:
-    std::unique_ptr<InputStream> getInputStream(const AfsPath& afsPath, const IoCallback& notifyUnbufferedIO /*throw X*/) const override //throw FileError, (ErrorFileLocked)
+    std::unique_ptr<InputStream> getInputStream(const AfsPath& filePath) const override //throw FileError, (ErrorFileLocked)
     {
-        return std::make_unique<InputStreamGdrive>(getGdrivePath(afsPath), notifyUnbufferedIO);
+        return std::make_unique<InputStreamGdrive>(getGdrivePath(filePath));
     }
 
     //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
     //=> actual behavior: 1. fails or 2. creates duplicate (unlikely)
-    std::unique_ptr<OutputStreamImpl> getOutputStream(const AfsPath& afsPath, //throw FileError
+    std::unique_ptr<OutputStreamImpl> getOutputStream(const AfsPath& filePath, //throw FileError
                                                       std::optional<uint64_t> streamSize,
-                                                      std::optional<time_t> modTime,
-                                                      const IoCallback& notifyUnbufferedIO /*throw X*/) const override
+                                                      std::optional<time_t> modTime) const override
     {
         try
         {
             //avoid duplicate item creation by multiple threads
-            auto pal = std::make_unique<PathAccessLock>(getGdriveRawPath(afsPath), PathBlockType::otherFail); //throw SysError
+            auto pal = std::make_unique<PathAccessLock>(getGdriveRawPath(filePath), PathBlockType::otherFail); //throw SysError
             //don't block during a potentially long-running file upload!
 
             //already existing: 1. fails or 2. creates duplicate
-            return std::make_unique<OutputStreamGdrive>(getGdrivePath(afsPath), streamSize, modTime, notifyUnbufferedIO, std::move(pal)); //throw SysError
+            return std::make_unique<OutputStreamGdrive>(getGdrivePath(filePath), streamSize, modTime, std::move(pal)); //throw SysError
         }
         catch (const SysError& e)
         {
-            throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString());
+            throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getDisplayPath(filePath))), e.toString());
         }
     }
 
@@ -3574,42 +3585,42 @@ private:
     //symlink handling: follow
     //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
     //=> actual behavior: 1. fails or 2. creates duplicate (unlikely)
-    FileCopyResult copyFileForSameAfsType(const AfsPath& afsSource, const StreamAttributes& attrSource, //throw FileError, (ErrorFileLocked), (X)
-                                          const AbstractPath& apTarget, bool copyFilePermissions, const IoCallback& notifyUnbufferedIO /*throw X*/) const override
+    FileCopyResult copyFileForSameAfsType(const AfsPath& sourcePath, const StreamAttributes& attrSource, //throw FileError, (ErrorFileLocked), (X)
+                                          const AbstractPath& targetPath, bool copyFilePermissions, const IoCallback& notifyUnbufferedIO /*throw X*/) const override
     {
         //no native Google Drive file copy => use stream-based file copy:
         if (copyFilePermissions)
-            throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(apTarget))), _("Operation not supported by device."));
+            throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(targetPath))), _("Operation not supported by device."));
 
-        const GdriveFileSystem& fsTarget = static_cast<const GdriveFileSystem&>(apTarget.afsDevice.ref());
+        const GdriveFileSystem& fsTarget = static_cast<const GdriveFileSystem&>(targetPath.afsDevice.ref());
 
         if (!equalAsciiNoCase(gdriveLogin_.email, fsTarget.gdriveLogin_.email))
             //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
             //=> actual behavior: 1. fails or 2. creates duplicate (unlikely)
-            return copyFileAsStream(afsSource, attrSource, apTarget, notifyUnbufferedIO); //throw FileError, (ErrorFileLocked), X
+            return copyFileAsStream(sourcePath, attrSource, targetPath, notifyUnbufferedIO); //throw FileError, (ErrorFileLocked), X
         //else: copying files within account works, e.g. between My Drive <-> shared drives
 
         try
         {
             //avoid duplicate Google Drive item creation by multiple threads (blocking is okay: gdriveCopyFile() should complete instantly!)
-            PathAccessLock pal(fsTarget.getGdriveRawPath(apTarget.afsPath), PathBlockType::otherWait); //throw SysError
+            PathAccessLock pal(fsTarget.getGdriveRawPath(targetPath.afsPath), PathBlockType::otherWait); //throw SysError
 
-            const Zstring itemNameNew = getItemName(apTarget);
+            const Zstring itemNameNew = getItemName(targetPath);
             std::string itemIdSrc;
             GdriveItemDetails itemDetailsSrc;
             /*const GdrivePersistentSessions::AsyncAccessInfo aaiSrc =*/ accessGlobalFileState(gdriveLogin_, [&](GdriveFileStateAtLocation& fileState) //throw SysError
             {
-                std::tie(itemIdSrc, itemDetailsSrc) = fileState.getFileAttributes(afsSource, true /*followLeafShortcut*/); //throw SysError
+                std::tie(itemIdSrc, itemDetailsSrc) = fileState.getFileAttributes(sourcePath, true /*followLeafShortcut*/); //throw SysError
 
                 assert(itemDetailsSrc.type == GdriveItemType::file); //Google Drive *should* fail trying to copy folder: "This file cannot be copied by the user."
                 if (itemDetailsSrc.type != GdriveItemType::file)     //=> don't trust + improve error message
-                    throw SysError(replaceCpy<std::wstring>(L"%x is not a file.", L"%x", fmtPath(getItemName(afsSource))));
+                    throw SysError(replaceCpy<std::wstring>(L"%x is not a file.", L"%x", fmtPath(getItemName(sourcePath))));
             });
 
             std::string parentIdTrg;
             const GdrivePersistentSessions::AsyncAccessInfo aaiTrg = accessGlobalFileState(fsTarget.gdriveLogin_, [&](GdriveFileStateAtLocation& fileState) //throw SysError
             {
-                const GdriveFileState::PathStatus psTo = fileState.getPathStatus(apTarget.afsPath, false /*followLeafShortcut*/); //throw SysError
+                const GdriveFileState::PathStatus psTo = fileState.getPathStatus(targetPath.afsPath, false /*followLeafShortcut*/); //throw SysError
                 if (psTo.relPath.empty())
                     throw SysError(replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(itemNameNew)));
 
@@ -3640,58 +3651,59 @@ private:
                 fileState.all().notifyItemCreated(aaiTrg.stateDelta, newFileItem);
             });
 
-            FileCopyResult result;
-            result.fileSize = itemDetailsSrc.fileSize;
-            result.modTime  = itemDetailsSrc.modTime;
-            result.sourceFilePrint = getGdriveFilePrint(itemIdSrc);
-            result.targetFilePrint = getGdriveFilePrint(fileIdTrg);
-            /*result.errorModTime = */
-            return result;
+            return
+            {
+                .fileSize = itemDetailsSrc.fileSize,
+                .modTime  = itemDetailsSrc.modTime,
+                .sourceFilePrint = getGdriveFilePrint(itemIdSrc),
+                .targetFilePrint = getGdriveFilePrint(fileIdTrg),
+                /*.errorModTime = */
+            };
         }
         catch (const SysError& e)
         {
             throw FileError(replaceCpy(replaceCpy(_("Cannot copy file %x to %y."),
-                                                  L"%x", L'\n' + fmtPath(getDisplayPath(afsSource))),
-                                       L"%y",  L'\n' + fmtPath(AFS::getDisplayPath(apTarget))), e.toString());
+                                                  L"%x", L'\n' + fmtPath(getDisplayPath(sourcePath))),
+                                       L"%y",  L'\n' + fmtPath(AFS::getDisplayPath(targetPath))), e.toString());
         }
     }
 
     //symlink handling: follow
     //already existing: fail
-    void copyNewFolderForSameAfsType(const AfsPath& afsSource, const AbstractPath& apTarget, bool copyFilePermissions) const override //throw FileError
+    void copyNewFolderForSameAfsType(const AfsPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions) const override //throw FileError
     {
         if (copyFilePermissions)
-            throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(apTarget))), _("Operation not supported by device."));
+            throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(targetPath))), _("Operation not supported by device."));
 
         //already existing: 1. fails or 2. creates duplicate (unlikely)
-        AFS::createFolderPlain(apTarget); //throw FileError
+        AFS::createFolderPlain(targetPath); //throw FileError
     }
 
     //already existing: fail
-    void copySymlinkForSameAfsType(const AfsPath& afsSource, const AbstractPath& apTarget, bool copyFilePermissions) const override //throw FileError
+    void copySymlinkForSameAfsType(const AfsPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions) const override //throw FileError
     {
         try
         {
             std::string targetId;
             accessGlobalFileState(gdriveLogin_, [&](GdriveFileStateAtLocation& fileState) //throw SysError
             {
-                const GdriveItemDetails& itemDetails = fileState.getFileAttributes(afsSource, false /*followLeafShortcut*/).second; //throw SysError
+                const GdriveItemDetails& itemDetails = fileState.getFileAttributes(sourcePath, false /*followLeafShortcut*/).second; //throw SysError
                 if (itemDetails.type != GdriveItemType::shortcut)
                     throw SysError(L"Not a Google Drive Shortcut.");
 
                 targetId = itemDetails.targetId;
             });
 
-            const GdriveFileSystem& fsTarget = static_cast<const GdriveFileSystem&>(apTarget.afsDevice.ref());
+            const GdriveFileSystem& fsTarget = static_cast<const GdriveFileSystem&>(targetPath.afsDevice.ref());
 
             //avoid duplicate Google Drive item creation by multiple threads
-            PathAccessLock pal(fsTarget.getGdriveRawPath(apTarget.afsPath), PathBlockType::otherWait); //throw SysError
+            PathAccessLock pal(fsTarget.getGdriveRawPath(targetPath.afsPath), PathBlockType::otherWait); //throw SysError
 
-            const Zstring shortcutName = getItemName(apTarget.afsPath);
+            const Zstring shortcutName = getItemName(targetPath.afsPath);
             std::string parentId;
             const GdrivePersistentSessions::AsyncAccessInfo aaiTrg = accessGlobalFileState(fsTarget.gdriveLogin_, [&](GdriveFileStateAtLocation& fileState) //throw SysError
             {
-                const GdriveFileState::PathStatus& ps = fileState.getPathStatus(apTarget.afsPath, false /*followLeafShortcut*/); //throw SysError
+                const GdriveFileState::PathStatus& ps = fileState.getPathStatus(targetPath.afsPath, false /*followLeafShortcut*/); //throw SysError
                 if (ps.relPath.empty())
                     throw SysError(replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(shortcutName)));
 
@@ -3712,8 +3724,8 @@ private:
         catch (const SysError& e)
         {
             throw FileError(replaceCpy(replaceCpy(_("Cannot copy symbolic link %x to %y."),
-                                                  L"%x", L'\n' + fmtPath(getDisplayPath(afsSource))),
-                                       L"%y",  L'\n' + fmtPath(AFS::getDisplayPath(apTarget))), e.toString());
+                                                  L"%x", L'\n' + fmtPath(getDisplayPath(sourcePath))),
+                                       L"%y",  L'\n' + fmtPath(AFS::getDisplayPath(targetPath))), e.toString());
         }
     }
 
@@ -3787,11 +3799,11 @@ private:
         catch (const SysError& e) { throw FileError(generateErrorMsg(), e.toString()); }
     }
 
-    bool supportsPermissions(const AfsPath& afsPath) const override { return false; } //throw FileError
+    bool supportsPermissions(const AfsPath& folderPath) const override { return false; } //throw FileError
 
     //----------------------------------------------------------------------------------------------------------------
-    FileIconHolder getFileIcon      (const AfsPath& afsPath, int pixelSize) const override { return {}; } //throw FileError; optional return value
-    ImageHolder    getThumbnailImage(const AfsPath& afsPath, int pixelSize) const override { return {}; } //throw FileError; optional return value
+    FileIconHolder getFileIcon      (const AfsPath& filePath, int pixelSize) const override { return {}; } //throw FileError; optional return value
+    ImageHolder    getThumbnailImage(const AfsPath& filePath, int pixelSize) const override { return {}; } //throw FileError; optional return value
 
     void authenticateAccess(bool allowUserInteraction) const override //throw FileError
     {
@@ -3817,7 +3829,7 @@ private:
     bool hasNativeTransactionalCopy() const override { return true; }
     //----------------------------------------------------------------------------------------------------------------
 
-    int64_t getFreeDiskSpace(const AfsPath& afsPath) const override //throw FileError, returns < 0 if not available
+    int64_t getFreeDiskSpace(const AfsPath& folderPath) const override //throw FileError, returns < 0 if not available
     {
         bool onMyDrive = false;
         try
@@ -3830,33 +3842,29 @@ private:
             else
                 return -1;
         }
-        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot determine free disk space for %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString()); }
+        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot determine free disk space for %x."), L"%x", fmtPath(getDisplayPath(folderPath))), e.toString()); }
     }
 
-    bool supportsRecycleBin(const AfsPath& afsPath) const override { return true; } //throw FileError
-
-    std::unique_ptr<RecycleSession> createRecyclerSession(const AfsPath& afsPath) const override //throw FileError, return value must be bound!
+    std::unique_ptr<RecycleSession> createRecyclerSession(const AfsPath& folderPath) const override //throw FileError, (RecycleBinUnavailable)
     {
         struct RecycleSessionGdrive : public RecycleSession
         {
-            void recycleItemIfExists(const AbstractPath& itemPath, const Zstring& logicalRelPath) override { AFS::recycleItemIfExists(itemPath); } //throw FileError
+            //fails if item is not existing
+            void moveToRecycleBin(const AbstractPath& itemPath, const Zstring& logicalRelPath) override { AFS::moveToRecycleBin(itemPath); } //throw FileError, (RecycleBinUnavailable)
             void tryCleanup(const std::function<void (const std::wstring& displayPath)>& notifyDeletionStatus) override {}; //throw FileError
         };
 
         return std::make_unique<RecycleSessionGdrive>();
     }
 
-    void recycleItemIfExists(const AfsPath& afsPath) const override //throw FileError
+    //fails if item is not existing
+    void moveToRecycleBin(const AfsPath& itemPath) const override //throw FileError, (RecycleBinUnavailable)
     {
         try
         {
-            removeItemPlainImpl(afsPath, false /*permanent*/); //throw SysError
+            removeItemPlainImpl(itemPath, false /*permanent*/); //throw SysError
         }
-        catch (const SysError& e)
-        {
-            if (itemStillExists(afsPath)) //throw FileError
-                throw FileError(replaceCpy(_("Unable to move %x to the recycle bin."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString());
-        }
+        catch (const SysError& e) { throw FileError(replaceCpy(_("Unable to move %x to the recycle bin."), L"%x", fmtPath(getDisplayPath(itemPath))), e.toString()); }
     }
 
     const GdriveLogin gdriveLogin_;
@@ -4025,7 +4033,7 @@ AbstractPath fff::createItemPathGdrive(const Zstring& itemPathPhrase) //noexcept
 
     auto it = std::find_if(fullPath.begin(), fullPath.end(), [](Zchar c) { return c == '/' || c == '\\'; });
     const Zstring emailAndDrive(fullPath.begin(), it);
-    const AfsPath afsPath = sanitizeDeviceRelativePath({it, fullPath.end()});
+    const AfsPath itemPath = sanitizeDeviceRelativePath({it, fullPath.end()});
 
     GdriveLogin login;
     login.email        = utfTo<std::string>(beforeFirst(emailAndDrive, Zstr(':'), IfNotFoundReturn::all));
@@ -4037,5 +4045,5 @@ AbstractPath fff::createItemPathGdrive(const Zstring& itemPathPhrase) //noexcept
         else
             assert(false);
 
-    return AbstractPath(makeSharedRef<GdriveFileSystem>(login), afsPath);
+    return AbstractPath(makeSharedRef<GdriveFileSystem>(login), itemPath);
 }

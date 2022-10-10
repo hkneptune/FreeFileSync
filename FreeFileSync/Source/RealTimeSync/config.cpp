@@ -93,6 +93,7 @@ void rts::readConfig(const Zstring& filePath, XmlRealConfig& cfg, std::wstring& 
         if (formatVer < XML_FORMAT_RTS_CFG)
             try { rts::writeConfig(cfg, filePath); /*throw FileError*/ }
             catch (FileError&) { assert(false); } //don't bother user!
+        warn_static("at least log on failure!")
     }
     catch (const FileError& e) { warningMsg = e.toString(); }
 }

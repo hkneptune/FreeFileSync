@@ -97,7 +97,7 @@ void Application::notifyAppError(const std::wstring& msg, FfsExitCode rc)
                                (msgTypeName.empty() ? L"" : SPACED_DASH + msgTypeName);
 
     //error handling strategy unknown and no sync log output available at this point!
-    std::cerr << '[' + utfTo<std::string>(title) + "] " + utfTo<std::string>(msg) << '\n';
+    std::cerr << '[' + utfTo<std::string>(title) + "] " + utfTo<std::string>(msg) + '\n';
     //alternative0: std::wcerr: cannot display non-ASCII at all, so why does it exist???
     //alternative1: wxSafeShowMessage => NO console output on Debian x86, WTF!
     //alternative2: wxMessageBox() => works, but we probably shouldn't block during command line usage
@@ -122,7 +122,7 @@ bool Application::OnInit()
     //=> work around 1: bonus: avoid needless DBus calls: https://developer.gnome.org/gio/stable/running-gio-apps.html
     //                  drawback: missing MTP and network links in folder picker: https://freefilesync.org/forum/viewtopic.php?t=6871
     //if (::setenv("GIO_USE_VFS", "local", true /*overwrite*/) != 0)
-    //    std::cerr << utfTo<std::string>(formatSystemError("setenv(GIO_USE_VFS)", errno)) << "\n";
+    //    std::cerr << utfTo<std::string>(formatSystemError("setenv(GIO_USE_VFS)", errno)) + '\n';
     //
     //=> work around 2:
     g_vfs_get_default(); //returns unowned GVfs*
@@ -363,7 +363,8 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
                     else if (endsWithAsciiNoCase(filePath, Zstr(".xml")))
                         globalConfigFile = filePath;
                     else
-                        throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)));
+                        throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)),
+                                        _("Unexpected file extension:") + L' ' + fmtPath(getFileExtension(filePath)));
                 }
         }
         //----------------------------------------------------------------------------------------------------

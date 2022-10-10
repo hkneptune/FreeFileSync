@@ -7,6 +7,7 @@
 #include "main_dlg.h"
 #include <wx/wupdlock.h>
 #include <wx/filedlg.h>
+#include <wx+/app_main.h>
 #include <wx+/bitmap_button.h>
 #include <wx+/font_size.h>
 #include <wx+/popup_dlg.h>
@@ -95,6 +96,9 @@ MainDialog::MainDialog(const Zstring& cfgFilePath) :
 
     Bind(wxEVT_CHAR_HOOK, [this](wxKeyEvent& event) { onLocalKeyEvent(event); });
 
+
+    //notify about (logical) application main window => program won't quit, but stay on this dialog
+    setGlobalWindow(this);
 
     //prepare drag & drop
     firstFolderPanel_ = std::make_unique<FolderSelector2>(this, *m_panelMainFolder, *m_buttonSelectFolderMain, *m_txtCtrlDirectoryMain, folderLastSelected_, m_staticTextFinalPath);

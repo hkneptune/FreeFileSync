@@ -72,8 +72,7 @@ void copyItemPermissions(const Zstring& sourcePath, const Zstring& targetPath, P
 void createDirectory(const Zstring& dirPath); //throw FileError, ErrorTargetExisting
 
 //creates directories recursively if not existing
-//returns false if folder already exists
-bool createDirectoryIfMissingRecursion(const Zstring& dirPath); //throw FileError
+void createDirectoryIfMissingRecursion(const Zstring& dirPath); //throw FileError
 
 //symlink handling: follow
 //expects existing source/target directories

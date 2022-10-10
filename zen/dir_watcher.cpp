@@ -101,13 +101,13 @@ DirWatcher::~DirWatcher()
 
 std::vector<DirWatcher::Change> DirWatcher::fetchChanges(const std::function<void()>& requestUiUpdate, std::chrono::milliseconds cbInterval) //throw FileError
 {
-    std::vector<std::byte> buffer(512 * (sizeof(inotify_event) + NAME_MAX + 1));
+    std::vector<std::byte> buf(512 * (sizeof(inotify_event) + NAME_MAX + 1));
 
     ssize_t bytesRead = 0;
     do
     {
         //non-blocking call, see O_NONBLOCK
-        bytesRead = ::read(pimpl_->notifDescr, &buffer[0], buffer.size());
+        bytesRead = ::read(pimpl_->notifDescr, buf.data(), buf.size());
     }
     while (bytesRead < 0 && errno == EINTR); //"Interrupted function call; When this happens, you should try the call again."
 
@@ -124,7 +124,7 @@ std::vector<DirWatcher::Change> DirWatcher::fetchChanges(const std::function<voi
     ssize_t bytePos = 0;
     while (bytePos < bytesRead)
     {
-        inotify_event& evt = reinterpret_cast<inotify_event&>(buffer[bytePos]);
+        inotify_event& evt = reinterpret_cast<inotify_event&>(buf[bytePos]);
 
         if (evt.len != 0) //exclude case: deletion of "self", already reported by parent directory watch
         {

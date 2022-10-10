@@ -188,9 +188,21 @@ void StatusHandlerTemporaryPanel::initNewPhase(int itemsTotal, int64_t bytesTota
 }
 
 
-void StatusHandlerTemporaryPanel::logInfo(const std::wstring& msg)
+void StatusHandlerTemporaryPanel::logMessage(const std::wstring& msg, MsgType type)
 {
-    logMsg(errorLog_, msg, MSG_TYPE_INFO);
+    logMsg(errorLog_, msg, [&]
+    {
+        switch (type)
+        {
+            //*INDENT-OFF*
+            case MsgType::info:    return MSG_TYPE_INFO;
+            case MsgType::warning: return MSG_TYPE_WARNING;
+            case MsgType::error:   return MSG_TYPE_ERROR;
+            //*INDENT-ON*
+        }
+        assert(false);
+        return MSG_TYPE_ERROR;
+    }());
     requestUiUpdate(false /*force*/); //throw AbortProcess
 }
 
@@ -449,8 +461,8 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(c
                                                                             syncResult == SyncResult::finishedError)))
                 try
                 {
-                    sendLogAsEmail(notifyEmail, summary, errorLog_, logFilePath, notifyStatusNoThrow); //throw FileError
                     logMsg(errorLog_, replaceCpy(_("Sending email notification to %x"), L"%x", utfTo<std::wstring>(notifyEmail)), MSG_TYPE_INFO);
+                    sendLogAsEmail(notifyEmail, summary, errorLog_, logFilePath, notifyStatusNoThrow); //throw FileError
                 }
                 catch (const FileError& e) { logMsg(errorLog_, e.toString(), MSG_TYPE_ERROR); }
 
@@ -567,9 +579,22 @@ void StatusHandlerFloatingDialog::initNewPhase(int itemsTotal, int64_t bytesTota
 }
 
 
-void StatusHandlerFloatingDialog::logInfo(const std::wstring& msg)
+
+void StatusHandlerFloatingDialog::logMessage(const std::wstring& msg, MsgType type)
 {
-    logMsg(errorLog_, msg, MSG_TYPE_INFO);
+    logMsg(errorLog_, msg, [&]
+    {
+        switch (type)
+        {
+            //*INDENT-OFF*
+            case MsgType::info:    return MSG_TYPE_INFO;
+            case MsgType::warning: return MSG_TYPE_WARNING;
+            case MsgType::error:   return MSG_TYPE_ERROR;
+            //*INDENT-ON*
+        }
+        assert(false);
+        return MSG_TYPE_ERROR;
+    }());
     requestUiUpdate(false /*force*/); //throw AbortProcess
 }
 

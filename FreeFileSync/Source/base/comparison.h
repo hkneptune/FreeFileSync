@@ -54,7 +54,7 @@ FolderComparison compare(WarningDialogs& warnings,
                          bool createDirLocks,
                          std::unique_ptr<LockHolder>& dirLocks, //out
                          const std::vector<FolderPairCfg>& fpCfgList,
-                         ProcessCallback& callback);
+                         ProcessCallback& callback /*throw X*/); //throw X
 }
 
 #endif //COMPARISON_H_8032178534545426

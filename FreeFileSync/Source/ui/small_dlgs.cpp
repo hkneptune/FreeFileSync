@@ -21,7 +21,6 @@
 #include <wx+/no_flicker.h>
 #include <wx+/image_tools.h>
 #include <wx+/font_size.h>
-//#include <wx+/std_button_layout.h>
 #include <wx+/popup_dlg.h>
 #include <wx+/async_task.h>
 #include <wx+/image_resources.h>
@@ -39,7 +38,6 @@
 #include "../base/icon_loader.h"
 #include "../status_handler.h" //uiUpdateDue()
 #include "../version/version.h"
-//#include "../log_file.h"
 #include "../ffs_paths.h"
 #include "../icon_buffer.h"
 
@@ -148,8 +146,8 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
 
     {
-        const int imageWidth = (m_panelDonate->GetSize().GetWidth() - 5 - 5 /* grey border*/) / 2;
-        const int textWidth  =  m_panelDonate->GetSize().GetWidth() - 5 - 5 - imageWidth;
+        const int imageWidth = (m_panelDonate->GetSize().GetWidth() - 5 - 5 - 5 /* grey border*/) / 2;
+        const int textWidth  =  m_panelDonate->GetSize().GetWidth() - 5 - 5 - 5 - imageWidth;
 
         setImage(*m_bitmapAnimalSmall, shrinkImage(animalImg, imageWidth, -1 /*maxHeight*/));
 
@@ -1223,10 +1221,8 @@ private:
          [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnNotEnoughDiskSpace = show; }, _("Not enough free disk space available in:")},
         {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnUnresolvedConflicts; },
          [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnUnresolvedConflicts = show; }, _("The following items have unresolved conflicts and will not be synchronized:")},
-        {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnModificationTimeError; },
-         [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnModificationTimeError = show; }, _("Cannot write modification time of %x.")},
         {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnRecyclerMissing; },
-         [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnRecyclerMissing = show; }, _("The recycle bin is not supported by the following folders. Deleted or overwritten files will not be able to be restored:")},
+         [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnRecyclerMissing = show; }, _("The recycle bin is not available for %x.") + L' ' + _("Ignore and delete permanently each time recycle bin is unavailable?")},
         {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnInputFieldEmpty; },
          [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnInputFieldEmpty = show; }, _("A folder input field is empty.") + L' ' + _("The corresponding folder will be considered as empty.")},
         {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnDirectoryLockFailed; },
@@ -1453,12 +1449,13 @@ void OptionsDlg::playSoundWithDiagnostics(const wxString& filePath)
 {
     try
     {
-        //::PlaySound() => NO failure indication on Windows! does not set last error!
-        //wxSound::Play(..., wxSOUND_SYNC) can return false, but does not provide details!
+        //::PlaySound() on Windows does not set last error!
+        //wxSound::Play(..., wxSOUND_SYNC) can return false, but also without details!
         //=> check file access manually:
         [[maybe_unused]] const std::string& stream = getFileContent(utfTo<Zstring>(filePath), nullptr /*notifyUnbufferedIO*/); //throw FileError
 
-        [[maybe_unused]] const bool success = wxSound::Play(filePath, wxSOUND_ASYNC);
+        if (!wxSound::Play(filePath, wxSOUND_ASYNC))
+            throw FileError(L"Sound playback failed. No further diagnostics available.");
     }
     catch (const FileError& e) { showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString())); }
 }
@@ -1959,7 +1956,7 @@ DownloadProgressWindow::~DownloadProgressWindow() { pimpl_->Destroy(); }
 
 void DownloadProgressWindow::notifyNewFile(const Zstring& filePath) { pimpl_->notifyNewFile(filePath); }
 void DownloadProgressWindow::notifyProgress(int64_t delta)          { pimpl_->notifyProgress(delta); }
-void DownloadProgressWindow::requestUiUpdate()                     { pimpl_->requestUiUpdate(); } //throw CancelPressed
+void DownloadProgressWindow::requestUiUpdate()                      { pimpl_->requestUiUpdate(); } //throw CancelPressed
 
 //########################################################################################
 

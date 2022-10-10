@@ -564,7 +564,7 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
     {
         const std::wstring errMsg = tryReportingError([&] //throw ThreadStopRequest
         {
-            ctx.acb.reportInfo(txtRemoving + AFS::getDisplayPath(ctx.itemPath)); //throw ThreadStopRequest
+            reportInfo(txtRemoving + AFS::getDisplayPath(ctx.itemPath), ctx.acb); //throw ThreadStopRequest
             if (isSymlink)
                 AFS::removeSymlinkIfExists(ctx.itemPath); //throw FileError
             else

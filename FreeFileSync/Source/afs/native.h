@@ -19,7 +19,7 @@ AbstractPath createItemPathNative(const Zstring& itemPathPhrase); //noexcept
 AbstractPath createItemPathNativeNoFormatting(const Zstring& nativePath); //noexcept
 
 //return empty, if not a native path
-Zstring getNativeItemPath(const AbstractPath& ap);
+Zstring getNativeItemPath(const AbstractPath& itemPath);
 }
 
 #endif //FS_NATIVE_183247018532434563465

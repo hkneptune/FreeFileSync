@@ -272,14 +272,14 @@ Zstring formatTime(const Zchar* format, const TimeComp& tc)
     std::mktime(&ctc); //unfortunately std::strftime() needs all elements of "struct tm" filled, e.g. tm_wday, tm_yday
     //note: although std::mktime() explicitly expects "local time", calculating weekday and day of year *should* be time-zone and DST independent
 
-    Zstring buffer(256, Zstr('\0'));
+    Zstring buf(256, Zstr('\0'));
     //strftime() craziness on invalid input:
     //  VS 2010: CRASH unless "_invalid_parameter_handler" is set: https://docs.microsoft.com/en-us/cpp/c-runtime-library/parameter-validation
     //  GCC: returns 0, apparently no crash. Still, considering some clib maintainer's comments, we should expect the worst!
     //  Windows: avoid char-based strftime() which uses ANSI encoding! (e.g. Greek letters for AM/PM)
-    const size_t charsWritten = std::strftime(&buffer[0], buffer.size(), format, &ctc);
-    buffer.resize(charsWritten);
-    return buffer;
+    const size_t charsWritten = std::strftime(buf.data(), buf.size(), format, &ctc);
+    buf.resize(charsWritten);
+    return buf;
 }
 
 

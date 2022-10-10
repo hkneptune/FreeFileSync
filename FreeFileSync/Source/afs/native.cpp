@@ -78,19 +78,16 @@ struct NativeFileInfo
 {
     FileTimeNative modTime;
     uint64_t fileSize;
-    FileIndex fileIndex;
+    AFS::FingerPrint filePrint;
 };
-NativeFileInfo getFileAttributes(FileBase::FileHandle fh) //throw SysError
+NativeFileInfo getNativeFileInfo(FileBase& file) //throw FileError
 {
-    struct stat fileInfo = {};
-    if (::fstat(fh, &fileInfo) != 0)
-        THROW_LAST_SYS_ERROR("fstat");
-
+    const struct stat& fileInfo = file.getStatBuffered(); //throw FileError
     return
     {
         fileInfo.st_mtim,
         makeUnsigned(fileInfo.st_size),
-        fileInfo.st_ino
+        getFileFingerprint(fileInfo.st_ino)
     };
 }
 
@@ -312,38 +309,41 @@ void traverseFolderRecursiveNative(const std::vector<std::pair<Zstring, std::sha
 class RecycleSessionNative : public AFS::RecycleSession
 {
 public:
-    explicit RecycleSessionNative(const Zstring& baseFolderPath) : baseFolderPath_(baseFolderPath) {}
+    explicit RecycleSessionNative(const Zstring& baseFolderPath); //throw FileError, RecycleBinUnavailable
 
-    void recycleItemIfExists(const AbstractPath& itemPath, const Zstring& relPath) override; //throw FileError
+    void moveToRecycleBin(const AbstractPath& itemPath, const Zstring& logicalRelPath) override; //throw FileError, RecycleBinUnavailable
     void tryCleanup(const std::function<void (const std::wstring& displayPath)>& notifyDeletionStatus /*throw X*/) override; //throw FileError, X
 
 private:
-    const Zstring baseFolderPath_; //ends with path separator
 };
 
 //===========================================================================================================================
 
 struct InputStreamNative : public AFS::InputStream
 {
-    InputStreamNative(const Zstring& filePath, const IoCallback& notifyUnbufferedIO /*throw X*/) : fi_(filePath, notifyUnbufferedIO) {} //throw FileError, ErrorFileLocked
+    explicit InputStreamNative(const Zstring& filePath) : fileIn_(filePath) {} //throw FileError, ErrorFileLocked
 
-    size_t read(void* buffer, size_t bytesToRead) override { return fi_.read(buffer, bytesToRead); } //throw FileError, ErrorFileLocked, X; return "bytesToRead" bytes unless end of stream!
-    size_t getBlockSize() const override { return fi_.getBlockSize(); } //non-zero block size is AFS contract!
-    std::optional<AFS::StreamAttributes> getAttributesBuffered() override //throw FileError
+    size_t getBlockSize() override { return fileIn_.getBlockSize(); } //throw FileError; non-zero block size is AFS contract!
+
+    //may return short; only 0 means EOF! CONTRACT: bytesToRead > 0!
+    size_t tryRead(void* buffer, size_t bytesToRead, const IoCallback& notifyUnbufferedIO /*throw X*/) override //throw FileError, ErrorFileLocked, X
     {
-        try
-        {
-            const NativeFileInfo& fileInfo = getFileAttributes(fi_.getHandle()); //throw SysError
+        const size_t bytesRead = fileIn_.tryRead(buffer, bytesToRead); //throw FileError, ErrorFileLocked
+        if (notifyUnbufferedIO) notifyUnbufferedIO(bytesRead); //throw X
+        return bytesRead;
+    }
 
-            return AFS::StreamAttributes({nativeFileTimeToTimeT(fileInfo.modTime),
-                                          fileInfo.fileSize,
-                                          getFileFingerprint(fileInfo.fileIndex)});
-        }
-        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(fi_.getFilePath())), e.toString()); }
+    std::optional<AFS::StreamAttributes> tryGetAttributesFast() override //throw FileError
+    {
+        const NativeFileInfo& fileInfo = getNativeFileInfo(fileIn_); //throw FileError
+
+        return AFS::StreamAttributes({nativeFileTimeToTimeT(fileInfo.modTime),
+                                      fileInfo.fileSize,
+                                      fileInfo.filePrint});
     }
 
 private:
-    FileInput fi_;
+    FileInputPlain fileIn_;
 };
 
 //===========================================================================================================================
@@ -352,34 +352,35 @@ struct OutputStreamNative : public AFS::OutputStreamImpl
 {
     OutputStreamNative(const Zstring& filePath,
                        std::optional<uint64_t> streamSize,
-                       std::optional<time_t> modTime,
-                       const IoCallback& notifyUnbufferedIO /*throw X*/) :
-        fo_(filePath, notifyUnbufferedIO), //throw FileError, ErrorTargetExisting
+                       std::optional<time_t> modTime) :
+        fileOut_(filePath), //throw FileError, ErrorTargetExisting
         modTime_(modTime)
     {
         if (streamSize) //preallocate disk space + reduce fragmentation
-            fo_.reserveSpace(*streamSize); //throw FileError
+            fileOut_.reserveSpace(*streamSize); //throw FileError
     }
 
-    void write(const void* buffer, size_t bytesToWrite) override { fo_.write(buffer, bytesToWrite); } //throw FileError, X
+    size_t getBlockSize() override { return fileOut_.getBlockSize(); } //throw FileError
 
-    AFS::FinalizeResult finalize() override //throw FileError, X
+    size_t tryWrite(const void* buffer, size_t bytesToWrite, const IoCallback& notifyUnbufferedIO /*throw X*/) override //throw FileError, X; may return short! CONTRACT: bytesToWrite > 0
+    {
+        const size_t bytesWritten = fileOut_.tryWrite(buffer, bytesToWrite); //throw FileError
+        if (notifyUnbufferedIO) notifyUnbufferedIO(bytesWritten); //throw X
+        return bytesWritten;
+    }
+
+    AFS::FinalizeResult finalize(const IoCallback& notifyUnbufferedIO /*throw X*/) override //throw FileError, X
     {
         AFS::FinalizeResult result;
         if (modTime_)
-            try
-            {
-                const FileIndex fileIndex = getFileAttributes(fo_.getHandle()).fileIndex; //throw SysError
-                result.filePrint = getFileFingerprint(fileIndex);
-            }
-            catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(fo_.getFilePath())), e.toString()); }
+            result.filePrint = getNativeFileInfo(fileOut_).filePrint; //throw FileError
 
-        fo_.finalize(); //throw FileError, X
+        fileOut_.close(); //throw FileError
 
         try
         {
             if (modTime_)
-                setFileTime(fo_.getFilePath(), *modTime_, ProcSymlink::follow); //throw FileError
+                setFileTime(fileOut_.getFilePath(), *modTime_, ProcSymlink::follow); //throw FileError
             /* is setting modtime after closing the file handle a pessimization?
                no, needed for functional correctness, see file_access.cpp */
         }
@@ -389,7 +390,7 @@ struct OutputStreamNative : public AFS::OutputStreamImpl
     }
 
 private:
-    FileOutput fo_;
+    FileOutputPlain fileOut_;
     const std::optional<time_t> modTime_;
 };
 
@@ -400,20 +401,20 @@ class NativeFileSystem : public AbstractFileSystem
 public:
     explicit NativeFileSystem(const Zstring& rootPath) : rootPath_(rootPath) {}
 
-    Zstring getNativePath(const AfsPath& afsPath) const { return isNullFileSystem() ? Zstring{} : appendPath(rootPath_, afsPath.value); }
+    Zstring getNativePath(const AfsPath& itemPath) const { return isNullFileSystem() ? Zstring{} : appendPath(rootPath_, itemPath.value); }
 
 private:
-    Zstring getInitPathPhrase(const AfsPath& afsPath) const override { return makePathPhrase(getNativePath(afsPath)); }
+    Zstring getInitPathPhrase(const AfsPath& itemPath) const override { return makePathPhrase(getNativePath(itemPath)); }
 
-    std::vector<Zstring> getPathPhraseAliases(const AfsPath& afsPath) const override
+    std::vector<Zstring> getPathPhraseAliases(const AfsPath& itemPath) const override
     {
         if (isNullFileSystem())
             return {};
 
-        return ::getPathPhraseAliases(getNativePath(afsPath));
+        return ::getPathPhraseAliases(getNativePath(itemPath));
     }
 
-    std::wstring getDisplayPath(const AfsPath& afsPath) const override { return utfTo<std::wstring>(getNativePath(afsPath)); }
+    std::wstring getDisplayPath(const AfsPath& itemPath) const override { return utfTo<std::wstring>(getNativePath(itemPath)); }
 
     bool isNullFileSystem() const override { return rootPath_.empty(); }
 
@@ -423,10 +424,10 @@ private:
     }
 
     //----------------------------------------------------------------------------------------------------------------
-    ItemType getItemType(const AfsPath& afsPath) const override //throw FileError
+    ItemType getItemType(const AfsPath& itemPath) const override //throw FileError
     {
         initComForThread(); //throw FileError
-        switch (zen::getItemType(getNativePath(afsPath))) //throw FileError
+        switch (zen::getItemType(getNativePath(itemPath))) //throw FileError
         {
             case zen::ItemType::file:
                 return AFS::ItemType::file;
@@ -439,51 +440,51 @@ private:
         return AFS::ItemType::file;
     }
 
-    std::optional<ItemType> itemStillExists(const AfsPath& afsPath) const override //throw FileError
+    std::optional<ItemType> itemStillExists(const AfsPath& itemPath) const override //throw FileError
     {
         //default implementation: folder traversal
-        return AFS::itemStillExists(afsPath); //throw FileError
+        return AFS::itemStillExists(itemPath); //throw FileError
     }
     //----------------------------------------------------------------------------------------------------------------
 
     //already existing: fail
-    void createFolderPlain(const AfsPath& afsPath) const override //throw FileError
+    void createFolderPlain(const AfsPath& folderPath) const override //throw FileError
     {
         initComForThread(); //throw FileError
-        createDirectory(getNativePath(afsPath)); //throw FileError, ErrorTargetExisting
+        createDirectory(getNativePath(folderPath)); //throw FileError, ErrorTargetExisting
     }
 
-    void removeFilePlain(const AfsPath& afsPath) const override //throw FileError
+    void removeFilePlain(const AfsPath& filePath) const override //throw FileError
     {
         initComForThread(); //throw FileError
-        zen::removeFilePlain(getNativePath(afsPath)); //throw FileError
+        zen::removeFilePlain(getNativePath(filePath)); //throw FileError
     }
 
-    void removeSymlinkPlain(const AfsPath& afsPath) const override //throw FileError
+    void removeSymlinkPlain(const AfsPath& linkPath) const override //throw FileError
     {
         initComForThread(); //throw FileError
-        zen::removeSymlinkPlain(getNativePath(afsPath)); //throw FileError
+        zen::removeSymlinkPlain(getNativePath(linkPath)); //throw FileError
     }
 
-    void removeFolderPlain(const AfsPath& afsPath) const override //throw FileError
+    void removeFolderPlain(const AfsPath& folderPath) const override //throw FileError
     {
         initComForThread(); //throw FileError
-        zen::removeDirectoryPlain(getNativePath(afsPath)); //throw FileError
+        zen::removeDirectoryPlain(getNativePath(folderPath)); //throw FileError
     }
 
-    void removeFolderIfExistsRecursion(const AfsPath& afsPath, //throw FileError
+    void removeFolderIfExistsRecursion(const AfsPath& folderPath, //throw FileError
                                        const std::function<void (const std::wstring& displayPath)>& onBeforeFileDeletion /*throw X*/, //optional
                                        const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion) const override //one call for each object!
     {
         //default implementation: folder traversal
-        AFS::removeFolderIfExistsRecursion(afsPath, onBeforeFileDeletion, onBeforeFolderDeletion); //throw FileError, X
+        AFS::removeFolderIfExistsRecursion(folderPath, onBeforeFileDeletion, onBeforeFolderDeletion); //throw FileError, X
     }
 
     //----------------------------------------------------------------------------------------------------------------
-    AbstractPath getSymlinkResolvedPath(const AfsPath& afsPath) const override //throw FileError
+    AbstractPath getSymlinkResolvedPath(const AfsPath& linkPath) const override //throw FileError
     {
         initComForThread(); //throw FileError
-        const Zstring nativePath = getNativePath(afsPath);
+        const Zstring nativePath = getNativePath(linkPath);
 
         const Zstring resolvedPath = zen::getSymlinkResolvedPath(nativePath); //throw FileError
         const std::optional<zen::PathComponents> comp = parsePathComponents(resolvedPath);
@@ -494,14 +495,14 @@ private:
         return AbstractPath(makeSharedRef<NativeFileSystem>(comp->rootPath), AfsPath(comp->relPath));
     }
 
-    bool equalSymlinkContentForSameAfsType(const AfsPath& afsLhs, const AbstractPath& apRhs) const override //throw FileError
+    bool equalSymlinkContentForSameAfsType(const AfsPath& linkPathL, const AbstractPath& linkPathR) const override //throw FileError
     {
         initComForThread(); //throw FileError
 
-        const NativeFileSystem& nativeFsR = static_cast<const NativeFileSystem&>(apRhs.afsDevice.ref());
+        const NativeFileSystem& nativeFsR = static_cast<const NativeFileSystem&>(linkPathR.afsDevice.ref());
 
-        const SymlinkRawContent linkContentL = getSymlinkRawContent(getNativePath(afsLhs)); //throw FileError
-        const SymlinkRawContent linkContentR = getSymlinkRawContent(nativeFsR.getNativePath(apRhs.afsPath)); //throw FileError
+        const SymlinkRawContent linkContentL = getSymlinkRawContent(getNativePath(linkPathL)); //throw FileError
+        const SymlinkRawContent linkContentR = getSymlinkRawContent(nativeFsR.getNativePath(linkPathR.afsPath)); //throw FileError
 
         if (linkContentL.targetPath != linkContentR.targetPath)
             return false;
@@ -511,21 +512,20 @@ private:
     //----------------------------------------------------------------------------------------------------------------
 
     //return value always bound:
-    std::unique_ptr<InputStream> getInputStream(const AfsPath& afsPath, const IoCallback& notifyUnbufferedIO /*throw X*/) const override //throw FileError, ErrorFileLocked
+    std::unique_ptr<InputStream> getInputStream(const AfsPath& filePath) const override //throw FileError, ErrorFileLocked
     {
         initComForThread(); //throw FileError
-        return std::make_unique<InputStreamNative>(getNativePath(afsPath), notifyUnbufferedIO); //throw FileError, ErrorFileLocked
+        return std::make_unique<InputStreamNative>(getNativePath(filePath)); //throw FileError, ErrorFileLocked
     }
 
     //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
     //=> actual behavior: fail with clear error message
-    std::unique_ptr<OutputStreamImpl> getOutputStream(const AfsPath& afsPath, //throw FileError
+    std::unique_ptr<OutputStreamImpl> getOutputStream(const AfsPath& filePath, //throw FileError
                                                       std::optional<uint64_t> streamSize,
-                                                      std::optional<time_t> modTime,
-                                                      const IoCallback& notifyUnbufferedIO /*throw X*/) const override
+                                                      std::optional<time_t> modTime) const override
     {
         initComForThread(); //throw FileError
-        return std::make_unique<OutputStreamNative>(getNativePath(afsPath), streamSize, modTime, notifyUnbufferedIO); //throw FileError
+        return std::make_unique<OutputStreamNative>(getNativePath(filePath), streamSize, modTime); //throw FileError, ErrorTargetExisting
     }
 
     //----------------------------------------------------------------------------------------------------------------
@@ -544,21 +544,22 @@ private:
     //symlink handling: follow
     //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
     //=> actual behavior: fail with clear error message
-    FileCopyResult copyFileForSameAfsType(const AfsPath& afsSource, const StreamAttributes& attrSource, //throw FileError, ErrorFileLocked, X
-                                          const AbstractPath& apTarget, bool copyFilePermissions, const IoCallback& notifyUnbufferedIO /*throw X*/) const override
+    FileCopyResult copyFileForSameAfsType(const AfsPath& sourcePath, const StreamAttributes& attrSource, //throw FileError, ErrorFileLocked, X
+                                          const AbstractPath& targetPath, bool copyFilePermissions, const IoCallback& notifyUnbufferedIO /*throw X*/) const override
     {
-        const Zstring nativePathTarget = static_cast<const NativeFileSystem&>(apTarget.afsDevice.ref()).getNativePath(apTarget.afsPath);
+        const Zstring nativePathTarget = static_cast<const NativeFileSystem&>(targetPath.afsDevice.ref()).getNativePath(targetPath.afsPath);
 
         initComForThread(); //throw FileError
 
-        const zen::FileCopyResult nativeResult = copyNewFile(getNativePath(afsSource), nativePathTarget, notifyUnbufferedIO); //throw FileError, ErrorTargetExisting, ErrorFileLocked, X
+        const zen::FileCopyResult nativeResult = copyNewFile(getNativePath(sourcePath), nativePathTarget, notifyUnbufferedIO); //throw FileError, ErrorTargetExisting, ErrorFileLocked, X
 
         //at this point we know we created a new file, so it's fine to delete it for cleanup!
         ZEN_ON_SCOPE_FAIL(try { zen::removeFilePlain(nativePathTarget); }
         catch (FileError&) {});
+        warn_static("log it!")
 
         if (copyFilePermissions)
-            copyItemPermissions(getNativePath(afsSource), nativePathTarget, ProcSymlink::follow); //throw FileError
+            copyItemPermissions(getNativePath(sourcePath), nativePathTarget, ProcSymlink::follow); //throw FileError
 
         FileCopyResult result;
         result.fileSize = nativeResult.fileSize;
@@ -572,40 +573,40 @@ private:
 
     //symlink handling: follow
     //already existing: fail
-    void copyNewFolderForSameAfsType(const AfsPath& afsSource, const AbstractPath& apTarget, bool copyFilePermissions) const override //throw FileError
+    void copyNewFolderForSameAfsType(const AfsPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions) const override //throw FileError
     {
         initComForThread(); //throw FileError
 
-        const Zstring& sourcePath = getNativePath(afsSource);
-        const Zstring& targetPath = static_cast<const NativeFileSystem&>(apTarget.afsDevice.ref()).getNativePath(apTarget.afsPath);
+        const Zstring& sourcePathNative = getNativePath(sourcePath);
+        const Zstring& targetPathNative = static_cast<const NativeFileSystem&>(targetPath.afsDevice.ref()).getNativePath(targetPath.afsPath);
 
-        zen::createDirectory(targetPath); //throw FileError, ErrorTargetExisting
+        zen::createDirectory(targetPathNative); //throw FileError, ErrorTargetExisting
 
-        ZEN_ON_SCOPE_FAIL(try { removeDirectoryPlain(targetPath); }
+        ZEN_ON_SCOPE_FAIL(try { removeDirectoryPlain(targetPathNative); }
         catch (FileError&) {});
+        warn_static("log it!")
 
-        //do NOT copy attributes for volume root paths which return as: FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM | FILE_ATTRIBUTE_DIRECTORY
-        //https://freefilesync.org/forum/viewtopic.php?t=5550
-        if (getParentPath(afsSource)) //=> not a root path
-            tryCopyDirectoryAttributes(sourcePath, targetPath); //throw FileError
+        warn_static("implement properly + FileError should lead to a warning only:")
+        tryCopyDirectoryAttributes(sourcePathNative, targetPathNative); //throw FileError
 
         if (copyFilePermissions)
-            copyItemPermissions(sourcePath, targetPath, ProcSymlink::follow); //throw FileError
+            copyItemPermissions(sourcePathNative, targetPathNative, ProcSymlink::follow); //throw FileError
     }
 
     //already existing: fail
-    void copySymlinkForSameAfsType(const AfsPath& afsSource, const AbstractPath& apTarget, bool copyFilePermissions) const override //throw FileError
+    void copySymlinkForSameAfsType(const AfsPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions) const override //throw FileError
     {
-        const Zstring nativePathTarget = static_cast<const NativeFileSystem&>(apTarget.afsDevice.ref()).getNativePath(apTarget.afsPath);
+        const Zstring targetPathNative = static_cast<const NativeFileSystem&>(targetPath.afsDevice.ref()).getNativePath(targetPath.afsPath);
 
         initComForThread(); //throw FileError
-        zen::copySymlink(getNativePath(afsSource), nativePathTarget); //throw FileError
+        zen::copySymlink(getNativePath(sourcePath), targetPathNative); //throw FileError
 
-        ZEN_ON_SCOPE_FAIL(try { zen::removeSymlinkPlain(nativePathTarget); /*throw FileError*/ }
+        ZEN_ON_SCOPE_FAIL(try { zen::removeSymlinkPlain(targetPathNative); /*throw FileError*/ }
         catch (FileError&) {});
+        warn_static("log it!")
 
         if (copyFilePermissions)
-            copyItemPermissions(getNativePath(afsSource), nativePathTarget, ProcSymlink::asLink); //throw FileError
+            copyItemPermissions(getNativePath(sourcePath), targetPathNative, ProcSymlink::asLink); //throw FileError
     }
 
     //already existing: undefined behavior! (e.g. fail/overwrite)
@@ -624,31 +625,31 @@ private:
         zen::moveAndRenameItem(getNativePath(pathFrom), nativePathTarget, false /*replaceExisting*/); //throw FileError, ErrorTargetExisting, ErrorMoveUnsupported
     }
 
-    bool supportsPermissions(const AfsPath& afsPath) const override //throw FileError
+    bool supportsPermissions(const AfsPath& folderPath) const override //throw FileError
     {
         initComForThread(); //throw FileError
-        return zen::supportsPermissions(getNativePath(afsPath));
+        return zen::supportsPermissions(getNativePath(folderPath));
     }
 
     //----------------------------------------------------------------------------------------------------------------
-    FileIconHolder getFileIcon(const AfsPath& afsPath, int pixelSize) const override //throw FileError; (optional return value)
+    FileIconHolder getFileIcon(const AfsPath& filePath, int pixelSize) const override //throw FileError; (optional return value)
     {
         initComForThread(); //throw FileError
         try
         {
-            return fff::getFileIcon(getNativePath(afsPath), pixelSize); //throw SysError
+            return fff::getFileIcon(getNativePath(filePath), pixelSize); //throw SysError
         }
-        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString()); }
+        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(getDisplayPath(filePath))), e.toString()); }
     }
 
-    ImageHolder getThumbnailImage(const AfsPath& afsPath, int pixelSize) const override //throw FileError; (optional return value)
+    ImageHolder getThumbnailImage(const AfsPath& filePath, int pixelSize) const override //throw FileError; (optional return value)
     {
         initComForThread(); //throw FileError
         try
         {
-            return fff::getThumbnailImage(getNativePath(afsPath), pixelSize); //throw SysError
+            return fff::getThumbnailImage(getNativePath(filePath), pixelSize); //throw SysError
         }
-        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString()); }
+        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(getDisplayPath(filePath))), e.toString()); }
     }
 
     void authenticateAccess(bool allowUserInteraction) const override //throw FileError
@@ -660,28 +661,23 @@ private:
     bool hasNativeTransactionalCopy() const override { return false; }
     //----------------------------------------------------------------------------------------------------------------
 
-    int64_t getFreeDiskSpace(const AfsPath& afsPath) const override //throw FileError, returns < 0 if not available
+    int64_t getFreeDiskSpace(const AfsPath& folderPath) const override //throw FileError, returns < 0 if not available
     {
         initComForThread(); //throw FileError
-        return zen::getFreeDiskSpace(getNativePath(afsPath)); //throw FileError
+        return zen::getFreeDiskSpace(getNativePath(folderPath)); //throw FileError
     }
 
-    bool supportsRecycleBin(const AfsPath& afsPath) const override //throw FileError
-    {
-        return true; //truth be told: no idea!!!
-    }
-
-    std::unique_ptr<RecycleSession> createRecyclerSession(const AfsPath& afsPath) const override //throw FileError, return value must be bound!
+    std::unique_ptr<RecycleSession> createRecyclerSession(const AfsPath& folderPath) const override //throw FileError, RecycleBinUnavailable
     {
         initComForThread(); //throw FileError
-        assert(supportsRecycleBin(afsPath));
-        return std::make_unique<RecycleSessionNative>(getNativePath(afsPath));
+        return std::make_unique<RecycleSessionNative>(getNativePath(folderPath)); //throw FileError, RecycleBinUnavailable
     }
 
-    void recycleItemIfExists(const AfsPath& afsPath) const override //throw FileError
+    //fails if item is not existing
+    void moveToRecycleBin(const AfsPath& itemPath) const override //throw FileError, RecycleBinUnavailable
     {
         initComForThread(); //throw FileError
-        zen::recycleOrDeleteIfExists(getNativePath(afsPath)); //throw FileError
+        zen::moveToRecycleBin(getNativePath(itemPath)); //throw FileError, RecycleBinUnavailable
     }
 
     const Zstring rootPath_;
@@ -689,17 +685,19 @@ private:
 
 //===========================================================================================================================
 
+RecycleSessionNative::RecycleSessionNative(const Zstring& baseFolderPath)
+{}
 
 
-//- return true if item existed
+//- fails if item is not existing
 //- multi-threaded access: internally synchronized!
-void RecycleSessionNative::recycleItemIfExists(const AbstractPath& itemPath, const Zstring& relPath) //throw FileError
+void RecycleSessionNative::moveToRecycleBin(const AbstractPath& itemPath, const Zstring& logicalRelPath) //throw FileError, RecycleBinUnavailable
 {
     const Zstring& itemPathNative = getNativeItemPath(itemPath);
     if (itemPathNative.empty())
         throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
 
-    recycleOrDeleteIfExists(itemPathNative); //throw FileError
+    zen::moveToRecycleBin(itemPathNative); //throw FileError, RecycleBinUnavailable
 }
 
 
@@ -744,9 +742,9 @@ AbstractPath fff::createItemPathNativeNoFormatting(const Zstring& nativePath) //
 }
 
 
-Zstring fff::getNativeItemPath(const AbstractPath& ap)
+Zstring fff::getNativeItemPath(const AbstractPath& itemPath)
 {
-    if (const auto nativeDevice = dynamic_cast<const NativeFileSystem*>(&ap.afsDevice.ref()))
-        return nativeDevice->getNativePath(ap.afsPath);
+    if (const auto nativeDevice = dynamic_cast<const NativeFileSystem*>(&itemPath.afsDevice.ref()))
+        return nativeDevice->getNativePath(itemPath.afsPath);
     return {};
 }

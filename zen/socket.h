@@ -24,6 +24,7 @@ namespace zen
 using SocketType = int;
 const SocketType invalidSocket = -1;
 inline void closeSocket(SocketType s) { ::close(s); }
+warn_static("log on error!")
 
 
 //Winsock needs to be initialized before calling any of these functions! (WSAStartup/WSACleanup)
@@ -58,7 +59,7 @@ public:
                 THROW_LAST_SYS_ERROR_WSA("socket");
             ZEN_ON_SCOPE_FAIL(closeSocket(testSocket));
 
-
+            warn_static("support timeout!  https://stackoverflow.com/questions/2597608/c-socket-connection-timeout")
             if (::connect(testSocket, ai.ai_addr, static_cast<int>(ai.ai_addrlen)) != 0)
                 THROW_LAST_SYS_ERROR_WSA("connect");
 

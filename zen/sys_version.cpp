@@ -88,7 +88,7 @@ OsVersion zen::getOsVersion()
         }
         catch (const SysError& e)
         {
-            std::cerr << utfTo<std::string>(e.toString()) << '\n';
+            std::cerr << utfTo<std::string>(e.toString()) + '\n';
             return OsVersionDetail{}; //sigh, it's a jungle out there: https://freefilesync.org/forum/viewtopic.php?t=7276
         }
     }();

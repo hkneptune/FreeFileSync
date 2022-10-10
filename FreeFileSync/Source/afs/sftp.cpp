@@ -65,8 +65,8 @@ const long SFTP_DEFAULT_PERMISSION_FOLDER = LIBSSH2_SFTP_S_IRWXU |
 
 //attention: if operation fails due to time out, e.g. file copy, the cleanup code may hang, too => total delay = 2 x time out interval
 
-const size_t SFTP_OPTIMAL_BLOCK_SIZE_READ  = 8 * MAX_SFTP_READ_SIZE;     //https://github.com/libssh2/libssh2/issues/90
-const size_t SFTP_OPTIMAL_BLOCK_SIZE_WRITE = 8 * MAX_SFTP_OUTGOING_SIZE; //
+const size_t SFTP_OPTIMAL_BLOCK_SIZE_READ  = 16 * MAX_SFTP_READ_SIZE;     //https://github.com/libssh2/libssh2/issues/90
+const size_t SFTP_OPTIMAL_BLOCK_SIZE_WRITE = 16 * MAX_SFTP_OUTGOING_SIZE; //need large buffer to mitigate libssh2 stupidly waiting on "acks": https://www.libssh2.org/libssh2_sftp_write.html
 static_assert(MAX_SFTP_READ_SIZE == 30000 && MAX_SFTP_OUTGOING_SIZE == 30000, "reevaluate optimal block sizes if these constants change!");
 
 /* Perf Test, Sourceforge frs, SFTP upload, compressed 25 MB test file:
@@ -84,19 +84,19 @@ SFTP_OPTIMAL_BLOCK_SIZE_READ:              SFTP_OPTIMAL_BLOCK_SIZE_WRITE:
     DSL maximum download speed: 3060 KB/s      DSL maximum upload speed: 620 KB/s
 
 
-Perf Test 2: FFS hompage (2020-04-24)
+Perf Test 2: FFS hompage (2022-09-22)
 
 SFTP_OPTIMAL_BLOCK_SIZE_READ:              SFTP_OPTIMAL_BLOCK_SIZE_WRITE:
     multiples of                               multiples of
-    MAX_SFTP_READ_SIZE  MB/s                   MAX_SFTP_OUTGOING_SIZE  KB/s
-                 1      0,76                                1           210
-                 2      1,78                                2           430
-                 4      3,80                                4           870
-                 8      5,82                                8          1178
-                16      5,80                               16          1178
-                32      5,80                               32          1178
-    Filezilla download speed: 5,62 MB/s        Filezilla upload speed: 980 KB/s
-    DSL maximum download speed: 5,96 MB/s      DSL maximum upload speed: 1220 KB/s
+    MAX_SFTP_READ_SIZE  MB/s                   MAX_SFTP_OUTGOING_SIZE  MB/s
+                 1      0,77                                1          0.25
+                 2      1,63                                2          0.50
+                 4      3,43                                4          0.97
+                 8      6,93                                8          1.86
+                16      9,41                               16          3.60
+                32      9,58                               32          3.83
+      Filezilla download speed: 12,2 MB/s        Filezilla upload speed: 4.4 MB/s  -> unfair comparison: FFS seems slower because it includes setup work, e.g. open file handle
+    DSL maximum download speed: 12,9 MB/s      DSL maximum upload speed: 4,7 MB/s
 
 => libssh2_sftp_read/libssh2_sftp_write may take quite long for 16x and larger => use smallest multiple that fills bandwidth!            */
 }
@@ -148,16 +148,16 @@ std::weak_ordering operator<=>(const SshSessionId& lhs, const SshSessionId& rhs)
 
 namespace
 {
-Zstring concatenateSftpFolderPathPhrase(const SftpLogin& login, const AfsPath& afsPath); //noexcept
+Zstring concatenateSftpFolderPathPhrase(const SftpLogin& login, const AfsPath& itemPath); //noexcept
 
 
-std::string getLibssh2Path(const AfsPath& afsPath)
+std::string getLibssh2Path(const AfsPath& itemPath)
 {
-    return utfTo<std::string>(getServerRelPath(afsPath));
+    return utfTo<std::string>(getServerRelPath(itemPath));
 }
 
 
-std::wstring getSftpDisplayPath(const SshSessionId& sessionId, const AfsPath& afsPath)
+std::wstring getSftpDisplayPath(const SshSessionId& sessionId, const AfsPath& itemPath)
 {
     Zstring displayPath = Zstring(sftpPrefix) + Zstr("//");
 
@@ -170,7 +170,7 @@ std::wstring getSftpDisplayPath(const SshSessionId& sessionId, const AfsPath& af
         port != DEFAULT_PORT_SFTP)
         displayPath += Zstr(':') + numberTo<Zstring>(port);
 
-    const Zstring& relPath = getServerRelPath(afsPath);
+    const Zstring& relPath = getServerRelPath(itemPath);
     if (relPath != Zstr("/"))
         displayPath += relPath;
 
@@ -524,7 +524,7 @@ public:
             assert(::libssh2_session_last_errno(session->sshSession_) == LIBSSH2_ERROR_EAGAIN);
             assert(session->nbInfo_.commandPending || std::any_of(session->sftpChannels_.begin(), session->sftpChannels_.end(), [](SftpChannelInfo& ci) { return ci.nbInfo.commandPending; }));
 
-            pollfd pfd = {session->socket_->get()};
+            pollfd pfd{.fd = session->socket_->get()};
 
             const int dir = ::libssh2_session_block_directions(session->sshSession_);
             assert(dir != 0); //we assert a blocked direction after libssh2 returned LIBSSH2_ERROR_EAGAIN!
@@ -555,7 +555,7 @@ public:
             //is poll() on macOS broken? https://daniel.haxx.se/blog/2016/10/11/poll-on-mac-10-12-is-broken/
             //      it seems Daniel only takes issue with "empty" input handling!? => not an issue for us
             const char* functionName = "poll";
-            const int rv = ::poll(&fds[0],     //struct pollfd* fds
+            const int rv = ::poll(fds.data(),  //struct pollfd* fds
                                   fds.size(),  //nfds_t nfds
                                   waitTimeMs); //int timeout [ms]
             if (rv == 0) //time-out! => let next tryNonBlocking() call fail with detailed error!
@@ -647,6 +647,7 @@ private:
             //nbInfo_.commandPending? => have to clean up, no matter what!
             ::libssh2_session_free(sshSession_);
         }
+        warn_static("log on error!")
     }
 
     std::wstring formatLastSshError(const char* functionName, LIBSSH2_SFTP* sftpChannel /*optional*/) const
@@ -770,6 +771,7 @@ public:
                 }
                 catch (const SysError&     ) { return; }
                 catch (const FatalSshError&) { return; }
+            warn_static("log on error!")
         }
 
         size_t getSftpChannelCount() const { return session_->getSftpChannelCount(); }
@@ -1038,6 +1040,7 @@ std::vector<SftpItem> getDirContentFlat(const SftpLogin& login, const AfsPath& d
         [&](const SshSession::Details& sd) { return ::libssh2_sftp_closedir(dirHandle); }); //noexcept!
     }
     catch (SysError&) {});
+    warn_static("log on error!")
 
     std::vector<SftpItem> output;
     for (;;)
@@ -1048,40 +1051,40 @@ std::vector<SftpItem> getDirContentFlat(const SftpLogin& login, const AfsPath& d
         try
         {
             runSftpCommand(login, "libssh2_sftp_readdir", //throw SysError
-            [&](const SshSession::Details& sd) { return rc = ::libssh2_sftp_readdir(dirHandle, &buf[0], buf.size(), &attribs); }); //noexcept!
+            [&](const SshSession::Details& sd) { return rc = ::libssh2_sftp_readdir(dirHandle, buf.data(), buf.size(), &attribs); }); //noexcept!
         }
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(getSftpDisplayPath(login, dirPath))), e.toString()); }
 
         if (rc == 0) //no more items
             return output;
 
-        const std::string_view sftpItemName = makeStringView(&buf[0], rc);
+        const std::string_view sftpItemName = makeStringView(buf.data(), rc);
 
-        if (sftpItemName == "." || sftpItemName == "..") //check needed for SFTP, too!
-            continue;
+                                            if (sftpItemName == "." || sftpItemName == "..") //check needed for SFTP, too!
+                                            continue;
 
-        const Zstring& itemName = utfTo<Zstring>(sftpItemName);
-        const AfsPath itemPath(appendPath(dirPath.value, itemName));
+                                            const Zstring& itemName = utfTo<Zstring>(sftpItemName);
+                                            const AfsPath itemPath(appendPath(dirPath.value, itemName));
 
-        if ((attribs.flags & LIBSSH2_SFTP_ATTR_PERMISSIONS) == 0) //server probably does not support these attributes => fail at folder level
-            throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login, itemPath))), L"File attributes not available.");
+                                            if ((attribs.flags & LIBSSH2_SFTP_ATTR_PERMISSIONS) == 0) //server probably does not support these attributes => fail at folder level
+                                                throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login, itemPath))), L"File attributes not available.");
 
-        if (LIBSSH2_SFTP_S_ISLNK(attribs.permissions))
-        {
-            if ((attribs.flags & LIBSSH2_SFTP_ATTR_ACMODTIME) == 0) //server probably does not support these attributes => fail at folder level
-                throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login, itemPath))), L"Modification time not supported.");
-            output.push_back({itemName, {AFS::ItemType::symlink, 0, static_cast<time_t>(attribs.mtime)}});
-        }
-        else if (LIBSSH2_SFTP_S_ISDIR(attribs.permissions))
-            output.push_back({itemName, {AFS::ItemType::folder, 0, static_cast<time_t>(attribs.mtime)}});
-        else //a file or named pipe, ect: LIBSSH2_SFTP_S_ISREG, LIBSSH2_SFTP_S_ISCHR, LIBSSH2_SFTP_S_ISBLK, LIBSSH2_SFTP_S_ISFIFO, LIBSSH2_SFTP_S_ISSOCK
-        {
-            if ((attribs.flags & LIBSSH2_SFTP_ATTR_ACMODTIME) == 0) //server probably does not support these attributes => fail at folder level
-                throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login, itemPath))), L"Modification time not supported.");
-            if ((attribs.flags & LIBSSH2_SFTP_ATTR_SIZE) == 0)
-                throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login, itemPath))), L"File size not supported.");
-            output.push_back({itemName, {AFS::ItemType::file, attribs.filesize, static_cast<time_t>(attribs.mtime)}});
-        }
+                                                if (LIBSSH2_SFTP_S_ISLNK(attribs.permissions))
+            {
+                if ((attribs.flags & LIBSSH2_SFTP_ATTR_ACMODTIME) == 0) //server probably does not support these attributes => fail at folder level
+                        throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login, itemPath))), L"Modification time not supported.");
+                    output.push_back({itemName, {AFS::ItemType::symlink, 0, static_cast<time_t>(attribs.mtime)}});
+                }
+                else if (LIBSSH2_SFTP_S_ISDIR(attribs.permissions))
+                output.push_back({itemName, {AFS::ItemType::folder, 0, static_cast<time_t>(attribs.mtime)}});
+                else //a file or named pipe, ect: LIBSSH2_SFTP_S_ISREG, LIBSSH2_SFTP_S_ISCHR, LIBSSH2_SFTP_S_ISBLK, LIBSSH2_SFTP_S_ISFIFO, LIBSSH2_SFTP_S_ISSOCK
+                {
+                    if ((attribs.flags & LIBSSH2_SFTP_ATTR_ACMODTIME) == 0) //server probably does not support these attributes => fail at folder level
+                            throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login, itemPath))), L"Modification time not supported.");
+                        if ((attribs.flags & LIBSSH2_SFTP_ATTR_SIZE) == 0)
+                            throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login, itemPath))), L"File size not supported.");
+                        output.push_back({itemName, {AFS::ItemType::file, attribs.filesize, static_cast<time_t>(attribs.mtime)}});
+                    }
     }
 }
 
@@ -1202,9 +1205,8 @@ void traverseFolderRecursiveSftp(const SftpLogin& login, const std::vector<std::
 
 struct InputStreamSftp : public AFS::InputStream
 {
-    InputStreamSftp(const SftpLogin& login, const AfsPath& filePath, const IoCallback& notifyUnbufferedIO /*throw X*/) : //throw FileError
-        displayPath_(getSftpDisplayPath(login, filePath)),
-        notifyUnbufferedIO_(notifyUnbufferedIO)
+    InputStreamSftp(const SftpLogin& login, const AfsPath& filePath) : //throw FileError
+        displayPath_(getSftpDisplayPath(login, filePath))
     {
         try
         {
@@ -1232,53 +1234,18 @@ struct InputStreamSftp : public AFS::InputStream
         }
         catch (const SysError&) {}
         catch (const FatalSshError&) {} //SSH session corrupted! => stop using session
+        warn_static("log on error?")
     }
 
-    size_t read(void* buffer, size_t bytesToRead) override //throw FileError, (ErrorFileLocked), X; return "bytesToRead" bytes unless end of stream!
-    {
-        const size_t blockSize = getBlockSize();
-        assert(memBuf_.size() >= blockSize);
-        assert(bufPos_ <= bufPosEnd_ && bufPosEnd_ <= memBuf_.size());
+    size_t getBlockSize() override { return SFTP_OPTIMAL_BLOCK_SIZE_READ; } //throw (FileError); non-zero block size is AFS contract!
 
-        auto       it    = static_cast<std::byte*>(buffer);
-        const auto itEnd = it + bytesToRead;
-        for (;;)
-        {
-            const size_t junkSize = std::min(static_cast<size_t>(itEnd - it), bufPosEnd_ - bufPos_);
-            std::memcpy(it, &memBuf_[0] + bufPos_, junkSize);
-            bufPos_ += junkSize;
-            it      += junkSize;
-
-            if (it == itEnd)
-                break;
-            //--------------------------------------------------------------------
-            const size_t bytesRead = tryRead(&memBuf_[0], blockSize); //throw FileError; may return short, only 0 means EOF! => CONTRACT: bytesToRead > 0
-            bufPos_ = 0;
-            bufPosEnd_ = bytesRead;
-
-            if (notifyUnbufferedIO_) notifyUnbufferedIO_(bytesRead); //throw X
-
-            if (bytesRead == 0) //end of file
-                break;
-        }
-        return it - static_cast<std::byte*>(buffer);
-    }
-
-    size_t getBlockSize() const override { return SFTP_OPTIMAL_BLOCK_SIZE_READ; } //non-zero block size is AFS contract!
-
-    std::optional<AFS::StreamAttributes> getAttributesBuffered() override //throw FileError
-    {
-        return {}; //although have an SFTP stream handle, attribute access requires an extra (expensive) round-trip!
-        //PERF: test case 148 files, 1MB: overall copy time increases by 20% if libssh2_sftp_fstat() gets called per each file
-    }
-
-private:
-    size_t tryRead(void* buffer, size_t bytesToRead) //throw FileError; may return short, only 0 means EOF! => CONTRACT: bytesToRead > 0
+    //may return short; only 0 means EOF! CONTRACT: bytesToRead > 0!
+    size_t tryRead(void* buffer, size_t bytesToRead, const IoCallback& notifyUnbufferedIO /*throw X*/) override //throw FileError, (ErrorFileLocked), X
     {
         //libssh2_sftp_read has same semantics as Posix read:
         if (bytesToRead == 0) //"read() with a count of 0 returns zero" => indistinguishable from end of file! => check!
             throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
-        assert(bytesToRead == getBlockSize());
+        assert(bytesToRead % getBlockSize() == 0);
 
         ssize_t bytesRead = 0;
         try
@@ -1290,23 +1257,24 @@ private:
                 return static_cast<int>(bytesRead);
             });
 
-            if (static_cast<size_t>(bytesRead) > bytesToRead) //better safe than sorry
+            if (makeUnsigned(bytesRead) > bytesToRead) //better safe than sorry
                 throw SysError(formatSystemError("libssh2_sftp_read", L"", L"Buffer overflow.")); //user should never see this
         }
         catch (const SysError&      e) { throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(displayPath_)), e.toString()); }
         catch (const FatalSshError& e) { throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(displayPath_)), e.toString()); } //SSH session corrupted! => caller (will/should) stop using session
 
+        if (notifyUnbufferedIO) notifyUnbufferedIO(bytesRead); //throw X
         return bytesRead; //"zero indicates end of file"
     }
 
+    std::optional<AFS::StreamAttributes> tryGetAttributesFast() override { return {}; }//throw FileError
+    //although we have an SFTP stream handle, attribute access requires an extra (expensive) round-trip!
+    //PERF: test case 148 files, 1MB: overall copy time increases by 20% if libssh2_sftp_fstat() gets called per each file
+
+private:
     const std::wstring displayPath_;
     LIBSSH2_SFTP_HANDLE* fileHandle_ = nullptr;
-    const IoCallback notifyUnbufferedIO_; //throw X
     std::shared_ptr<SftpSessionManager::SshSessionShared> session_;
-
-    std::vector<std::byte> memBuf_ = std::vector<std::byte>(getBlockSize());
-    size_t bufPos_    = 0; //buffered I/O; see file_io.cpp
-    size_t bufPosEnd_ = 0; //
 };
 
 //===========================================================================================================================
@@ -1316,12 +1284,10 @@ struct OutputStreamSftp : public AFS::OutputStreamImpl
 {
     OutputStreamSftp(const SftpLogin& login, //throw FileError
                      const AfsPath& filePath,
-                     std::optional<time_t> modTime,
-                     const IoCallback& notifyUnbufferedIO /*throw X*/) :
+                     std::optional<time_t> modTime) :
         filePath_(filePath),
         displayPath_(getSftpDisplayPath(login, filePath)),
-        modTime_(modTime),
-        notifyUnbufferedIO_(notifyUnbufferedIO)
+        modTime_(modTime)
     {
         try
         {
@@ -1354,51 +1320,44 @@ struct OutputStreamSftp : public AFS::OutputStreamImpl
                 close(); //throw FileError
             }
             catch (FileError&) {}
+        warn_static("log!?")
     }
 
-    void write(const void* buffer, size_t bytesToWrite) override //throw FileError, X
-    {
-        const size_t blockSize = getBlockSize();
-        assert(memBuf_.size() >= blockSize);
-        assert(bufPos_ <= bufPosEnd_ && bufPosEnd_ <= memBuf_.size());
+    size_t getBlockSize() override { return SFTP_OPTIMAL_BLOCK_SIZE_WRITE; } //throw (FileError)
 
-        auto       it    = static_cast<const std::byte*>(buffer);
-        const auto itEnd = it + bytesToWrite;
-        for (;;)
+    size_t tryWrite(const void* buffer, size_t bytesToWrite, const IoCallback& notifyUnbufferedIO /*throw X*/) override //throw FileError, X; may return short! CONTRACT: bytesToWrite > 0
+    {
+        if (bytesToWrite == 0)
+            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+        assert(bytesToWrite % getBlockSize() == 0 || bytesToWrite < getBlockSize());
+
+        ssize_t bytesWritten = 0;
+        try
         {
-            if (memBuf_.size() - bufPos_ < blockSize) //support memBuf_.size() > blockSize to reduce memmove()s, but perf test shows: not really needed!
-                // || bufPos_ == bufPosEnd_) -> not needed while memBuf_.size() == blockSize
+            session_->executeBlocking("libssh2_sftp_write", //throw SysError, FatalSshError
+                                      [&](const SshSession::Details& sd) //noexcept!
             {
-                std::memmove(&memBuf_[0], &memBuf_[0] + bufPos_, bufPosEnd_ - bufPos_);
-                bufPosEnd_ -= bufPos_;
-                bufPos_ = 0;
-            }
+                bytesWritten = ::libssh2_sftp_write(fileHandle_, static_cast<const char*>(buffer), bytesToWrite);
+                /*  "If this function returns zero it should not be considered an error, but simply that there was no error but yet no payload data got sent to the other end."
+                     => sounds like BS, but is it really true!?
+                    From the libssh2_sftp_write code it appears that the function always waits for at least one "ack", unless we give it so much data _libssh2_channel_write() can't sent it all! */
+                assert(bytesWritten != 0);
+                return static_cast<int>(bytesWritten);
+            });
 
-            const size_t junkSize = std::min(static_cast<size_t>(itEnd - it), blockSize - (bufPosEnd_ - bufPos_));
-            std::memcpy(&memBuf_[0] + bufPosEnd_, it, junkSize);
-            bufPosEnd_ += junkSize;
-            it         += junkSize;
-
-            if (it == itEnd)
-                return;
-            //--------------------------------------------------------------------
-            const size_t bytesWritten = tryWrite(&memBuf_[bufPos_], blockSize); //throw FileError; may return short! CONTRACT: bytesToWrite > 0
-            bufPos_ += bytesWritten;
-            if (notifyUnbufferedIO_) notifyUnbufferedIO_(bytesWritten); //throw X!
+            if (makeUnsigned(bytesWritten) > bytesToWrite) //better safe than sorry
+                throw SysError(formatSystemError("libssh2_sftp_write", L"", L"Buffer overflow."));
         }
+        catch (const SysError&      e) { throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(displayPath_)), e.toString()); }
+        catch (const FatalSshError& e) { throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(displayPath_)), e.toString()); } //SSH session corrupted! => caller (will/should) stop using session
+
+        if (notifyUnbufferedIO) notifyUnbufferedIO(bytesWritten); //throw X!
+
+        return bytesWritten;
     }
 
-    AFS::FinalizeResult finalize() override //throw FileError, X
+    AFS::FinalizeResult finalize(const IoCallback& notifyUnbufferedIO /*throw X*/) override //throw FileError, X
     {
-        assert(bufPosEnd_ - bufPos_ <= getBlockSize());
-        assert(bufPos_ <= bufPosEnd_ && bufPosEnd_ <= memBuf_.size());
-        while (bufPos_ != bufPosEnd_)
-        {
-            const size_t bytesWritten = tryWrite(&memBuf_[bufPos_], bufPosEnd_ - bufPos_); //throw FileError; may return short! CONTRACT: bytesToWrite > 0
-            bufPos_ += bytesWritten;
-            if (notifyUnbufferedIO_) notifyUnbufferedIO_(bytesWritten); //throw X!
-        }
-
         //~OutputStreamSftp() would call this one, too, but we want to propagate errors if any:
         close(); //throw FileError
 
@@ -1418,47 +1377,19 @@ struct OutputStreamSftp : public AFS::OutputStreamImpl
     }
 
 private:
-    size_t getBlockSize() const { return SFTP_OPTIMAL_BLOCK_SIZE_WRITE; } //non-zero block size is AFS contract!
-
     void close() //throw FileError
     {
+        if (!fileHandle_)
+            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
         try
         {
-            if (!fileHandle_)
-                throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
-            ZEN_ON_SCOPE_EXIT(fileHandle_ = nullptr);
+            ZEN_ON_SCOPE_EXIT(fileHandle_ = nullptr);  //reset on failure, too! there's no point in, calling libssh2_sftp_close() a second time in ~OutputStreamSftp()
 
             session_->executeBlocking("libssh2_sftp_close", //throw SysError, FatalSshError
             [&](const SshSession::Details& sd) { return ::libssh2_sftp_close(fileHandle_); }); //noexcept!
         }
         catch (const SysError&      e) { throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(displayPath_)), e.toString()); }
         catch (const FatalSshError& e) { throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(displayPath_)), e.toString()); } //SSH session corrupted! => caller (will/should) stop using session
-    }
-
-    size_t tryWrite(const void* buffer, size_t bytesToWrite) //throw FileError; may return short! CONTRACT: bytesToWrite > 0
-    {
-        if (bytesToWrite == 0)
-            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
-        assert(bytesToWrite <= getBlockSize());
-
-        ssize_t bytesWritten = 0;
-        try
-        {
-            session_->executeBlocking("libssh2_sftp_write", //throw SysError, FatalSshError
-                                      [&](const SshSession::Details& sd) //noexcept!
-            {
-                bytesWritten = ::libssh2_sftp_write(fileHandle_, static_cast<const char*>(buffer), bytesToWrite);
-                return static_cast<int>(bytesWritten);
-            });
-
-            if (bytesWritten > static_cast<ssize_t>(bytesToWrite)) //better safe than sorry
-                throw SysError(formatSystemError("libssh2_sftp_write", L"", L"Buffer overflow."));
-        }
-        catch (const SysError&      e) { throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(displayPath_)), e.toString()); }
-        catch (const FatalSshError& e) { throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(displayPath_)), e.toString()); } //SSH session corrupted! => caller (will/should) stop using session
-
-        //bytesWritten == 0 is no error according to doc!
-        return bytesWritten;
     }
 
     void setModTimeIfAvailable() const //throw FileError, follows symlinks
@@ -1485,12 +1416,7 @@ private:
     const std::wstring displayPath_;
     LIBSSH2_SFTP_HANDLE* fileHandle_ = nullptr;
     const std::optional<time_t> modTime_;
-    const IoCallback notifyUnbufferedIO_; //throw X
     std::shared_ptr<SftpSessionManager::SshSessionShared> session_;
-
-    std::vector<std::byte> memBuf_ = std::vector<std::byte>(getBlockSize());
-    size_t bufPos_    = 0; //buffered I/O see file_io.cpp
-    size_t bufPosEnd_ = 0; //
 };
 
 //===========================================================================================================================
@@ -1514,26 +1440,26 @@ public:
     }
 
 private:
-    Zstring getInitPathPhrase(const AfsPath& afsPath) const override { return concatenateSftpFolderPathPhrase(login_, afsPath); }
+    Zstring getInitPathPhrase(const AfsPath& itemPath) const override { return concatenateSftpFolderPathPhrase(login_, itemPath); }
 
-    std::vector<Zstring> getPathPhraseAliases(const AfsPath& afsPath) const override
+    std::vector<Zstring> getPathPhraseAliases(const AfsPath& itemPath) const override
     {
         std::vector<Zstring> pathAliases;
 
         if (login_.authType != SftpAuthType::keyFile || login_.privateKeyFilePath.empty())
-            pathAliases.push_back(concatenateSftpFolderPathPhrase(login_, afsPath));
+            pathAliases.push_back(concatenateSftpFolderPathPhrase(login_, itemPath));
         else //why going crazy with key path aliases!? because we can...
             for (const Zstring& pathPhrase : ::getPathPhraseAliases(login_.privateKeyFilePath))
             {
                 auto loginTmp = login_;
                 loginTmp.privateKeyFilePath = pathPhrase;
 
-                pathAliases.push_back(concatenateSftpFolderPathPhrase(loginTmp, afsPath));
+                pathAliases.push_back(concatenateSftpFolderPathPhrase(loginTmp, itemPath));
             }
         return pathAliases;
     }
 
-    std::wstring getDisplayPath(const AfsPath& afsPath) const override { return getSftpDisplayPath(login_, afsPath); }
+    std::wstring getDisplayPath(const AfsPath& itemPath) const override { return getSftpDisplayPath(login_, itemPath); }
 
     bool isNullFileSystem() const override { return login_.server.empty(); }
 
@@ -1557,13 +1483,13 @@ private:
     }
 
     //----------------------------------------------------------------------------------------------------------------
-    ItemType getItemType(const AfsPath& afsPath) const override //throw FileError
+    ItemType getItemType(const AfsPath& itemPath) const override //throw FileError
     {
         try
         {
             LIBSSH2_SFTP_ATTRIBUTES attr = {};
             runSftpCommand(login_, "libssh2_sftp_lstat", //throw SysError
-            [&](const SshSession::Details& sd) { return ::libssh2_sftp_lstat(sd.sftpChannel, getLibssh2Path(afsPath), &attr); }); //noexcept!
+            [&](const SshSession::Details& sd) { return ::libssh2_sftp_lstat(sd.sftpChannel, getLibssh2Path(itemPath), &attr); }); //noexcept!
 
             if ((attr.flags & LIBSSH2_SFTP_ATTR_PERMISSIONS) == 0)
                 throw SysError(formatSystemError("libssh2_sftp_lstat", L"", L"File attributes not available."));
@@ -1576,19 +1502,19 @@ private:
         }
         catch (const SysError& e)
         {
-            throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString());
+            throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getDisplayPath(itemPath))), e.toString());
         }
     }
 
-    std::optional<ItemType> itemStillExists(const AfsPath& afsPath) const override //throw FileError
+    std::optional<ItemType> itemStillExists(const AfsPath& itemPath) const override //throw FileError
     {
         //default implementation: folder traversal
-        return AFS::itemStillExists(afsPath); //throw FileError
+        return AFS::itemStillExists(itemPath); //throw FileError
     }
     //----------------------------------------------------------------------------------------------------------------
 
     //already existing: fail
-    void createFolderPlain(const AfsPath& afsPath) const override //throw FileError
+    void createFolderPlain(const AfsPath& folderPath) const override //throw FileError
     {
         try
         {
@@ -1596,41 +1522,41 @@ private:
             runSftpCommand(login_, "libssh2_sftp_mkdir", //throw SysError
                            [&](const SshSession::Details& sd) //noexcept!
             {
-                return ::libssh2_sftp_mkdir(sd.sftpChannel, getLibssh2Path(afsPath), SFTP_DEFAULT_PERMISSION_FOLDER);
-                //less explicit variant: return ::libssh2_sftp_mkdir(sd.sftpChannel, getLibssh2Path(afsPath), LIBSSH2_SFTP_DEFAULT_MODE);
+                return ::libssh2_sftp_mkdir(sd.sftpChannel, getLibssh2Path(folderPath), SFTP_DEFAULT_PERMISSION_FOLDER);
+                //less explicit variant: return ::libssh2_sftp_mkdir(sd.sftpChannel, getLibssh2Path(folderPath), LIBSSH2_SFTP_DEFAULT_MODE);
             });
         }
         catch (const SysError& e) //libssh2_sftp_mkdir reports generic LIBSSH2_FX_FAILURE if existing
         {
-            throw FileError(replaceCpy(_("Cannot create directory %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString());
+            throw FileError(replaceCpy(_("Cannot create directory %x."), L"%x", fmtPath(getDisplayPath(folderPath))), e.toString());
         }
     }
 
-    void removeFilePlain(const AfsPath& afsPath) const override //throw FileError
+    void removeFilePlain(const AfsPath& filePath) const override //throw FileError
     {
         try
         {
             runSftpCommand(login_, "libssh2_sftp_unlink", //throw SysError
-            [&](const SshSession::Details& sd) { return ::libssh2_sftp_unlink(sd.sftpChannel, getLibssh2Path(afsPath)); }); //noexcept!
+            [&](const SshSession::Details& sd) { return ::libssh2_sftp_unlink(sd.sftpChannel, getLibssh2Path(filePath)); }); //noexcept!
         }
         catch (const SysError& e)
         {
-            throw FileError(replaceCpy(_("Cannot delete file %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString());
+            throw FileError(replaceCpy(_("Cannot delete file %x."), L"%x", fmtPath(getDisplayPath(filePath))), e.toString());
         }
     }
 
-    void removeSymlinkPlain(const AfsPath& afsPath) const override //throw FileError
+    void removeSymlinkPlain(const AfsPath& linkPath) const override //throw FileError
     {
-        this->removeFilePlain(afsPath); //throw FileError
+        this->removeFilePlain(linkPath); //throw FileError
     }
 
-    void removeFolderPlain(const AfsPath& afsPath) const override //throw FileError
+    void removeFolderPlain(const AfsPath& folderPath) const override //throw FileError
     {
         int delResult = LIBSSH2_ERROR_NONE;
         try
         {
             runSftpCommand(login_, "libssh2_sftp_rmdir", //throw SysError
-            [&](const SshSession::Details& sd) { return delResult = ::libssh2_sftp_rmdir(sd.sftpChannel, getLibssh2Path(afsPath)); }); //noexcept!
+            [&](const SshSession::Details& sd) { return delResult = ::libssh2_sftp_rmdir(sd.sftpChannel, getLibssh2Path(folderPath)); }); //noexcept!
         }
         catch (const SysError& e)
         {
@@ -1638,22 +1564,22 @@ private:
             {
                 //tested: libssh2_sftp_rmdir will fail for symlinks!
                 bool symlinkExists = false;
-                try { symlinkExists = getItemType(afsPath) == ItemType::symlink; } /*throw FileError*/ catch (FileError&) {} //previous exception is more relevant
+                try { symlinkExists = getItemType(folderPath) == ItemType::symlink; } /*throw FileError*/ catch (FileError&) {} //previous exception is more relevant
 
                 if (symlinkExists)
-                    return removeSymlinkPlain(afsPath); //throw FileError
+                    return removeSymlinkPlain(folderPath); //throw FileError
             }
 
-            throw FileError(replaceCpy(_("Cannot delete directory %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString());
+            throw FileError(replaceCpy(_("Cannot delete directory %x."), L"%x", fmtPath(getDisplayPath(folderPath))), e.toString());
         }
     }
 
-    void removeFolderIfExistsRecursion(const AfsPath& afsPath, //throw FileError
+    void removeFolderIfExistsRecursion(const AfsPath& folderPath, //throw FileError
                                        const std::function<void (const std::wstring& displayPath)>& onBeforeFileDeletion /*throw X*/, //optional
                                        const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion) const override //one call for each object!
     {
         //default implementation: folder traversal
-        AFS::removeFolderIfExistsRecursion(afsPath, onBeforeFileDeletion, onBeforeFolderDeletion); //throw FileError, X
+        AFS::removeFolderIfExistsRecursion(folderPath, onBeforeFileDeletion, onBeforeFolderDeletion); //throw FileError, X
     }
 
     //----------------------------------------------------------------------------------------------------------------
@@ -1662,61 +1588,64 @@ private:
         const size_t bufSize = 10000;
         std::vector<char> buf(bufSize + 1); //ensure buffer is always null-terminated since we don't evaluate the byte count returned by libssh2_sftp_realpath()!
 
+        int rc = 0;
         runSftpCommand(login_, "libssh2_sftp_realpath", //throw SysError
-        [&](const SshSession::Details& sd) { return ::libssh2_sftp_realpath(sd.sftpChannel, sftpPath, &buf[0], bufSize); }); //noexcept!
+        [&](const SshSession::Details& sd) { return rc = ::libssh2_sftp_realpath(sd.sftpChannel, sftpPath, buf.data(), bufSize); }); //noexcept!
 
-        const std::string sftpPathTrg = &buf[0];
+        const std::string_view sftpPathTrg = makeStringView(buf.data(), rc);
         if (!startsWith(sftpPathTrg, '/'))
             throw SysError(replaceCpy<std::wstring>(L"Invalid path %x.", L"%x", fmtPath(utfTo<std::wstring>(sftpPathTrg))));
 
         return sanitizeDeviceRelativePath(utfTo<Zstring>(sftpPathTrg)); //code-reuse! but the sanitize part isn't really needed here...
     }
 
-    AbstractPath getSymlinkResolvedPath(const AfsPath& afsPath) const override //throw FileError
+    AbstractPath getSymlinkResolvedPath(const AfsPath& linkPath) const override //throw FileError
     {
         try
         {
-            const AfsPath afsPathTrg = getServerRealPath(getLibssh2Path(afsPath)); //throw SysError
-            return AbstractPath(makeSharedRef<SftpFileSystem>(login_), afsPathTrg);
+            const AfsPath linkPathTrg = getServerRealPath(getLibssh2Path(linkPath)); //throw SysError
+            return AbstractPath(makeSharedRef<SftpFileSystem>(login_), linkPathTrg);
         }
-        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtPath(getDisplayPath(afsPath))), e.toString()); }
+        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtPath(getDisplayPath(linkPath))), e.toString()); }
     }
 
-    bool equalSymlinkContentForSameAfsType(const AfsPath& afsLhs, const AbstractPath& apRhs) const override //throw FileError
+    bool equalSymlinkContentForSameAfsType(const AfsPath& linkPathL, const AbstractPath& linkPathR) const override //throw FileError
     {
-        auto getTargetPath = [](const SftpFileSystem& sftpFs, const AfsPath& afsPath)
+        auto getTargetPath = [](const SftpFileSystem& sftpFs, const AfsPath& linkPath)
         {
-            const unsigned int bufSize = 10000;
-            std::string buf(bufSize + 1, '\0'); //ensure buffer is always null-terminated since we don't evaluate the byte count returned by libssh2_sftp_readlink()!
+            std::string buf(10000, '\0');
+            int rc = 0;
             try
             {
                 runSftpCommand(sftpFs.login_, "libssh2_sftp_readlink", //throw SysError
-                [&](const SshSession::Details& sd) { return ::libssh2_sftp_readlink(sd.sftpChannel, getLibssh2Path(afsPath), &buf[0], bufSize); }); //noexcept!
-            }
-            catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(sftpFs.getDisplayPath(afsPath))), e.toString()); }
+                [&](const SshSession::Details& sd) { return rc = ::libssh2_sftp_readlink(sd.sftpChannel, getLibssh2Path(linkPath), buf.data(), buf.size()); }); //noexcept!
 
-            buf.resize(strLength(&buf[0]));
+                if (makeUnsigned(rc) > buf.size()) //better safe than sorry
+                    throw SysError(formatSystemError("libssh2_sftp_readlink", L"", L"Buffer overflow.")); //user should never see this
+            }
+            catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(sftpFs.getDisplayPath(linkPath))), e.toString()); }
+
+            buf.resize(rc);
             return buf;
         };
 
-        return getTargetPath(*this, afsLhs) == getTargetPath(static_cast<const SftpFileSystem&>(apRhs.afsDevice.ref()), apRhs.afsPath);
+        return getTargetPath(*this, linkPathL) == getTargetPath(static_cast<const SftpFileSystem&>(linkPathR.afsDevice.ref()), linkPathR.afsPath);
     }
     //----------------------------------------------------------------------------------------------------------------
 
     //return value always bound:
-    std::unique_ptr<InputStream> getInputStream(const AfsPath& afsPath, const IoCallback& notifyUnbufferedIO /*throw X*/) const override //throw FileError, (ErrorFileLocked)
+    std::unique_ptr<InputStream> getInputStream(const AfsPath& filePath) const override //throw FileError, (ErrorFileLocked)
     {
-        return std::make_unique<InputStreamSftp>(login_, afsPath, notifyUnbufferedIO); //throw FileError
+        return std::make_unique<InputStreamSftp>(login_, filePath); //throw FileError
     }
 
     //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
     //=> actual behavior: fail with obscure LIBSSH2_FX_FAILURE error
-    std::unique_ptr<OutputStreamImpl> getOutputStream(const AfsPath& afsPath, //throw FileError
+    std::unique_ptr<OutputStreamImpl> getOutputStream(const AfsPath& filePath, //throw FileError
                                                       std::optional<uint64_t> streamSize,
-                                                      std::optional<time_t> modTime,
-                                                      const IoCallback& notifyUnbufferedIO /*throw X*/) const override
+                                                      std::optional<time_t> modTime) const override
     {
-        return std::make_unique<OutputStreamSftp>(login_, afsPath, modTime, notifyUnbufferedIO); //throw FileError
+        return std::make_unique<OutputStreamSftp>(login_, filePath, modTime); //throw FileError
     }
 
     //----------------------------------------------------------------------------------------------------------------
@@ -1728,34 +1657,34 @@ private:
 
     //symlink handling: follow
     //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
-    FileCopyResult copyFileForSameAfsType(const AfsPath& afsSource, const StreamAttributes& attrSource, //throw FileError, (ErrorFileLocked), X
-                                          const AbstractPath& apTarget, bool copyFilePermissions, const IoCallback& notifyUnbufferedIO /*throw X*/) const override
+    FileCopyResult copyFileForSameAfsType(const AfsPath& sourcePath, const StreamAttributes& attrSource, //throw FileError, (ErrorFileLocked), X
+                                          const AbstractPath& targetPath, bool copyFilePermissions, const IoCallback& notifyUnbufferedIO /*throw X*/) const override
     {
         //no native SFTP file copy => use stream-based file copy:
         if (copyFilePermissions)
-            throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(apTarget))), _("Operation not supported by device."));
+            throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(targetPath))), _("Operation not supported by device."));
 
         //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
-        return copyFileAsStream(afsSource, attrSource, apTarget, notifyUnbufferedIO); //throw FileError, (ErrorFileLocked), X
+        return copyFileAsStream(sourcePath, attrSource, targetPath, notifyUnbufferedIO); //throw FileError, (ErrorFileLocked), X
     }
 
     //symlink handling: follow
     //already existing: fail
-    void copyNewFolderForSameAfsType(const AfsPath& afsSource, const AbstractPath& apTarget, bool copyFilePermissions) const override //throw FileError
+    void copyNewFolderForSameAfsType(const AfsPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions) const override //throw FileError
     {
         if (copyFilePermissions)
-            throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(apTarget))), _("Operation not supported by device."));
+            throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(targetPath))), _("Operation not supported by device."));
 
         //already existing: fail
-        AFS::createFolderPlain(apTarget); //throw FileError
+        AFS::createFolderPlain(targetPath); //throw FileError
     }
 
     //already existing: fail
-    void copySymlinkForSameAfsType(const AfsPath& afsSource, const AbstractPath& apTarget, bool copyFilePermissions) const override
+    void copySymlinkForSameAfsType(const AfsPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions) const override
     {
         throw FileError(replaceCpy(replaceCpy(_("Cannot copy symbolic link %x to %y."),
-                                              L"%x", L'\n' + fmtPath(getDisplayPath(afsSource))),
-                                   L"%y", L'\n' + fmtPath(AFS::getDisplayPath(apTarget))), _("Operation not supported by device."));
+                                              L"%x", L'\n' + fmtPath(getDisplayPath(sourcePath))),
+                                   L"%y", L'\n' + fmtPath(AFS::getDisplayPath(targetPath))), _("Operation not supported by device."));
     }
 
     //already existing: undefined behavior! (e.g. fail/overwrite)
@@ -1795,12 +1724,12 @@ private:
         }
     }
 
-    bool supportsPermissions(const AfsPath& afsPath) const override { return false; } //throw FileError
+    bool supportsPermissions(const AfsPath& folderPath) const override { return false; } //throw FileError
     //wait until there is real demand for copying from and to SFTP with permissions => use stream-based file copy:
 
     //----------------------------------------------------------------------------------------------------------------
-    FileIconHolder getFileIcon      (const AfsPath& afsPath, int pixelSize) const override { return {}; } //throw FileError; optional return value
-    ImageHolder    getThumbnailImage(const AfsPath& afsPath, int pixelSize) const override { return {}; } //throw FileError; optional return value
+    FileIconHolder getFileIcon      (const AfsPath& filePath, int pixelSize) const override { return {}; } //throw FileError; optional return value
+    ImageHolder    getThumbnailImage(const AfsPath& filePath, int pixelSize) const override { return {}; } //throw FileError; optional return value
 
     void authenticateAccess(bool allowUserInteraction) const override {} //throw FileError
 
@@ -1809,7 +1738,7 @@ private:
     bool hasNativeTransactionalCopy() const override { return false; }
     //----------------------------------------------------------------------------------------------------------------
 
-    int64_t getFreeDiskSpace(const AfsPath& afsPath) const override //throw FileError, returns < 0 if not available
+    int64_t getFreeDiskSpace(const AfsPath& folderPath) const override //throw FileError, returns < 0 if not available
     {
         //statvfs is an SFTP v3 extension and not supported by all server implementations
         //Mikrotik SFTP server fails with LIBSSH2_FX_OP_UNSUPPORTED and corrupts session so that next SFTP call will hang
@@ -1835,18 +1764,16 @@ private:
 #endif
     }
 
-    bool supportsRecycleBin(const AfsPath& afsPath) const override { return false; } //throw FileError
-
-    std::unique_ptr<RecycleSession> createRecyclerSession(const AfsPath& afsPath) const override //throw FileError, return value must be bound!
+    std::unique_ptr<RecycleSession> createRecyclerSession(const AfsPath& folderPath) const override //throw FileError, RecycleBinUnavailable
     {
-        assert(false); //see supportsRecycleBin()
-        throw FileError(L"Recycle bin not supported by device.");
+        throw RecycleBinUnavailable(replaceCpy(_("The recycle bin is not available for %x."), L"%x", fmtPath(getDisplayPath(folderPath))),
+                                    _("Operation not supported by device."));
     }
 
-    void recycleItemIfExists(const AfsPath& afsPath) const override //throw FileError
+    void moveToRecycleBin(const AfsPath& itemPath) const override //throw FileError, RecycleBinUnavailable
     {
-        assert(false); //see supportsRecycleBin()
-        throw FileError(replaceCpy(_("Unable to move %x to the recycle bin."), L"%x", fmtPath(getDisplayPath(afsPath))), _("Operation not supported by device."));
+        throw RecycleBinUnavailable(replaceCpy(_("The recycle bin is not available for %x."), L"%x", fmtPath(getDisplayPath(itemPath))),
+                                    _("Operation not supported by device."));
     }
 
     const SftpLogin login_;
@@ -1855,7 +1782,7 @@ private:
 //===========================================================================================================================
 
 //expects "clean" login data
-Zstring concatenateSftpFolderPathPhrase(const SftpLogin& login, const AfsPath& afsPath) //noexcept
+Zstring concatenateSftpFolderPathPhrase(const SftpLogin& login, const AfsPath& folderPath) //noexcept
 {
     Zstring username;
     if (!login.username.empty())
@@ -1865,7 +1792,7 @@ Zstring concatenateSftpFolderPathPhrase(const SftpLogin& login, const AfsPath& a
     if (login.port > 0)
         port = Zstr(':') + numberTo<Zstring>(login.port);
 
-    Zstring relPath = getServerRelPath(afsPath);
+    Zstring relPath = getServerRelPath(folderPath);
     if (relPath == Zstr("/"))
         relPath.clear();
 

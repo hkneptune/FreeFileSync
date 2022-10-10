@@ -96,14 +96,12 @@ public:
 
     void showResult()
     {
-        const bool wasRunning = !watch_.isPaused();
-        if (wasRunning) watch_.pause(); //don't include call to MessageBox()!
-        ZEN_ON_SCOPE_EXIT(if (wasRunning) watch_.resume());
-
         const int64_t timeMs = std::chrono::duration_cast<std::chrono::milliseconds>(watch_.elapsed()).count();
         const std::string msg = numberTo<std::string>(timeMs) + " ms";
-        std::clog << "Perf: duration: " << msg << '\n';
+        std::clog << "Perf: duration: " << msg + '\n';
         resultShown_ = true;
+
+        watch_ = StopWatch(watch_.isPaused());
     }
 
 private:

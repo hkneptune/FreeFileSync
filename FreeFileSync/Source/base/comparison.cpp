@@ -129,8 +129,8 @@ ResolvedBaseFolders initializeBaseFolders(const std::vector<FolderPairCfg>& fpCf
     //---------------------------------------------------------------------------
     std::map<std::pair<AfsDevice, ZstringNoCase>, std::set<AbstractPath>> ciPathAliases;
 
-    for (const AbstractPath& ap : allFolders)
-        ciPathAliases[std::pair(ap.afsDevice, ap.afsPath.value)].insert(ap);
+    for (const AbstractPath& folderPath : allFolders)
+        ciPathAliases[std::pair(folderPath.afsDevice, folderPath.afsPath.value)].insert(folderPath);
 
     if (std::any_of(ciPathAliases.begin(), ciPathAliases.end(), [](const auto& item) { return item.second/*aliases*/.size() > 1; }))
     {
@@ -215,9 +215,10 @@ ComparisonBuffer::ComparisonBuffer(const std::set<DirectoryKey>& folderKeys,
 
     const int64_t totalTimeSec = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - compareStartTime).count();
 
-    callback.logInfo(_("Comparison finished:") + L' ' +
-                     _P("1 item found", "%x items found", itemsReported) + SPACED_DASH +
-                     _("Time elapsed:") + L' ' + copyStringTo<std::wstring>(wxTimeSpan::Seconds(totalTimeSec).Format())); //throw X
+    callback.logMessage(_("Comparison finished:") + L' ' +
+                        _P("1 item found", "%x items found", itemsReported) + SPACED_DASH +
+                        _("Time elapsed:") + L' ' + copyStringTo<std::wstring>(wxTimeSpan::Seconds(totalTimeSec).Format()),
+                        PhaseCallback::MsgType::info); //throw X
     //------------------------------------------------------------------
 
     //folderStatus_.existing already in buffer, now create entries for the rest:
@@ -481,19 +482,23 @@ void categorizeFileByContent(FilePair& file, const std::wstring& txtComparingCon
     bool haveSameContent = false;
     const std::wstring errMsg = tryReportingError([&]
     {
-        PercentStatReporter statReporter(replaceCpy(txtComparingContentOfFiles, L"%x", fmtPath(file.getRelativePathAny())),
-                                         file.getFileSize<SelectSide::left>(), acb); //throw ThreadStopRequest
+        std::wstring statusMsg = replaceCpy(txtComparingContentOfFiles, L"%x", fmtPath(file.getRelativePathAny()));
 
-        //callbacks run *outside* singleThread_ lock! => fine
-        auto notifyUnbufferedIO = [&statReporter](int64_t bytesDelta)
+        ItemStatReporter statReporter(1, file.getFileSize<SelectSide::left>(), acb);
+        PercentStatReporter percentReporter(statusMsg, file.getFileSize<SelectSide::left>(), statReporter);
+
+        acb.updateStatus(std::move(statusMsg)); //throw ThreadStopRequest
+
+        //callbacks run *outside* singleThread lock! => fine
+        auto notifyUnbufferedIO = [&percentReporter](int64_t bytesDelta)
         {
-            statReporter.updateStatus(0, bytesDelta); //throw ThreadStopRequest
-            interruptionPoint(); //throw ThreadStopRequest => not reliably covered by AsyncPercentStatReporter::updateStatus()!
+            percentReporter.updateDeltaAndStatus(bytesDelta); //throw ThreadStopRequest
+            interruptionPoint(); //throw ThreadStopRequest => not reliably covered by PercentStatReporter::updateDeltaAndStatus()!
         };
 
         haveSameContent = parallel::filesHaveSameContent(file.getAbstractPath<SelectSide::left >(),
                                                          file.getAbstractPath<SelectSide::right>(), notifyUnbufferedIO, singleThread); //throw FileError, ThreadStopRequest
-        statReporter.updateStatus(1, 0); //throw ThreadStopRequest
+        statReporter.reportDelta(1, 0);
     }, acb); //throw ThreadStopRequest
 
     if (!errMsg.empty())
@@ -720,7 +725,7 @@ void forEachSorted(const MapType& fileMap, Function fun)
     for (const auto& item : fileMap)
         fileList.push_back(&item);
 
-   //sort for natural default sequence on UI file grid:
+    //sort for natural default sequence on UI file grid:
     std::sort(fileList.begin(), fileList.end(), [](const FileRef& lhs, const FileRef& rhs) { return compareNoCase(lhs->first /*item name*/, rhs->first) < 0; });
 
     for (const auto& item : fileList)
@@ -1027,7 +1032,7 @@ FolderComparison fff::compare(WarningDialogs& warnings,
                               bool createDirLocks,
                               std::unique_ptr<LockHolder>& dirLocks,
                               const std::vector<FolderPairCfg>& fpCfgList,
-                              ProcessCallback& callback)
+                              ProcessCallback& callback /*throw X*/) //throw X
 {
     //PERF_START;
 
@@ -1054,7 +1059,7 @@ FolderComparison fff::compare(WarningDialogs& warnings,
     }
     catch (const FileError& e) //failure is not critical => log only
     {
-        callback.logInfo(e.toString()); //throw X
+        callback.logMessage(e.toString(), PhaseCallback::MsgType::warning); //throw X
     }
 
     const ResolvedBaseFolders& resInfo = initializeBaseFolders(fpCfgList,
@@ -1081,8 +1086,8 @@ FolderComparison fff::compare(WarningDialogs& warnings,
                 haveFullPair = true;
 
         if (havePartialPair == haveFullPair) //error if: all empty or exist both full and partial pairs -> support single-folder comparison scenario
-            callback.reportWarning(_("A folder input field is empty.") + L" \n\n" + //throw X
-                                   _("The corresponding folder will be considered as empty."), warnings.warnInputFieldEmpty);
+            callback.reportWarning(_("A folder input field is empty.") + L" \n\n" +
+                                   _("The corresponding folder will be considered as empty."), warnings.warnInputFieldEmpty); //throw X
     }
 
     //Check whether one side is a sub directory of the other side (folder-pair-wise!)

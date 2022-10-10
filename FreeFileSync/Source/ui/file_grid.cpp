@@ -2056,7 +2056,7 @@ void IconManager::startIconUpdater() { assert(iconUpdater_); if (iconUpdater_) i
 
 void filegrid::setupIcons(Grid& gridLeft, Grid& gridCenter, Grid& gridRight, bool showFileIcons, IconBuffer::IconSize sz)
 {
-    auto* provLeft  = dynamic_cast<GridDataLeft *>(gridLeft .getDataProvider());
+    auto* provLeft  = dynamic_cast<GridDataLeft*>(gridLeft .getDataProvider());
     auto* provRight = dynamic_cast<GridDataRight*>(gridRight.getDataProvider());
 
     if (provLeft && provRight)

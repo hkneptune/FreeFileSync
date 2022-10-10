@@ -126,7 +126,7 @@ private:
         catch (const SysError& e)
         {
             const std::wstring logMsg = replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(lockFilePath_)) + L' ' + e.toString();
-            std::cerr << utfTo<std::string>(logMsg) << '\n';
+            std::cerr << utfTo<std::string>(logMsg) + '\n';
         }
     }
 
@@ -177,13 +177,13 @@ LockInformation getLockInfoFromCurrentProcess() //throw FileError
 
     //wxGetFullHostName() is a performance killer and can hang for some users, so don't touch!
     std::vector<char> buf(10000);
-    if (::gethostname(&buf[0], buf.size()) != 0)
+    if (::gethostname(buf.data(), buf.size()) != 0)
         THROW_LAST_FILE_ERROR(_("Cannot get process information."), "gethostname");
-    lockInfo.computerName = osName + ' ' + &buf[0] + '.';
+    lockInfo.computerName = osName + ' ' + buf.data() + '.';
 
-    if (::getdomainname(&buf[0], buf.size()) != 0)
+    if (::getdomainname(buf.data(), buf.size()) != 0)
         THROW_LAST_FILE_ERROR(_("Cannot get process information."), "getdomainname");
-    lockInfo.computerName += &buf[0]; //can be "(none)"!
+    lockInfo.computerName += buf.data(); //can be "(none)"!
 
     lockInfo.processId = ::getpid(); //never fails
 
@@ -198,7 +198,7 @@ LockInformation getLockInfoFromCurrentProcess() //throw FileError
 
 std::string serialize(const LockInformation& lockInfo)
 {
-    MemoryStreamOut<std::string> streamOut;
+    MemoryStreamOut streamOut;
     writeArray(streamOut, LOCK_FILE_DESCR, sizeof(LOCK_FILE_DESCR));
     writeNumber<int32_t>(streamOut, LOCK_FILE_VERSION);
 
@@ -239,7 +239,7 @@ LockInformation unserialize(const std::string& byteStream) //throw SysError
 
     const std::string_view byteStreamTrm = makeStringView(byteStream.begin(), posEnd);
 
-    MemoryStreamOut<std::string> crcStreamOut;
+    MemoryStreamOut crcStreamOut;
     writeNumber<uint32_t>(crcStreamOut, getCrc32(byteStreamTrm.begin(), byteStreamTrm.end() - sizeof(uint32_t)));
 
     if (!endsWith(byteStreamTrm, crcStreamOut.ref()))
@@ -418,6 +418,7 @@ void releaseLock(const Zstring& lockFilePath) //noexcept
         removeFilePlain(lockFilePath); //throw FileError
     }
     catch (FileError&) {}
+    warn_static("log!!! at the very least")
 }
 
 
@@ -441,13 +442,18 @@ bool tryLock(const Zstring& lockFilePath) //throw FileError
 
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(lockFilePath)), "open");
     }
-    FileOutput fileOut(hFile, lockFilePath, nullptr /*notifyUnbufferedIO*/); //pass handle ownership
+    FileOutputPlain fileOut(hFile, lockFilePath); //pass handle ownership
 
     //write housekeeping info: user, process info, lock GUID
     const std::string byteStream = serialize(getLockInfoFromCurrentProcess()); //throw FileError
 
-    fileOut.write(byteStream.c_str(), byteStream.size()); //throw FileError, (X)
-    fileOut.finalize();                                   //
+    unbufferedSave(byteStream, [&](const void* buffer, size_t bytesToWrite)
+    {
+        return fileOut.tryWrite(buffer, bytesToWrite); //throw FileError; may return short! CONTRACT: bytesToWrite > 0
+    },
+    fileOut.getBlockSize());
+
+    fileOut.close(); //throw FileError
     return true;
 }
 }

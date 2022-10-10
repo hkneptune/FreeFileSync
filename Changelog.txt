@@ -1,3 +1,17 @@
+FreeFileSync 11.26 [2022-10-06]
+-------------------------------
+Faster file copy for SSD-based hard drives (Linux, macOS)
+Don't fill the OS file cache during file copy (macOS)
+Removed redundant memory buffering during file copy
+Fixed ERROR_FILE_EXISTS on Samba share when copying files with NTFS extended attributes
+Show warning when recycle bin is not available (macOS, Linux)
+Customize config item background colors
+Fixed macOS menu bar not showing after app start
+Fixed normalizing strings with broken UTF encoding
+Fixed sound playback not working (Linux)
+Don't allow creating file names ending with dot character (Windows)
+
+
 FreeFileSync 11.25 [2022-08-31]
 -------------------------------
 Fixed crash when normalizing Unicode non-characters

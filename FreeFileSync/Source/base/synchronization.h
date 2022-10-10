@@ -35,9 +35,6 @@ public:
     int deleteCount() const { return selectParam<side>(deleteLeft_, deleteRight_); }
     int deleteCount() const { return deleteLeft_ + deleteRight_; }
 
-    template <SelectSide side>
-    bool expectPhysicalDeletion() const { return selectParam<side>(physicalDeleteLeft_, physicalDeleteRight_); }
-
     int64_t getBytesToProcess() const { return bytesToProcess_; }
     size_t  rowCount         () const { return rowsTotal_; }
 
@@ -62,8 +59,6 @@ private:
     int updateRight_ = 0;
     int deleteLeft_  = 0;
     int deleteRight_ = 0;
-    bool physicalDeleteLeft_  = false; //at least 1 item will be deleted; considers most "update" cases which also delete items
-    bool physicalDeleteRight_ = false; //
 
     int64_t bytesToProcess_ = 0;
     size_t rowsTotal_ = 0;
@@ -78,7 +73,7 @@ struct FolderPairSyncCfg
 {
     SyncVariant syncVar;
     bool saveSyncDB; //save database if in automatic mode or dection of moved files is active
-    DeletionPolicy handleDeletion;
+    DeletionVariant handleDeletion;
     Zstring versioningFolderPhrase; //unresolved directory names as entered by user!
     VersioningStyle versioningStyle;
     int versionMaxAgeDays;
@@ -98,7 +93,7 @@ void synchronize(const std::chrono::system_clock::time_point& syncStartTime,
                  const std::vector<FolderPairSyncCfg>& syncConfig, //CONTRACT: syncConfig and folderCmp correspond row-wise!
                  FolderComparison& folderCmp,                      //
                  WarningDialogs& warnings,
-                 ProcessCallback& callback);
+                 ProcessCallback& callback /*throw X*/); //throw X
 }
 
 #endif //SYNCHRONIZATION_H_8913470815943295

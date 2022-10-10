@@ -263,7 +263,7 @@ bool equalString(const S& lhs, const T& rhs)
 template <class S, class T> inline
 bool equalAsciiNoCase(const S& lhs, const T& rhs)
 {
-    //assert(isAsciiString(lhs) || isAsciiString(rhs));
+    //assert(isAsciiString(lhs) || isAsciiString(rhs)); -> no, too strict (e.g. comparing file extensions ASCII-CI)
     const size_t lhsLen = strLength(lhs);
     return lhsLen == strLength(rhs) && impl::strcmpAsciiNoCase(strBegin(lhs), strBegin(rhs), lhsLen) == std::weak_ordering::equivalent;
 }
@@ -627,10 +627,14 @@ S printNumber(const T& format, const Num& number) //format a single number using
 #endif
     static_assert(std::is_same_v<GetCharTypeT<S>, GetCharTypeT<T>>);
 
-    GetCharTypeT<S> buf[128]; //zero-initialize?
-    const int charsWritten = impl::saferPrintf(buf, std::size(buf), strBegin(format), number);
+    S buf(128, static_cast<GetCharTypeT<S>>('0'));
+    const int charsWritten = impl::saferPrintf(buf.data(), buf.size(), strBegin(format), number);
 
-    return 0 < charsWritten && charsWritten < std::ssize(buf) ? S(buf, charsWritten) : S();
+    if (makeUnsigned(charsWritten) > buf.size())
+        return S();
+
+    buf.resize(charsWritten);
+        return buf;
 }
 
 

@@ -56,13 +56,13 @@ Zstring decodeFtpUsername(Zstring name)
 
 //(S)FTP path relative to server root using Unix path separators and with leading slash
 inline
-Zstring getServerRelPath(const AfsPath& afsPath)
+Zstring getServerRelPath(const AfsPath& itemPath)
 {
     using namespace zen;
     if constexpr (FILE_NAME_SEPARATOR != Zstr('/' ))
-        return Zstr('/') + replaceCpy(afsPath.value, FILE_NAME_SEPARATOR, Zstr('/'));
+        return Zstr('/') + replaceCpy(itemPath.value, FILE_NAME_SEPARATOR, Zstr('/'));
     else
-        return Zstr('/') + afsPath.value;
+        return Zstr('/') + itemPath.value;
 }
 }
 

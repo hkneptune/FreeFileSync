@@ -42,6 +42,7 @@ private:
 
 
 
+//better leave it as a macro (see comment in file_error.h)
 #define THROW_LAST_SYS_ERROR(functionName)                           \
     do { const ErrorCode ecInternal = getLastError(); throw zen::SysError(formatSystemError(functionName, ecInternal)); } while (false)
 

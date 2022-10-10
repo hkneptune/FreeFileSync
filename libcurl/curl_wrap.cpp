@@ -33,6 +33,8 @@ void zen::libcurlInit()
 
     [[maybe_unused]] const CURLcode rc2 = ::curl_global_init(CURL_GLOBAL_NOTHING /*CURL_GLOBAL_DEFAULT = CURL_GLOBAL_SSL|CURL_GLOBAL_WIN32*/);
     assert(rc2 == CURLE_OK);
+
+    warn_static("log on error")
 }
 
 
@@ -62,8 +64,8 @@ HttpSession::~HttpSession()
 
 HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
                                          const std::vector<std::string>& extraHeaders, const std::vector<CurlOption>& extraOptions,
-                                         const std::function<void  (std::span<const char> buf)>& writeResponse /*throw X*/, //
-                                         const std::function<size_t(std::span<      char> buf)>& readRequest   /*throw X*/, //optional
+                                         const std::function<void  (std::span<const char> buf)>& writeResponse /*throw X*/, //optional
+                                         const std::function<size_t(std::span<      char> buf)>& readRequest   /*throw X*/, //optional; return "bytesToRead" bytes unless end of stream!
                                          const std::function<void  (const std::string_view& header)>& receiveHeader /*throw X*/,
                                          int timeoutSec) //throw SysError, X
 {
@@ -137,11 +139,11 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
     //CURLOPT_SSL_VERIFYHOST =>
 
     //---------------------------------------------------
-    auto onHeaderReceived = [&](const void* buffer, size_t len)
+    auto onHeaderReceived = [&](const char* buffer, size_t len)
     {
         try
         {
-            receiveHeader({static_cast<const char*>(buffer), len}); //throw X
+            receiveHeader({buffer, len}); //throw X
             return len;
         }
         catch (...)
@@ -150,40 +152,42 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
             return len + 1; //signal error condition => CURLE_WRITE_ERROR
         }
     };
-    using HeaderCbType = decltype(onHeaderReceived);
-    using HeaderCbWrapperType =           size_t (*)(const void* buffer, size_t size, size_t nitems, HeaderCbType* callbackData); //needed for cdecl function pointer cast
-    HeaderCbWrapperType onHeaderReceivedWrapper = [](const void* buffer, size_t size, size_t nitems, HeaderCbType* callbackData)
+    curl_write_callback onHeaderReceivedWrapper = [](/*const*/ char* buffer, size_t size, size_t nitems, void* callbackData)
     {
-        return (*callbackData)(buffer, size * nitems); //free this poor little C-API from its shackles and redirect to a proper lambda
+        return (*static_cast<decltype(onHeaderReceived)*>(callbackData))(buffer, size * nitems); //free this poor little C-API from its shackles and redirect to a proper lambda
     };
     //---------------------------------------------------
-    auto onBytesReceived = [&](const void* buffer, size_t len)
+    auto onBytesReceived = [&](const char* buffer, size_t bytesToWrite)
     {
         try
         {
-            writeResponse({static_cast<const char*>(buffer), len}); //throw X
-            return len;
+            writeResponse({buffer, bytesToWrite}); //throw X
+            //[!] let's NOT use "incomplete write Posix semantics" for libcurl!
+            //who knows if libcurl buffers properly, or if it sends incomplete packages!?
+            return bytesToWrite;
         }
         catch (...)
         {
             userCallbackException = std::current_exception();
-            return len + 1; //signal error condition => CURLE_WRITE_ERROR
+            return bytesToWrite + 1; //signal error condition => CURLE_WRITE_ERROR
         }
     };
-    using ReadCbType = decltype(onBytesReceived);
-    using ReadCbWrapperType =          size_t (*)(const void* buffer, size_t size, size_t nitems, ReadCbType* callbackData); //needed for cdecl function pointer cast
-    ReadCbWrapperType onBytesReceivedWrapper = [](const void* buffer, size_t size, size_t nitems, ReadCbType* callbackData)
+    curl_write_callback onBytesReceivedWrapper = [](char* buffer, size_t size, size_t nitems, void* callbackData)
     {
-        return (*callbackData)(buffer, size * nitems); //free this poor little C-API from its shackles and redirect to a proper lambda
+        return (*static_cast<decltype(onBytesReceived)*>(callbackData))(buffer, size * nitems); //free this poor little C-API from its shackles and redirect to a proper lambda
     };
     //---------------------------------------------------
-    auto getBytesToSend = [&](void* buffer, size_t len) -> size_t
+    auto getBytesToSend = [&](char* buffer, size_t bytesToRead) -> size_t
     {
         try
         {
-            //libcurl calls back until 0 bytes are returned (Posix read() semantics), or,
-            //if CURLOPT_INFILESIZE_LARGE was set, after exactly this amount of bytes
-            const size_t bytesRead = readRequest({static_cast<char*>(buffer), len});//throw X; return "bytesToRead" bytes unless end of stream!
+            /*  libcurl calls back until 0 bytes are returned (Posix read() semantics), or,
+                if CURLOPT_INFILESIZE_LARGE was set, after exactly this amount of bytes
+
+                [!] let's NOT use "incomplete read Posix semantics" for libcurl!
+                who knows if libcurl buffers properly, or if it requests incomplete packages!?     */
+            const size_t bytesRead = readRequest({buffer, bytesToRead}); //throw X; return "bytesToRead" bytes unless end of stream
+            assert(bytesRead == bytesToRead || bytesRead == 0 || readRequest({buffer, bytesToRead}) == 0);
             return bytesRead;
         }
         catch (...)
@@ -192,11 +196,9 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
             return CURL_READFUNC_ABORT; //signal error condition => CURLE_ABORTED_BY_CALLBACK
         }
     };
-    using WriteCbType = decltype(getBytesToSend);
-    using WriteCbWrapperType =         size_t (*)(void* buffer, size_t size, size_t nitems, WriteCbType* callbackData);
-    WriteCbWrapperType getBytesToSendWrapper = [](void* buffer, size_t size, size_t nitems, WriteCbType* callbackData)
+    curl_read_callback getBytesToSendWrapper = [](char* buffer, size_t size, size_t nitems, void* callbackData)
     {
-        return (*callbackData)(buffer, size * nitems); //free this poor little C-API from its shackles and redirect to a proper lambda
+        return (*static_cast<decltype(getBytesToSend)*>(callbackData))(buffer, size * nitems); //free this poor little C-API from its shackles and redirect to a proper lambda
     };
     //---------------------------------------------------
     if (receiveHeader)
@@ -208,6 +210,8 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
     {
         options.emplace_back(CURLOPT_WRITEDATA, &onBytesReceived);
         options.emplace_back(CURLOPT_WRITEFUNCTION, onBytesReceivedWrapper);
+        //{CURLOPT_BUFFERSIZE, 256 * 1024} -> defaults is 16 kB which seems to correspond to SSL packet size
+        //=> setting larget buffers size does nothing (recv still returns only 16 kB)
     }
     if (readRequest)
     {
@@ -215,6 +219,7 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
         /**/options.emplace_back(CURLOPT_UPLOAD, 1); //issues HTTP PUT
         options.emplace_back(CURLOPT_READDATA, &getBytesToSend);
         options.emplace_back(CURLOPT_READFUNCTION, getBytesToSendWrapper);
+        //{CURLOPT_UPLOAD_BUFFERSIZE, 256 * 1024} -> defaults is 64 kB. apparently no performance improvement for larger buffers like 256 kB
     }
 
     if (std::any_of(extraOptions.begin(), extraOptions.end(), [](const CurlOption& o) { return o.option == CURLOPT_WRITEFUNCTION || o.option == CURLOPT_READFUNCTION; }))
@@ -357,7 +362,7 @@ std::wstring zen::formatCurlStatusCode(CURLcode sc)
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_TFTP_UNKNOWNID);
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_REMOTE_FILE_EXISTS);
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_TFTP_NOSUCHUSER);
-            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_CONV_FAILED);
+            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_OBSOLETE75);
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_OBSOLETE76);
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_SSL_CACERT_BADFILE);
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_REMOTE_FILE_NOT_FOUND);

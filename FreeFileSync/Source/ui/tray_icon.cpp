@@ -180,7 +180,7 @@ FfsTrayIcon::FfsTrayIcon(const std::function<void()>& requestResume) :
     iconGenerator_(std::make_unique<ProgressIconGenerator>(loadImage("FFS_tray_24")))
 {
     [[maybe_unused]] const bool rv = trayIcon_->SetIcon(iconGenerator_->get(activeFraction_), activeToolTip_);
-    //caveat wxTaskBarIcon::SetIcon() can return true, even if not wxTaskBarIcon::IsAvailable()!!!
+    assert(rv); //caveat wxTaskBarIcon::SetIcon() can return true, even if not wxTaskBarIcon::IsAvailable()!!!
 }
 
 

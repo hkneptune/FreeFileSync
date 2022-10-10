@@ -13,7 +13,7 @@
 
 namespace zen
 {
-//basically a std::deque<> but with a non-garbage implementation => circular buffer with std::vector<>-like exponential growth!
+//like std::deque<> but with a non-garbage implementation: circular buffer with std::vector<>-like exponential growth!
 //https://stackoverflow.com/questions/39324192/why-is-an-stl-deque-not-implemented-as-just-a-circular-vector
 
 template <class T>
@@ -34,8 +34,9 @@ public:
     using reference       = T&;
     using const_reference = const T&;
 
-    size_t size() const { return size_; }
-    bool  empty() const { return size_ == 0; }
+    size_t size    () const { return size_; }
+    size_t capacity() const { return capacity_; }
+    bool   empty   () const { return size_ == 0; }
 
     reference       front()       { checkInvariants(); assert(!empty()); return getBufPtr()[bufStart_]; }
     const_reference front() const { checkInvariants(); assert(!empty()); return getBufPtr()[bufStart_]; }
@@ -139,13 +140,13 @@ public:
         std::swap(size_,     other.size_);
     }
 
-    void reserve(size_t minSize) //throw ? (strong exception-safety!)
+    void reserve(size_t minCapacity) //throw ? (strong exception-safety!)
     {
         checkInvariants();
 
-        if (minSize > capacity_)
+        if (minCapacity > capacity_)
         {
-            const size_t newCapacity = std::max(minSize + minSize / 2, minSize); //no minimum capacity: just like std::vector<> implementation
+            const size_t newCapacity = std::max(minCapacity + minCapacity / 2, minCapacity); //no lower limit for capacity: just like std::vector<>
 
             RingBuffer newBuf(newCapacity); //throw ?
 
@@ -184,13 +185,15 @@ public:
         Iterator& operator++() { ++offset_; return *this; }
         Iterator& operator--() { --offset_; return *this; }
         Iterator& operator+=(ptrdiff_t offset) { offset_ += offset; return *this; }
-        inline friend bool operator==(const Iterator& lhs, const Iterator& rhs) { assert(lhs.container_ == rhs.container_); return lhs.offset_ == rhs.offset_; }
-        inline friend ptrdiff_t operator-(const Iterator& lhs, const Iterator& rhs) { return lhs.offset_ - rhs.offset_; }
-        inline friend Iterator operator+(const Iterator& lhs, ptrdiff_t offset) { Iterator tmp(lhs); return tmp += offset; }
         Value& operator* () const { return  (*container_)[offset_]; }
         Value* operator->() const { return &(*container_)[offset_]; }
+        inline friend Iterator operator+(const Iterator& lhs, ptrdiff_t offset) { Iterator tmp(lhs); return tmp += offset; }
+        inline friend ptrdiff_t operator-(const Iterator& lhs, const Iterator& rhs) { return lhs.offset_ - rhs.offset_; }
+        inline friend bool operator==(const Iterator& lhs, const Iterator& rhs) { assert(lhs.container_ == rhs.container_); return lhs.offset_ == rhs.offset_; }
+        inline friend std::strong_ordering operator<=>(const Iterator& lhs, const Iterator& rhs) { assert(lhs.container_ == rhs.container_); return lhs.offset_ <=> rhs.offset_; }
+        //GCC debug needs "operator<="
     private:
-        Container* container_ = nullptr;
+        Container* container_ = nullptr; //iterator must be assignable
         ptrdiff_t offset_ = 0;
     };
 
@@ -214,8 +217,6 @@ private:
         rawMem_(static_cast<std::byte*>(::operator new (capacity * sizeof(T)))), //throw std::bad_alloc
         capacity_(capacity) {}
 
-    struct FreeStoreDelete { void operator()(std::byte* p) const { ::operator delete (p); } };
-
     /**/  T* getBufPtr()       { return reinterpret_cast<T*>(rawMem_.get()); }
     const T* getBufPtr() const { return reinterpret_cast<T*>(rawMem_.get()); }
 
@@ -227,19 +228,22 @@ private:
     static T* uninitializedMoveIfNoexcept(T* first, T* last, T* firstTrg, std::true_type ) { return std::uninitialized_move(first, last, firstTrg); }
     static T* uninitializedMoveIfNoexcept(T* first, T* last, T* firstTrg, std::false_type) { return std::uninitialized_copy(first, last, firstTrg); } //throw ?
 
+    size_t getBufPos(size_t offset) const
+    {
+        //assert(offset < capacity_); -> redundant in this context
+        size_t bufPos = bufStart_ + offset;
+        if (bufPos >= capacity_)
+            bufPos -= capacity_;
+        return bufPos;
+    }
+
     void checkInvariants() const
     {
         assert(bufStart_ == 0 || bufStart_ < capacity_);
         assert(size_ <= capacity_);
     }
 
-    size_t getBufPos(size_t offset) const //< capacity_
-    {
-        size_t bufPos = bufStart_ + offset;
-        if (bufPos >= capacity_)
-            bufPos -= capacity_;
-        return bufPos;
-    }
+    struct FreeStoreDelete { void operator()(std::byte* p) const { ::operator delete (p); } };
 
     std::unique_ptr<std::byte, FreeStoreDelete> rawMem_;
     size_t capacity_  = 0; //as number of T

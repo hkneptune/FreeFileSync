@@ -217,7 +217,7 @@ public:
       \code
         auto itPair = elem.getAttributes();
         for (auto it = itPair.first; it != itPair.second; ++it)
-           std::cout << "name: " << it->name << " value: " << it->value << '\n';
+           std::cout << std::string("name: ") + it->name + " value: " + it->value + '\n';
       \endcode
       \return A pair of STL begin/end iterators to access all attributes sequentially as a list of name/value pairs of std::string.   */
     std::pair<AttrIter, AttrIter> getAttributes() const { return {attributes_.begin(), attributes_.end()}; }

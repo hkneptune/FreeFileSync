@@ -34,16 +34,17 @@ namespace
 {
 XmlDoc loadXml(const Zstring& filePath) //throw FileError
 {
-    FileInput fileIn(filePath, nullptr /*notifyUnbufferedIO*/); //throw FileError, ErrorFileLocked
-    const size_t blockSize = fileIn.getBlockSize();
+    FileInputPlain fileIn(filePath); //throw FileError
+    const size_t blockSize = fileIn.getBlockSize(); //throw FileError
     const std::string xmlPrefix = "<?xml version=";
     bool xmlPrefixChecked = false;
 
     std::string buffer;
     for (;;)
     {
+        warn_static("don't need zero-initialization! => resize_and_overwrite")
         buffer.resize(buffer.size() + blockSize);
-        const size_t bytesRead = fileIn.read(&*(buffer.end() - blockSize), blockSize); //throw FileError, ErrorFileLocked, (X); return "bytesToRead" bytes unless end of stream!
+        const size_t bytesRead = fileIn.tryRead(&*(buffer.end() - blockSize), blockSize); //throw FileError; may return short, only 0 means EOF! CONTRACT: bytesToRead > 0!
         buffer.resize(buffer.size() - blockSize + bytesRead); //caveat: unsigned arithmetics
 
         //quick test whether input is an XML: avoid loading large binary files up front!
@@ -55,7 +56,7 @@ XmlDoc loadXml(const Zstring& filePath) //throw FileError
                 throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)));
         }
 
-        if (bytesRead < blockSize) //end of file
+        if (bytesRead == 0) //end of file
             break;
     }
 

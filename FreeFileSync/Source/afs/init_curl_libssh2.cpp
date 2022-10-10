@@ -34,6 +34,8 @@ void libsshCurlUnifiedInit()
         2019-02-26: following reasons are obsolete due to HAVE_EVP_AES_128_CTR:
         // - initializes a few statically allocated constants => avoid (minor) race condition if these were initialized by worker threads
         // - enable proper clean up of these variables in libssh2_exit() (otherwise: memory leaks!)  */
+
+    warn_static("log on error")
 }
 
 

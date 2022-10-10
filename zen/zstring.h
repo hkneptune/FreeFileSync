@@ -27,7 +27,13 @@ using Zstringc = zen::Zbase<char>;
 
 //Windows, Linux: precomposed
 //macOS: decomposed
-Zstring getUnicodeNormalForm(const Zstring& str);
+enum class UnicodeNormalForm
+{
+    nfc, //precomposed
+    nfd, //decomposed
+    native = nfc,
+};
+Zstring getUnicodeNormalForm(const Zstring& str, UnicodeNormalForm form = UnicodeNormalForm::native);
 /* "In fact, Unicode declares that there is an equivalence relationship between decomposed and composed sequences,
     and conformant software should not treat canonically equivalent sequences, whether composed or decomposed or something in between, as different."
     https://www.win.tue.nl/~aeb/linux/uc/nfc_vs_nfd.html             */

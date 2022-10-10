@@ -25,7 +25,7 @@ std::string generateGUID() //creates a 16-byte GUID
 #endif
 
 #if __GLIBC_PREREQ(2, 25) //getentropy() requires Glibc 2.25 (ldd --version) PS: CentOS 7 is on 2.17
-    if (::getentropy(&guid[0], guid.size()) != 0)  //"The maximum permitted value for the length argument is 256"
+    if (::getentropy(guid.data(), guid.size()) != 0)  //"The maximum permitted value for the length argument is 256"
         throw std::runtime_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Failed to generate GUID." + "\n\n" +
                                  utfTo<std::string>(formatSystemError("getentropy", errno)));
 #else
@@ -58,7 +58,7 @@ std::string generateGUID() //creates a 16-byte GUID
         const int fd_ = ::open("/dev/urandom", O_RDONLY | O_CLOEXEC);
     };
     thread_local RandomGeneratorPosix gen;
-    gen.getBytes(&guid[0], guid.size());
+    gen.getBytes(guid.data(), guid.size());
 #endif
     return guid;
 

@@ -14,6 +14,7 @@
 #include <zen/shutdown.h>
 #include <zen/resolve_path.h>
 #include <wx/clipbrd.h>
+#include <wx/colordlg.h>
 #include <wx/wupdlock.h>
 #include <wx/sound.h>
 #include <wx/filedlg.h>
@@ -3083,7 +3084,8 @@ void MainDialog::onConfigSave(wxCommandEvent& event)
             trySaveBatchConfig(&activeCfgFilePath);
         else
             showNotificationDialog(this, DialogInfoType::error,
-                                   PopupDialogCfg().setDetailInstructions(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(activeCfgFilePath))));
+                                   PopupDialogCfg().setDetailInstructions(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(activeCfgFilePath)) +
+                                                                          L"\n\n" + _("Unexpected file extension:") + L' ' + fmtPath(getFileExtension(activeCfgFilePath))));
     }
 }
 
@@ -3256,7 +3258,8 @@ bool MainDialog::saveOldConfig() //"false": error/cancel
                         else
                         {
                             showNotificationDialog(this, DialogInfoType::error,
-                                                   PopupDialogCfg().setDetailInstructions(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(activeCfgFilePath))));
+                                                   PopupDialogCfg().setDetailInstructions(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(activeCfgFilePath)) +
+                                                                                          L"\n\n" + _("Unexpected file extension:") + L' ' + fmtPath(getFileExtension(activeCfgFilePath)) ));
                             return false;
                         }
                         break;
@@ -3396,37 +3399,39 @@ void MainDialog::removeSelectedCfgHistoryItems(bool deleteFromDisk)
 
         if (deleteFromDisk)
         {
+            //===========================================================================
+            FocusPreserver fp;
+
             std::wstring fileList;
             for (const Zstring& filePath : filePaths)
                 fileList += utfTo<std::wstring>(filePath) + L'\n';
-
-            FocusPreserver fp;
 
             bool moveToRecycler = true;
             if (showDeleteDialog(this, fileList, static_cast<int>(filePaths.size()),
                                  moveToRecycler) != ConfirmationButton::accept)
                 return;
 
+            disableGuiElements(true /*enableAbort*/); //StatusHandlerTemporaryPanel will internally process Window messages, so avoid unexpected callbacks!
+            auto app = wxTheApp; //fix lambda/wxWigets/VC fuck up
+            ZEN_ON_SCOPE_EXIT(app->Yield(); enableGuiElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
+
+            StatusHandlerTemporaryPanel statusHandler(*this, std::chrono::system_clock::now() /*startTime*/,
+                                                      false /*ignoreErrors*/,
+                                                      0 /*autoRetryCount*/,
+                                                      std::chrono::seconds(0) /*autoRetryDelay*/,
+                                                      globalCfg_.soundFileAlertPending);
             std::vector<Zstring> deletedPaths;
-            std::optional<FileError> firstError;
+            try
+            {
+                deleteListOfFiles(filePaths, deletedPaths, moveToRecycler, globalCfg_.warnDlgs.warnRecyclerMissing, statusHandler); //throw AbortProcess
+            }
+            catch (AbortProcess&) {}
 
-            for (const Zstring& filePath : filePaths)
-                try
-                {
-                    AbstractPath cfgPath = createItemPathNative(filePath);
+            const StatusHandlerTemporaryPanel::Result r = statusHandler.reportResults(); //noexcept
+            setLastOperationLog(r.summary, r.errorLog.ptr());
 
-                    if (moveToRecycler)
-                        AFS::recycleItemIfExists(cfgPath); //throw FileError
-                    else
-                        AFS::removeFileIfExists(cfgPath); //throw FileError
-
-                    deletedPaths.push_back(filePath);
-                }
-                catch (const FileError& e) { if (!firstError) firstError = e; }
-
-            if (firstError)
-                showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(firstError->toString()));
             filePaths = deletedPaths;
+            //===========================================================================
         }
 
         cfggrid::getDataView(*m_gridCfgHistory).removeItems(filePaths);
@@ -3557,6 +3562,13 @@ void MainDialog::onCfgGridContext(GridContextMenuEvent& event)
     ContextMenu menu;
     const std::vector<size_t> selectedRows = m_gridCfgHistory->getSelectedRows();
 
+    std::vector<Zstring> cfgFilePaths;
+    for (size_t row : selectedRows)
+        if (const ConfigView::Details* cfg = cfggrid::getDataView(*m_gridCfgHistory).getItem(row))
+            cfgFilePaths.push_back(cfg->cfgItem.cfgFilePath);
+        else
+            assert(false);
+
     //--------------------------------------------------------------------------------------------------------
     const bool renameEnabled = [&]
     {
@@ -3569,24 +3581,17 @@ void MainDialog::onCfgGridContext(GridContextMenuEvent& event)
     //--------------------------------------------------------------------------------------------------------
     ContextMenu submenu;
 
+    auto applyBackColor = [this, &cfgFilePaths](const wxColor& col)
+    {
+        cfggrid::getDataView(*m_gridCfgHistory).setBackColor(cfgFilePaths, col);
+
+        //re-apply selection (after sorting by color tags):
+        cfggrid::addAndSelect(*m_gridCfgHistory, activeConfigFiles_, false /*scrollToSelection*/);
+        //m_gridCfgHistory->Refresh(); <- implicit in last call
+    };
+
     auto addColorOption = [&](const wxColor& col, const wxString& name)
     {
-        auto applyBackColor = [this, col, &selectedRows]
-        {
-            std::vector<Zstring> filePaths;
-            for (size_t row : selectedRows)
-                if (const ConfigView::Details* cfg = cfggrid::getDataView(*m_gridCfgHistory).getItem(row))
-                    filePaths.push_back(cfg->cfgItem.cfgFilePath);
-                else
-                    assert(false);
-
-            cfggrid::getDataView(*m_gridCfgHistory).setBackColor(filePaths, col);
-
-            //re-apply selection (after sorting by color tags):
-            cfggrid::addAndSelect(*m_gridCfgHistory, activeConfigFiles_, false /*scrollToSelection*/);
-            //m_gridCfgHistory->Refresh(); <- implicit in last call
-        };
-
         wxBitmap bmpSquare(this->GetCharHeight(), this->GetCharHeight()); //seems we don't need to pass 24-bit depth here even for high-contrast color schemes
         bmpSquare.SetScaleFactor(getDisplayScaleFactor());
         {
@@ -3595,16 +3600,88 @@ void MainDialog::onCfgGridContext(GridContextMenuEvent& event)
             const wxColor fillCol = col.Ok() ? col : wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW);
             drawInsetRectangle(dc, wxRect(bmpSquare.GetSize()), fastFromDIP(1), borderCol, fillCol);
         }
-        submenu.addItem(name, applyBackColor, bmpSquare.ConvertToImage(), !selectedRows.empty());
+        submenu.addItem(name, [&, col] { applyBackColor(col); }, bmpSquare.ConvertToImage(), !selectedRows.empty());
     };
-    addColorOption(wxNullColour, L'(' + _("&Default") + L')'); //meta options should be enclosed in parentheses
-    addColorOption({0xff, 0xd8, 0xcb}, _("Red"));
-    addColorOption({0xff, 0xf9, 0x99}, _("Yellow"));
-    addColorOption({0xcc, 0xff, 0x99}, _("Green"));
-    addColorOption({0xcc, 0xff, 0xff}, _("Cyan"));
-    addColorOption({0xcc, 0xcc, 0xff}, _("Blue"));
-    addColorOption({0xf2, 0xcb, 0xff}, _("Purple"));
-    addColorOption({0xdd, 0xdd, 0xdd}, _("Grey"));
+
+    const std::vector<std::pair<wxColor, wxString>> defaultColors
+    {
+        {wxNullColour /*=> !wxColor::IsOk()*/, L'(' + _("&Default") + L')'}, //meta options should be enclosed in parentheses
+        {{0xff, 0xd8, 0xcb}, _("Red")},
+        {{0xff, 0xf9, 0x99}, _("Yellow")},
+        {{0xcc, 0xff, 0x99}, _("Green")},
+        {{0xcc, 0xff, 0xff}, _("Cyan")},
+        {{0xcc, 0xcc, 0xff}, _("Blue")},
+        {{0xf2, 0xcb, 0xff}, _("Purple")},
+        {{0xdd, 0xdd, 0xdd}, _("Gray")},
+    };
+    std::unordered_set<wxUint32> addedColorCodes;
+
+    //add default colors
+    for (const auto& [color, name] : defaultColors)
+    {
+        addColorOption(color, name);
+        if (color.IsOk())
+            addedColorCodes.insert(color.GetRGBA());
+    }
+
+    //show color picker
+    wxBitmap bmpColorPicker(this->GetCharHeight(), this->GetCharHeight()); //seems we don't need to pass 24-bit depth here even for high-contrast color schemes
+    bmpColorPicker.SetScaleFactor(getDisplayScaleFactor());
+    {
+        wxMemoryDC dc(bmpColorPicker);
+        const wxColor borderCol(0xdd, 0xdd, 0xdd); //light grey
+        drawInsetRectangle(dc, wxRect(bmpColorPicker.GetSize()), fastFromDIP(1), borderCol, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
+
+        dc.SetFont(dc.GetFont().Bold());
+        dc.DrawText(L"?", wxPoint() + (bmpColorPicker.GetSize() - dc.GetTextExtent(L"?")) / 2);
+    }
+
+    submenu.addItem(_("Select different color..."), [&]
+    {
+        wxColourData colCfg;
+        colCfg.SetChooseFull(true);
+        colCfg.SetChooseAlpha(false);
+        colCfg.SetColour(defaultColors[1].first); //tentative
+
+        if (const ConfigView::Details* cfg = cfggrid::getDataView(*m_gridCfgHistory).getItem(selectedRows[0]))
+            if (cfg->cfgItem.backColor.IsOk())
+                colCfg.SetColour(cfg->cfgItem.backColor);
+
+        int i = 0;
+        for (const auto& [color, name] : defaultColors)
+            if (color.IsOk() && i < static_cast<int>(wxColourData::NUM_CUSTOM))
+                colCfg.SetCustomColour(i++, color);
+
+        auto fixColorPickerColor = [](const wxColor& col)
+        {
+            assert(col.Alpha() == 255);
+            return col;
+        };
+        wxColourDialog dlg(this, &colCfg);
+        dlg.Center();
+
+        dlg.Bind(wxEVT_COLOUR_CHANGED, [&](wxColourDialogEvent& event2)
+        {
+            //show preview during color selection (Windows-only atm)
+            cfggrid::getDataView(*m_gridCfgHistory).setBackColor(cfgFilePaths, fixColorPickerColor(event2.GetColour()), true /*previewOnly*/);
+            m_gridCfgHistory->Refresh();
+        });
+
+        if (dlg.ShowModal() == wxID_OK)
+            applyBackColor(fixColorPickerColor(dlg.GetColourData().GetColour()));
+        else //shut off color preview
+        {
+            cfggrid::getDataView(*m_gridCfgHistory).setBackColor(cfgFilePaths, wxNullColour, true /*previewOnly*/);
+            m_gridCfgHistory->Refresh();
+        }
+    }, bmpColorPicker.ConvertToImage());
+
+    //add user-defined colors
+    for (const ConfigFileItem& item : cfggrid::getDataView(*m_gridCfgHistory).get())
+        if (item.backColor.IsOk())
+            if (const auto [it, inserted] = addedColorCodes.insert(item.backColor.GetRGBA());
+                inserted)
+                addColorOption(item.backColor, item.backColor.GetAsString(wxC2S_HTML_SYNTAX)); //#RRGGBB
 
     menu.addSubmenu(_("Background color"), submenu, loadImage("color_sicon"), !selectedRows.empty());
     menu.addSeparator();
@@ -4194,7 +4271,8 @@ void MainDialog::onCompare(wxCommandEvent& event)
             st.updateCount() +
             st.deleteCount() == 0)
         {
-            setStatusInfo(_("No files to synchronize"), true /*highlight*/); //don't flashStatusInfo()
+            setStatusInfo(_("No files to synchronize"), true /*highlight*/); //user might be AFK: don't flashStatusInfo()
+            //overwrites status info already set in updateGui() above
 
             updateConfigLastRunStats(std::chrono::system_clock::to_time_t(r.summary.startTime), r.summary.syncResult, getNullPath() /*logFilePath*/);
         }
@@ -4300,6 +4378,7 @@ void MainDialog::updateStatistics()
     setIntValue(*m_staticTextUpdateRight, st.updateCount<SelectSide::right>(), *m_bitmapUpdateRight, "so_update_right_sicon");
     setIntValue(*m_staticTextDeleteRight, st.deleteCount<SelectSide::right>(), *m_bitmapDeleteRight, "so_delete_right_sicon");
 
+    m_panelViewFilter->Layout(); //[!] statistics panel size changed, so this is needed
     m_panelStatistics->Layout();
     m_panelStatistics->Refresh(); //fix small mess up on RTL layout
 }
@@ -5038,7 +5117,7 @@ void MainDialog::updateGridViewData()
     m_bpButtonViewType         ->Show(anyViewButtonShown);
     m_bpButtonViewFilterContext->Show(anyViewButtonShown);
 
-    m_panelViewFilter->Layout();
+    //m_panelViewFilter->Layout(); -> yes, needed, but will also be called in updateStatistics();
 
     //all three grids retrieve their data directly via gridDataView
     filegrid::refresh(*m_gridMainL, *m_gridMainC, *m_gridMainR);
@@ -5689,41 +5768,38 @@ void MainDialog::onMenuExportFileList(wxCommandEvent& event)
             const Zstring csvFilePath = appendPath(tempFileBuf_.getAndCreateFolderPath(), //throw FileError
                                                    title + Zstr("~") + shortGuid + Zstr(".csv"));
 
+            const Zstring tmpFilePath = getPathWithTempName(csvFilePath);
 
-            TempFileOutput fileOut(csvFilePath, nullptr /*notifyUnbufferedIO*/); //throw FileError
+            FileOutputBuffered tmpFile(tmpFilePath, nullptr /*notifyUnbufferedIO*/); //throw FileError, (ErrorTargetExisting)
 
-            fileOut.write(&header[0], header.size()); //throw FileError, (X)
-            /* main grid: write rows one after the other instead of creating one big string: memory allocation might fail; think 1 million rows!
-                    performance test case "export 600.000 rows" to CSV:
-                    aproach 1. assemble single temporary string, then write file:   4.6s
-                    aproach 2. write to buffered file output directly for each row: 6.4s                     */
-            std::string buffer;
+            auto writeString = [&](const std::string& str) { tmpFile.write(str.data(), str.size()); }; //throw FileError
+
+            //main grid: write rows one after the other instead of creating one big string: memory allocation might fail; think 1 million rows!
+            writeString(header); //throw FileError
+
             const size_t rowCount = m_gridMainL->getRowCount();
             for (size_t row = 0; row < rowCount; ++row)
             {
                 for (const Grid::ColAttributes& ca : colAttrLeft)
-                {
-                    buffer += fmtValue(provLeft->getValue(row, ca.type));
-                    buffer += CSV_SEP;
-                }
+                    writeString(fmtValue(provLeft->getValue(row, ca.type)) += CSV_SEP); //throw FileError
 
                 for (const Grid::ColAttributes& ca : colAttrCenter)
-                {
-                    buffer += fmtValue(provCenter->getValue(row, ca.type));
-                    buffer += CSV_SEP;
-                }
+                    writeString(fmtValue(provCenter->getValue(row, ca.type)) += CSV_SEP); //throw FileError
 
                 for (const Grid::ColAttributes& ca : colAttrRight)
-                {
-                    buffer += fmtValue(provRight->getValue(row, ca.type));
-                    buffer += CSV_SEP;
-                }
-                buffer += LINE_BREAK;
+                    writeString(fmtValue(provRight->getValue(row, ca.type)) += CSV_SEP); //throw FileError
 
-                fileOut.write(&buffer[0], buffer.size()); //throw FileError, (X)
-                buffer.clear();
+                writeString(LINE_BREAK); //throw FileError
             }
-            fileOut.commit(); //throw FileError, (X)
+
+            tmpFile.finalize(); //throw FileError
+            //take over ownership:
+            ZEN_ON_SCOPE_FAIL( try { removeFilePlain(tmpFilePath); /*throw FileError*/ }
+            catch (FileError&) {});
+            warn_static("log it!")
+
+            //operation finished: move temp file transactionally
+            moveAndRenameItem(tmpFilePath, csvFilePath, true /*replaceExisting*/); //throw FileError, (ErrorMoveUnsupported), (ErrorTargetExisting)
 
             openWithDefaultApp(csvFilePath); //throw FileError
 

@@ -93,10 +93,13 @@ std::wstring getIso639Language()
 
     std::wstring localeName(wxLocale::GetLanguageCanonicalName(wxLocale::GetSystemLanguage()));
     localeName = beforeFirst(localeName, L'@', IfNotFoundReturn::all); //the locale may contain an @, e.g. "sr_RS@latin"; see wxLocale::InitLanguagesDB()
-    assert(beforeFirst(localeName, L'_', IfNotFoundReturn::all).size() == 2);
 
     if (!localeName.empty())
-        return beforeFirst(localeName, L'_', IfNotFoundReturn::all);
+    {
+        const std::wstring langCode = beforeFirst(localeName, L'_', IfNotFoundReturn::all);
+        assert(langCode.size() == 2 || langCode.size() == 3); //ISO 639: 3-letter possible!
+        return langCode;
+    }
     assert(false);
     return L"zz";
 }
@@ -112,7 +115,11 @@ std::wstring getIso3166Country()
     localeName = beforeFirst(localeName, L'@', IfNotFoundReturn::all); //the locale may contain an @, e.g. "sr_RS@latin"; see wxLocale::InitLanguagesDB()
 
     if (contains(localeName, L'_'))
-        return afterFirst(localeName, L'_', IfNotFoundReturn::none);
+    {
+        const std::wstring cc = afterFirst(localeName, L'_', IfNotFoundReturn::none);
+        assert(cc.size() == 2 || cc.size() == 3); //ISO 3166: 3-letter possible!
+        return cc;
+    }
     assert(false);
     return L"ZZ";
 }
@@ -169,7 +176,7 @@ void showUpdateAvailableDialog(wxWindow* parent, const std::string& onlineVersio
     try
     {
         updateDetailsMsg = utfTo<std::wstring>(sendHttpGet(utfTo<Zstring>("https://api.freefilesync.org/latest_changes?" + xWwwFormUrlEncode({{"since", ffsVersion}})),
-        ffsUpdateCheckUserAgent, Zstring() /*caCertFilePath*/, nullptr /*notifyUnbufferedIO*/).readAll()); //throw SysError
+        ffsUpdateCheckUserAgent, Zstring() /*caCertFilePath*/).readAll(nullptr /*notifyUnbufferedIO*/)); //throw SysError
     }
     catch (const SysError& e) { updateDetailsMsg = _("Failed to retrieve update information.") + + L"\n\n" + e.toString(); }
 
@@ -181,7 +188,7 @@ void showUpdateAvailableDialog(wxWindow* parent, const std::string& onlineVersio
                                    setDetailInstructions(updateDetailsMsg), _("&Download")))
     {
         case ConfirmationButton::accept: //download
-            openBrowserForDownload();
+            openBrowserForDownload(parent);
             break;
         case ConfirmationButton::cancel:
             break;
@@ -191,8 +198,8 @@ void showUpdateAvailableDialog(wxWindow* parent, const std::string& onlineVersio
 
 std::string getOnlineVersion(const std::vector<std::pair<std::string, std::string>>& postParams) //throw SysError
 {
-    const std::string response = sendHttpPost(Zstr("https://api.freefilesync.org/latest_version"), postParams,
-                                              ffsUpdateCheckUserAgent, Zstring() /*caCertFilePath*/, nullptr /*notifyUnbufferedIO*/).readAll(); //throw SysError
+    const std::string response = sendHttpPost(Zstr("https://api.freefilesync.org/latest_version"), postParams, nullptr /*notifyUnbufferedIO*/,
+                                              ffsUpdateCheckUserAgent, Zstring() /*caCertFilePath*/).readAll(nullptr /*notifyUnbufferedIO*/); //throw SysError
 
     if (response.empty() ||
     !std::all_of(response.begin(), response.end(), [](char c) { return isDigit(c) || c == FFS_VERSION_SEPARATOR; }) ||

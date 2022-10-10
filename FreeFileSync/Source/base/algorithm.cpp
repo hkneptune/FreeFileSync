@@ -744,7 +744,7 @@ void fff::redetermineSyncDirection(const std::vector<std::pair<BaseFolderPair*, 
                             msg += L'\n' + AFS::getDisplayPath(baseFolder->getAbstractPath<SelectSide::left >()) + L' ' + getVariantNameWithSymbol(dirCfg.var) + L' ' +
                                           AFS::getDisplayPath(baseFolder->getAbstractPath<SelectSide::right>());
 
-                        try { callback.logInfo(msg); /*throw X*/} catch (...) {};
+                        try { callback.logMessage(msg, PhaseCallback::MsgType::warning); /*throw X*/} catch (...) {};
 
                         SetSyncDirectionByConfig::execute(getTwoWayUpdateSet(), *baseFolder);
                     }
@@ -1137,11 +1137,9 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
                                bool overwriteIfExists,
                                ProcessCallback& callback /*throw X*/) //throw X
 {
-    auto notifyItemCopy = [&](const std::wstring& statusText, const std::wstring& displayPath)
+    auto reportItemInfo = [&](const std::wstring& msgTemplate, const AbstractPath& itemPath) //throw X
     {
-        std::wstring msg = replaceCpy(statusText, L"%x", fmtPath(displayPath));
-        callback.logInfo(msg);                 //throw X
-        callback.updateStatus(std::move(msg)); //
+        reportInfo(replaceCpy(msgTemplate, L"%x", fmtPath(AFS::getDisplayPath(itemPath))), callback); //throw X
     };
     const std::wstring txtCreatingFile  (_("Creating file %x"         ));
     const std::wstring txtCreatingFolder(_("Creating folder %x"       ));
@@ -1204,7 +1202,7 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
         visitFSObject(*fsObj, [&](const FolderPair& folder)
         {
             ItemStatReporter statReporter(1, 0, callback);
-            notifyItemCopy(txtCreatingFolder, AFS::getDisplayPath(targetPath));
+            reportItemInfo(txtCreatingFolder, targetPath); //throw X
 
             AFS::createFolderIfMissingRecursion(targetPath); //throw FileError
             statReporter.reportDelta(1, 0);
@@ -1213,9 +1211,11 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
 
         [&](const FilePair& file)
         {
+            ItemStatReporter statReporter(1, file.getFileSize<side>(), callback);
+            reportItemInfo(txtCreatingFile, targetPath); //throw X
+
             std::wstring statusMsg = replaceCpy(txtCreatingFile, L"%x", fmtPath(AFS::getDisplayPath(targetPath)));
-            callback.logInfo(statusMsg); //throw X
-            PercentStatReporter statReporter(std::move(statusMsg), file.getFileSize<side>(), callback); //throw X
+            PercentStatReporter percentReporter(statusMsg, file.getFileSize<side>(), statReporter);
 
             const FileAttributes attr = file.getAttributes<side>();
             const AFS::StreamAttributes sourceAttr{attr.modTime, attr.fileSize, attr.filePrint};
@@ -1223,23 +1223,24 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
             copyItem(targetPath, [&](const std::function<void()>& deleteTargetItem) //throw FileError
             {
                 //already existing + !overwriteIfExists: undefined behavior! (e.g. fail/overwrite/auto-rename)
-                /*const AFS::FileCopyResult result =*/ AFS::copyFileTransactional(sourcePath, sourceAttr, targetPath, //throw FileError, ErrorFileLocked, X
-                                                                                  false /*copyFilePermissions*/, true /*transactionalCopy*/, deleteTargetItem,
-                                                                                  [&](int64_t bytesDelta)
+                const AFS::FileCopyResult result = AFS::copyFileTransactional(sourcePath, sourceAttr, targetPath, //throw FileError, ErrorFileLocked, X
+                                                                              false /*copyFilePermissions*/, true /*transactionalCopy*/, deleteTargetItem,
+                                                                              [&](int64_t bytesDelta)
                 {
-                    statReporter.updateStatus(0, bytesDelta); //throw X
-                    callback.requestUiUpdate(); //throw X  => not reliably covered by PercentStatReporter::updateStatus()! e.g. during first few seconds: STATUS_PERCENT_DELAY!
+                    percentReporter.updateDeltaAndStatus(bytesDelta); //throw X
+                    callback.requestUiUpdate(); //throw X  => not reliably covered by PercentStatReporter::updateDeltaAndStatus()! e.g. during first few seconds: STATUS_PERCENT_DELAY!
                 });
-                //result.errorModTime? => probably irrelevant (behave like Windows Explorer)
-                warn_static("no, should be logged at least!")
+
+                if (result.errorModTime) //log only; no popup
+                    callback.logMessage(result.errorModTime->toString(), PhaseCallback::MsgType::warning);
             });
-            statReporter.updateStatus(1, 0); //throw X
+            statReporter.reportDelta(1, 0);
         },
 
         [&](const SymlinkPair& symlink)
         {
             ItemStatReporter statReporter(1, 0, callback);
-            notifyItemCopy(txtCreatingLink, AFS::getDisplayPath(targetPath));
+            reportItemInfo(txtCreatingLink, targetPath); //throw X
 
             copyItem(targetPath, [&](const std::function<void()>& deleteTargetItem) //throw FileError
             {
@@ -1248,8 +1249,6 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
             });
             statReporter.reportDelta(1, 0);
         });
-
-        callback.requestUiUpdate(); //throw X
     }, callback); //throw X
 }
 }
@@ -1295,33 +1294,19 @@ namespace
 {
 template <SelectSide side>
 void deleteFromGridAndHDOneSide(std::vector<FileSystemObject*>& rowsToDelete,
-                                bool useRecycleBin,
-                                PhaseCallback& callback)
+                                bool moveToRecycler,
+                                bool& recyclerMissingReportOnce,
+                                bool& warnRecyclerMissing, //WarningDialogs::warnRecyclerMissing
+                                PhaseCallback& callback /*throw X*/) //throw X
 {
-    auto notifyItemDeletion = [&](const std::wstring& statusText, const std::wstring& displayPath)
-    {
-        std::wstring msg = replaceCpy(statusText, L"%x", fmtPath(displayPath));
-        callback.logInfo(msg);                 //throw X
-        callback.updateStatus(std::move(msg)); //
-    };
+    const std::wstring txtDelFilePermanent_ = _("Deleting file %x");
+    const std::wstring txtDelFileRecycler_  = _("Moving file %x to the recycle bin");
 
-    std::wstring txtRemovingFile;
-    std::wstring txtRemovingDirectory;
-    std::wstring txtRemovingSymlink;
+    const std::wstring txtDelSymlinkPermanent_ = _("Deleting symbolic link %x");
+    const std::wstring txtDelSymlinkRecycler_  = _("Moving symbolic link %x to the recycle bin");
 
-    if (useRecycleBin)
-    {
-        txtRemovingFile      = _("Moving file %x to the recycle bin");
-        txtRemovingDirectory = _("Moving folder %x to the recycle bin");
-        txtRemovingSymlink   = _("Moving symbolic link %x to the recycle bin");
-    }
-    else
-    {
-        txtRemovingFile      = _("Deleting file %x");
-        txtRemovingDirectory = _("Deleting folder %x");
-        txtRemovingSymlink   = _("Deleting symbolic link %x");
-    }
-
+    const std::wstring txtDelFolderPermanent_ = _("Deleting folder %x");
+    const std::wstring txtDelFolderRecycler_  = _("Moving folder %x to the recycle bin");
 
     for (FileSystemObject* fsObj : rowsToDelete) //all pointers are required(!) to be bound
         tryReportingError([&]
@@ -1330,97 +1315,103 @@ void deleteFromGridAndHDOneSide(std::vector<FileSystemObject*>& rowsToDelete,
 
         if (!fsObj->isEmpty<side>()) //element may be implicitly deleted, e.g. if parent folder was deleted first
         {
-            visitFSObject(*fsObj,
-                          [&](const FolderPair& folder)
+            visitFSObject(*fsObj, [&](const FolderPair& folder)
             {
-                if (useRecycleBin)
+                auto removeFolderPermanently = [&]
                 {
-                    notifyItemDeletion(txtRemovingDirectory, AFS::getDisplayPath(folder.getAbstractPath<side>())); //throw X
+                    auto notifyDeletion = [&](const std::wstring& msgTemplate, const std::wstring& displayPath)
+                    {
+                        reportInfo(replaceCpy(msgTemplate, L"%x", fmtPath(displayPath)), statReporter); //throw X
+                        statReporter.reportDelta(1, 0); //it would be more correct to report *after* work was done!
+                    };
 
-                    AFS::recycleItemIfExists(folder.getAbstractPath<side>()); //throw FileError
-                    statReporter.reportDelta(1, 0);
-                }
+                    auto onBeforeFileDeletion = [&](const std::wstring& displayPath) { notifyDeletion(txtDelFilePermanent_,   displayPath); };
+                    auto onBeforeDirDeletion  = [&](const std::wstring& displayPath) { notifyDeletion(txtDelFolderPermanent_, displayPath); };
+                    AFS::removeFolderIfExistsRecursion(folder.getAbstractPath<side>(), onBeforeFileDeletion, onBeforeDirDeletion); //throw FileError
+                };
+
+                if (moveToRecycler)
+                    try
+                    {
+                        reportInfo(replaceCpy(txtDelFolderRecycler_, L"%x", fmtPath(AFS::getDisplayPath(folder.getAbstractPath<side>()))), statReporter); //throw X
+                        AFS::moveToRecycleBinIfExists(folder.getAbstractPath<side>()); //throw FileError, RecycleBinUnavailable
+                        statReporter.reportDelta(1, 0);
+                    }
+                    catch (const RecycleBinUnavailable& e)
+                    {
+                        if (!recyclerMissingReportOnce)
+                        {
+                            recyclerMissingReportOnce = true;
+                            callback.reportWarning(e.toString() + L"\n\n" + _("Ignore and delete permanently each time recycle bin is unavailable?"), warnRecyclerMissing); //throw X
+                        }
+                        callback.logMessage(replaceCpy(txtDelFolderPermanent_, L"%x", fmtPath(AFS::getDisplayPath(folder.getAbstractPath<side>()))) +
+                                            L" [" + _("The recycle bin is not available") + L']', PhaseCallback::MsgType::warning); //throw X
+                        removeFolderPermanently(); //throw FileError, X
+                    }
                 else
                 {
-                    auto onBeforeFileDeletion = [&](const std::wstring& displayPath)
-                    {
-                        notifyItemDeletion(txtRemovingFile, displayPath); //throw X
-                        statReporter.reportDelta(1, 0);
-                    };
-                    auto onBeforeDirDeletion = [&](const std::wstring& displayPath)
-                    {
-                        notifyItemDeletion(txtRemovingDirectory, displayPath); //throw X
-                        statReporter.reportDelta(1, 0);
-                    };
-
-                    AFS::removeFolderIfExistsRecursion(folder.getAbstractPath<side>(), onBeforeFileDeletion, onBeforeDirDeletion); //throw FileError
+                    reportInfo(replaceCpy(txtDelFolderPermanent_, L"%x", fmtPath(AFS::getDisplayPath(folder.getAbstractPath<side>()))), statReporter); //throw X
+                    removeFolderPermanently(); //throw FileError, X
                 }
             },
 
             [&](const FilePair& file)
             {
-                notifyItemDeletion(txtRemovingFile, AFS::getDisplayPath(file.getAbstractPath<side>())); //throw X
-
-                if (useRecycleBin)
-                    AFS::recycleItemIfExists(file.getAbstractPath<side>()); //throw FileError
+                if (moveToRecycler)
+                    try
+                    {
+                        reportInfo(replaceCpy(txtDelFileRecycler_, L"%x", fmtPath(AFS::getDisplayPath(file.getAbstractPath<side>()))), statReporter); //throw X
+                        AFS::moveToRecycleBinIfExists(file.getAbstractPath<side>()); //throw FileError, RecycleBinUnavailable
+                    }
+                    catch (const RecycleBinUnavailable& e)
+                    {
+                        if (!recyclerMissingReportOnce)
+                        {
+                            recyclerMissingReportOnce = true;
+                            callback.reportWarning(e.toString() + L"\n\n" + _("Ignore and delete permanently each time recycle bin is unavailable?"), warnRecyclerMissing); //throw X
+                        }
+                        callback.logMessage(replaceCpy(txtDelFilePermanent_, L"%x", fmtPath(AFS::getDisplayPath(file.getAbstractPath<side>()))) +
+                                            L" [" + _("The recycle bin is not available") + L']', PhaseCallback::MsgType::warning); //throw X
+                        AFS::removeFileIfExists(file.getAbstractPath<side>()); //throw FileError
+                    }
                 else
+                {
+                    reportInfo(replaceCpy(txtDelFilePermanent_, L"%x", fmtPath(AFS::getDisplayPath(file.getAbstractPath<side>()))), statReporter); //throw X
                     AFS::removeFileIfExists(file.getAbstractPath<side>()); //throw FileError
+                }
                 statReporter.reportDelta(1, 0);
             },
 
             [&](const SymlinkPair& symlink)
             {
-                notifyItemDeletion(txtRemovingSymlink, AFS::getDisplayPath(symlink.getAbstractPath<side>())); //throw X
-
-                if (useRecycleBin)
-                    AFS::recycleItemIfExists(symlink.getAbstractPath<side>()); //throw FileError
+                if (moveToRecycler)
+                    try
+                    {
+                        reportInfo(replaceCpy(txtDelSymlinkRecycler_, L"%x", fmtPath(AFS::getDisplayPath(symlink.getAbstractPath<side>()))), statReporter); //throw X
+                        AFS::moveToRecycleBinIfExists(symlink.getAbstractPath<side>()); //throw FileError, RecycleBinUnavailable
+                    }
+                    catch (const RecycleBinUnavailable& e)
+                    {
+                        if (!recyclerMissingReportOnce)
+                        {
+                            recyclerMissingReportOnce = true;
+                            callback.reportWarning(e.toString() + L"\n\n" + _("Ignore and delete permanently each time recycle bin is unavailable?"), warnRecyclerMissing); //throw X
+                        }
+                        callback.logMessage(replaceCpy(txtDelSymlinkPermanent_, L"%x", fmtPath(AFS::getDisplayPath(symlink.getAbstractPath<side>()))) +
+                                            L" [" + _("The recycle bin is not available") + L']', PhaseCallback::MsgType::warning); //throw X
+                        AFS::removeSymlinkIfExists(symlink.getAbstractPath<side>()); //throw FileError
+                    }
                 else
+                {
+                    reportInfo(replaceCpy(txtDelSymlinkPermanent_, L"%x", fmtPath(AFS::getDisplayPath(symlink.getAbstractPath<side>()))), statReporter); //throw X
                     AFS::removeSymlinkIfExists(symlink.getAbstractPath<side>()); //throw FileError
+                }
                 statReporter.reportDelta(1, 0);
             });
 
             fsObj->removeObject<side>(); //if directory: removes recursively!
         }
-
-        //remain transactional as much as possible => allow for abort only *after* updating file model
-        callback.requestUiUpdate(); //throw X
     }, callback); //throw X
-}
-
-
-template <SelectSide side>
-void categorize(const std::vector<FileSystemObject*>& rows,
-                std::vector<FileSystemObject*>& deletePermanent,
-                std::vector<FileSystemObject*>& deleteRecyler,
-                bool useRecycleBin,
-                std::map<AbstractPath, bool>& recyclerSupported,
-                PhaseCallback& callback) //throw X
-{
-    auto hasRecycler = [&](const AbstractPath& baseFolderPath) -> bool
-    {
-        auto it = recyclerSupported.find(baseFolderPath); //perf: avoid duplicate checks!
-        if (it != recyclerSupported.end())
-            return it->second;
-
-        const std::wstring msg = replaceCpy(_("Checking recycle bin availability for folder %x..."), L"%x", fmtPath(AFS::getDisplayPath(baseFolderPath)));
-
-        bool recSupported = false;
-        tryReportingError([&]{
-            recSupported = AFS::supportsRecycleBin(baseFolderPath); //throw FileError
-        }, callback); //throw X
-
-        recyclerSupported.emplace(baseFolderPath, recSupported);
-        return recSupported;
-    };
-
-    for (FileSystemObject* row : rows)
-        if (!row->isEmpty<side>())
-        {
-            if (useRecycleBin && hasRecycler(row->base().getAbstractPath<side>())) //Windows' ::SHFileOperation() will delete permanently anyway, but we have a superior deletion routine
-                deleteRecyler.push_back(row);
-            else
-                deletePermanent.push_back(row);
-        }
 }
 }
 
@@ -1428,7 +1419,7 @@ void categorize(const std::vector<FileSystemObject*>& rows,
 void fff::deleteFromGridAndHD(const std::vector<FileSystemObject*>& rowsToDeleteOnLeft,  //refresh GUI grid after deletion to remove invalid rows
                               const std::vector<FileSystemObject*>& rowsToDeleteOnRight, //all pointers need to be bound!
                               const std::vector<std::pair<BaseFolderPair*, SyncDirectionConfig>>& directCfgs, //attention: rows will be physically deleted!
-                              bool useRecycleBin,
+                              bool moveToRecycler,
                               bool& warnRecyclerMissing,
                               ProcessCallback& callback /*throw X*/) //throw X
 {
@@ -1491,34 +1482,55 @@ void fff::deleteFromGridAndHD(const std::vector<FileSystemObject*>& rowsToDelete
     };
     ZEN_ON_SCOPE_EXIT(updateDirection()); //MSVC: assert is a macro and it doesn't play nice with ZEN_ON_SCOPE_EXIT, surprise... wasn't there something about macros being "evil"?
 
-    //categorize rows into permanent deletion and recycle bin
-    std::vector<FileSystemObject*> deletePermanentLeft;
-    std::vector<FileSystemObject*> deletePermanentRight;
-    std::vector<FileSystemObject*> deleteRecylerLeft;
-    std::vector<FileSystemObject*> deleteRecylerRight;
+    bool recyclerMissingReportOnce = false;
+    deleteFromGridAndHDOneSide<SelectSide::left >(deleteLeft,  moveToRecycler, recyclerMissingReportOnce, warnRecyclerMissing, callback); //throw X
+    deleteFromGridAndHDOneSide<SelectSide::right>(deleteRight, moveToRecycler, recyclerMissingReportOnce, warnRecyclerMissing, callback); //
+}
 
-    std::map<AbstractPath, bool> recyclerSupported;
-    categorize<SelectSide::left >(deleteLeft,  deletePermanentLeft,  deleteRecylerLeft,  useRecycleBin, recyclerSupported, callback); //throw X
-    categorize<SelectSide::right>(deleteRight, deletePermanentRight, deleteRecylerRight, useRecycleBin, recyclerSupported, callback); //
+//############################################################################################################
+void fff::deleteListOfFiles(const std::vector<Zstring>& filesToDeletePaths,
+                            std::vector<Zstring>& deletedPaths,
+                            bool moveToRecycler,
+                            bool& warnRecyclerMissing,
+                            ProcessCallback& callback /*throw X*/) //throw X
+{
+    callback.initNewPhase(filesToDeletePaths.size(), 0 /*bytesTotal*/, ProcessPhase::none); //throw X
+    assert(deletedPaths.empty());
 
-    //windows: check if recycle bin really exists; if not, Windows will silently delete, which is wrong
-    if (useRecycleBin &&
-    std::any_of(recyclerSupported.begin(), recyclerSupported.end(), [](const auto& item) { return !item.second; }))
+    bool recyclerMissingReportOnce = false;
+
+    for (const Zstring& filePath : filesToDeletePaths)
+        tryReportingError([&]
     {
-        std::wstring msg = _("The recycle bin is not supported by the following folders. Deleted or overwritten files will not be able to be restored:") + L'\n';
+        const AbstractPath cfgPath = createItemPathNative(filePath);
+        ItemStatReporter statReporter(1, 0, callback);
 
-        for (const auto& [folderPath, supported] : recyclerSupported)
-            if (!supported)
-                msg += L'\n' + AFS::getDisplayPath(folderPath);
+        if (moveToRecycler)
+            try
+            {
+                reportInfo(replaceCpy(_("Moving file %x to the recycle bin"), L"%x", fmtPath(AFS::getDisplayPath(cfgPath))), callback); //throw X
+                AFS::moveToRecycleBinIfExists(cfgPath); //throw FileError, RecycleBinUnavailable
+            }
+            catch (const RecycleBinUnavailable& e)
+            {
+                if (!recyclerMissingReportOnce)
+                {
+                    recyclerMissingReportOnce = true;
+                    callback.reportWarning(e.toString() + L"\n\n" + _("Ignore and delete permanently each time recycle bin is unavailable?"), warnRecyclerMissing); //throw X
+                }
+                callback.logMessage(replaceCpy(_("Deleting file %x"), L"%x", fmtPath(AFS::getDisplayPath(cfgPath))) +
+                                    L" [" + _("The recycle bin is not available") + L']', PhaseCallback::MsgType::warning); //throw X
+                AFS::removeFileIfExists(cfgPath); //throw FileError
+            }
+        else
+        {
+            reportInfo(replaceCpy(_("Deleting file %x"), L"%x", fmtPath(AFS::getDisplayPath(cfgPath))), callback); //throw X
+            AFS::removeFileIfExists(cfgPath); //throw FileError
+        }
 
-        callback.reportWarning(msg, warnRecyclerMissing); //throw?
-    }
-
-    deleteFromGridAndHDOneSide<SelectSide::left>(deleteRecylerLeft,   true,  callback);
-    deleteFromGridAndHDOneSide<SelectSide::left>(deletePermanentLeft, false, callback);
-
-    deleteFromGridAndHDOneSide<SelectSide::right>(deleteRecylerRight,   true,  callback);
-    deleteFromGridAndHDOneSide<SelectSide::right>(deletePermanentRight, false, callback);
+        statReporter.reportDelta(1, 0);
+        deletedPaths.push_back(filePath);
+    }, callback); //throw X
 }
 
 //############################################################################################################
@@ -1590,7 +1602,7 @@ void TempFileBuffer::createTempFiles(const std::set<FileDescriptor>& workLoad, P
     {
         assert(!tempFilePaths_.contains(descr)); //ensure correct stats, NO overwrite-copy => caller-contract!
 
-        MemoryStreamOut<std::string> cookie; //create hash to distinguish different versions and file locations
+        MemoryStreamOut cookie; //create hash to distinguish different versions and file locations
         writeNumber   (cookie, descr.attr.modTime);
         writeNumber   (cookie, descr.attr.fileSize);
         writeNumber   (cookie, descr.attr.filePrint);
@@ -1611,8 +1623,11 @@ void TempFileBuffer::createTempFiles(const std::set<FileDescriptor>& workLoad, P
         tryReportingError([&]
         {
             std::wstring statusMsg = replaceCpy(_("Creating file %x"), L"%x", fmtPath(tempFilePath));
-            callback.logInfo(statusMsg); //throw X
-            PercentStatReporter statReporter(std::move(statusMsg), descr.attr.fileSize, callback); //throw X
+
+            ItemStatReporter statReporter(1, descr.attr.fileSize, callback);
+            PercentStatReporter percentReporter(statusMsg, descr.attr.fileSize, statReporter);
+
+            reportInfo(std::move(statusMsg), callback); //throw X
 
             //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
             /*const AFS::FileCopyResult result =*/
@@ -1621,15 +1636,13 @@ void TempFileBuffer::createTempFiles(const std::set<FileDescriptor>& workLoad, P
                                        false /*copyFilePermissions*/, true /*transactionalCopy*/, nullptr /*onDeleteTargetFile*/,
                                        [&](int64_t bytesDelta)
             {
-                statReporter.updateStatus(0, bytesDelta); //throw X
-                callback.requestUiUpdate(); //throw X  => not reliably covered by PercentStatReporter::updateStatus()! e.g. during first few seconds: STATUS_PERCENT_DELAY!
+                percentReporter.updateDeltaAndStatus(bytesDelta); //throw X
+                callback.requestUiUpdate(); //throw X  => not reliably covered by PercentStatReporter::updateDeltaAndStatus()! e.g. during first few seconds: STATUS_PERCENT_DELAY!
             });
             //result.errorModTime? => irrelevant for temp files!
-            statReporter.updateStatus(1, 0); //throw X
+            statReporter.reportDelta(1, 0);
 
             tempFilePaths_[descr] = tempFilePath;
         }, callback); //throw X
-
-        callback.requestUiUpdate(); //throw X
     }
 }

@@ -66,7 +66,7 @@ AbstractPath getDatabaseFilePath(const BaseFolderPair& baseFolder)
 
 void saveStreams(const DbStreams& streamList, const AbstractPath& dbPath, const IoCallback& notifyUnbufferedIO /*throw X*/) //throw FileError, X
 {
-    MemoryStreamOut<std::string> memStreamOut;
+    MemoryStreamOut memStreamOut;
 
     //write FreeFileSync file identifier
     writeArray(memStreamOut, DB_FILE_DESCR, sizeof(DB_FILE_DESCR));
@@ -89,12 +89,17 @@ void saveStreams(const DbStreams& streamList, const AbstractPath& dbPath, const 
     //------------------------------------------------------------------------------------------------------------------------
 
     //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
-    const std::unique_ptr<AFS::OutputStream> fileStreamOut = AFS::getOutputStream(dbPath, //throw FileError
+    const std::unique_ptr<AFS::OutputStream> fileStreamOut = AFS::getOutputStream(dbPath,
                                                                                   memStreamOut.ref().size(),
-                                                                                  std::nullopt /*modTime*/,
-                                                                                  notifyUnbufferedIO /*throw X*/);
-    fileStreamOut->write(memStreamOut.ref().c_str(), memStreamOut.ref().size()); //throw FileError, X
-    fileStreamOut->finalize();                                                   //throw FileError, X
+                                                                                  std::nullopt /*modTime*/); //throw FileError
+
+    unbufferedSave(memStreamOut.ref(), [&](const void* buffer, size_t bytesToWrite)
+    {
+        return fileStreamOut->tryWrite(buffer, bytesToWrite, notifyUnbufferedIO); //throw FileError, X
+    },
+    fileStreamOut->getBlockSize()); //throw FileError, X
+
+    fileStreamOut->finalize(notifyUnbufferedIO); //throw FileError, X
 
 }
 
@@ -104,8 +109,13 @@ DbStreams loadStreams(const AbstractPath& dbPath, const IoCallback& notifyUnbuff
     std::string byteStream;
     try
     {
-        const std::unique_ptr<AFS::InputStream> fileStreamIn = AFS::getInputStream(dbPath, notifyUnbufferedIO); //throw FileError, ErrorFileLocked
-        byteStream = bufferedLoad<std::string>(*fileStreamIn); //throw FileError, ErrorFileLocked, X
+        const std::unique_ptr<AFS::InputStream> fileIn = AFS::getInputStream(dbPath); //throw FileError, ErrorFileLocked
+
+        byteStream = unbufferedLoad<std::string>([&](void* buffer, size_t bytesToRead)
+        {
+            return fileIn->tryRead(buffer, bytesToRead, notifyUnbufferedIO); //throw FileError, ErrorFileLocked, X; may return short, only 0 means EOF!
+        },
+        fileIn->getBlockSize()); //throw FileError, X
     }
     catch (const FileError& e)
     {
@@ -139,7 +149,7 @@ DbStreams loadStreams(const AbstractPath& dbPath, const IoCallback& notifyUnbuff
             // => only "partially" useful for container/stream metadata since the streams data is zlib-compressed
         {
             assert(byteStream.size() >= sizeof(uint32_t)); //obviously in this context!
-            MemoryStreamOut<std::string> crcStreamOut;
+            MemoryStreamOut crcStreamOut;
             writeNumber<uint32_t>(crcStreamOut, getCrc32(byteStream.begin(), byteStream.end() - sizeof(uint32_t)));
 
             if (!endsWith(byteStream, crcStreamOut.ref()))
@@ -195,8 +205,8 @@ public:
                         std::string& streamL,
                         std::string& streamR)
     {
-        MemoryStreamOut<std::string> outL;
-        MemoryStreamOut<std::string> outR;
+        MemoryStreamOut outL;
+        MemoryStreamOut outR;
         //save format version
         writeNumber<int32_t>(outL, DB_STREAM_VERSION);
         writeNumber<int32_t>(outR, DB_STREAM_VERSION);
@@ -234,7 +244,7 @@ public:
         const std::string bufSmallNum = compStream(generator.streamOutSmallNum_.ref());
         const std::string bufBigNum   = compStream(generator.streamOutBigNum_  .ref());
 
-        MemoryStreamOut<std::string> streamOut;
+        MemoryStreamOut streamOut;
         writeContainer(streamOut, bufText);
         writeContainer(streamOut, bufSmallNum);
         writeContainer(streamOut, bufBigNum);
@@ -248,8 +258,8 @@ public:
         writeNumber<uint64_t>(outL, size1stPart);
         writeNumber<uint64_t>(outR, size2ndPart);
 
-        if (size1stPart > 0) writeArray(outL, &buf[0], size1stPart);
-        if (size2ndPart > 0) writeArray(outR, &buf[0] + size1stPart, size2ndPart);
+        if (size1stPart > 0) writeArray(outL, buf.c_str(), size1stPart);
+        if (size2ndPart > 0) writeArray(outR, buf.c_str() + size1stPart, size2ndPart);
 
         streamL = std::move(outL.ref());
         streamR = std::move(outR.ref());
@@ -307,9 +317,9 @@ private:
                     - use null-termination in writeItemName()                             => 5% size reduction (embedded zeros impossible?)
                     - use empty item name as sentinel                                     => only 0,17% size reduction!
                     - save fileSize using instreamOutBigNum_                              => pessimization!        */
-    MemoryStreamOut<std::string> streamOutText_;     //
-    MemoryStreamOut<std::string> streamOutSmallNum_; //data with bias to lead side (= always left in this context)
-    MemoryStreamOut<std::string> streamOutBigNum_;   //
+    MemoryStreamOut streamOutText_;     //
+    MemoryStreamOut streamOutSmallNum_; //data with bias to lead side (= always left in this context)
+    MemoryStreamOut streamOutBigNum_;   //
 };
 
 
@@ -344,15 +354,15 @@ public:
                 if (has1stPartL != leadStreamLeft)
                     throw SysError(_("File content is corrupted.") + L" (has1stPartL != leadStreamLeft)");
 
-                MemoryStreamIn<std::string>& in1stPart = leadStreamLeft ? streamInL : streamInR;
-                MemoryStreamIn<std::string>& in2ndPart = leadStreamLeft ? streamInR : streamInL;
+                MemoryStreamIn& in1stPart = leadStreamLeft ? streamInL : streamInR;
+                MemoryStreamIn& in2ndPart = leadStreamLeft ? streamInR : streamInL;
 
                 const size_t size1stPart = static_cast<size_t>(readNumber<uint64_t>(in1stPart));
                 const size_t size2ndPart = static_cast<size_t>(readNumber<uint64_t>(in2ndPart));
 
                 std::string tmpB(size1stPart + size2ndPart, '\0'); //throw std::bad_alloc
-                readArray(in1stPart, &tmpB[0],               size1stPart); //stream always non-empty
-                readArray(in2ndPart, &tmpB[0] + size1stPart, size2ndPart); //throw SysErrorUnexpectedEos
+                readArray(in1stPart, tmpB.data(),               size1stPart); //stream always non-empty
+                readArray(in2ndPart, tmpB.data() + size1stPart, size2ndPart); //throw SysErrorUnexpectedEos
 
                 const std::string tmpL = readContainer<std::string>(streamInL);
                 const std::string tmpR = readContainer<std::string>(streamInR);
@@ -367,15 +377,15 @@ public:
             else if (streamVersion == 3 || //TODO: remove migration code at some time! 2021-02-14
                      streamVersion == DB_STREAM_VERSION)
             {
-                MemoryStreamIn<std::string>& streamInPart1 = leadStreamLeft ? streamInL : streamInR;
-                MemoryStreamIn<std::string>& streamInPart2 = leadStreamLeft ? streamInR : streamInL;
+                MemoryStreamIn& streamInPart1 = leadStreamLeft ? streamInL : streamInR;
+                MemoryStreamIn& streamInPart2 = leadStreamLeft ? streamInR : streamInL;
 
                 const size_t sizePart1 = static_cast<size_t>(readNumber<uint64_t>(streamInPart1));
                 const size_t sizePart2 = static_cast<size_t>(readNumber<uint64_t>(streamInPart2));
 
                 std::string buf(sizePart1 + sizePart2, '\0');
-                if (sizePart1 > 0) readArray(streamInPart1, &buf[0],             sizePart1); //throw SysErrorUnexpectedEos
-                if (sizePart2 > 0) readArray(streamInPart2, &buf[0] + sizePart1, sizePart2); //
+                if (sizePart1 > 0) readArray(streamInPart1, buf.data(),             sizePart1); //throw SysErrorUnexpectedEos
+                if (sizePart2 > 0) readArray(streamInPart2, buf.data() + sizePart1, sizePart2); //
 
                 MemoryStreamIn streamIn(buf);
                 const std::string bufText     = readContainer<std::string>(streamIn); //
@@ -403,11 +413,14 @@ public:
     }
 
 private:
-    StreamParser(int streamVersion, const std::string& bufText, const std::string& bufSmallNumbers, const std::string& bufBigNumbers) :
+    StreamParser(int streamVersion,
+                 std::string&& bufText,
+                 std::string&& bufSmallNumbers,
+                 std::string&& bufBigNumbers) :
         streamVersion_(streamVersion),
-        streamInText_(bufText),
-        streamInSmallNum_(bufSmallNumbers),
-        streamInBigNum_(bufBigNumbers) {}
+        bufText_        (std::move(bufText)),
+        bufSmallNumbers_(std::move(bufSmallNumbers)),
+        bufBigNumbers_  (std::move(bufBigNumbers)) {}
 
     template <SelectSide leadSide>
     void recurse(InSyncFolder& container) //throw SysError
@@ -480,12 +493,12 @@ private:
     class StreamParserV2
     {
     public:
-        StreamParserV2(const std::string& bufferL,
-                       const std::string& bufferR,
-                       const std::string& bufferB) :
-            inputLeft_ (bufferL),
-            inputRight_(bufferR),
-            inputBoth_ (bufferB) {}
+        StreamParserV2(std::string&& bufferL,
+                       std::string&& bufferR,
+                       std::string&& bufferB) :
+            bufL_(std::move(bufferL)),
+            bufR_(std::move(bufferR)),
+            bufB_(std::move(bufferB)) {}
 
         void recurse(InSyncFolder& container) //throw SysError
         {
@@ -524,15 +537,21 @@ private:
         }
 
     private:
-        MemoryStreamIn<std::string> inputLeft_;  //data related to one side only
-        MemoryStreamIn<std::string> inputRight_; //
-        MemoryStreamIn<std::string> inputBoth_;  //data concerning both sides
+        const std::string bufL_;
+        const std::string bufR_;
+        const std::string bufB_;
+        MemoryStreamIn inputLeft_ {bufL_};  //data related to one side only
+        MemoryStreamIn inputRight_{bufR_}; //
+        MemoryStreamIn inputBoth_ {bufB_};  //data concerning both sides
     };
 
     const int streamVersion_;
-    MemoryStreamIn<std::string> streamInText_;     //
-    MemoryStreamIn<std::string> streamInSmallNum_; //data with bias to lead side
-    MemoryStreamIn<std::string> streamInBigNum_;   //
+    const std::string bufText_;
+    const std::string bufSmallNumbers_;
+    const std::string bufBigNumbers_ ;
+    MemoryStreamIn streamInText_    {bufText_};         //
+    MemoryStreamIn streamInSmallNum_{bufSmallNumbers_}; //data with bias to lead side
+    MemoryStreamIn streamInBigNum_  {bufBigNumbers_};   //
 };
 
 //#######################################################################################################################################
@@ -713,7 +732,7 @@ private:
 struct StreamStatusNotifier
 {
     StreamStatusNotifier(const std::wstring& statusMsg, AsyncCallback& acb /*throw ThreadStopRequest*/) :
-        msgPrefix_(statusMsg), acb_(acb) {}
+        msgPrefix_(statusMsg + L' '), acb_(acb) {}
 
     void operator()(int64_t bytesDelta) //throw ThreadStopRequest
     {
@@ -973,6 +992,7 @@ void fff::saveLastSynchronousState(const BaseFolderPair& baseFolder, bool transa
                     saveStreams(streams, dbPathTmp, notifySave); //throw FileError, ThreadStopRequest
                     ZEN_ON_SCOPE_FAIL(try { AFS::removeFilePlain(dbPathTmp); }
                     catch (FileError&) {});
+                    warn_static("log it!")
 
                     //operation finished: rename temp file -> this should work (almost) transactionally:
                     //if there were no write access, creation of temp file would have failed

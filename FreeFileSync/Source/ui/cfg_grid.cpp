@@ -149,17 +149,23 @@ void ConfigView::setLastRunStats(const std::vector<Zstring>& filePaths, const La
 }
 
 
-void ConfigView::setBackColor(const std::vector<Zstring>& filePaths, const wxColor& col)
+void ConfigView::setBackColor(const std::vector<Zstring>& filePaths, const wxColor& col, bool previewOnly)
 {
     for (const Zstring& filePath : filePaths)
-    {
-        auto it = cfgList_.find(filePath);
-        assert(it != cfgList_.end());
-        if (it != cfgList_.end())
-            it->second.cfgItem.backColor = col;
-    }
+        if (auto it = cfgList_.find(filePath);
+            it != cfgList_.end())
+        {
+            if (previewOnly)
+                it->second.cfgItem.backColorPreview = col;
+            else
+            {
+                it->second.cfgItem.backColor = col;
+                it->second.cfgItem.backColorPreview = wxNullColour;
+            }
+        }
+        else assert(false);
 
-    if (sortColumn_ == ColumnTypeCfg::name)
+    if (!previewOnly && sortColumn_ == ColumnTypeCfg::name)
         sortListView(); //needed if top element of colored-group is removed
 }
 
@@ -363,27 +369,31 @@ private:
             {
                 case ColumnTypeCfg::name:
                 {
-                    if (item->cfgItem.backColor.IsOk())
+                    wxColor backColor = item->cfgItem.backColor;
+                    if (item->cfgItem.backColorPreview.IsOk())
+                        backColor = item->cfgItem.backColorPreview;
+
+                    if (backColor.IsOk())
                     {
                         wxRect rectTmp2 = rectTmp;
-                        if (!selected)
+                        if (!selected || item->cfgItem.backColorPreview.IsOk())
                         {
                             rectTmp2.width = rectTmp.width * 2 / 3;
-                            clearArea(dc, rectTmp2, item->cfgItem.backColor); //accessibility: always set both foreground AND background colors!
-                            textColor.Set(*wxBLACK);                          //
+                            clearArea(dc, rectTmp2, backColor); //accessibility: always set both foreground AND background colors!
+                            textColor.Set(*wxBLACK);            //
 
                             rectTmp2.x += rectTmp2.width;
                             rectTmp2.width = rectTmp.width - rectTmp2.width;
-                            dc.GradientFillLinear(rectTmp2, item->cfgItem.backColor, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW), wxEAST);
+                            dc.GradientFillLinear(rectTmp2, backColor, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW), wxEAST);
                         }
                         else //always show a glimpse of the background color
                         {
                             rectTmp2.width = getColumnGapLeft() + getDefaultMenuIconSize();
-                            clearArea(dc, rectTmp2, item->cfgItem.backColor);
+                            clearArea(dc, rectTmp2, backColor);
 
                             rectTmp2.x += rectTmp2.width;
                             rectTmp2.width = getColumnGapLeft();
-                            dc.GradientFillLinear(rectTmp2, item->cfgItem.backColor, wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT), wxEAST);
+                            dc.GradientFillLinear(rectTmp2, backColor, wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT), wxEAST);
                         }
                     }
 

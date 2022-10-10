@@ -40,8 +40,14 @@ struct PhaseCallback
     //UI info only, should *not* be logged: called periodically after data was processed: expected(!) to request GUI update
     virtual void updateStatus(std::wstring&& msg) = 0; //throw X
 
+    enum class MsgType
+    {
+        info,
+        warning,
+        error,
+    };
     //log only; must *not* call updateStatus()!
-    virtual void logInfo(const std::wstring& msg) = 0; //throw X
+    virtual void logMessage(const std::wstring& msg, MsgType type) = 0; //throw X
 
     virtual void reportWarning(const std::wstring& msg, bool& warningActive) = 0; //throw X
 
@@ -57,6 +63,7 @@ struct PhaseCallback
         retry
     };
     virtual Response reportError(const ErrorInfo& errorInfo) = 0; //throw X; recoverable error
+
     virtual void reportFatalError(const std::wstring& msg)   = 0; //throw X; non-recoverable error
 };
 

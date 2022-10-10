@@ -122,7 +122,7 @@ std::pair<int /*exit code*/, std::string> processExecuteImpl(const Zstring& file
                 argv.push_back(arg.c_str());
             argv.push_back(nullptr);
 
-            /*int rv =*/::execv(argv[0], const_cast<char**>(&argv[0])); //only returns if an error occurred
+            /*int rv =*/::execv(argv[0], const_cast<char**>(argv.data())); //only returns if an error occurred
             //safe to cast away const: https://pubs.opengroup.org/onlinepubs/9699919799/functions/exec.html
             //  "The statement about argv[] and envp[] being constants is included to make explicit to future
             //   writers of language bindings that these objects are completely constant. Due to a limitation of
@@ -206,8 +206,13 @@ std::pair<int /*exit code*/, std::string> processExecuteImpl(const Zstring& file
         THROW_LAST_SYS_ERROR("lseek");
 
     guardTmpFile.dismiss();
-    FileInput streamIn(fdTempFile, tempFilePath, nullptr /*notifyUnbufferedIO*/); //takes ownership!
-    std::string output = bufferedLoad<std::string>(streamIn); //throw FileError
+    FileInputPlain streamIn(fdTempFile, tempFilePath); //takes ownership!
+
+    std::string output = unbufferedLoad<std::string>([&](void* buffer, size_t bytesToRead)
+    {
+        return streamIn.tryRead(buffer, bytesToRead); //throw FileError; may return short, only 0 means EOF! =>  CONTRACT: bytesToRead > 0!
+    },
+    streamIn.getBlockSize()); //throw FileError
 
     if (!WIFEXITED(statusCode)) //signalled, crashed?
         throw SysError(formatSystemError("waitpid", WIFSIGNALED(statusCode) ?
@@ -220,7 +225,7 @@ std::pair<int /*exit code*/, std::string> processExecuteImpl(const Zstring& file
         exitCode == 127) //details should have been streamed to STDERR: used by /bin/sh, e.g. failure to execute due to missing .so file
         throw SysError(utfTo<std::wstring>(trimCpy(output)));
 
-    return {exitCode, output};
+    return {exitCode, std::move(output)};
 }
 }
 

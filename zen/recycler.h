@@ -18,23 +18,17 @@ namespace zen
    |Recycle Bin Access|
    --------------------
 
-    Windows
-    -------
-    -> Recycler API (IFileOperation) always available
-    -> COM needs to be initialized before calling any of these functions! CoInitializeEx/CoUninitialize
+    Windows: -> Recycler API (IFileOperation) always available
+             -> COM needs to be initialized before calling any of these functions! CoInitializeEx/CoUninitialize
 
-    Linux
-    -----
-    Compiler flags: `pkg-config --cflags gio-2.0`
-    Linker   flags: `pkg-config --libs gio-2.0`
+    Linux: Compiler flags: `pkg-config --cflags gio-2.0`
+           Linker   flags: `pkg-config --libs gio-2.0`
 
-    Already included in package "gtk+-2.0"!                  */
+           Already included in package "gtk+-2.0"!                  */
 
 
-//move a file or folder to Recycle Bin (deletes permanently if recycler is not available) -> crappy semantics, but we have no choice thanks to Windows' design
-bool recycleOrDeleteIfExists(const Zstring& itemPath); //throw FileError, return "true" if file/dir was actually deleted
-
-
+//fails if item is not existing (anymore)
+void moveToRecycleBin(const Zstring& itemPath); //throw FileError, RecycleBinUnavailable
 }
 
 #endif //RECYCLER_H_18345067341545

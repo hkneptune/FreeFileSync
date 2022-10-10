@@ -35,6 +35,7 @@ struct ConfigFileItem
     AbstractPath logFilePath = getNullPath();     //ANY last sync attempt (including aborted syncs)
     SyncResult   logResult = SyncResult::aborted; //
     wxColor      backColor;
+    wxColor      backColorPreview; //while the folder picker is shown
 };
 
 
@@ -104,7 +105,7 @@ public:
         AbstractPath logFilePath; //optional
     };
     void setLastRunStats(const std::vector<Zstring>& filePaths, const LastRunStats& lastRun);
-    void setBackColor(const std::vector<Zstring>& filePaths, const wxColor& col);
+    void setBackColor(const std::vector<Zstring>& filePaths, const wxColor& col, bool previewOnly = false);
 
     struct Details
     {

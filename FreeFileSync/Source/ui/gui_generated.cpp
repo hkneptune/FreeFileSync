@@ -3451,7 +3451,7 @@ CompareProgressDlgGenerated::CompareProgressDlgGenerated( wxWindow* parent, wxWi
     m_panelItemStats->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_BTNFACE ) );
 
     wxBoxSizer* bSizer291;
-    bSizer291 = new wxBoxSizer( wxVERTICAL );
+    bSizer291 = new wxBoxSizer( wxHORIZONTAL );
 
     ffgSizer111 = new wxFlexGridSizer( 0, 2, 5, 5 );
     ffgSizer111->SetFlexibleDirection( wxBOTH );
@@ -3490,19 +3490,19 @@ CompareProgressDlgGenerated::CompareProgressDlgGenerated( wxWindow* parent, wxWi
     ffgSizer111->Add( m_staticTextBytesRemaining, 0, wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL, 5 );
 
 
-    bSizer291->Add( ffgSizer111, 0, wxALL, 5 );
+    bSizer291->Add( ffgSizer111, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5 );
 
 
     m_panelItemStats->SetSizer( bSizer291 );
     m_panelItemStats->Layout();
     bSizer291->Fit( m_panelItemStats );
-    bSizer199->Add( m_panelItemStats, 0, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxRIGHT, 10 );
+    bSizer199->Add( m_panelItemStats, 0, wxTOP|wxBOTTOM|wxRIGHT|wxEXPAND, 10 );
 
     m_panelTimeStats = new wxPanel( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0 );
     m_panelTimeStats->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_BTNFACE ) );
 
     wxBoxSizer* bSizer292;
-    bSizer292 = new wxBoxSizer( wxVERTICAL );
+    bSizer292 = new wxBoxSizer( wxHORIZONTAL );
 
     ffgSizer112 = new wxFlexGridSizer( 0, 1, 5, 5 );
     ffgSizer112->SetFlexibleDirection( wxBOTH );
@@ -3533,13 +3533,13 @@ CompareProgressDlgGenerated::CompareProgressDlgGenerated( wxWindow* parent, wxWi
     ffgSizer112->Add( m_staticTextTimeRemaining, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_RIGHT, 5 );
 
 
-    bSizer292->Add( ffgSizer112, 0, wxALL, 5 );
+    bSizer292->Add( ffgSizer112, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5 );
 
 
     m_panelTimeStats->SetSizer( bSizer292 );
     m_panelTimeStats->Layout();
     bSizer292->Fit( m_panelTimeStats );
-    bSizer199->Add( m_panelTimeStats, 0, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxRIGHT, 10 );
+    bSizer199->Add( m_panelTimeStats, 0, wxTOP|wxBOTTOM|wxRIGHT|wxEXPAND, 10 );
 
     bSizerErrorsRetry = new wxBoxSizer( wxHORIZONTAL );
 
@@ -5112,7 +5112,7 @@ AboutDlgGenerated::AboutDlgGenerated( wxWindow* parent, wxWindowID id, const wxS
     bSizer183 = new wxBoxSizer( wxHORIZONTAL );
 
     m_bitmapAnimalSmall = new wxStaticBitmap( m_panelDonate, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
-    bSizer183->Add( m_bitmapAnimalSmall, 0, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxLEFT, 5 );
+    bSizer183->Add( m_bitmapAnimalSmall, 0, wxALIGN_CENTER_VERTICAL|wxALL, 5 );
 
     m_panel39 = new wxPanel( m_panelDonate, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
     m_panel39->SetBackgroundColour( wxColour( 248, 248, 248 ) );

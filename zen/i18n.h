@@ -7,8 +7,6 @@
 #ifndef I18_N_H_3843489325044253425456
 #define I18_N_H_3843489325044253425456
 
-//#include <string>
-//#include <cstdint>
 #include "globals.h"
 #include "string_tools.h"
 #include "format_unit.h"

@@ -837,8 +837,7 @@ bool FileSystemObject::isPairEmpty() const
 template <SelectSide side> inline
 Zstring FileSystemObject::getItemName() const
 {
-    assert(!itemNameL_.empty() || !itemNameR_.empty()); //-> file pair might be empty (until removed after sync)
-    //=> okay, but where does this trigger!? calling this function in this case is a bug!
+    //assert(!itemNameL_.empty() || !itemNameR_.empty()); //-> file pair might be temporarily empty (until permanently removed after sync)
 
     const Zstring& itemName = selectParam<side>(itemNameL_, itemNameR_); //empty if not existing
     if (!itemName.empty()) //avoid ternary-WTF! (implicit copy-constructor call!!!!!!)

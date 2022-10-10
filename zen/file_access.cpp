@@ -461,48 +461,47 @@ void zen::copyItemPermissions(const Zstring& sourcePath, const Zstring& targetPa
 
 void zen::createDirectory(const Zstring& dirPath) //throw FileError, ErrorTargetExisting
 {
-    auto getErrorMsg = [&] { return replaceCpy(_("Cannot create directory %x."), L"%x", fmtPath(dirPath)); };
+    try
+    {
+        //don't allow creating irregular folders!
+        const Zstring dirName = afterLast(dirPath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
 
-    //don't allow creating irregular folders!
-    const Zstring dirName = afterLast(dirPath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
-
-    //e.g. "...." https://social.technet.microsoft.com/Forums/windows/en-US/ffee2322-bb6b-4fdf-86f9-8f93cf1fa6cb/
-    if (std::all_of(dirName.begin(), dirName.end(), [](Zchar c) { return c == Zstr('.'); }))
-    /**/throw FileError(getErrorMsg(), replaceCpy<std::wstring>(L"Invalid folder name %x.", L"%x", fmtPath(dirName)));
+        //e.g. "...." https://social.technet.microsoft.com/Forums/windows/en-US/ffee2322-bb6b-4fdf-86f9-8f93cf1fa6cb/
+        if (std::all_of(dirName.begin(), dirName.end(), [](Zchar c) { return c == Zstr('.'); }))
+        /**/throw SysError(replaceCpy<std::wstring>(L"Invalid folder name %x.", L"%x", fmtPath(dirName)));
 
 #if 0 //not appreciated: https://freefilesync.org/forum/viewtopic.php?t=7509
-    if (startsWith(dirName, Zstr(' ')) || //Windows can access these just fine once created!
-        endsWith  (dirName, Zstr(' ')))   //
-        throw FileError(getErrorMsg(), replaceCpy<std::wstring>(L"Invalid folder name. %x starts/ends with space character.", L"%x", fmtPath(dirName)));
+        if (startsWith(dirName, Zstr(' ')) || //Windows can access these just fine once created!
+            endsWith  (dirName, Zstr(' ')))   //
+            throw SysError(replaceCpy<std::wstring>(L"Invalid folder name %x starts/ends with space character.", L"%x", fmtPath(dirName)));
 #endif
 
+        const mode_t mode = S_IRWXU | S_IRWXG | S_IRWXO; //0777 => consider umask!
 
-    const mode_t mode = S_IRWXU | S_IRWXG | S_IRWXO; //0777 => consider umask!
-
-    if (::mkdir(dirPath.c_str(), mode) != 0)
-    {
-        const int lastError = errno; //copy before directly or indirectly making other system calls!
-        const std::wstring errorDescr = formatSystemError("mkdir", lastError);
-
-        if (lastError == EEXIST)
-            throw ErrorTargetExisting(getErrorMsg(), errorDescr);
-        //else if (lastError == ENOENT)
-        //    throw ErrorTargetPathMissing(errorMsg, errorDescr);
-        throw FileError(getErrorMsg(), errorDescr);
+        if (::mkdir(dirPath.c_str(), mode) != 0)
+        {
+            const int ec = errno; //copy before directly or indirectly making other system calls!
+            if (ec == EEXIST)
+                throw ErrorTargetExisting(replaceCpy(_("Cannot create directory %x."), L"%x", fmtPath(dirPath)), formatSystemError("mkdir", ec));
+            //else if (ec == ENOENT)
+            //    throw ErrorTargetPathMissing(errorMsg, errorDescr);
+            THROW_LAST_SYS_ERROR("mkdir");
+        }
     }
+    catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot create directory %x."), L"%x", fmtPath(dirPath)), e.toString()); }
 }
 
 
-bool zen::createDirectoryIfMissingRecursion(const Zstring& dirPath) //throw FileError
+void zen::createDirectoryIfMissingRecursion(const Zstring& dirPath) //throw FileError
 {
     const std::optional<Zstring> parentPath = getParentFolderPath(dirPath);
     if (!parentPath) //device root
-        return false;
+        return;
 
-    try //generally we expect that path already exists (see: ffs_paths.cpp) => check first
+    try //generally expect folder already exists (see: ffs_paths.cpp) => check first
     {
         if (getItemType(dirPath) != ItemType::file) //throw FileError
-            return false;
+            return;
     }
     catch (FileError&) {} //not yet existing or access error? let's find out...
 
@@ -511,14 +510,14 @@ bool zen::createDirectoryIfMissingRecursion(const Zstring& dirPath) //throw File
     try
     {
         createDirectory(dirPath); //throw FileError, ErrorTargetExisting
-        return true;
+        return;
     }
     catch (FileError&)
     {
         try
         {
             if (getItemType(dirPath) != ItemType::file) //throw FileError
-                return true; //already existing => possible, if createDirectoryIfMissingRecursion() is run in parallel
+                return; //already existing => possible, if createDirectoryIfMissingRecursion() is run in parallel
         }
         catch (FileError&) {} //not yet existing or access error
 
@@ -529,6 +528,11 @@ bool zen::createDirectoryIfMissingRecursion(const Zstring& dirPath) //throw File
 
 void zen::tryCopyDirectoryAttributes(const Zstring& sourcePath, const Zstring& targetPath) //throw FileError
 {
+//do NOT copy attributes for volume root paths which return as: FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM | FILE_ATTRIBUTE_DIRECTORY
+//https://freefilesync.org/forum/viewtopic.php?t=5550
+if (!getParentFolderPath(sourcePath)) //=> root path
+    return;
+
 }
 
 
@@ -549,6 +553,7 @@ void zen::copySymlink(const Zstring& sourcePath, const Zstring& targetPath) //th
     //allow only consistent objects to be created -> don't place before ::symlink(); targetPath may already exist!
     ZEN_ON_SCOPE_FAIL(try { removeSymlinkPlain(targetPath); /*throw FileError*/ }
     catch (FileError&) {});
+    warn_static("log it!")
 
     //file times: essential for syncing a symlink: enforce this! (don't just try!)
     struct stat sourceInfo = {};
@@ -562,16 +567,17 @@ void zen::copySymlink(const Zstring& sourcePath, const Zstring& targetPath) //th
 FileCopyResult zen::copyNewFile(const Zstring& sourceFile, const Zstring& targetFile, //throw FileError, ErrorTargetExisting, (ErrorFileLocked), X
                                 const IoCallback& notifyUnbufferedIO /*throw X*/)
 {
-    int64_t totalUnbufferedIO = 0;
+    int64_t totalBytesNotified = 0;
+    IOCallbackDivider notifyIoDiv(notifyUnbufferedIO, totalBytesNotified);
 
-    FileInput fileIn(sourceFile, IOCallbackDivider(notifyUnbufferedIO, totalUnbufferedIO)); //throw FileError, (ErrorFileLocked -> Windows-only)
+    FileInputPlain fileIn(sourceFile); //throw FileError, (ErrorFileLocked -> Windows-only)
 
-    struct stat sourceInfo = {};
-    if (::fstat(fileIn.getHandle(), &sourceInfo) != 0)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(sourceFile)), "fstat");
+    const struct stat& sourceInfo = fileIn.getStatBuffered(); //throw FileError
 
-    const mode_t mode = sourceInfo.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO); //analog to "cp" which copies "mode" (considering umask) by default
-    //it seems we don't need S_IWUSR, not even for the setFileTime() below! (tested with source file having different user/group!)
+    //analog to "cp" which copies "mode" (considering umask) by default:
+    const mode_t mode = (sourceInfo.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO)) |
+                        S_IWUSR;//macOS: S_IWUSR apparently needed to write extended attributes (see copyfile() function)
+    //Linux: not needed even for the setFileTime() below! (tested with source file having different user/group!)
 
     //=> need copyItemPermissions() only for "chown" and umask-agnostic permissions
     const int fdTarget = ::open(targetFile.c_str(), O_CREAT | O_EXCL | O_WRONLY | O_CLOEXEC, mode);
@@ -586,27 +592,46 @@ FileCopyResult zen::copyNewFile(const Zstring& sourceFile, const Zstring& target
 
         throw FileError(errorMsg, errorDescr);
     }
-    FileOutput fileOut(fdTarget, targetFile, IOCallbackDivider(notifyUnbufferedIO, totalUnbufferedIO)); //pass ownership
+    FileOutputPlain fileOut(fdTarget, targetFile); //pass ownership
 
     //preallocate disk space + reduce fragmentation (perf: no real benefit)
     fileOut.reserveSpace(sourceInfo.st_size); //throw FileError
 
-    bufferedStreamCopy(fileIn, fileOut); //throw FileError, (ErrorFileLocked), X
+    unbufferedStreamCopy([&](void* buffer, size_t bytesToRead)
+    {
+        const size_t bytesRead = fileIn.tryRead(buffer, bytesToRead); //throw FileError, (ErrorFileLocked)
+        notifyIoDiv(bytesRead); //throw X
+        return bytesRead;
+    },
+    fileIn.getBlockSize() /*throw FileError*/,
 
-    //flush intermediate buffers before fiddling with the raw file handle
-    fileOut.flushBuffers(); //throw FileError, X
+    [&](const void* buffer, size_t bytesToWrite)
+    {
+        const size_t bytesWritten = fileOut.tryWrite(buffer, bytesToWrite); //throw FileError
+        notifyIoDiv(bytesWritten); //throw X
+        return bytesWritten;
+    },
+    fileOut.getBlockSize() /*throw FileError*/); //throw FileError, X
 
-    struct stat targetInfo = {};
-    if (::fstat(fileOut.getHandle(), &targetInfo) != 0)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(targetFile)), "fstat");
+#if 0
+    //clean file system cache: needed at all? no user complaints at all!!!
+    //posix_fadvise(POSIX_FADV_DONTNEED) does nothing, unless data was already read from/written to disk: https://insights.oetiker.ch/linux/fadvise/
+    //    => should be "most" of the data at this point => good enough? 
+    if (::posix_fadvise(fileIn.getHandle(), 0 /*offset*/, 0 /*len*/, POSIX_FADV_DONTNEED) != 0) //"len == 0" means "end of the file"
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(sourceFile)), "posix_fadvise(POSIX_FADV_DONTNEED)");
+    if (::posix_fadvise(fileOut.getHandle(), 0 /*offset*/, 0 /*len*/, POSIX_FADV_DONTNEED) != 0) //"len == 0" means "end of the file"
+        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(targetFile)), "posix_fadvise(POSIX_FADV_DONTNEED)");
+#endif
+
+
+    const auto targetFileIdx = fileOut.getStatBuffered().st_ino; //throw FileError
 
     //close output file handle before setting file time; also good place to catch errors when closing stream!
-    fileOut.finalize(); //throw FileError, (X)  essentially a close() since  buffers were already flushed
-
+    fileOut.close(); //throw FileError
     //==========================================================================================================
-    //take fileOut ownership => from this point on, WE are responsible for calling removeFilePlain() on failure!!
+    //take over fileOut ownership => from this point on, WE are responsible for calling removeFilePlain() on failure!!
+    // not needed *currently*! see below: ZEN_ON_SCOPE_FAIL(try { removeFilePlain(targetFile); } catch (FileError&) {});
     //===========================================================================================================
-
     std::optional<FileError> errorModTime;
     try
     {
@@ -622,13 +647,14 @@ FileCopyResult zen::copyNewFile(const Zstring& sourceFile, const Zstring& target
         errorModTime = FileError(e.toString()); //avoid slicing
     }
 
-    FileCopyResult result;
-    result.fileSize = sourceInfo.st_size;
-    result.sourceModTime = sourceInfo.st_mtim;
-    result.sourceFileIdx = sourceInfo.st_ino;
-    result.targetFileIdx = targetInfo.st_ino;
-    result.errorModTime = errorModTime;
-    return result;
+    return
+    {
+        .fileSize = makeUnsigned(sourceInfo.st_size),
+        .sourceModTime = sourceInfo.st_mtim,
+        .sourceFileIdx = sourceInfo.st_ino,
+        .targetFileIdx = targetFileIdx,
+        .errorModTime = errorModTime,
+    };
 }
 
 

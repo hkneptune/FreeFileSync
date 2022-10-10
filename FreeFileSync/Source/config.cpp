@@ -349,32 +349,32 @@ bool readText(const std::string& input, GridIconSize& value)
 
 
 template <> inline
-void writeText(const DeletionPolicy& value, std::string& output)
+void writeText(const DeletionVariant& value, std::string& output)
 {
     switch (value)
     {
-        case DeletionPolicy::permanent:
+        case DeletionVariant::permanent:
             output = "Permanent";
             break;
-        case DeletionPolicy::recycler:
+        case DeletionVariant::recycler:
             output = "RecycleBin";
             break;
-        case DeletionPolicy::versioning:
+        case DeletionVariant::versioning:
             output = "Versioning";
             break;
     }
 }
 
 template <> inline
-bool readText(const std::string& input, DeletionPolicy& value)
+bool readText(const std::string& input, DeletionVariant& value)
 {
     const std::string tmp = trimCpy(input);
     if (tmp == "Permanent")
-        value = DeletionPolicy::permanent;
+        value = DeletionVariant::permanent;
     else if (tmp == "RecycleBin")
-        value = DeletionPolicy::recycler;
+        value = DeletionVariant::recycler;
     else if (tmp == "Versioning")
-        value = DeletionPolicy::versioning;
+        value = DeletionVariant::versioning;
     else
         return false;
     return true;
@@ -970,10 +970,11 @@ void writeStruc(const ConfigFileItem& value, XmlElement& output)
 
     if (value.backColor.IsOk())
     {
-        const auto& [highR, lowR] = hexify(value.backColor.Red  ());
-        const auto& [highG, lowG] = hexify(value.backColor.Green());
-        const auto& [highB, lowB] = hexify(value.backColor.Blue ());
-        output.setAttribute("Color", std::string({highR, lowR, highG, lowG, highB, lowB}));
+        assert(value.backColor.Alpha() == 255);
+        const auto& [rh, rl] = hexify(value.backColor.Red  ());
+        const auto& [gh, gl] = hexify(value.backColor.Green());
+        const auto& [bh, bl] = hexify(value.backColor.Blue ());
+        output.setAttribute("Color", std::string({rh, rl, gh, gl, bh, bl}));
     }
 }
 
@@ -1033,7 +1034,7 @@ void readConfig(const XmlIn& in, SyncConfig& syncCfg, std::map<AfsDevice, size_t
 {
     readConfig(in, syncCfg.directionCfg);
 
-    in["DeletionPolicy"  ](syncCfg.handleDeletion);
+    in["DeletionPolicy"  ](syncCfg.deletionVariant);
     in["VersioningFolder"](syncCfg.versioningFolderPhrase);
 
     if (formatVer < 12) //TODO: remove if parameter migration after some time! 2018-06-21
@@ -1517,7 +1518,6 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
         inOpt["WarnSignificantDifference"       ].attribute("Enabled", cfg.warnDlgs.warnSignificantDifference);
         inOpt["WarnRecycleBinNotAvailable"      ].attribute("Enabled", cfg.warnDlgs.warnRecyclerMissing);
         inOpt["WarnInputFieldEmpty"             ].attribute("Enabled", cfg.warnDlgs.warnInputFieldEmpty);
-        inOpt["WarnModificationTimeError"       ].attribute("Enabled", cfg.warnDlgs.warnModificationTimeError);
         inOpt["WarnDependentFolderPair"         ].attribute("Enabled", cfg.warnDlgs.warnDependentFolderPair);
         inOpt["WarnDependentBaseFolders"        ].attribute("Enabled", cfg.warnDlgs.warnDependentBaseFolders);
         inOpt["WarnDirectoryLockFailed"         ].attribute("Enabled", cfg.warnDlgs.warnDirectoryLockFailed);
@@ -1540,7 +1540,6 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
         inOpt["WarnSignificantDifference"     ].attribute("Show", cfg.warnDlgs.warnSignificantDifference);
         inOpt["WarnRecycleBinNotAvailable"    ].attribute("Show", cfg.warnDlgs.warnRecyclerMissing);
         inOpt["WarnInputFieldEmpty"           ].attribute("Show", cfg.warnDlgs.warnInputFieldEmpty);
-        inOpt["WarnModificationTimeError"     ].attribute("Show", cfg.warnDlgs.warnModificationTimeError);
         inOpt["WarnDependentFolderPair"       ].attribute("Show", cfg.warnDlgs.warnDependentFolderPair);
         inOpt["WarnDependentBaseFolders"      ].attribute("Show", cfg.warnDlgs.warnDependentBaseFolders);
         inOpt["WarnDirectoryLockFailed"       ].attribute("Show", cfg.warnDlgs.warnDirectoryLockFailed);
@@ -2049,6 +2048,7 @@ std::pair<ConfigType, std::wstring /*warningMsg*/> parseConfig(const XmlDoc& doc
         if (formatVer < currentXmlFormatVer)
             try { fff::writeConfig(cfg, filePath); /*throw FileError*/ }
             catch (FileError&) { assert(false); } //don't bother user!
+        warn_static("at least log on failure!")
     }
     catch (const FileError& e) { warningMsg = e.toString(); }
 
@@ -2131,7 +2131,8 @@ std::pair<XmlGuiConfig, std::wstring /*warningMsg*/> fff::readAnyConfig(const st
                 warningMsgAll += warningMsg + L"\n\n";
         }
         else
-            throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)));
+            throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)),
+                            _("Unexpected file extension:") + L' ' + fmtPath(getFileExtension(filePath)));
     }
     cfg.mainCfg = merge(mainCfgs);
 
@@ -2173,7 +2174,7 @@ void writeConfig(const SyncConfig& syncCfg, const std::map<AfsDevice, size_t>& d
 {
     writeConfig(syncCfg.directionCfg, out);
 
-    out["DeletionPolicy"  ](syncCfg.handleDeletion);
+    out["DeletionPolicy"  ](syncCfg.deletionVariant);
     out["VersioningFolder"](syncCfg.versioningFolderPhrase);
 
     const size_t parallelOps = getDeviceParallelOps(deviceParallelOps, syncCfg.versioningFolderPhrase);
@@ -2340,7 +2341,6 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
     outOpt["WarnSignificantDifference"     ].attribute("Show", cfg.warnDlgs.warnSignificantDifference);
     outOpt["WarnRecycleBinNotAvailable"    ].attribute("Show", cfg.warnDlgs.warnRecyclerMissing);
     outOpt["WarnInputFieldEmpty"           ].attribute("Show", cfg.warnDlgs.warnInputFieldEmpty);
-    outOpt["WarnModificationTimeError"     ].attribute("Show", cfg.warnDlgs.warnModificationTimeError);
     outOpt["WarnDependentFolderPair"       ].attribute("Show", cfg.warnDlgs.warnDependentFolderPair);
     outOpt["WarnDependentBaseFolders"      ].attribute("Show", cfg.warnDlgs.warnDependentBaseFolders);
     outOpt["WarnDirectoryLockFailed"       ].attribute("Show", cfg.warnDlgs.warnDirectoryLockFailed);

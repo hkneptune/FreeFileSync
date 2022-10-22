@@ -29,6 +29,45 @@ using namespace zen;
 
 namespace
 {
+
+
+std::pair<Zstring, ItemType> getExistingPath(const Zstring& itemPath) //throw FileError
+{
+    try
+    {
+        return {itemPath, getItemType(itemPath)}; //throw FileError
+    }
+    catch (const FileError& e) //not existing or access error
+    {
+        const std::optional<Zstring> parentPath = getParentFolderPath(itemPath);
+        if (!parentPath) //device root
+            throw;
+        //else: let's dig deeper... don't bother checking Win32 codes; e.g. not existing item may have the codes:
+        //  ERROR_FILE_NOT_FOUND, ERROR_PATH_NOT_FOUND, ERROR_INVALID_NAME, ERROR_INVALID_DRIVE,
+        //  ERROR_NOT_READY, ERROR_INVALID_PARAMETER, ERROR_BAD_PATHNAME, ERROR_BAD_NETPATH => not reliable
+
+        auto [existingPath, existingType] = getExistingPath(*parentPath); //throw FileError
+
+        if (existingPath == *parentPath && existingType != ItemType::file /*obscure, but possible (and not an error)*/)
+            try
+            {
+                const Zstring itemName = afterLast(itemPath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
+                assert(!itemName.empty());
+
+                traverseFolder(*parentPath,
+                [&](const    FileInfo& fi) { if (fi.itemName == itemName) throw ItemType::file;    }, //case-sensitive! itemPath must be normalized!
+                [&](const  FolderInfo& fi) { if (fi.itemName == itemName) throw ItemType::folder;  },
+                [&](const SymlinkInfo& si) { if (si.itemName == itemName) throw ItemType::symlink; },
+                [](const std::wstring& errorMsg) { throw FileError(errorMsg); });
+            }
+            catch (const ItemType&) //finding the item after getItemType() previously failed is exceptional
+            {
+                throw FileError(_("Temporary access error:") + L' ' + e.toString());
+            }
+
+        return {std::move(existingPath), existingType};
+    }
+}
 }
 
 
@@ -48,39 +87,11 @@ ItemType zen::getItemType(const Zstring& itemPath) //throw FileError
 
 std::optional<ItemType> zen::itemStillExists(const Zstring& itemPath) //throw FileError
 {
-    try
-    {
-        return getItemType(itemPath); //throw FileError
-    }
-    catch (const FileError& e) //not existing or access error
-    {
-        const std::optional<Zstring> parentPath = getParentFolderPath(itemPath);
-        if (!parentPath) //device root
-            throw;
-        //else: let's dig deeper... don't bother checking Win32 codes; e.g. not existing item may have the codes:
-        //  ERROR_FILE_NOT_FOUND, ERROR_PATH_NOT_FOUND, ERROR_INVALID_NAME, ERROR_INVALID_DRIVE,
-        //  ERROR_NOT_READY, ERROR_INVALID_PARAMETER, ERROR_BAD_PATHNAME, ERROR_BAD_NETPATH => not reliable
-
-        const Zstring itemName = afterLast(itemPath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
-        assert(!itemName.empty());
-
-        const std::optional<ItemType> parentType = itemStillExists(*parentPath); //throw FileError
-
-        if (parentType && *parentType != ItemType::file /*obscure, but possible (and not an error)*/)
-            try
-            {
-                traverseFolder(*parentPath,
-                [&](const    FileInfo& fi) { if (fi.itemName == itemName) throw ItemType::file;    }, //case-sensitive! itemPath must be normalized!
-                [&](const  FolderInfo& fi) { if (fi.itemName == itemName) throw ItemType::folder;  },
-                [&](const SymlinkInfo& si) { if (si.itemName == itemName) throw ItemType::symlink; },
-                [](const std::wstring& errorMsg) { throw FileError(errorMsg); });
-            }
-            catch (const ItemType&) //finding the item after getItemType() previously failed is exceptional
-            {
-                throw FileError(_("Temporary access error:") + L' ' + e.toString());
-            }
+    const auto& [existingPath, existingType] = getExistingPath(itemPath); //throw FileError
+    if (existingPath == itemPath)
+        return existingType;
+    else
         return {};
-    }
 }
 
 
@@ -109,18 +120,29 @@ namespace
 }
 
 
-int64_t zen::getFreeDiskSpace(const Zstring& path) //throw FileError, returns < 0 if not available
+//- symlink handling: follow
+//- returns < 0 if not available
+//- folderPath does not need to exist (yet)
+int64_t zen::getFreeDiskSpace(const Zstring& folderPath) //throw FileError
 {
-    struct statfs info = {};
-    if (::statfs(path.c_str(), &info) != 0) //follows symlinks!
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot determine free disk space for %x."), L"%x", fmtPath(path)), "statfs");
-    //Linux: "Fields that are undefined for a particular file system are set to 0."
-    //macOS: "Fields that are undefined for a particular file system are set to -1." - mkay :>
-    if (makeSigned(info.f_bsize)  <= 0 ||
-        makeSigned(info.f_bavail) <= 0)
-        return -1;
+    const auto& [existingPath, existingType] = getExistingPath(folderPath); //throw FileError
 
-    return static_cast<int64_t>(info.f_bsize) * info.f_bavail;
+    warn_static("what if existingType is symlink?")
+
+    try
+    {
+        struct statfs info = {};
+        if (::statfs(existingPath.c_str(), &info) != 0) //follows symlinks!
+            THROW_LAST_SYS_ERROR("statfs");
+        //Linux: "Fields that are undefined for a particular file system are set to 0."
+        //macOS: "Fields that are undefined for a particular file system are set to -1." - mkay :>
+        if (makeSigned(info.f_bsize)  <= 0 ||
+            makeSigned(info.f_bavail) <= 0)
+            return -1;
+
+        return static_cast<int64_t>(info.f_bsize) * info.f_bavail;
+    }
+    catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot determine free disk space for %x."), L"%x", fmtPath(folderPath)), e.toString()); }
 }
 
 
@@ -528,10 +550,10 @@ void zen::createDirectoryIfMissingRecursion(const Zstring& dirPath) //throw File
 
 void zen::tryCopyDirectoryAttributes(const Zstring& sourcePath, const Zstring& targetPath) //throw FileError
 {
-//do NOT copy attributes for volume root paths which return as: FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM | FILE_ATTRIBUTE_DIRECTORY
-//https://freefilesync.org/forum/viewtopic.php?t=5550
-if (!getParentFolderPath(sourcePath)) //=> root path
-    return;
+    //do NOT copy attributes for volume root paths which return as: FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM | FILE_ATTRIBUTE_DIRECTORY
+    //https://freefilesync.org/forum/viewtopic.php?t=5550
+    if (!getParentFolderPath(sourcePath)) //=> root path
+        return;
 
 }
 
@@ -616,7 +638,7 @@ FileCopyResult zen::copyNewFile(const Zstring& sourceFile, const Zstring& target
 #if 0
     //clean file system cache: needed at all? no user complaints at all!!!
     //posix_fadvise(POSIX_FADV_DONTNEED) does nothing, unless data was already read from/written to disk: https://insights.oetiker.ch/linux/fadvise/
-    //    => should be "most" of the data at this point => good enough? 
+    //    => should be "most" of the data at this point => good enough?
     if (::posix_fadvise(fileIn.getHandle(), 0 /*offset*/, 0 /*len*/, POSIX_FADV_DONTNEED) != 0) //"len == 0" means "end of the file"
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(sourceFile)), "posix_fadvise(POSIX_FADV_DONTNEED)");
     if (::posix_fadvise(fileOut.getHandle(), 0 /*offset*/, 0 /*len*/, POSIX_FADV_DONTNEED) != 0) //"len == 0" means "end of the file"

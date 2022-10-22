@@ -188,7 +188,8 @@ void Application::onEnterEventLoop(wxEvent& event)
                     if (fileAvailable(filePath + ext))
                         filePath += ext;
 #endif
-            if (endsWithAsciiNoCase(filePath, Zstr(".ffs_real")))
+            if (endsWithAsciiNoCase(filePath, Zstr(".ffs_real")) ||
+                endsWithAsciiNoCase(filePath, Zstr(".ffs_batch")))
                 commandArgs.push_back(filePath);
             else
                 throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)),

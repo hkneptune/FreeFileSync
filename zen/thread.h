@@ -122,7 +122,7 @@ private:
 //------------------------------------------------------------------------------------------
 
 //value associated with mutex and guaranteed protected access:
-//TODO: use std::synchronized_value when available http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/p0290r2.html
+//TODO: use std::synchronized_value when available https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#Rconc-mutex
 template <class T>
 class Protected
 {

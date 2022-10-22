@@ -84,7 +84,6 @@ public:
                 std::vector<CurlOption> extraOptions {{CURLOPT_USERAGENT, userAgent.c_str()}};
                 //CURLOPT_FOLLOWLOCATION already off by default :)
 
-
                 std::function<size_t(std::span<char> buf)> readRequest;
                 if (postBuf)
                 {

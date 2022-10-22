@@ -192,7 +192,7 @@ public:
 private:
     MainConfiguration getMainConfig() const override { return mainDlg_.getConfig().mainCfg; }
     wxWindow*         getParentWindow() override { return &mainDlg_; }
-    std::unique_ptr<FilterConfig>& getFilterCfgOnClipboardRef() override { return mainDlg_.filterCfgOnClipboard_; }
+    std::optional<FilterConfig>& getFilterCfgOnClipboardRef() override { return mainDlg_.filterCfgOnClipboard_; }
 
     void onLocalCompCfgChange  () override { mainDlg_.applyCompareConfig(false /*setDefaultViewType*/); }
     void onLocalSyncCfgChange  () override { mainDlg_.applySyncDirections(); }
@@ -1926,7 +1926,23 @@ void MainDialog::enableGuiElements()
 
 void MainDialog::onResizeTopButtonPanel(wxEvent& event)
 {
-    //TODO: shrink icons when out of space!?
+    const double horizontalWeight = 0.3;
+    const int newOrientation = m_panelTopButtons->GetSize().GetWidth() * horizontalWeight >
+                               m_panelTopButtons->GetSize().GetHeight() ? wxHORIZONTAL : wxVERTICAL; //check window, NOT sizer width!
+
+    assert(m_buttonCompare->GetContainingSizer()->GetItem(static_cast<size_t>(0))->IsSpacer());
+
+    if (bSizerTopButtons->GetOrientation() != newOrientation)
+    {
+        bSizerTopButtons->SetOrientation(newOrientation);
+
+        m_buttonCompare->GetContainingSizer()->GetItem(static_cast<size_t>(0))->SetProportion(newOrientation == wxHORIZONTAL ? 1 : 0);
+        m_buttonCancel ->GetContainingSizer()->GetItem(m_buttonCancel)        ->SetProportion(newOrientation == wxHORIZONTAL ? 0 : 1);
+        m_buttonCompare->GetContainingSizer()->GetItem(m_buttonCompare)       ->SetProportion(newOrientation == wxHORIZONTAL ? 0 : 1);
+        m_buttonSync   ->GetContainingSizer()->GetItem(m_buttonSync)          ->SetProportion(newOrientation == wxHORIZONTAL ? 0 : 1);
+
+        m_panelTopButtons->Layout();
+    }
     event.Skip();
 }
 
@@ -1935,7 +1951,7 @@ void MainDialog::onResizeConfigPanel(wxEvent& event)
 {
     const double horizontalWeight = 0.75;
     const int newOrientation = m_panelConfig->GetSize().GetWidth() * horizontalWeight >
-                               m_panelConfig->GetSize().GetHeight() ? wxHORIZONTAL : wxVERTICAL; //check window NOT sizer width!
+                               m_panelConfig->GetSize().GetHeight() ? wxHORIZONTAL : wxVERTICAL; //check window, NOT sizer width!
     if (bSizerConfig->GetOrientation() != newOrientation)
     {
         //hide button labels for horizontal layout
@@ -1957,12 +1973,12 @@ void MainDialog::onResizeConfigPanel(wxEvent& event)
 void MainDialog::onResizeViewPanel(wxEvent& event)
 {
     const int newOrientation = m_panelViewFilter->GetSize().GetWidth() >
-                               m_panelViewFilter->GetSize().GetHeight() ? wxHORIZONTAL : wxVERTICAL; //check window NOT sizer width!
+                               m_panelViewFilter->GetSize().GetHeight() ? wxHORIZONTAL : wxVERTICAL; //check window, NOT sizer width!
     if (bSizerViewFilter->GetOrientation() != newOrientation)
     {
-        bSizerStatistics->SetOrientation(newOrientation);
+        bSizerStatistics ->SetOrientation(newOrientation);
         bSizerViewButtons->SetOrientation(newOrientation);
-        bSizerViewFilter->SetOrientation(newOrientation);
+        bSizerViewFilter ->SetOrientation(newOrientation);
 
         //apply opposite orientation for child sizers
         const int childOrient = newOrientation == wxHORIZONTAL ? wxVERTICAL : wxHORIZONTAL;
@@ -1975,7 +1991,6 @@ void MainDialog::onResizeViewPanel(wxEvent& event)
         m_panelViewFilter->Layout();
         m_panelStatistics->Layout();
     }
-
     event.Skip();
 }
 
@@ -4040,28 +4055,30 @@ void MainDialog::showConfigDialog(SyncConfigPanel panelToShow, int localPairInde
 
 void MainDialog::onGlobalFilterContext(wxEvent& event)
 {
-    auto clearFilter = [&]
+    auto cutFilter = [&]
     {
-        currentCfg_.mainCfg.globalFilter = FilterConfig();
-        updateGlobalFilterButton(); //refresh global filter icon
-        applyFilterConfig(); //re-apply filter
+        filterCfgOnClipboard_ = std::exchange(currentCfg_.mainCfg.globalFilter, FilterConfig());
+        updateGlobalFilterButton();
+        applyFilterConfig();
     };
-    auto copyFilter  = [&] { filterCfgOnClipboard_ = std::make_unique<FilterConfig>(currentCfg_.mainCfg.globalFilter); };
+
+    auto copyFilter = [&] { filterCfgOnClipboard_ = currentCfg_.mainCfg.globalFilter; };
+
     auto pasteFilter = [&]
     {
         if (filterCfgOnClipboard_)
         {
             currentCfg_.mainCfg.globalFilter = *filterCfgOnClipboard_;
-            updateGlobalFilterButton(); //refresh global filter icon
-            applyFilterConfig(); //re-apply filter
+            updateGlobalFilterButton();
+            applyFilterConfig();
         }
     };
 
     ContextMenu menu;
-    menu.addItem( _("Clear filter"), clearFilter, wxNullImage, !isNullFilter(currentCfg_.mainCfg.globalFilter));
+    menu.addItem( _("Cut"), cutFilter, wxNullImage, !isNullFilter(currentCfg_.mainCfg.globalFilter));
     menu.addSeparator();
-    menu.addItem( _("Copy"),  copyFilter,  wxNullImage, !isNullFilter(currentCfg_.mainCfg.globalFilter));
-    menu.addItem( _("Paste"), pasteFilter, wxNullImage, filterCfgOnClipboard_.get() != nullptr);
+    menu.addItem( _("Copy"), copyFilter, wxNullImage, !isNullFilter(currentCfg_.mainCfg.globalFilter));
+    menu.addItem( _("Paste"), pasteFilter, wxNullImage, filterCfgOnClipboard_.has_value());
 
     menu.popup(*m_bpButtonFilterContext, {m_bpButtonFilterContext->GetSize().x, 0});
 }

@@ -28,7 +28,7 @@ const int FAT_FILE_TIME_PRECISION_SEC = 2; //https://devblogs.microsoft.com/oldn
 using FileIndex = ino_t;
 using FileTimeNative = timespec;
 
-inline time_t nativeFileTimeToTimeT(const timespec& ft) { return ft.tv_sec; } //follow Windows Explorer and always round down!
+inline time_t nativeFileTimeToTimeT(const timespec& ft) { return ft.tv_sec; } //follow Windows Explorer: always round down!
 inline timespec timetToNativeFileTime(time_t utcTime) { return {.tv_sec = utcTime}; }
 
 enum class ItemType
@@ -51,8 +51,13 @@ enum class ProcSymlink
 };
 void setFileTime(const Zstring& filePath, time_t modTime, ProcSymlink procSl); //throw FileError
 
+
+int64_t getFreeDiskSpace(const Zstring& folderPath); //throw FileError, returns < 0 if not available
+//- symlink handling: follow
+//- returns < 0 if not available
+//- folderPath does not need to exist (yet)
+
 //symlink handling: follow
-int64_t getFreeDiskSpace(const Zstring& path); //throw FileError, returns < 0 if not available
 uint64_t getFileSize(const Zstring& filePath); //throw FileError
 
 //get per-user directory designated for temporary files:

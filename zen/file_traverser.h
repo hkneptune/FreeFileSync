@@ -36,10 +36,10 @@ struct SymlinkInfo
 //- non-recursive
 //- directory path may end with PATH_SEPARATOR
 void traverseFolder(const Zstring& dirPath, //noexcept
-                    const std::function<void (const FileInfo&    fi)>& onFile,          //
-                    const std::function<void (const FolderInfo&  fi)>& onFolder,        //optional
-                    const std::function<void (const SymlinkInfo& si)>& onSymlink,       //
-                    const std::function<void (const std::wstring& errorMsg)>& onError); //
+                    const std::function<void(const FileInfo&    fi)>& onFile,          //
+                    const std::function<void(const FolderInfo&  fi)>& onFolder,        //optional
+                    const std::function<void(const SymlinkInfo& si)>& onSymlink,       //
+                    const std::function<void(const std::wstring& errorMsg)>& onError); //
 }
 
 #endif //FILER_TRAVERSER_H_127463214871234

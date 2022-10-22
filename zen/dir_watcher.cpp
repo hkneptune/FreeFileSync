@@ -35,7 +35,7 @@ DirWatcher::DirWatcher(const Zstring& dirPath) : //throw FileError
     //get all subdirectories
     std::vector<Zstring> fullFolderList {baseDirPath_};
     {
-        std::function<void (const Zstring& path)> traverse;
+        std::function<void(const Zstring& path)> traverse;
 
         traverse = [&traverse, &fullFolderList](const Zstring& path)
         {

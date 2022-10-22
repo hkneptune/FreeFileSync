@@ -109,8 +109,8 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     static bool createFolderIfMissingRecursion(const AbstractPath& folderPath); //throw FileError
 
     static void removeFolderIfExistsRecursion(const AbstractPath& folderPath, //throw FileError
-                                              const std::function<void (const std::wstring& displayPath)>& onBeforeFileDeletion /*throw X*/, //optional
-                                              const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion)           //one call for each object!
+                                              const std::function<void(const std::wstring& displayPath)>& onBeforeFileDeletion /*throw X*/, //optional
+                                              const std::function<void(const std::wstring& displayPath)>& onBeforeFolderDeletion)           //one call for each object!
     { return folderPath.afsDevice.ref().removeFolderIfExistsRecursion(folderPath.afsPath, onBeforeFileDeletion, onBeforeFolderDeletion); }
 
     static void removeFileIfExists       (const AbstractPath& filePath);   //
@@ -248,9 +248,9 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     static void traverseFolderRecursive(const AfsDevice& afsDevice, const TraverserWorkload& workload /*throw X*/, size_t parallelOps) { afsDevice.ref().traverseFolderRecursive(workload, parallelOps); }
 
     static void traverseFolderFlat(const AbstractPath& folderPath, //throw FileError
-                                   const std::function<void (const FileInfo&    fi)>& onFile,    //
-                                   const std::function<void (const FolderInfo&  fi)>& onFolder,  //optional
-                                   const std::function<void (const SymlinkInfo& si)>& onSymlink) //
+                                   const std::function<void(const FileInfo&    fi)>& onFile,    //
+                                   const std::function<void(const FolderInfo&  fi)>& onFolder,  //optional
+                                   const std::function<void(const SymlinkInfo& si)>& onSymlink) //
     { folderPath.afsDevice.ref().traverseFolderFlat(folderPath.afsPath, onFile, onFolder, onSymlink); }
     //----------------------------------------------------------------------------------------------------------------
 
@@ -293,7 +293,9 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
 
     //----------------------------------------------------------------------------------------------------------------
 
-    static int64_t getFreeDiskSpace(const AbstractPath& folderPath) { return folderPath.afsDevice.ref().getFreeDiskSpace(folderPath.afsPath); } //throw FileError, returns < 0 if not available
+    //- returns < 0 if not available
+    //- folderPath does not need to exist (yet)
+    static int64_t getFreeDiskSpace(const AbstractPath& folderPath) { return folderPath.afsDevice.ref().getFreeDiskSpace(folderPath.afsPath); } //throw FileError
 
     struct RecycleSession
     {
@@ -306,7 +308,7 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
         //- multi-threaded access: internally synchronized!
         virtual void moveToRecycleBin(const AbstractPath& itemPath, const Zstring& logicalRelPath) = 0; //throw FileError, RecycleBinUnavailable
 
-        virtual void tryCleanup(const std::function<void (const std::wstring& displayPath)>& notifyDeletionStatus /*throw X*; displayPath may be empty*/) = 0; //throw FileError, X
+        virtual void tryCleanup(const std::function<void(const std::wstring& displayPath)>& notifyDeletionStatus /*throw X*; displayPath may be empty*/) = 0; //throw FileError, X
     };
 
     //return value always bound!
@@ -330,13 +332,13 @@ protected:
 
     //default implementation: folder traversal
     virtual void removeFolderIfExistsRecursion(const AfsPath& folderPath, //throw FileError
-                                               const std::function<void (const std::wstring& displayPath)>& onBeforeFileDeletion,              //optional
-                                               const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion) const = 0; //one call for each object!
+                                               const std::function<void(const std::wstring& displayPath)>& onBeforeFileDeletion,              //optional
+                                               const std::function<void(const std::wstring& displayPath)>& onBeforeFolderDeletion) const = 0; //one call for each object!
 
     void traverseFolderFlat(const AfsPath& folderPath, //throw FileError
-                            const std::function<void (const FileInfo&    fi)>& onFile,           //
-                            const std::function<void (const FolderInfo&  fi)>& onFolder,         //optional
-                            const std::function<void (const SymlinkInfo& si)>& onSymlink) const; //
+                            const std::function<void(const FileInfo&    fi)>& onFile,           //
+                            const std::function<void(const FolderInfo&  fi)>& onFolder,         //optional
+                            const std::function<void(const SymlinkInfo& si)>& onSymlink) const; //
 
     //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
     FileCopyResult copyFileAsStream(const AfsPath& sourcePath, const StreamAttributes& attrSource, //throw FileError, ErrorFileLocked, X

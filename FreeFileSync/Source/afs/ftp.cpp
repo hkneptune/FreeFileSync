@@ -2063,11 +2063,12 @@ private:
         if (!parentAfsPath) //device root
             return getItemType(itemPath); //throw FileError; do a simple access test
 
-        const Zstring itemName = getItemName(itemPath);
-        assert(!itemName.empty());
         try
         {
-            traverseFolderFlat(*parentAfsPath, //throw FileError
+        const Zstring itemName = getItemName(itemPath);
+        assert(!itemName.empty());
+
+        traverseFolderFlat(*parentAfsPath, //throw FileError
             [&](const    FileInfo& fi) { if (fi.itemName == itemName) throw ItemType::file;    },
             [&](const  FolderInfo& fi) { if (fi.itemName == itemName) throw ItemType::folder;  },
             [&](const SymlinkInfo& si) { if (si.itemName == itemName) throw ItemType::symlink; });
@@ -2163,8 +2164,8 @@ private:
     }
 
     void removeFolderIfExistsRecursion(const AfsPath& folderPath, //throw FileError
-                                       const std::function<void (const std::wstring& displayPath)>& onBeforeFileDeletion /*throw X*/, //optional
-                                       const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion) const override //one call for each object!
+                                       const std::function<void(const std::wstring& displayPath)>& onBeforeFileDeletion /*throw X*/, //optional
+                                       const std::function<void(const std::wstring& displayPath)>& onBeforeFolderDeletion) const override //one call for each object!
     {
         //default implementation: folder traversal
         AFS::removeFolderIfExistsRecursion(folderPath, onBeforeFileDeletion, onBeforeFolderDeletion); //throw FileError, X

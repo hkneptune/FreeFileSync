@@ -247,7 +247,7 @@ void cutPoints(std::vector<CurvePoint>& curvePoints, std::vector<unsigned char>&
 
     auto savePoint = [&](const CurvePoint& pt, bool markedOob) { curvePointsTmp.push_back(pt); oobMarkerTmp.push_back(markedOob); };
 
-    bool pointInside = isInside(curvePoints[0]);
+     bool pointInside = isInside(curvePoints[0]);
     if (pointInside)
         savePoint(curvePoints[0], isMarkedOob(0));
 
@@ -282,7 +282,8 @@ void cutPoints(std::vector<CurvePoint>& curvePoints, std::vector<unsigned char>&
 
 struct GetIntersectionX
 {
-    GetIntersectionX(double x) : x_(x) {}
+    explicit GetIntersectionX(double x) : x_(x) {}
+    
     CurvePoint operator()(const CurvePoint& from, const CurvePoint& to) const
     {
         const double deltaX = to.x - from.x;
@@ -296,7 +297,8 @@ private:
 
 struct GetIntersectionY
 {
-    GetIntersectionY(double y) : y_(y) {}
+    explicit GetIntersectionY(double y) : y_(y) {}
+
     CurvePoint operator()(const CurvePoint& from, const CurvePoint& to) const
     {
         const double deltaX = to.x - from.x;
@@ -524,7 +526,7 @@ void Graph2D::addCurve(const SharedRef<CurveData>& data, const CurveAttributes& 
 void Graph2D::render(wxDC& dc) const
 {
     //set label font right at the start so that it is considered by wxDC::GetTextExtent() below!
-    dc.SetFont(labelFont_);
+    dc.SetFont(GetFont());
 
     const wxRect clientRect = GetClientRect(); //DON'T use wxDC::GetSize()! DC may be larger than visible area!
 
@@ -634,11 +636,11 @@ void Graph2D::render(wxDC& dc) const
 
                 if (!attr_.minY || !attr_.maxY)
                 {
-                    auto itPair = std::minmax_element(points.begin(), points.end(), [](const CurvePoint& lhs, const CurvePoint& rhs) { return lhs.y < rhs.y; });
+                    const auto& [itMin, itMax] = std::minmax_element(points.begin(), points.end(), [](const CurvePoint& lhs, const CurvePoint& rhs) { return lhs.y < rhs.y; });
                     if (!attr_.minY)
-                        minY = std::min(minY, itPair.first->y);
+                        minY = std::min(minY, itMin->y);
                     if (!attr_.maxY)
-                        maxY = std::max(maxY, itPair.second->y);
+                        maxY = std::max(maxY, itMax->y);
                 }
             }
         }

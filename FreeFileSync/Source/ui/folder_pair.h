@@ -28,20 +28,7 @@ template <class GuiPanel>
 class FolderPairPanelBasic : private wxEvtHandler
 {
 public:
-    void setConfig(const std::optional<CompConfig>& compConfig, const std::optional<SyncConfig>& syncCfg, const FilterConfig& filter)
-    {
-        localCmpCfg_  = compConfig;
-        localSyncCfg_ = syncCfg;
-        localFilter_  = filter;
-        refreshButtons();
-    }
-
-    std::optional<CompConfig> getCompConfig  () const { return localCmpCfg_;  }
-    std::optional<SyncConfig> getSyncConfig  () const { return localSyncCfg_; }
-    FilterConfig              getFilterConfig() const { return localFilter_;  }
-
-
-    FolderPairPanelBasic(GuiPanel& basicPanel) : //takes reference on basic panel to be enhanced
+    explicit FolderPairPanelBasic(GuiPanel& basicPanel) : //takes reference on basic panel to be enhanced
         basicPanel_(basicPanel)
     {
         using namespace zen;
@@ -53,6 +40,19 @@ public:
 
         setImage(*basicPanel_.m_bpButtonRemovePair, loadImage("item_remove"));
     }
+
+
+    void setConfig(const std::optional<CompConfig>& compConfig, const std::optional<SyncConfig>& syncCfg, const FilterConfig& filter)
+    {
+        localCmpCfg_  = compConfig;
+        localSyncCfg_ = syncCfg;
+        localFilter_  = filter;
+        refreshButtons();
+    }
+
+    std::optional<CompConfig> getCompConfig  () const { return localCmpCfg_;  }
+    std::optional<SyncConfig> getSyncConfig  () const { return localSyncCfg_; }
+    FilterConfig              getFilterConfig() const { return localFilter_;  }
 
 private:
     void refreshButtons()
@@ -105,16 +105,17 @@ private:
 
     void onLocalFilterCfgContext(wxEvent& event)
     {
-        auto removeLocalFilterCfg = [&]
+        std::optional<FilterConfig>& filterCfgOnClipboard = getFilterCfgOnClipboardRef();
+
+        auto cutFilter = [&]
         {
-            this->localFilter_ = FilterConfig();
+            filterCfgOnClipboard = std::exchange(this->localFilter_, FilterConfig());
             this->refreshButtons();
             this->onLocalFilterCfgChange();
         };
 
-        std::unique_ptr<FilterConfig>& filterCfgOnClipboard = getFilterCfgOnClipboardRef();
+        auto copyFilter = [&] { filterCfgOnClipboard = this->localFilter_; };
 
-        auto copyFilter  = [&] { filterCfgOnClipboard = std::make_unique<FilterConfig>(this->localFilter_); };
         auto pasteFilter = [&]
         {
             if (filterCfgOnClipboard)
@@ -126,17 +127,17 @@ private:
         };
 
         zen::ContextMenu menu;
-        menu.addItem(_("Clear local filter"), removeLocalFilterCfg, wxNullImage, !isNullFilter(localFilter_));
+        menu.addItem( _("Cut"), cutFilter, wxNullImage, !isNullFilter(localFilter_));
         menu.addSeparator();
-        menu.addItem( _("Copy"),  copyFilter,  wxNullImage, !isNullFilter(localFilter_));
-        menu.addItem( _("Paste"), pasteFilter, wxNullImage, filterCfgOnClipboard.get() != nullptr);
+        menu.addItem( _("Copy"), copyFilter, wxNullImage, !isNullFilter(localFilter_));
+        menu.addItem( _("Paste"), pasteFilter, wxNullImage, filterCfgOnClipboard.has_value());
         menu.popup(*basicPanel_.m_bpButtonLocalFilter, {basicPanel_.m_bpButtonLocalFilter->GetSize().x, 0});
     }
 
 
     virtual MainConfiguration getMainConfig() const = 0;
     virtual wxWindow* getParentWindow() = 0;
-    virtual std::unique_ptr<FilterConfig>& getFilterCfgOnClipboardRef() = 0;
+    virtual std::optional<FilterConfig>& getFilterCfgOnClipboardRef() = 0;
 
     virtual void onLocalCompCfgChange  () = 0;
     virtual void onLocalSyncCfgChange  () = 0;

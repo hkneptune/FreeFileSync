@@ -15,10 +15,10 @@ using namespace zen;
 
 
 void zen::traverseFolder(const Zstring& dirPath,
-                         const std::function<void (const FileInfo&    fi)>& onFile,
-                         const std::function<void (const FolderInfo&  fi)>& onFolder,
-                         const std::function<void (const SymlinkInfo& si)>& onSymlink,
-                         const std::function<void (const std::wstring& errorMsg)>& onError)
+                         const std::function<void(const FileInfo&    fi)>& onFile,
+                         const std::function<void(const FolderInfo&  fi)>& onFolder,
+                         const std::function<void(const SymlinkInfo& si)>& onSymlink,
+                         const std::function<void(const std::wstring& errorMsg)>& onError)
 {
     try
     {

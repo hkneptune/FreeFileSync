@@ -640,7 +640,7 @@ void getPathRaceCondition(const BaseFolderPair& baseFolderP, const BaseFolderPai
 //#################################################################################################################
 
 warn_static("review: does flushFileBuffers() make sense?")
-//https://stackoverflow.com/questions/67620715/how-to-flush-buffered-data-after-copyfileex
+//https://devblogs.microsoft.com/oldnewthing/20221007-00/?p=107261
 
 //--------------------- data verification -------------------------
 void flushFileBuffers(const Zstring& nativeFilePath) //throw FileError
@@ -731,8 +731,8 @@ std::unique_ptr<AFS::RecycleSession> createRecyclerSession(const AbstractPath& f
 //--------------------------------------------------------------
 inline
 void removeFolderIfExistsRecursion(const AbstractPath& folderPath, //throw FileError
-                                   const std::function<void (const std::wstring& displayPath)>& onBeforeFileDeletion, //optional
-                                   const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion, //one call for each object!
+                                   const std::function<void(const std::wstring& displayPath)>& onBeforeFileDeletion, //optional
+                                   const std::function<void(const std::wstring& displayPath)>& onBeforeFolderDeletion, //one call for each object!
                                    std::mutex& singleThread)
 { parallelScope([folderPath, onBeforeFileDeletion, onBeforeFolderDeletion] { AFS::removeFolderIfExistsRecursion(folderPath, onBeforeFileDeletion, onBeforeFolderDeletion); /*throw FileError*/ }, singleThread); }
 
@@ -2491,23 +2491,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
         const FolderPairSyncCfg& folderPairCfg  = syncConfig[folderIndex];
         const SyncStatistics&    folderPairStat = folderPairStats[folderIndex];
 
-        const AbstractPath versioningFolderPath = createAbstractPath(folderPairCfg.versioningFolderPhrase);
-
-        //prepare conflict preview:
-        if (folderPairStat.conflictCount() > 0)
-            checkUnresolvedConflicts.emplace_back(&baseFolder, folderPairStat.conflictCount(), folderPairStat.getConflictsPreview());
-
-        //consider *all* paths that might be used during versioning limit at some time
-        if (folderPairCfg.handleDeletion == DeletionVariant::versioning &&
-            folderPairCfg.versioningStyle != VersioningStyle::replace)
-            if (folderPairCfg.versionMaxAgeDays > 0 || folderPairCfg.versionCountMax > 0) //same check as in applyVersioningLimit()
-                checkVersioningLimitPaths.insert(versioningFolderPath);
-
-        //===============================================================================
-        //================ begin of checks that may SKIP folder pairs ===================
-        //===============================================================================
-
-        //exclude a few pathological cases:
+        //exclude a few pathological cases, e.g. empty folder pair
         if (baseFolder.getAbstractPath<SelectSide::left >() ==
             baseFolder.getAbstractPath<SelectSide::right>())
         {
@@ -2515,13 +2499,17 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
             continue;
         }
 
-        //skip folder pair if there is nothing to do (except when DB files need to be updated for two-way mode and move-detection)
-        //=> avoid redundant errors in checkBaseFolderStatus() if base folder existence test failed during comparison
-        if (getCUD(folderPairStat) == 0 && !folderPairCfg.saveSyncDB)
-        {
-            skipFolderPair[folderIndex] = true;
-            continue;
-        }
+        //prepare conflict preview:
+        if (folderPairStat.conflictCount() > 0)
+            checkUnresolvedConflicts.emplace_back(&baseFolder, folderPairStat.conflictCount(), folderPairStat.getConflictsPreview());
+
+        //consider *all* paths that might be used during versioning limit at some time
+        const AbstractPath versioningFolderPath = createAbstractPath(folderPairCfg.versioningFolderPhrase);
+
+        if (folderPairCfg.handleDeletion == DeletionVariant::versioning &&
+            folderPairCfg.versioningStyle != VersioningStyle::replace)
+            if (folderPairCfg.versionMaxAgeDays > 0 || folderPairCfg.versionCountMax > 0) //same check as in applyVersioningLimit()
+                checkVersioningLimitPaths.insert(versioningFolderPath);
 
         const bool writeLeft = folderPairStat.createCount<SelectSide::left>() +
                                folderPairStat.updateCount<SelectSide::left>() +
@@ -2530,6 +2518,29 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
         const bool writeRight = folderPairStat.createCount<SelectSide::right>() +
                                 folderPairStat.updateCount<SelectSide::right>() +
                                 folderPairStat.deleteCount<SelectSide::right>() > 0;
+
+        //prepare: check if some files are used by multiple pairs in read/write access
+        checkBaseFolderRaceCondition.emplace_back(&baseFolder, SelectSide::left,  writeLeft);
+        checkBaseFolderRaceCondition.emplace_back(&baseFolder, SelectSide::right, writeRight);
+
+            //prepare: check if versioning path itself will be synchronized (and was not excluded via filter)
+        if (folderPairCfg.handleDeletion == DeletionVariant::versioning)
+            checkVersioningPaths.insert(versioningFolderPath);
+
+        checkVersioningBasePaths.emplace_back(baseFolder.getAbstractPath<SelectSide::left >(), &baseFolder.getFilter());
+        checkVersioningBasePaths.emplace_back(baseFolder.getAbstractPath<SelectSide::right>(), &baseFolder.getFilter());
+
+        //===============================================================================
+        //================ begin of checks that may SKIP folder pairs ===================
+        //===============================================================================
+
+        //skip folder pair if there is nothing to do (except when DB files need to be updated for two-way mode and move-detection)
+        //=> avoid redundant errors in checkBaseFolderStatus() if base folder existence test failed during comparison
+        if (getCUD(folderPairStat) == 0 && !folderPairCfg.saveSyncDB)
+        {
+            skipFolderPair[folderIndex] = true;
+            continue;
+        }
 
         //check for empty target folder paths: this only makes sense if empty field is source (and no DB files need to be created)
         if ((AFS::isNullPath(baseFolder.getAbstractPath<SelectSide::left >()) && (writeLeft  || folderPairCfg.saveSyncDB)) ||
@@ -2572,9 +2583,8 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
             continue;
         }
 
-        if (folderPairCfg.handleDeletion == DeletionVariant::versioning)
-        {
             //check if user-defined directory for deletion was specified
+        if (folderPairCfg.handleDeletion == DeletionVariant::versioning)
             if (AFS::isNullPath(versioningFolderPath))
             {
                 //should never arrive here: already checked in SyncCfgDialog
@@ -2582,19 +2592,6 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
                 skipFolderPair[folderIndex] = true;
                 continue;
             }
-            //===============================================================================================
-            //================ end of checks that may skip folder pairs => begin of warnings ================
-            //===============================================================================================
-
-            //prepare: check if versioning path itself will be synchronized (and was not excluded via filter)
-            checkVersioningPaths.insert(versioningFolderPath);
-        }
-        checkVersioningBasePaths.emplace_back(baseFolder.getAbstractPath<SelectSide::left >(), &baseFolder.getFilter());
-        checkVersioningBasePaths.emplace_back(baseFolder.getAbstractPath<SelectSide::right>(), &baseFolder.getFilter());
-
-        //prepare: check if some files are used by multiple pairs in read/write access
-        checkBaseFolderRaceCondition.emplace_back(&baseFolder, SelectSide::left,  writeLeft);
-        checkBaseFolderRaceCondition.emplace_back(&baseFolder, SelectSide::right, writeRight);
 
         //check if more than 50% of total number of files/dirs are to be created/overwritten/deleted
         if (!AFS::isNullPath(baseFolder.getAbstractPath<SelectSide::left >()) &&
@@ -2603,7 +2600,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
                 checkSignificantDiffPairs.emplace_back(baseFolder.getAbstractPath<SelectSide::left >(),
                                                        baseFolder.getAbstractPath<SelectSide::right>());
 
-        //check for sufficient free diskspace
+        //check for sufficient free diskspace (folderPath might not yet exist!)
         auto checkSpace = [&](const AbstractPath& baseFolderPath, int64_t minSpaceNeeded)
         {
             if (!AFS::isNullPath(baseFolderPath) && minSpaceNeeded > 0)
@@ -2621,8 +2618,9 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
                 }
         };
         const std::pair<int64_t, int64_t> spaceNeeded = MinimumDiskSpaceNeeded::calculate(baseFolder);
-        checkSpace(baseFolder.getAbstractPath<SelectSide::left >(), spaceNeeded.first);
-        checkSpace(baseFolder.getAbstractPath<SelectSide::right>(), spaceNeeded.second);
+
+        if (baseFolder.getFolderStatus<SelectSide::left >() != BaseFolderStatus::failure) checkSpace(baseFolder.getAbstractPath<SelectSide::left >(), spaceNeeded.first);
+        if (baseFolder.getFolderStatus<SelectSide::right>() != BaseFolderStatus::failure) checkSpace(baseFolder.getAbstractPath<SelectSide::right>(), spaceNeeded.second);
     }
     //--------------------------------------------------------------------------------------
 

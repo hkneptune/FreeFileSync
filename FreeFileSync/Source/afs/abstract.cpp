@@ -58,9 +58,9 @@ namespace
 {
 struct FlatTraverserCallback : public AFS::TraverserCallback
 {
-    FlatTraverserCallback(const std::function<void (const AFS::FileInfo&    fi)>& onFile,
-                          const std::function<void (const AFS::FolderInfo&  fi)>& onFolder,
-                          const std::function<void (const AFS::SymlinkInfo& si)>& onSymlink) :
+    FlatTraverserCallback(const std::function<void(const AFS::FileInfo&    fi)>& onFile,
+                          const std::function<void(const AFS::FolderInfo&  fi)>& onFolder,
+                          const std::function<void(const AFS::SymlinkInfo& si)>& onSymlink) :
         onFile_   (onFile),
         onFolder_ (onFolder),
         onSymlink_(onSymlink) {}
@@ -73,17 +73,17 @@ private:
     HandleError reportDirError (const ErrorInfo& errorInfo)                          override { throw FileError(errorInfo.msg); }
     HandleError reportItemError(const ErrorInfo& errorInfo, const Zstring& itemName) override { throw FileError(errorInfo.msg); }
 
-    const std::function<void (const AFS::FileInfo&    fi)> onFile_;
-    const std::function<void (const AFS::FolderInfo&  fi)> onFolder_;
-    const std::function<void (const AFS::SymlinkInfo& si)> onSymlink_;
+    const std::function<void(const AFS::FileInfo&    fi)> onFile_;
+    const std::function<void(const AFS::FolderInfo&  fi)> onFolder_;
+    const std::function<void(const AFS::SymlinkInfo& si)> onSymlink_;
 };
 }
 
 
 void AFS::traverseFolderFlat(const AfsPath& folderPath, //throw FileError
-                             const std::function<void (const FileInfo&    fi)>& onFile,
-                             const std::function<void (const FolderInfo&  fi)>& onFolder,
-                             const std::function<void (const SymlinkInfo& si)>& onSymlink) const
+                             const std::function<void(const FileInfo&    fi)>& onFile,
+                             const std::function<void(const FolderInfo&  fi)>& onFolder,
+                             const std::function<void(const SymlinkInfo& si)>& onSymlink) const
 {
     auto ft = std::make_shared<FlatTraverserCallback>(onFile, onFolder, onSymlink); //throw FileError
     traverseFolderRecursive({{folderPath, ft}}, 1 /*parallelOps*/); //throw FileError
@@ -300,14 +300,14 @@ std::optional<AFS::ItemType> AFS::itemStillExists(const AfsPath& itemPath) const
         //  ERROR_FILE_NOT_FOUND, ERROR_PATH_NOT_FOUND, ERROR_INVALID_NAME, ERROR_INVALID_DRIVE,
         //  ERROR_NOT_READY, ERROR_INVALID_PARAMETER, ERROR_BAD_PATHNAME, ERROR_BAD_NETPATH => not reliable
 
-        const Zstring itemName = getItemName(itemPath);
-        assert(!itemName.empty());
-
         const std::optional<ItemType> parentType = itemStillExists(*parentAfsPath); //throw FileError
 
         if (parentType && *parentType != ItemType::file /*obscure, but possible (and not an error)*/)
             try
             {
+        const Zstring itemName = getItemName(itemPath);
+        assert(!itemName.empty());
+
                 traverseFolderFlat(*parentAfsPath, //throw FileError
                 [&](const    FileInfo& fi) { if (fi.itemName == itemName) throw ItemType::file;    },
                 [&](const  FolderInfo& fi) { if (fi.itemName == itemName) throw ItemType::folder;  },
@@ -324,8 +324,8 @@ std::optional<AFS::ItemType> AFS::itemStillExists(const AfsPath& itemPath) const
 
 //default implementation: folder traversal
 void AFS::removeFolderIfExistsRecursion(const AfsPath& folderPath, //throw FileError
-                                        const std::function<void (const std::wstring& displayPath)>& onBeforeFileDeletion /*throw X*/, //optional
-                                        const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion) const //one call for each object!
+                                        const std::function<void(const std::wstring& displayPath)>& onBeforeFileDeletion /*throw X*/, //optional
+                                        const std::function<void(const std::wstring& displayPath)>& onBeforeFolderDeletion) const //one call for each object!
 {
     //deferred recursion => save stack space and allow deletion of extremely deep hierarchies!
     std::function<void(const AfsPath& folderPath2)> removeFolderRecursionImpl;

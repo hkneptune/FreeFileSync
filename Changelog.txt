@@ -1,3 +1,15 @@
+FreeFileSync 11.27 [2022-10-17]
+-------------------------------
+Fixed a "Some files will be synchronized as part of multiple base folders" false-negative
+Fixed "Unexpected size of data stream" for Google Drive
+Fixed crash when downloading empty file from Google Drive
+RealTimeSync: fixed ffs_batch not accepted as valid configuration
+Fixed top buttons vertical GUI layout
+Fixed progress dialog font on Ubuntu MATE
+Support cut/copy/paste for filter settings
+Fixed free disk space calculation if target folder not yet created
+
+
 FreeFileSync 11.26 [2022-10-06]
 -------------------------------
 Faster file copy for SSD-based hard drives (Linux, macOS)

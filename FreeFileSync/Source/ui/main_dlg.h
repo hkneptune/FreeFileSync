@@ -353,7 +353,7 @@ private:
 
     zen::AsyncGuiQueue guiQueue_; //schedule and run long-running tasks asynchronously, but process results on GUI queue
 
-    std::unique_ptr<FilterConfig> filterCfgOnClipboard_; //copy/paste of filter config
+    std::optional<FilterConfig> filterCfgOnClipboard_; //copy/paste of filter config
 
     wxWindowID focusAfterCloseLog_    = wxID_ANY; //
     wxWindowID focusAfterCloseSearch_ = wxID_ANY; //restore focus after panel is closed

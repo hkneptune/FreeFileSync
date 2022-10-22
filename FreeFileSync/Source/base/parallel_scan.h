@@ -44,7 +44,7 @@ struct DirectoryValue
 //           2. remove folder aliases (e.g. case differences) *before* calling this function!!!
 
 using TravErrorCb  = std::function<PhaseCallback::Response(const PhaseCallback::ErrorInfo& errorInfo)>;
-using TravStatusCb = std::function<void (const std::wstring& statusLine, int itemsTotal)>;
+using TravStatusCb = std::function<void(const std::wstring& statusLine, int itemsTotal)>;
 
 std::map<DirectoryKey, DirectoryValue> parallelDeviceTraversal(const std::set<DirectoryKey>& foldersToRead,
                                                                const TravErrorCb& onError, const TravStatusCb& onStatusUpdate, //NOT optional

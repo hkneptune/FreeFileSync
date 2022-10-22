@@ -116,6 +116,9 @@ void StatusHandlerTemporaryPanel::showStatsPanel()
 
 StatusHandlerTemporaryPanel::~StatusHandlerTemporaryPanel()
 {
+    if (!errorLog_.empty()) //reportResults() was not called!
+        std::abort();
+
     //Workaround wxAuiManager crash when starting panel resizing during comparison and holding button until after comparison has finished:
     //- unlike regular window resizing, wxAuiManager does not run a dedicated event loop while the mouse button is held
     //- wxAuiManager internally stores the panel index that is currently resized
@@ -134,9 +137,6 @@ StatusHandlerTemporaryPanel::~StatusHandlerTemporaryPanel()
     assert(ubOk1 && ubOk2);
 
     mainDlg_.compareStatus_->teardown();
-
-    if (!errorLog_.empty()) //reportResults() was not called!
-        std::abort();
 }
 
 

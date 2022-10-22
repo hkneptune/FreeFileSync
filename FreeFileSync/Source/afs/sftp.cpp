@@ -1060,31 +1060,31 @@ std::vector<SftpItem> getDirContentFlat(const SftpLogin& login, const AfsPath& d
 
         const std::string_view sftpItemName = makeStringView(buf.data(), rc);
 
-                                            if (sftpItemName == "." || sftpItemName == "..") //check needed for SFTP, too!
-                                            continue;
+        if (sftpItemName == "." || sftpItemName == "..") //check needed for SFTP, too!
+            continue;
 
-                                            const Zstring& itemName = utfTo<Zstring>(sftpItemName);
-                                            const AfsPath itemPath(appendPath(dirPath.value, itemName));
+        const Zstring& itemName = utfTo<Zstring>(sftpItemName);
+        const AfsPath itemPath(appendPath(dirPath.value, itemName));
 
-                                            if ((attribs.flags & LIBSSH2_SFTP_ATTR_PERMISSIONS) == 0) //server probably does not support these attributes => fail at folder level
-                                                throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login, itemPath))), L"File attributes not available.");
+        if ((attribs.flags & LIBSSH2_SFTP_ATTR_PERMISSIONS) == 0) //server probably does not support these attributes => fail at folder level
+            throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login, itemPath))), L"File attributes not available.");
 
-                                                if (LIBSSH2_SFTP_S_ISLNK(attribs.permissions))
-            {
-                if ((attribs.flags & LIBSSH2_SFTP_ATTR_ACMODTIME) == 0) //server probably does not support these attributes => fail at folder level
-                        throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login, itemPath))), L"Modification time not supported.");
-                    output.push_back({itemName, {AFS::ItemType::symlink, 0, static_cast<time_t>(attribs.mtime)}});
-                }
-                else if (LIBSSH2_SFTP_S_ISDIR(attribs.permissions))
-                output.push_back({itemName, {AFS::ItemType::folder, 0, static_cast<time_t>(attribs.mtime)}});
-                else //a file or named pipe, ect: LIBSSH2_SFTP_S_ISREG, LIBSSH2_SFTP_S_ISCHR, LIBSSH2_SFTP_S_ISBLK, LIBSSH2_SFTP_S_ISFIFO, LIBSSH2_SFTP_S_ISSOCK
-                {
-                    if ((attribs.flags & LIBSSH2_SFTP_ATTR_ACMODTIME) == 0) //server probably does not support these attributes => fail at folder level
-                            throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login, itemPath))), L"Modification time not supported.");
-                        if ((attribs.flags & LIBSSH2_SFTP_ATTR_SIZE) == 0)
-                            throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login, itemPath))), L"File size not supported.");
-                        output.push_back({itemName, {AFS::ItemType::file, attribs.filesize, static_cast<time_t>(attribs.mtime)}});
-                    }
+        if (LIBSSH2_SFTP_S_ISLNK(attribs.permissions))
+        {
+            if ((attribs.flags & LIBSSH2_SFTP_ATTR_ACMODTIME) == 0) //server probably does not support these attributes => fail at folder level
+                throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login, itemPath))), L"Modification time not supported.");
+            output.push_back({itemName, {AFS::ItemType::symlink, 0, static_cast<time_t>(attribs.mtime)}});
+        }
+        else if (LIBSSH2_SFTP_S_ISDIR(attribs.permissions))
+            output.push_back({itemName, {AFS::ItemType::folder, 0, static_cast<time_t>(attribs.mtime)}});
+        else //a file or named pipe, ect: LIBSSH2_SFTP_S_ISREG, LIBSSH2_SFTP_S_ISCHR, LIBSSH2_SFTP_S_ISBLK, LIBSSH2_SFTP_S_ISFIFO, LIBSSH2_SFTP_S_ISSOCK
+        {
+            if ((attribs.flags & LIBSSH2_SFTP_ATTR_ACMODTIME) == 0) //server probably does not support these attributes => fail at folder level
+                throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login, itemPath))), L"Modification time not supported.");
+            if ((attribs.flags & LIBSSH2_SFTP_ATTR_SIZE) == 0)
+                throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getSftpDisplayPath(login, itemPath))), L"File size not supported.");
+            output.push_back({itemName, {AFS::ItemType::file, attribs.filesize, static_cast<time_t>(attribs.mtime)}});
+        }
     }
 }
 
@@ -1575,8 +1575,8 @@ private:
     }
 
     void removeFolderIfExistsRecursion(const AfsPath& folderPath, //throw FileError
-                                       const std::function<void (const std::wstring& displayPath)>& onBeforeFileDeletion /*throw X*/, //optional
-                                       const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion) const override //one call for each object!
+                                       const std::function<void(const std::wstring& displayPath)>& onBeforeFileDeletion /*throw X*/, //optional
+                                       const std::function<void(const std::wstring& displayPath)>& onBeforeFolderDeletion) const override //one call for each object!
     {
         //default implementation: folder traversal
         AFS::removeFolderIfExistsRecursion(folderPath, onBeforeFileDeletion, onBeforeFolderDeletion); //throw FileError, X

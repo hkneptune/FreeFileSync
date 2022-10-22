@@ -615,12 +615,11 @@ private:
 class Grid::ColLabelWin : public SubWindow
 {
 public:
-    explicit ColLabelWin(Grid& parent) : SubWindow(parent)
+    explicit ColLabelWin(Grid& parent) : SubWindow(parent),
+        labelFont_(GetFont().Bold())
     {
         //coordinate with ColLabelWin::render():
-        wxFont labelFont = GetFont();
-        labelFont.MakeBold();
-        colLabelHeight_ = fastFromDIP(2 * DEFAULT_COL_LABEL_BORDER_DIP) + labelFont.GetPixelSize().GetHeight();
+        colLabelHeight_ = fastFromDIP(2 * DEFAULT_COL_LABEL_BORDER_DIP) + labelFont_.GetPixelSize().GetHeight();
     }
 
     int getColumnLabelHeight() const { return colLabelHeight_; }
@@ -637,9 +636,7 @@ private:
         const bool enabled = renderAsEnabled(*this);
 
         //coordinate with "colLabelHeight" in Grid constructor:
-        wxFont labelFont = GetFont();
-        labelFont.MakeBold();
-        dc.SetFont(labelFont);
+        dc.SetFont(labelFont_);
 
         wxDCTextColourChanger textColor(dc, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT)); //use user setting for labels
 
@@ -944,6 +941,7 @@ private:
     bool freezeMouseHighlight_ = false;
 
     int colLabelHeight_ = 0;
+    const wxFont labelFont_;
 };
 
 //----------------------------------------------------------------------------------------------------------------

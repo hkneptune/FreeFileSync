@@ -66,7 +66,7 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
                                          const std::vector<std::string>& extraHeaders, const std::vector<CurlOption>& extraOptions,
                                          const std::function<void  (std::span<const char> buf)>& writeResponse /*throw X*/, //optional
                                          const std::function<size_t(std::span<      char> buf)>& readRequest   /*throw X*/, //optional; return "bytesToRead" bytes unless end of stream!
-                                         const std::function<void  (const std::string_view& header)>& receiveHeader /*throw X*/,
+                                         const std::function<void(const std::string_view& header)>& receiveHeader /*throw X*/,
                                          int timeoutSec) //throw SysError, X
 {
     if (!easyHandle_)
@@ -219,14 +219,15 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
         /**/options.emplace_back(CURLOPT_UPLOAD, 1); //issues HTTP PUT
         options.emplace_back(CURLOPT_READDATA, &getBytesToSend);
         options.emplace_back(CURLOPT_READFUNCTION, getBytesToSendWrapper);
-        //{CURLOPT_UPLOAD_BUFFERSIZE, 256 * 1024} -> defaults is 64 kB. apparently no performance improvement for larger buffers like 256 kB
+        //{CURLOPT_UPLOAD_BUFFERSIZE, 256 * 1024} -> default is 64 kB. apparently no performance improvement for larger buffers like 256 kB
+
+         //Contradicting options: CURLOPT_READFUNCTION, CURLOPT_POSTFIELDS:
+        if (std::any_of(extraOptions.begin(), extraOptions.end(), [](const CurlOption& o) { return o.option == CURLOPT_POSTFIELDS; }))
+        /**/ throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
     }
 
     if (std::any_of(extraOptions.begin(), extraOptions.end(), [](const CurlOption& o) { return o.option == CURLOPT_WRITEFUNCTION || o.option == CURLOPT_READFUNCTION; }))
     /**/ throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__)); //Option already used here!
-
-    if (readRequest && std::any_of(extraOptions.begin(), extraOptions.end(), [](const CurlOption& o) { return o.option == CURLOPT_POSTFIELDS; }))
-    /**/ throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__)); //Contradicting options: CURLOPT_READFUNCTION, CURLOPT_POSTFIELDS
 
     //---------------------------------------------------
     curl_slist* headers = nullptr; //"libcurl will not copy the entire list so you must keep it!"

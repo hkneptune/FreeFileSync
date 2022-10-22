@@ -47,7 +47,7 @@ zen::SymlinkRawContent getSymlinkRawContent_impl(const Zstring& linkPath) //thro
     const ssize_t bytesWritten = ::readlink(linkPath.c_str(), buf.data(), bufSize);
     if (bytesWritten < 0)
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(linkPath)), "readlink");
-    if (bytesWritten >= static_cast<ssize_t>(bufSize)) //detect truncation; not an error for readlink!
+    if (makeUnsigned(bytesWritten) >= bufSize) //detect truncation; not an error for readlink!
         throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(linkPath)), formatSystemError("readlink", L"", L"Buffer truncated."));
 
     return {.targetPath = Zstring(buf.data(), bytesWritten)}; //readlink does not append 0-termination!

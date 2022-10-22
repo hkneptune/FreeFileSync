@@ -165,14 +165,13 @@ size_t FileInputPlain::tryRead(void* buffer, size_t bytesToRead) //throw FileErr
         while (bytesRead < 0 && errno == EINTR); //Compare copy_reg() in copy.c: ftp://ftp.gnu.org/gnu/coreutils/coreutils-8.23.tar.xz
         //EINTR is not checked on macOS' copyfile: https://opensource.apple.com/source/copyfile/copyfile-173.40.2/copyfile.c.auto.html
         //read() on macOS: https://developer.apple.com/legacy/library/documentation/Darwin/Reference/ManPages/man2/read.2.html
+        //if ::read is interrupted (EINTR) right in the middle, it will return successfully with "bytesRead < bytesToRead"
 
         if (bytesRead < 0)
             THROW_LAST_SYS_ERROR("read");
+
         if (makeUnsigned(bytesRead) > bytesToRead) //better safe than sorry
-            throw SysError(formatSystemError("ReadFile", L"", L"Buffer overflow."));
-
-        //if ::read is interrupted (EINTR) right in the middle, it will return successfully with "bytesRead < bytesToRead"
-
+            throw SysError(formatSystemError("read", L"", L"Buffer overflow."));
         return bytesRead; //"zero indicates end of file"
     }
     catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(getFilePath())), e.toString()); }
@@ -276,6 +275,7 @@ size_t FileOutputPlain::tryWrite(const void* buffer, size_t bytesToWrite) //thro
         }
         while (bytesWritten < 0 && errno == EINTR);
         //write() on macOS: https://developer.apple.com/legacy/library/documentation/Darwin/Reference/ManPages/man2/write.2.html
+        //if ::write() is interrupted (EINTR) right in the middle, it will return successfully with "bytesWritten < bytesToWrite"!
 
         if (bytesWritten <= 0)
         {
@@ -284,10 +284,8 @@ size_t FileOutputPlain::tryWrite(const void* buffer, size_t bytesToWrite) //thro
 
             THROW_LAST_SYS_ERROR("write");
         }
-        if (bytesWritten > static_cast<ssize_t>(bytesToWrite)) //better safe than sorry
+        if (makeUnsigned(bytesWritten) > bytesToWrite) //better safe than sorry
             throw SysError(formatSystemError("write", L"", L"Buffer overflow."));
-
-        //if ::write() is interrupted (EINTR) right in the middle, it will return successfully with "bytesWritten < bytesToWrite"!
         return bytesWritten;
     }
     catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getFilePath())), e.toString()); }

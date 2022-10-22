@@ -1492,10 +1492,11 @@ void fff::deleteListOfFiles(const std::vector<Zstring>& filesToDeletePaths,
                             std::vector<Zstring>& deletedPaths,
                             bool moveToRecycler,
                             bool& warnRecyclerMissing,
-                            ProcessCallback& callback /*throw X*/) //throw X
+                            ProcessCallback& cb /*throw X*/) //throw X
 {
-    callback.initNewPhase(filesToDeletePaths.size(), 0 /*bytesTotal*/, ProcessPhase::none); //throw X
     assert(deletedPaths.empty());
+
+    cb.initNewPhase(filesToDeletePaths.size(), 0 /*bytesTotal*/, ProcessPhase::none); //throw X
 
     bool recyclerMissingReportOnce = false;
 
@@ -1503,12 +1504,12 @@ void fff::deleteListOfFiles(const std::vector<Zstring>& filesToDeletePaths,
         tryReportingError([&]
     {
         const AbstractPath cfgPath = createItemPathNative(filePath);
-        ItemStatReporter statReporter(1, 0, callback);
+        ItemStatReporter statReporter(1, 0, cb);
 
         if (moveToRecycler)
             try
             {
-                reportInfo(replaceCpy(_("Moving file %x to the recycle bin"), L"%x", fmtPath(AFS::getDisplayPath(cfgPath))), callback); //throw X
+                reportInfo(replaceCpy(_("Moving file %x to the recycle bin"), L"%x", fmtPath(AFS::getDisplayPath(cfgPath))), cb); //throw X
                 AFS::moveToRecycleBinIfExists(cfgPath); //throw FileError, RecycleBinUnavailable
             }
             catch (const RecycleBinUnavailable& e)
@@ -1516,21 +1517,21 @@ void fff::deleteListOfFiles(const std::vector<Zstring>& filesToDeletePaths,
                 if (!recyclerMissingReportOnce)
                 {
                     recyclerMissingReportOnce = true;
-                    callback.reportWarning(e.toString() + L"\n\n" + _("Ignore and delete permanently each time recycle bin is unavailable?"), warnRecyclerMissing); //throw X
+                    cb.reportWarning(e.toString() + L"\n\n" + _("Ignore and delete permanently each time recycle bin is unavailable?"), warnRecyclerMissing); //throw X
                 }
-                callback.logMessage(replaceCpy(_("Deleting file %x"), L"%x", fmtPath(AFS::getDisplayPath(cfgPath))) +
+                cb.logMessage(replaceCpy(_("Deleting file %x"), L"%x", fmtPath(AFS::getDisplayPath(cfgPath))) +
                                     L" [" + _("The recycle bin is not available") + L']', PhaseCallback::MsgType::warning); //throw X
                 AFS::removeFileIfExists(cfgPath); //throw FileError
             }
         else
         {
-            reportInfo(replaceCpy(_("Deleting file %x"), L"%x", fmtPath(AFS::getDisplayPath(cfgPath))), callback); //throw X
+            reportInfo(replaceCpy(_("Deleting file %x"), L"%x", fmtPath(AFS::getDisplayPath(cfgPath))), cb); //throw X
             AFS::removeFileIfExists(cfgPath); //throw FileError
         }
 
         statReporter.reportDelta(1, 0);
         deletedPaths.push_back(filePath);
-    }, callback); //throw X
+    }, cb); //throw X
 }
 
 //############################################################################################################

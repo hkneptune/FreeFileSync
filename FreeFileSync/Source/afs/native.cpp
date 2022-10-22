@@ -312,7 +312,7 @@ public:
     explicit RecycleSessionNative(const Zstring& baseFolderPath); //throw FileError, RecycleBinUnavailable
 
     void moveToRecycleBin(const AbstractPath& itemPath, const Zstring& logicalRelPath) override; //throw FileError, RecycleBinUnavailable
-    void tryCleanup(const std::function<void (const std::wstring& displayPath)>& notifyDeletionStatus /*throw X*/) override; //throw FileError, X
+    void tryCleanup(const std::function<void(const std::wstring& displayPath)>& notifyDeletionStatus /*throw X*/) override; //throw FileError, X
 
 private:
 };
@@ -473,8 +473,8 @@ private:
     }
 
     void removeFolderIfExistsRecursion(const AfsPath& folderPath, //throw FileError
-                                       const std::function<void (const std::wstring& displayPath)>& onBeforeFileDeletion /*throw X*/, //optional
-                                       const std::function<void (const std::wstring& displayPath)>& onBeforeFolderDeletion) const override //one call for each object!
+                                       const std::function<void(const std::wstring& displayPath)>& onBeforeFileDeletion /*throw X*/, //optional
+                                       const std::function<void(const std::wstring& displayPath)>& onBeforeFolderDeletion) const override //one call for each object!
     {
         //default implementation: folder traversal
         AFS::removeFolderIfExistsRecursion(folderPath, onBeforeFileDeletion, onBeforeFolderDeletion); //throw FileError, X
@@ -701,7 +701,7 @@ void RecycleSessionNative::moveToRecycleBin(const AbstractPath& itemPath, const 
 }
 
 
-void RecycleSessionNative::tryCleanup(const std::function<void (const std::wstring& displayPath)>& notifyDeletionStatus /*throw X*/) //throw FileError, X
+void RecycleSessionNative::tryCleanup(const std::function<void(const std::wstring& displayPath)>& notifyDeletionStatus /*throw X*/) //throw FileError, X
 {
 }
 }

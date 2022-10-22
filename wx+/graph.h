@@ -326,11 +326,7 @@ private:
 
     std::optional<wxBitmap> doubleBuffer_;
 
-    using CurveList = std::vector<std::pair<SharedRef<CurveData>, CurveAttributes>>;
-    CurveList curves_;
-
-    //perf!!! generating the font is *very* expensive! => buffer for Graph2D::render()!
-    const wxFont labelFont_{wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL, false, L"Arial"};
+    std::vector<std::pair<SharedRef<CurveData>, CurveAttributes>> curves_;
 };
 }
 

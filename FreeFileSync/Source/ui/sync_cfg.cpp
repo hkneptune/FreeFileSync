@@ -90,7 +90,7 @@ void initBitmapRadioButtons(const std::vector<std::pair<ToggleButton*, std::stri
 }
 
 
-bool sanitizeFilter(FilterConfig& filterCfg, const std::vector<std::wstring>& folderDisplayPaths, wxWindow* parent)
+bool sanitizeFilter(FilterConfig& filterCfg, const std::vector<AbstractPath>& baseFolderPaths, wxWindow* parent)
 {
     //include filter must not be empty!
     if (trimCpy(filterCfg.includeFilter).empty())
@@ -114,12 +114,15 @@ bool sanitizeFilter(FilterConfig& filterCfg, const std::vector<std::wstring>& fo
         const Zstring includeFilterNorm = normalizeForSearch(filterCfg.includeFilter);
         const Zstring excludeFilterNorm = normalizeForSearch(filterCfg.excludeFilter);
 
-        for (const std::wstring& displayPath : folderDisplayPaths)
-            if (!displayPath.empty())
-                if (const Zstring pathNormPf = appendSeparator(normalizeForSearch(utfTo<Zstring>(displayPath)));
-                    contains(includeFilterNorm, pathNormPf) || //perf!?
-                    contains(excludeFilterNorm, pathNormPf))   //
-                    folderPathsPf.push_back(pathNormPf);
+        for (const AbstractPath& folderPath : baseFolderPaths)
+            if (!AFS::isNullPath(folderPath))
+                if (const std::wstring& displayPath = AFS::getDisplayPath(folderPath);
+                    !displayPath.empty())
+                    if (displayPath != L"/") //Linux/macOS: https://freefilesync.org/forum/viewtopic.php?t=9713
+                        if (const Zstring pathNormPf = appendSeparator(normalizeForSearch(utfTo<Zstring>(displayPath)));
+                            contains(includeFilterNorm, pathNormPf) || //perf!?
+                            contains(excludeFilterNorm, pathNormPf))   //
+                            folderPathsPf.push_back(pathNormPf);
 
         removeDuplicates(folderPathsPf);
     }
@@ -134,15 +137,15 @@ bool sanitizeFilter(FilterConfig& filterCfg, const std::vector<std::wstring>& fo
             const Zchar* itFilterOrig = filterPhrase.begin();
 
             split2(filterPhrase, [](Zchar c) { return c == FILTER_ITEM_SEPARATOR || c == Zstr('\n'); }, //delimiters
-            [&](const Zchar* blockFirst, const Zchar* blockLast)
+            [&](ZstringView phrase)
             {
-                std::tie(blockFirst, blockLast) = trimCpy(blockFirst, blockLast, true /*fromLeft*/, true /*fromRight*/, [](Zchar c) { return isWhiteSpace(c); });
-                if (blockFirst != blockLast)
+                phrase = trimCpy(phrase);
+                if (!phrase.empty())
                 {
-                    const Zstring phrase{blockFirst, blockLast};
+                    const Zstring phraseNorm = normalizeForSearch(Zstring{phrase});
 
                     for (const Zstring& pathNormPf : folderPathsPf)
-                        if (startsWith(normalizeForSearch(phrase), pathNormPf))
+                        if (startsWith(phraseNorm, pathNormPf))
                         {
                             //emulate a "normalized afterFirst()":
                             ptrdiff_t sepCount = std::count(pathNormPf.begin(), pathNormPf.end(), FILE_NAME_SEPARATOR);
@@ -155,9 +158,9 @@ bool sanitizeFilter(FilterConfig& filterCfg, const std::vector<std::wstring>& fo
                                     {
                                         const Zstring relPath(it, phrase.end()); //include first path separator
 
-                                        filterPhraseNew.append(itFilterOrig, blockFirst);
+                                        filterPhraseNew.append(itFilterOrig, phrase.data());
                                         filterPhraseNew += relPath;
-                                        itFilterOrig = blockLast;
+                                        itFilterOrig = phrase.data() + phrase.size();
 
                                         replacements.emplace_back(phrase, relPath);
                                         return; //... to next block
@@ -361,9 +364,6 @@ private:
     //working copy of ALL config parameters: only one folder pair is selected at a time!
     GlobalPairConfig globalPairCfg_;
     std::vector<LocalPairConfig> localPairCfg_;
-
-    //display paths to fix filter if user pastes full folder paths
-    std::vector<std::wstring> folderDisplayPaths_;
 
     int selectedPairIndexToShow_ = EMPTY_PAIR_INDEX_SELECTED;
     static const int EMPTY_PAIR_INDEX_SELECTED = -2;
@@ -646,18 +646,12 @@ globalLogFolderPhrase_(globalLogFolderPhrase)
     m_listBoxFolderPair->Append(_("All folder pairs"));
     for (const LocalPairConfig& lpc : localPairCfg)
     {
-        const AbstractPath folderPathL= createAbstractPath(lpc.folderPathPhraseLeft);
-        const AbstractPath folderPathR= createAbstractPath(lpc.folderPathPhraseRight);
-
-        std::wstring fpName = getShortDisplayNameForFolderPair(folderPathL, folderPathR);
+        std::wstring fpName = getShortDisplayNameForFolderPair(createAbstractPath(lpc.folderPathPhraseLeft),
+                                                               createAbstractPath(lpc.folderPathPhraseRight));
         if (trimCpy(fpName).empty())
             fpName = L"<" + _("empty") + L">";
 
         m_listBoxFolderPair->Append(TAB_SPACE + fpName);
-
-        //collect display paths for filter correction
-        if (!AFS::isNullPath(folderPathL)) folderDisplayPaths_.push_back(AFS::getDisplayPath(folderPathL));
-        if (!AFS::isNullPath(folderPathR)) folderDisplayPaths_.push_back(AFS::getDisplayPath(folderPathR));
     }
 
     if (!showMultipleCfgs)
@@ -1635,7 +1629,20 @@ bool ConfigDialog::unselectFolderPairConfig(bool validateParams)
     if (validateParams)
     {
         //parameter validation and correction:
-        if (!sanitizeFilter(filterCfg, folderDisplayPaths_, this))
+
+        std::vector<AbstractPath> baseFolderPaths; //display paths to fix filter if user pastes full folder paths
+        if (selectedPairIndexToShow_ < 0)
+            for (const LocalPairConfig& lpc : localPairCfg_)
+            {
+                baseFolderPaths.push_back(createAbstractPath(lpc.folderPathPhraseLeft));
+                baseFolderPaths.push_back(createAbstractPath(lpc.folderPathPhraseRight));
+            }
+        else
+        {
+            baseFolderPaths.push_back(createAbstractPath(localPairCfg_[selectedPairIndexToShow_].folderPathPhraseLeft));
+            baseFolderPaths.push_back(createAbstractPath(localPairCfg_[selectedPairIndexToShow_].folderPathPhraseRight));
+        }
+        if (!sanitizeFilter(filterCfg, baseFolderPaths, this))
         {
             m_notebook->ChangeSelection(static_cast<size_t>(SyncConfigPanel::filter));
             m_textCtrlExclude->SetFocus();

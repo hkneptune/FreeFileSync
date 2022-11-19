@@ -1,6 +1,17 @@
+FreeFileSync 11.28 [2022-11-16]
+-------------------------------
+Recover from corrupted database file
+Save database files pair-wise as a transaction
+Fixed FTP access for Xiaomi "File Manager"
+Fixed filter full path detection for root directory (Linux/macOS)
+Fixed recycle bin double initialization bug (Windows)
+Fixed incorrect case-insensitive string comparison for i and ı
+Round progress percentage numbers down
+
+
 FreeFileSync 11.27 [2022-10-17]
 -------------------------------
-Fixed a "Some files will be synchronized as part of multiple base folders" false-negative
+Fixed "Some files will be synchronized as part of multiple base folders" false-negative
 Fixed "Unexpected size of data stream" for Google Drive
 Fixed crash when downloading empty file from Google Drive
 RealTimeSync: fixed ffs_batch not accepted as valid configuration
@@ -37,7 +48,7 @@ FreeFileSync 11.24 [2022-08-28]
 -------------------------------
 Enhanced filter syntax to match files only (append ':')
 Fixed "Some files will be synchronized as part of multiple base folders": no more false-positives
-Detect full path filter items and convert to relative path 
+Detect full path filter items and convert to relative path
 Auto-detect FTP server character encoding (UTF8 or ANSI)
 Cancel grid selection via Escape key or second mouse button
 Apply conflict preview limit accross all folder pairs
@@ -156,7 +167,7 @@ Fixed E_NOINTERFACE error after synchronization
 Preempt crashes due to Nahimic Sonic Studio 3
 Hide main window when minimizing progress window (macOS)
 Avoid second dock icon when minimizing progress window (macOS)
- 
+
 
 FreeFileSync 11.13 [2021-08-17]
 -------------------------------

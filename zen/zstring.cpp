@@ -18,7 +18,7 @@ Zstring getUnicodeNormalForm_NonAsciiValidUtf(const Zstring& str, UnicodeNormalF
     //Example: const char* decomposed  = "\x6f\xcc\x81"; //ó
     //         const char* precomposed = "\xc3\xb3"; //ó
     assert(!isAsciiString(str)); //includes "not-empty" check
-    assert(str.find(Zchar('\0')) == Zstring::npos); //don't expect embedded nulls!
+    assert(!contains(str, Zchar('\0'))); //don't expect embedded nulls!
 
     try
     {
@@ -75,6 +75,17 @@ Zstring getUnicodeNormalFormNonAscii(const Zstring& str, UnicodeNormalForm form)
 }
 
 
+Zstring getUpperCaseAscii(const Zstring& str)
+{
+    assert(isAsciiString(str));
+
+    Zstring output = str;
+    for (Zchar& c : output)  //identical to LCMapStringEx(), g_unichar_toupper(), CFStringUppercase() [verified!]
+        c = asciiToUpper(c); //
+    return output;
+}
+
+
 Zstring getUpperCaseNonAscii(const Zstring& str)
 {
     Zstring strNorm = getUnicodeNormalFormNonAscii(str, UnicodeNormalForm::native);
@@ -102,27 +113,20 @@ Zstring getUpperCaseNonAscii(const Zstring& str)
 
 Zstring getUnicodeNormalForm(const Zstring& str, UnicodeNormalForm form)
 {
-    //fast pre-check:
-    if (isAsciiString(str)) //perf: in the range of 3.5ns
-        return str;
     static_assert(std::is_same_v<decltype(str), const Zbase<Zchar>&>, "god bless our ref-counting! => save needless memory allocation!");
 
-    return getUnicodeNormalFormNonAscii(str, form);
+    if (isAsciiString(str)) //fast path: in the range of 3.5ns
+        return str;
+
+    return getUnicodeNormalFormNonAscii(str, form); //slow path
 }
 
 
 Zstring getUpperCase(const Zstring& str)
 {
-    if (isAsciiString(str)) //fast path: in the range of 3.5ns
-    {
-        Zstring output = str;
-        for (Zchar& c : output)  //identical to LCMapStringEx(), g_unichar_toupper(), CFStringUppercase() [verified!]
-            c = asciiToUpper(c); //
-        return output;
-    }
-    //else: slow path --------------------------------------
-
-    return getUpperCaseNonAscii(str);
+    return isAsciiString(str) ? //fast path: in the range of 3.5ns
+           getUpperCaseAscii(str) :
+           getUpperCaseNonAscii(str); //slow path
 }
 
 
@@ -252,8 +256,11 @@ std::weak_ordering compareNatural(const Zstring& lhs, const Zstring& rhs)
 
 std::weak_ordering compareNoCase(const Zstring& lhs, const Zstring& rhs)
 {
+    const bool isAsciiL = isAsciiString(lhs);
+    const bool isAsciiR = isAsciiString(rhs);
+
     //fast path: no memory allocations => ~ 6x speedup
-    if (isAsciiString(lhs) && isAsciiString(rhs))
+    if (isAsciiL && isAsciiR)
     {
         const size_t minSize = std::min(lhs.size(), rhs.size());
         for (size_t i = 0; i < minSize; ++i)
@@ -271,19 +278,19 @@ std::weak_ordering compareNoCase(const Zstring& lhs, const Zstring& rhs)
     //can't we instead skip isAsciiString() and compare chars as long as isAsciiChar()?
     // => NOPE! e.g. decomposed Unicode! A seemingly single isAsciiChar() might be followed by a combining character!!!
 
-    return getUpperCase(lhs) <=> getUpperCase(rhs);
+    return (isAsciiL ? getUpperCaseAscii(lhs) : getUpperCaseNonAscii(lhs)) <=>
+           (isAsciiR ? getUpperCaseAscii(rhs) : getUpperCaseNonAscii(rhs));
 }
 
 
 bool equalNoCase(const Zstring& lhs, const Zstring& rhs)
 {
-    //fast-path: no need for extra memory allocations
     const bool isAsciiL = isAsciiString(lhs);
     const bool isAsciiR = isAsciiString(rhs);
-    if (isAsciiL != isAsciiR)
-        return false;
 
-    if (isAsciiL)
+    //fast-path: no extra memory allocations
+    //caveat: ASCII-char and non-ASCII Unicode *can* compare case-insensitive equal!!! e.g. i and ı https://freefilesync.org/forum/viewtopic.php?t=9718
+    if (isAsciiL && isAsciiR)
     {
         if (lhs.size() != rhs.size())
             return false;
@@ -295,5 +302,6 @@ bool equalNoCase(const Zstring& lhs, const Zstring& rhs)
         return true;
     }
 
-    return getUpperCaseNonAscii(lhs) == getUpperCaseNonAscii(rhs);
+    return (isAsciiL ? getUpperCaseAscii(lhs) : getUpperCaseNonAscii(lhs)) ==
+           (isAsciiR ? getUpperCaseAscii(rhs) : getUpperCaseNonAscii(rhs));
 }

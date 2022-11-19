@@ -90,10 +90,10 @@ public:
                     readRequest = [&, postBufStream{MemoryStreamIn(*postBuf)}](std::span<char> buf) mutable
                     {
                         const size_t bytesRead = postBufStream.read(buf.data(), buf.size());
-                        *postBytesSent += bytesRead;
+                        * postBytesSent += bytesRead;
                         return bytesRead;
                     };
-                    extraOptions.emplace_back(CURLOPT_POST, 1); 
+                    extraOptions.emplace_back(CURLOPT_POST, 1);
                     extraOptions.emplace_back(CURLOPT_POSTFIELDSIZE_LARGE, postBuf->size()); //avoid HTTP chunked transfer encoding?
                 }
 
@@ -162,19 +162,21 @@ public:
 
         const std::string headBuf = futHeader.get(); //throw SysError
         //parse header: https://www.w3.org/Protocols/HTTP/1.0/spec.html#Request-Line
-        const std::string& statusBuf  = beforeFirst(headBuf, "\r\n", IfNotFoundReturn::all);
-        const std::string& headersBuf = afterFirst (headBuf, "\r\n", IfNotFoundReturn::none);
+        const std::string_view& statusBuf  = beforeFirst<std::string_view>(headBuf, "\r\n", IfNotFoundReturn::all);
+        const std::string_view& headersBuf = afterFirst <std::string_view>(headBuf, "\r\n", IfNotFoundReturn::none);
 
-        const std::vector<std::string> statusItems = split(statusBuf, ' ', SplitOnEmpty::allow); //HTTP-Version SP Status-Code SP Reason-Phrase CRLF
+        const std::vector<std::string_view> statusItems = splitCpy(statusBuf, ' ', SplitOnEmpty::allow); //HTTP-Version SP Status-Code SP Reason-Phrase CRLF
         if (statusItems.size() < 2 || !startsWith(statusItems[0], "HTTP/"))
             throw SysError(L"Invalid HTTP response: \"" + utfTo<std::wstring>(statusBuf) + L'"');
 
         statusCode_ = stringTo<int>(statusItems[1]);
 
-        for (const std::string& line : split(headersBuf, '\n', SplitOnEmpty::skip)) //careful: actual line separator is "\r\n"!
-            responseHeaders_[trimCpy(beforeFirst(line, ':', IfNotFoundReturn::all))] =
-                /**/         trimCpy(afterFirst (line, ':', IfNotFoundReturn::none));
-
+        split(headersBuf, '\n', [&](const std::string_view line)
+        {
+            if (!line.empty()) //careful: actual line separator is "\r\n"!
+                responseHeaders_.emplace(trimCpy(beforeFirst(line, ':', IfNotFoundReturn::all)),
+                                         trimCpy(afterFirst (line, ':', IfNotFoundReturn::none)));
+        });
         /* let's NOT consider "Content-Length" header:
             - may be unavailable ("Transfer-Encoding: chunked")
             - may refer to compressed data size ("Content-Encoding: gzip") */
@@ -274,7 +276,7 @@ std::unique_ptr<HttpInputStream::Impl> sendHttpRequestImpl(const Zstring& url,
 
 
 //encode for "application/x-www-form-urlencoded"
-std::string urlencode(const std::string& str)
+std::string urlencode(const std::string_view& str)
 {
     std::string output;
     for (const char c : str) //follow PHP spec: https://github.com/php/php-src/blob/e99d5d39239c611e1e7304e79e88545c4e71a073/ext/standard/url.c#L455
@@ -296,7 +298,7 @@ std::string urlencode(const std::string& str)
 }
 
 
-std::string urldecode(const std::string& str)
+std::string urldecode(const std::string_view& str)
 {
     std::string output;
     for (size_t i = 0; i < str.size(); ++i)
@@ -331,13 +333,16 @@ std::string zen::xWwwFormUrlEncode(const std::vector<std::pair<std::string, std:
 }
 
 
-std::vector<std::pair<std::string, std::string>> zen::xWwwFormUrlDecode(const std::string& str)
+std::vector<std::pair<std::string, std::string>> zen::xWwwFormUrlDecode(const std::string_view str)
 {
     std::vector<std::pair<std::string, std::string>> output;
 
-    for (const std::string& nvPair : split(str, '&', SplitOnEmpty::skip))
-        output.emplace_back(urldecode(beforeFirst(nvPair, '=', IfNotFoundReturn::all)),
-                            urldecode(afterFirst (nvPair, '=', IfNotFoundReturn::none)));
+    split(str, '&', [&](const std::string_view nvPair)
+    {
+        if (!nvPair.empty())
+            output.emplace_back(urldecode(beforeFirst(nvPair, '=', IfNotFoundReturn::all)),
+                                urldecode(afterFirst (nvPair, '=', IfNotFoundReturn::none)));
+    });
     return output;
 }
 
@@ -469,16 +474,16 @@ std::wstring zen::formatHttpError(int sc)
 }
 
 
-bool zen::isValidEmail(const std::string& email)
+bool zen::isValidEmail(const std::string_view& email)
 {
     //https://en.wikipedia.org/wiki/Email_address#Syntax
     //https://tools.ietf.org/html/rfc3696 => note errata! https://www.rfc-editor.org/errata_search.php?rfc=3696
     //https://tools.ietf.org/html/rfc5321
-    std::string local  = beforeLast(email, '@', IfNotFoundReturn::none);
-    std::string domain =  afterLast(email, '@', IfNotFoundReturn::none);
+    std::string_view local  = beforeLast(email, '@', IfNotFoundReturn::none);
+    std::string_view domain =  afterLast(email, '@', IfNotFoundReturn::none);
     //consider: "t@st"@email.com t\@st@email.com"
 
-    auto stripComments = [](std::string& part)
+    auto stripComments = [](std::string_view& part)
     {
         if (startsWith(part, '('))
             part = afterFirst(part, ')', IfNotFoundReturn::none);
@@ -494,15 +499,16 @@ bool zen::isValidEmail(const std::string& email)
         return false;
     //---------------------------------------------------------------------
 
+    //not going to parse and validate this!
     const bool quoted = (startsWith(local, '"') && endsWith(local, '"')) ||
                         contains(local, '\\'); //e.g. "t\@st@email.com"
-    if (!quoted) //I'm not going to parse and validate this!
-        for (const std::string& comp : split(local, '.', SplitOnEmpty::allow))
+    if (!quoted)
+        for (const std::string_view& comp : splitCpy(local, '.', SplitOnEmpty::allow))
             if (comp.empty() || !std::all_of(comp.begin(), comp.end(), [](char c)
         {
-            const char printable[] = "!#$%&'*+-/=?^_`{|}~";
+            constexpr std::string_view printable("!#$%&'*+-/=?^_`{|}~");
                 return isAsciiAlpha(c) || isDigit(c) || !isAsciiChar(c) ||
-                       std::find(std::begin(printable), std::end(printable), c) != std::end(printable);
+                       contains(printable, c);
             }))
     return false;
     //---------------------------------------------------------------------
@@ -514,7 +520,7 @@ bool zen::isValidEmail(const std::string& email)
         if (!contains(domain, '.'))
             return false;
 
-        for (const std::string& comp : split(domain, '.', SplitOnEmpty::allow))
+        for (const std::string_view& comp : splitCpy(domain, '.', SplitOnEmpty::allow))
             if (comp.empty() || comp.size() > 63 ||
             !std::all_of(comp.begin(), comp.end(), [](char c) { return isAsciiAlpha(c) ||isDigit(c) || !isAsciiChar(c) || c ==  '-'; }))
         return false;

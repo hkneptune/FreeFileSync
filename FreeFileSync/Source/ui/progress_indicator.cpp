@@ -16,7 +16,6 @@
 #include <wx+/graph.h>
 #include <wx+/no_flicker.h>
 #include <wx+/font_size.h>
-//#include <wx+/std_button_layout.h>
 #include <zen/file_access.h>
 #include <zen/thread.h>
 #include <zen/perf.h>
@@ -336,7 +335,7 @@ void CompareProgressPanel::Impl::updateProgressGui()
         const double fractionItems = itemsTotal == 0 ? 0 : 1.0 * itemsCurrent / itemsTotal;
 
         //dialog caption, taskbar
-        setTitle(formatPercent0(fractionTotal) + L' ' + getDialogPhaseText(*syncStat_, false /*paused*/));
+        setTitle(formatProgressPercent(fractionTotal) + L' ' + getDialogPhaseText(*syncStat_, false /*paused*/));
 
         //progress indicators
         if (taskbar_.get()) taskbar_->setProgress(fractionTotal);
@@ -571,7 +570,7 @@ struct LabelFormatterBytes : public LabelFormatter
         const double a = bytesProposed / e; //bytesProposed = a * 2^k with a in [1, 2)
         assert(1 <= a && a < 2);
         const double steps[] = {1, 2};
-        return e * numeric::nearMatch(a, std::begin(steps), std::end(steps));
+        return e * numeric::roundToGrid(a, std::begin(steps), std::end(steps));
     }
 
     wxString formatText(double value, double optimalBlockSize) const override { return formatFilesizeShort(static_cast<int64_t>(value)); }
@@ -586,7 +585,7 @@ struct LabelFormatterItemCount : public LabelFormatter
 
         const double steps[] = {1, 2, 5, 10};
         if (itemsProposed <= 10)
-            return numeric::nearMatch(itemsProposed, std::begin(steps), std::end(steps)); //like nextNiceNumber(), but without the 2.5 step!
+            return numeric::roundToGrid(itemsProposed, std::begin(steps), std::end(steps)); //like nextNiceNumber(), but without the 2.5 step!
         return nextNiceNumber(itemsProposed);
     }
 
@@ -599,30 +598,25 @@ struct LabelFormatterItemCount : public LabelFormatter
 
 struct LabelFormatterTimeElapsed : public LabelFormatter
 {
-    explicit LabelFormatterTimeElapsed(bool drawLabel) : drawLabel_(drawLabel) {}
-
     double getOptimalBlockSize(double secProposed) const override
     {
         //5 sec minimum block size
         const double stepsSec[] = {5, 10, 20, 30, 60}; //nice numbers for seconds
         if (secProposed <= 60)
-            return numeric::nearMatch(secProposed, std::begin(stepsSec), std::end(stepsSec));
+            return numeric::roundToGrid(secProposed, std::begin(stepsSec), std::end(stepsSec));
 
         const double stepsMin[] = {1, 2, 5, 10, 15, 20, 30, 60}; //nice numbers for minutes
         if (secProposed <= 3600)
-            return 60 * numeric::nearMatch(secProposed / 60, std::begin(stepsMin), std::end(stepsMin));
+            return 60 * numeric::roundToGrid(secProposed / 60, std::begin(stepsMin), std::end(stepsMin));
 
         if (secProposed <= 3600 * 24)
-            return 3600 * nextNiceNumber(secProposed / 3600); //round up to full hours
+            return 3600 * nextNiceNumber(secProposed / 3600); //round to full hours
 
         return 24 * 3600 * nextNiceNumber(secProposed / (24 * 3600)); //round to full days
     }
 
     wxString formatText(double timeElapsed, double optimalBlockSize) const override
     {
-        if (!drawLabel_)
-            return wxString();
-
         const int64_t timeElapsedSec = std::round(timeElapsed);
 
         return timeElapsedSec < 60 ?
@@ -631,20 +625,16 @@ struct LabelFormatterTimeElapsed : public LabelFormatter
                wxTimeSpan::Seconds(timeElapsedSec).Format(   L"%M:%S") :
                wxTimeSpan::Seconds(timeElapsedSec).Format(L"%H:%M:%S");
     }
-
-private:
-    const bool drawLabel_;
 };
 }
 
 
 template <class TopLevelDialog> //can be a wxFrame or wxDialog
 class SyncProgressDialogImpl : public TopLevelDialog, public SyncProgressDialog
-/*we need derivation, not composition!
+/*  we need derivation, not composition:
       1. SyncProgressDialogImpl IS a wxFrame/wxDialog
       2. implement virtual ~wxFrame()
-      3. event handling below assumes lifetime is larger-equal than wxFrame's
-*/
+      3. event handling below assumes lifetime is larger-equal than wxFrame's      */
 {
 public:
     SyncProgressDialogImpl(long style, //wxFrame/wxDialog style
@@ -851,19 +841,19 @@ dlgSizeBuf_(dlgSize)
     const int xLabelHeight = this->GetCharHeight() + fastFromDIP(2) /*margin*/; //use same height for both graphs to make sure they stretch evenly
     const int yLabelWidth  = fastFromDIP(70);
     pnl_.m_panelGraphBytes->setAttributes(Graph2D::MainAttributes().
-                                          setLabelX(XLabelPos::top,   xLabelHeight, std::make_shared<LabelFormatterTimeElapsed>(true)).
+                                          setLabelX(XLabelPos::top,   xLabelHeight, std::make_shared<LabelFormatterTimeElapsed>()).
                                           setLabelY(YLabelPos::right, yLabelWidth,  std::make_shared<LabelFormatterBytes>()).
                                           setBaseColors(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT), wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW)).
                                           setSelectionMode(GraphSelMode::none));
 
     pnl_.m_panelGraphItems->setAttributes(Graph2D::MainAttributes().
-                                          setLabelX(XLabelPos::bottom, xLabelHeight, std::make_shared<LabelFormatterTimeElapsed>(true)).
+                                          setLabelX(XLabelPos::bottom, xLabelHeight, std::make_shared<LabelFormatterTimeElapsed>()).
                                           setLabelY(YLabelPos::right,  yLabelWidth,  std::make_shared<LabelFormatterItemCount>()).
                                           setBaseColors(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT), wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW)).
                                           setSelectionMode(GraphSelMode::none));
 
-    pnl_.m_panelGraphBytes->addCurve(curveBytes_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(2)).fillCurveArea(getColorBytes()).setColor(getColorBytesRim()));
-    pnl_.m_panelGraphItems->addCurve(curveItems_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(2)).fillCurveArea(getColorItems()).setColor(getColorItemsRim()));
+    pnl_.m_panelGraphBytes->addCurve(curveBytes_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(1)).fillCurveArea(getColorBytes()).setColor(getColorBytesRim()));
+    pnl_.m_panelGraphItems->addCurve(curveItems_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(1)).fillCurveArea(getColorItems()).setColor(getColorItemsRim()));
 
     pnl_.m_panelGraphBytes->addCurve(curveBytesEstim_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(1)).fillCurveArea(getColorLightGrey()).setColor(getColorDarkGrey()));
     pnl_.m_panelGraphItems->addCurve(curveItemsEstim_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(1)).fillCurveArea(getColorLightGrey()).setColor(getColorDarkGrey()));
@@ -871,8 +861,8 @@ dlgSizeBuf_(dlgSize)
     pnl_.m_panelGraphBytes->addCurve(curveBytesTimeNow_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(2)).setColor(getColorBytesDark()));
     pnl_.m_panelGraphItems->addCurve(curveItemsTimeNow_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(2)).setColor(getColorItemsDark()));
 
-    pnl_.m_panelGraphBytes->addCurve(curveBytesTimeEstim_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(3)).setColor(getColorDarkGrey()));
-    pnl_.m_panelGraphItems->addCurve(curveItemsTimeEstim_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(3)).setColor(getColorDarkGrey()));
+    pnl_.m_panelGraphBytes->addCurve(curveBytesTimeEstim_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(2)).setColor(getColorDarkGrey()));
+    pnl_.m_panelGraphItems->addCurve(curveItemsTimeEstim_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(2)).setColor(getColorDarkGrey()));
 
     //graph legend:
     auto generateSquareBitmap = [&](const wxColor& fillCol, const wxColor& borderCol)
@@ -1105,7 +1095,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
         const double fractionTotal = bytesTotal + itemsTotal == 0 ? 0 : 1.0 * (bytesCurrent + itemsCurrent) / (bytesTotal + itemsTotal);
         //add both data + obj-count, to handle "deletion-only" cases
 
-        setExternalStatus(getDialogPhaseText(*syncStat_, paused_), formatPercent0(fractionTotal)); //status text may be "paused"!
+        setExternalStatus(getDialogPhaseText(*syncStat_, paused_), formatProgressPercent(fractionTotal)); //status text may be "paused"!
 
         //progress indicators
         if (trayIcon_.get()) trayIcon_->setProgress(fractionTotal);

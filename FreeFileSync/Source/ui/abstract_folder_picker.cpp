@@ -117,7 +117,7 @@ AbstractFolderPickerDlg::AbstractFolderPickerDlg(wxWindow* parent, AbstractPath&
             //1. test server connection:
             const AFS::ItemType type = AFS::getItemType(folderPath); //throw FileError
             //2. navigate + select path
-            navigateToExistingPath(rootId, split(folderPath.afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip), type);
+            navigateToExistingPath(rootId, splitCpy(folderPath.afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip), type);
         }
         catch (const FileError& e) //not existing or access error
         {
@@ -269,7 +269,7 @@ void AbstractFolderPickerDlg::findAndNavigateToExistingPath(const AbstractPath& 
         if (type)
         {
             m_staticTextStatus->SetLabel(L"");
-            navigateToExistingPath(m_treeCtrlFileSystem->GetRootItem(), split(folderPath.afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip), *type);
+            navigateToExistingPath(m_treeCtrlFileSystem->GetRootItem(), splitCpy(folderPath.afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip), *type);
         }
         else //split into multiple small async tasks rather than a single large one!
             findAndNavigateToExistingPath(*AFS::getParentPath(folderPath));

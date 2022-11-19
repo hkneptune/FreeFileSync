@@ -198,8 +198,7 @@ class SshSession
 {
 public:
     SshSession(const SshSessionId& sessionId, int timeoutSec) : //throw SysError
-        sessionId_(sessionId),
-        libsshCurlUnifiedInitCookie_(getLibsshCurlUnifiedInitCookie(globalSftpSessionCount)) //throw SysError
+        sessionId_(sessionId)
     {
         ZEN_ON_SCOPE_FAIL(cleanup()); //destructor call would lead to member double clean-up!!!
 
@@ -244,16 +243,19 @@ public:
             bool supportAuthPassword    = false;
             bool supportAuthKeyfile     = false;
             bool supportAuthInteractive = false;
-            for (const std::string& str : split<std::string>(authList, ',', SplitOnEmpty::skip))
+            split(authList, ',', [&](std::string_view authMethod)
             {
-                const std::string authMethod = trimCpy(str);
-                if (authMethod == "password")
-                    supportAuthPassword = true;
-                else if (authMethod == "publickey")
-                    supportAuthKeyfile = true;
-                else if (authMethod == "keyboard-interactive")
-                    supportAuthInteractive = true;
-            }
+                authMethod = trimCpy(authMethod);
+                if (!authMethod.empty())
+                {
+                    if (authMethod == "password")
+                        supportAuthPassword = true;
+                    else if (authMethod == "publickey")
+                        supportAuthKeyfile = true;
+                    else if (authMethod == "keyboard-interactive")
+                        supportAuthInteractive = true;
+                }
+            });
 
             switch (sessionId_.authType)
             {
@@ -280,7 +282,7 @@ public:
                             }
                             else
                                 for (int i = 0; i < num_prompts; ++i)
-                                    unexpectedPrompts += (unexpectedPrompts.empty() ? L"" : L"|") + utfTo<std::wstring>(std::string(prompts[i].text, prompts[i].length));
+                                    unexpectedPrompts += (unexpectedPrompts.empty() ? L"" : L"|") + utfTo<std::wstring>(makeStringView(reinterpret_cast<const char*>(prompts[i].text), prompts[i].length));
                         };
                         using AuthCbType = decltype(authCallback);
 
@@ -689,7 +691,7 @@ private:
     SftpNonBlockInfo nbInfo_; //for SSH session, e.g. libssh2_sftp_init()
 
     const SshSessionId sessionId_;
-    const std::shared_ptr<UniCounterCookie> libsshCurlUnifiedInitCookie_;
+    const std::shared_ptr<UniCounterCookie> libsshCurlUnifiedInitCookie_{(getLibsshCurlUnifiedInitCookie(globalSftpSessionCount))}; //throw SysError
     std::chrono::steady_clock::time_point lastSuccessfulUseTime_; //...of the SSH session (but not necessarily the SFTP functionality!)
 };
 
@@ -1937,44 +1939,48 @@ AbstractPath fff::createItemPathSftp(const Zstring& itemPathPhrase) //noexcept
         pathPhrase = pathPhrase.c_str() + strLength(sftpPrefix);
     trim(pathPhrase, true, false, [](Zchar c) { return c == Zstr('/') || c == Zstr('\\'); });
 
-    const Zstring credentials = beforeFirst(pathPhrase, Zstr('@'), IfNotFoundReturn::none);
-    const Zstring fullPathOpt =  afterFirst(pathPhrase, Zstr('@'), IfNotFoundReturn::all);
+    const ZstringView credentials = beforeFirst<ZstringView>(pathPhrase, Zstr('@'), IfNotFoundReturn::none);
+    const ZstringView fullPathOpt =  afterFirst<ZstringView>(pathPhrase, Zstr('@'), IfNotFoundReturn::all);
 
     SftpLogin login;
-    login.username = decodeFtpUsername(beforeFirst(credentials, Zstr(':'), IfNotFoundReturn::all)); //support standard FTP syntax, even though
-    login.password =                    afterFirst(credentials, Zstr(':'), IfNotFoundReturn::none); //concatenateSftpFolderPathPhrase() uses "pass64" instead
+    login.username = decodeFtpUsername(Zstring(beforeFirst(credentials, Zstr(':'), IfNotFoundReturn::all))); //support standard FTP syntax, even though
+    login.password =                   Zstring( afterFirst(credentials, Zstr(':'), IfNotFoundReturn::none)); //concatenateSftpFolderPathPhrase() uses "pass64" instead
 
-    const Zstring fullPath = beforeFirst(fullPathOpt, Zstr('|'), IfNotFoundReturn::all);
-    const Zstring options  =  afterFirst(fullPathOpt, Zstr('|'), IfNotFoundReturn::none);
+    const ZstringView fullPath = beforeFirst(fullPathOpt, Zstr('|'), IfNotFoundReturn::all);
+    const ZstringView options  =  afterFirst(fullPathOpt, Zstr('|'), IfNotFoundReturn::none);
 
     auto it = std::find_if(fullPath.begin(), fullPath.end(), [](Zchar c) { return c == '/' || c == '\\'; });
-    const Zstring serverPort(fullPath.begin(), it);
+    const ZstringView serverPort = makeStringView(fullPath.begin(), it);
     const AfsPath serverRelPath = sanitizeDeviceRelativePath({it, fullPath.end()});
 
-    login.server       = beforeLast(serverPort, Zstr(':'), IfNotFoundReturn::all);
-    const Zstring port =  afterLast(serverPort, Zstr(':'), IfNotFoundReturn::none);
+    login.server           = Zstring(beforeLast(serverPort, Zstr(':'), IfNotFoundReturn::all));
+    const ZstringView port =          afterLast(serverPort, Zstr(':'), IfNotFoundReturn::none);
     login.port = stringTo<int>(port); //0 if empty
 
     assert(login.allowZlib == false);
 
-    for (const Zstring& optPhrase : split(options, Zstr('|'), SplitOnEmpty::skip))
-        if (startsWith(optPhrase, Zstr("timeout=")))
-            login.timeoutSec = stringTo<int>(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
-        else if (startsWith(optPhrase, Zstr("chan=")))
-            login.traverserChannelsPerConnection = stringTo<int>(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
-        else if (startsWith(optPhrase, Zstr("keyfile=")))
+    split(options, Zstr('|'), [&](const ZstringView optPhrase)
+    {
+        if (!optPhrase.empty())
         {
-            login.authType = SftpAuthType::keyFile;
-            login.privateKeyFilePath = getResolvedFilePath(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
+            if (startsWith(optPhrase, Zstr("timeout=")))
+                login.timeoutSec = stringTo<int>(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
+            else if (startsWith(optPhrase, Zstr("chan=")))
+                login.traverserChannelsPerConnection = stringTo<int>(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
+            else if (startsWith(optPhrase, Zstr("keyfile=")))
+            {
+                login.authType = SftpAuthType::keyFile;
+                login.privateKeyFilePath = getResolvedFilePath(Zstring(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none)));
+            }
+            else if (optPhrase == Zstr("agent"))
+                login.authType = SftpAuthType::agent;
+            else if (startsWith(optPhrase, Zstr("pass64=")))
+                login.password = decodePasswordBase64(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
+            else if (optPhrase == Zstr("zlib"))
+                login.allowZlib = true;
+            else
+                assert(false);
         }
-        else if (optPhrase == Zstr("agent"))
-            login.authType = SftpAuthType::agent;
-        else if (startsWith(optPhrase, Zstr("pass64=")))
-            login.password = decodePasswordBase64(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
-        else if (optPhrase == Zstr("zlib"))
-            login.allowZlib = true;
-        else
-            assert(false);
-
+    });
     return AbstractPath(makeSharedRef<SftpFileSystem>(login), serverRelPath);
 }

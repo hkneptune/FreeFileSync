@@ -92,8 +92,8 @@ private:
     {
     public:
         void insert(const Zstring& mask); //expected: upper-case + Unicode-normalized!
-        bool matches(const Zchar* pathFirst, const Zchar* pathLast) const;
-        bool matchesBegin(const Zstring& relPath) const;
+        bool matches(const ZstringView relPath) const;
+        bool matchesBegin(const ZstringView relPath) const;
 
         inline friend std::strong_ordering operator<=>(const MaskMatcher& lhs, const MaskMatcher& rhs)
         {
@@ -255,9 +255,6 @@ FilterRef constructFilter(const Zstring& includePhrase,
             return zen::makeSharedRef<CombinedFilter>(NameFilter(includePhrase, excludePhrase + Zstr('\n') + excludePhrase2), NameFilter(includePhrase2, Zstring()));
     }
 }
-
-
-std::vector<Zstring> splitByDelimiter(const Zstring& filterPhrase); //keep external linkage for unit test
 }
 
 #endif //HARD_FILTER_H_825780275842758345

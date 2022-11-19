@@ -92,7 +92,7 @@ protected:
 
     //this needs to be checked before writing to "ptr"
     static bool canWrite(const Char* ptr, size_t minCapacity) { return minCapacity <= descr(ptr)->capacity; }
-    static size_t length(const Char* ptr) { return descr(ptr)->length; }
+    static size_t size(const Char* ptr) { return descr(ptr)->length; }
 
     static void setLength(Char* ptr, size_t newLength)
     {
@@ -174,7 +174,7 @@ protected:
         return d->refCount == 1 && minCapacity <= d->capacity;
     }
 
-    static size_t length(const Char* ptr) { return descr(ptr)->length; }
+    static size_t size(const Char* ptr) { return descr(ptr)->length; }
 
     static void setLength(Char* ptr, size_t newLength)
     {
@@ -228,16 +228,20 @@ public:
     Zbase();
     Zbase(const Char* str) : Zbase(str, str + strLength(str)) {} //implicit conversion from a C-string!
     Zbase(const Char* str, size_t len) : Zbase(str, str + len) {}
+    explicit Zbase(const std::basic_string_view<Char> view) : Zbase(view.begin(), view.end()) {}
     Zbase(size_t count, Char fillChar);
-    Zbase(const Zbase& str);
-    Zbase(Zbase&& tmp) noexcept;
     template <class InputIterator>
     Zbase(InputIterator first, InputIterator last);
+    Zbase(const Zbase& str);
+    Zbase(Zbase&& tmp) noexcept;
     //explicit Zbase(Char ch); //dangerous if implicit: Char buffer[]; return buffer[0]; ups... forgot &, but not a compiler error! //-> non-standard extension!!!
 
     ~Zbase();
 
     //operator const Char* () const; //NO implicit conversion to a C-string!! Many problems... one of them: if we forget to provide operator overloads, it'll just work with a Char*...
+
+    operator std::basic_string_view<Char>() const& noexcept { return {data(), size()}; }
+    operator std::basic_string_view<Char>() const&& = delete; //=> probably a bug!
 
     //STL accessors
     using iterator        = Char*;
@@ -250,25 +254,28 @@ public:
     iterator end  ();
 
     const_iterator begin () const { return rawStr_; }
-    const_iterator end   () const { return rawStr_ + length(); }
+    const_iterator end   () const { return rawStr_ + size(); }
 
     const_iterator cbegin() const { return begin(); }
     const_iterator cend  () const { return end  (); }
 
     //std::string functions
-    size_t length() const;
-    size_t size  () const { return length(); }
+    size_t length() const { return size(); }
+    size_t size  () const;
     const Char* c_str() const { return rawStr_; } //C-string format with 0-termination
-    /**/  Char* data() { return &*begin(); }
+    const Char* data() const { return &*begin(); }
+    /**/  Char* data()       { return &*begin(); }
     const Char& operator[](size_t pos) const;
     /**/  Char& operator[](size_t pos);
-    bool empty() const { return length() == 0; }
+    bool empty() const { return size() == 0; }
     void clear();
+#if 0 //avoid redundant std::string API bloat!
     size_t find (const Zbase& str, size_t pos = 0)    const; //
     size_t find (const Char* str,  size_t pos = 0)    const; //
     size_t find (Char  ch,         size_t pos = 0)    const; //returns "npos" if not found
     size_t rfind(Char  ch,         size_t pos = npos) const; //
     size_t rfind(const Char* str,  size_t pos = npos) const; //
+#endif
     //Zbase& replace(size_t pos1, size_t n1, const Zbase& str);
     void reserve(size_t minCapacity);
     Zbase& assign(const Char* str, size_t len) { return assign(str, str + len); }
@@ -286,7 +293,7 @@ public:
     Zbase& operator=(const Zbase& str);
     Zbase& operator=(const Char* str)   { return assign(str, strLength(str)); }
     Zbase& operator=(Char ch)           { return assign(&ch, 1); }
-    Zbase& operator+=(const Zbase& str) { return append(str.c_str(), str.length()); }
+    Zbase& operator+=(const Zbase& str) { return append(str.c_str(), str.size()); }
     Zbase& operator+=(const Char* str)  { return append(str, strLength(str)); }
     Zbase& operator+=(Char ch)          { return append(&ch, 1); }
 
@@ -355,7 +362,7 @@ template <class Char, template <class> class SP>
 template <class InputIterator> inline
 Zbase<Char, SP>::Zbase(InputIterator first, InputIterator last)
 {
-    rawStr_ = this->create(std::distance(first, last));
+    rawStr_ = this->create(last - first);
     *std::copy(first, last, rawStr_) = 0;
 }
 
@@ -394,35 +401,36 @@ Zbase<Char, SP>::~Zbase()
 }
 
 
+#if 0 //avoid redundant std::string API bloat!
 template <class Char, template <class> class SP> inline
-size_t Zbase<Char, SP>::find(const Zbase& str, size_t pos) const
+size_t Zbase<Char, SP>::find(const Zbase& str, size_t pos) const //returns "npos" if not found
 {
-    assert(pos <= length());
-    const size_t len = length();
+    assert(pos <= size());
+    const size_t len = size();
     const Char* thisEnd = begin() + len; //respect embedded 0
-    const Char* it = std::search(begin() + std::min(pos, len), thisEnd,
+    const Char* it = searchFirst(begin() + std::min(pos, len), thisEnd,
                                  str.begin(), str.end());
     return it == thisEnd ? npos : it - begin();
 }
 
 
 template <class Char, template <class> class SP> inline
-size_t Zbase<Char, SP>::find(const Char* str, size_t pos) const
+size_t Zbase<Char, SP>::find(const Char* str, size_t pos) const //returns "npos" if not found
 {
-    assert(pos <= length());
-    const size_t len = length();
+    assert(pos <= size());
+    const size_t len = size();
     const Char* thisEnd = begin() + len; //respect embedded 0
-    const Char* it = std::search(begin() + std::min(pos, len), thisEnd,
+    const Char* it = searchFirst(begin() + std::min(pos, len), thisEnd,
                                  str, str + strLength(str));
     return it == thisEnd ? npos : it - begin();
 }
 
 
 template <class Char, template <class> class SP> inline
-size_t Zbase<Char, SP>::find(Char ch, size_t pos) const
+size_t Zbase<Char, SP>::find(Char ch, size_t pos) const //returns "npos" if not found
 {
-    assert(pos <= length());
-    const size_t len = length();
+    assert(pos <= size());
+    const size_t len = size();
     const Char* thisEnd = begin() + len; //respect embedded 0
     const Char* it = std::find(begin() + std::min(pos, len), thisEnd, ch);
     return it == thisEnd ? npos : it - begin();
@@ -430,10 +438,10 @@ size_t Zbase<Char, SP>::find(Char ch, size_t pos) const
 
 
 template <class Char, template <class> class SP> inline
-size_t Zbase<Char, SP>::rfind(Char ch, size_t pos) const
+size_t Zbase<Char, SP>::rfind(Char ch, size_t pos) const //returns "npos" if not found
 {
-    assert(pos == npos || pos <= length());
-    const size_t len = length();
+    assert(pos == npos || pos <= size());
+    const size_t len = size();
     const Char* currEnd = begin() + (pos == npos ? len : std::min(pos + 1, len));
     const Char* it = findLast(begin(), currEnd, ch);
     return it == currEnd ? npos : it - begin();
@@ -441,22 +449,23 @@ size_t Zbase<Char, SP>::rfind(Char ch, size_t pos) const
 
 
 template <class Char, template <class> class SP> inline
-size_t Zbase<Char, SP>::rfind(const Char* str, size_t pos) const
+size_t Zbase<Char, SP>::rfind(const Char* str, size_t pos) const //returns "npos" if not found
 {
-    assert(pos == npos || pos <= length());
+    assert(pos == npos || pos <= size());
     const size_t strLen = strLength(str);
-    const size_t len = length();
+    const size_t len = size();
     const Char* currEnd = begin() + (pos == npos ? len : std::min(pos + strLen, len));
     const Char* it = searchLast(begin(), currEnd,
                                 str, str + strLen);
     return it == currEnd ? npos : it - begin();
 }
+#endif
 
 
 template <class Char, template <class> class SP> inline
 void Zbase<Char, SP>::resize(size_t newSize, Char fillChar)
 {
-    const size_t oldSize = length();
+    const size_t oldSize = size();
     if (this->canWrite(rawStr_, newSize))
     {
         if (oldSize < newSize)
@@ -485,28 +494,28 @@ void Zbase<Char, SP>::resize(size_t newSize, Char fillChar)
 template <class Char, template <class> class SP> inline
 bool operator==(const Zbase<Char, SP>& lhs, const Zbase<Char, SP>& rhs)
 {
-    return lhs.length() == rhs.length() && std::equal(lhs.begin(), lhs.end(), rhs.begin()); //respect embedded 0
+    return lhs.size() == rhs.size() && std::equal(lhs.begin(), lhs.end(), rhs.begin()); //respect embedded 0
 }
 
 
 template <class Char, template <class> class SP> inline
 bool operator==(const Zbase<Char, SP>& lhs, const Char* rhs)
 {
-    return lhs.length() == strLength(rhs) && std::equal(lhs.begin(), lhs.end(), rhs); //respect embedded 0
+    return lhs.size() == strLength(rhs) && std::equal(lhs.begin(), lhs.end(), rhs); //respect embedded 0
 }
 
 
 template <class Char, template <class> class SP> inline
-size_t Zbase<Char, SP>::length() const
+size_t Zbase<Char, SP>::size() const
 {
-    return SP<Char>::length(rawStr_);
+    return SP<Char>::size(rawStr_);
 }
 
 
 template <class Char, template <class> class SP> inline
 const Char& Zbase<Char, SP>::operator[](size_t pos) const
 {
-    assert(pos < length()); //design by contract! no runtime check!
+    assert(pos < size()); //design by contract! no runtime check!
     return rawStr_[pos];
 }
 
@@ -514,8 +523,8 @@ const Char& Zbase<Char, SP>::operator[](size_t pos) const
 template <class Char, template <class> class SP> inline
 Char& Zbase<Char, SP>::operator[](size_t pos)
 {
-    reserve(length()); //make unshared!
-    assert(pos < length()); //design by contract! no runtime check!
+    reserve(size()); //make unshared!
+    assert(pos < size()); //design by contract! no runtime check!
     return rawStr_[pos];
 }
 
@@ -523,7 +532,7 @@ Char& Zbase<Char, SP>::operator[](size_t pos)
 template <class Char, template <class> class SP> inline
 auto Zbase<Char, SP>::begin() -> iterator
 {
-    reserve(length()); //make unshared!
+    reserve(size()); //make unshared!
     return rawStr_;
 }
 
@@ -531,7 +540,7 @@ auto Zbase<Char, SP>::begin() -> iterator
 template <class Char, template <class> class SP> inline
 auto Zbase<Char, SP>::end() -> iterator
 {
-    return begin() + length();
+    return begin() + size();
 }
 
 
@@ -557,7 +566,7 @@ void Zbase<Char, SP>::reserve(size_t minCapacity) //make unshared and check capa
     if (!this->canWrite(rawStr_, minCapacity))
     {
         //allocate a new string
-        const size_t len = length();
+        const size_t len = size();
         Char* newStr = this->create(len, std::max(len, minCapacity)); //reserve() must NEVER shrink the string: logical const!
         std::copy(rawStr_, rawStr_ + len + 1 /*0-termination*/, newStr);
 
@@ -591,7 +600,7 @@ Zbase<Char, SP>& Zbase<Char, SP>::append(InputIterator first, InputIterator last
     const size_t len = std::distance(first, last);
     if (len > 0) //avoid making this string unshared for no reason
     {
-        const size_t thisLen = length();
+        const size_t thisLen = size();
         reserve(thisLen + len); //make unshared and check capacity
 
         *std::copy(first, last, rawStr_ + thisLen) = 0;
@@ -624,7 +633,7 @@ Zbase<Char, SP>& Zbase<Char, SP>::operator=(Zbase<Char, SP>&& tmp) noexcept
 template <class Char, template <class> class SP> inline
 void Zbase<Char, SP>::pop_back()
 {
-    const size_t len = length();
+    const size_t len = size();
     assert(len > 0);
     if (len > 0)
         resize(len - 1);

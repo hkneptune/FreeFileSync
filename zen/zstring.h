@@ -20,13 +20,13 @@
 //a high-performance string for interfacing with native OS APIs in multithreaded contexts
 using Zstring = zen::Zbase<Zchar>;
 
+using ZstringView = std::basic_string_view<Zchar>;
+
 //for special UI-contexts: guaranteed exponential growth + ref-counting + COW + no SSO overhead
 using Zstringc = zen::Zbase<char>;
 //using Zstringw = zen::Zbase<wchar_t>;
 
 
-//Windows, Linux: precomposed
-//macOS: decomposed
 enum class UnicodeNormalForm
 {
     nfc, //precomposed

@@ -17,11 +17,11 @@ std::vector<unsigned int> fff::fromTimeShiftPhrase(const std::wstring& timeShift
     std::vector<unsigned int> minutes;
 
     split2(timeShiftPhrase, [](wchar_t c) { return c == L',' || c == L';' || c == L' '; }, //delimiters
-    [&minutes](const wchar_t* blockFirst, const wchar_t* blockLast)
+    [&minutes](const std::wstring_view block)
     {
-        if (blockFirst != blockLast)
+        if (!block.empty())
         {
-            std::wstring part(blockFirst, blockLast);
+            std::wstring part(block);
             replace(part, L'-', L""); //there is no negative shift => treat as positive!
 
             const unsigned int timeShift = stringTo<unsigned int>(beforeFirst(part, L':', IfNotFoundReturn::all)) * 60 +

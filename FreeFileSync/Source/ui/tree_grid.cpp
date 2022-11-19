@@ -136,24 +136,25 @@ void TreeView::extractVisibleSubtree(ContainerObject& hierObj,  //in
 
 namespace
 {
-//generate nice percentage numbers which precisely sum up to 100
+//generate nice percentage numbers which precisely add up to 100
 void calcPercentage(std::vector<std::pair<uint64_t, int*>>& workList)
 {
-    const uint64_t total = std::accumulate(workList.begin(), workList.end(), uint64_t(),
-    [](uint64_t sum, const std::pair<uint64_t, int*>& pair) { return sum + pair.first; });
+    uint64_t bytesTotal = 0;
+    for (const auto& [bytes, percentOut] : workList)
+        bytesTotal += bytes;
 
-    if (total == 0U) //this case doesn't work with the error minimizing algorithm below
+    if (bytesTotal == 0U) //this case doesn't work with the error minimizing algorithm below
     {
-        for (auto& [bytes, percent] : workList)
-            *percent = 0;
+        for (auto& [bytes, percentOut] : workList)
+            *percentOut = 0;
         return;
     }
 
     int remainingPercent = 100;
-    for (auto& [bytes, percent] : workList)
+    for (auto& [bytes, percentOut] : workList)
     {
-        *percent = static_cast<int>(bytes * 100U / total); //round down
-        remainingPercent -= *percent;
+        *percentOut = static_cast<int>(bytes * 100U / bytesTotal); //round down
+        remainingPercent -= *percentOut;
     }
     assert(remainingPercent >= 0);
     assert(remainingPercent < std::ssize(workList));
@@ -163,9 +164,9 @@ void calcPercentage(std::vector<std::pair<uint64_t, int*>>& workList)
     if (remainingPercent > 0)
     {
         std::nth_element(workList.begin(), workList.begin() + remainingPercent - 1, workList.end(),
-                         [total](const std::pair<uint64_t, int*>& lhs, const std::pair<uint64_t, int*>& rhs)
+                         [bytesTotal](const std::pair<uint64_t, int*>& lhs, const std::pair<uint64_t, int*>& rhs)
         {
-            return lhs.first * 100U % total > rhs.first * 100U % total;
+            return lhs.first * 100U % bytesTotal > rhs.first * 100U % bytesTotal;
         });
 
         std::for_each(workList.begin(), workList.begin() + remainingPercent, [&](std::pair<uint64_t, int*>& pair) { ++*pair.second; });

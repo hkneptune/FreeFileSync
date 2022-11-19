@@ -449,15 +449,17 @@ private:
     {
         const double totalSecs = numeric::isNull(bytesPerSec) ? 0 : bytesTotal / bytesPerSec;
         const double expectedSteps = totalSecs * STATUS_PERCENT_MIN_CHANGES_PER_SEC;
-
-        const wchar_t* format = [&] //TODO? protect against format flickering!?
+       
+        const int decPlaces = [&] //TODO? protect against format flickering!?
         {
-            if (expectedSteps <=   100) return L"%.0f";
-            if (expectedSteps <=  1000) return L"%.1f";
-            if (expectedSteps <= 10000) return L"%.2f";
-            /**/                        return L"%.3f";
+            if (expectedSteps <=    100) return 0;
+            if (expectedSteps <=   1000) return 1;
+            if (expectedSteps <=  10000) return 2;
+            if (expectedSteps <= 100000) return 3;
+            /**/                         return 4;
         }();
-        return zen::printNumber<std::wstring>(format, fraction * 100) + L'%'; //need to localize percent!?
+        //const int decPlaces = expectedSteps <= 100 ? 0 : static_cast<int>(std::ceil(std::log10(expectedSteps))) - 2; -> overkill?
+        return zen::formatProgressPercent(fraction,  decPlaces);
     }
 
     bool showPercent_ = false;

@@ -14,7 +14,7 @@
 namespace fff
 {
 inline
-Zstring encodePasswordBase64(const Zstring& pass)
+Zstring encodePasswordBase64(const ZstringView pass)
 {
     using namespace zen;
     return utfTo<Zstring>(stringEncodeBase64(utfTo<std::string>(pass))); //nothrow
@@ -22,7 +22,7 @@ Zstring encodePasswordBase64(const Zstring& pass)
 
 
 inline
-Zstring decodePasswordBase64(const Zstring& pass)
+Zstring decodePasswordBase64(const ZstringView pass)
 {
     using namespace zen;
     return utfTo<Zstring>(stringDecodeBase64(utfTo<std::string>(pass))); //nothrow

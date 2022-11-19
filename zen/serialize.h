@@ -79,7 +79,7 @@ template <         class BufferedInputStream> void readArray    (BufferedInputSt
 struct IOCallbackDivider
 {
     IOCallbackDivider(const IoCallback& notifyUnbufferedIO, int64_t& totalBytesNotified) :
-        totalBytesNotified_(totalBytesNotified), 
+        totalBytesNotified_(totalBytesNotified),
         notifyUnbufferedIO_(notifyUnbufferedIO) { assert(totalBytesNotified == 0); }
 
     void operator()(int64_t bytesDelta) //throw X!

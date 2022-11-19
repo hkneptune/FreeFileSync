@@ -765,13 +765,13 @@ void matchFolders(const MapType& mapLeft, const MapType& mapRight, ProcessLeftOn
     {
         //perf: buffer ZstringNoCase instead of compareNoCase()/equalNoCase()? => makes no (significant) difference!
         const typename MapType::value_type* ref;
-        bool leftSide;
+        SelectSide side;
     };
     std::vector<FileRef> fileList;
     fileList.reserve(mapLeft.size() + mapRight.size()); //perf: ~5% shorter runtime
 
-    for (const auto& item : mapLeft ) fileList.push_back({&item, true });
-    for (const auto& item : mapRight) fileList.push_back({&item, false});
+    for (const auto& item : mapLeft ) fileList.push_back({&item, SelectSide::left});
+    for (const auto& item : mapRight) fileList.push_back({&item, SelectSide::right});
 
     //primary sort: ignore Unicode normal form and upper/lower case
     //bonus: natural default sequence on UI file grid
@@ -780,12 +780,12 @@ void matchFolders(const MapType& mapLeft, const MapType& mapRight, ProcessLeftOn
     using ItType = typename std::vector<FileRef>::iterator;
     auto tryMatchRange = [&](ItType it, ItType itLast) //auto parameters? compiler error on VS 17.2...
     {
-        const size_t equalCountL = std::count_if(it, itLast, [](const FileRef& fr) { return fr.leftSide; });
+        const size_t equalCountL = std::count_if(it, itLast, [](const FileRef& fr) { return fr.side == SelectSide::left; });
         const size_t equalCountR = itLast - it - equalCountL;
 
         if (equalCountL == 1 && equalCountR == 1) //we have a match
         {
-            if (it->leftSide)
+            if (it->side == SelectSide::left)
                 bo(*it[0].ref, *it[1].ref);
             else
                 bo(*it[1].ref, *it[0].ref);
@@ -817,7 +817,7 @@ void matchFolders(const MapType& mapLeft, const MapType& mapRight, ProcessLeftOn
                     const Zstringc& conflictMsg = getConflictAmbiguousItemName(itCase->ref->first);
                     std::for_each(itCase, itEndCase, [&](const FileRef& fr)
                     {
-                        if (fr.leftSide)
+                        if (fr.side == SelectSide::left)
                             lo(*fr.ref, &conflictMsg);
                         else
                             ro(*fr.ref, &conflictMsg);

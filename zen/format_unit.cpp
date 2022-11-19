@@ -111,8 +111,8 @@ std::wstring roundToBlock(double timeInHigh,
     const double granularity = 0.1;
     const double timeInLow = timeInHigh * unitLowPerHigh;
     const int blockSizeLow = granularity * timeInHigh < 1 ?
-                             numeric::nearMatch(granularity * timeInLow,  std::begin(stepsLow),  std::end(stepsLow)):
-                             numeric::nearMatch(granularity * timeInHigh, std::begin(stepsHigh), std::end(stepsHigh)) * unitLowPerHigh;
+                             numeric::roundToGrid(granularity * timeInLow,  std::begin(stepsLow),  std::end(stepsLow)):
+                             numeric::roundToGrid(granularity * timeInHigh, std::begin(stepsHigh), std::end(stepsHigh)) * unitLowPerHigh;
     const int roundedtimeInLow = std::lround(timeInLow / blockSizeLow) * blockSizeLow;
 
     std::wstring output = formatUnitTime(roundedtimeInLow / unitLowPerHigh, unitHigh);
@@ -149,10 +149,21 @@ std::wstring zen::formatRemainingTime(double timeInSec)
 }
 
 
-std::wstring zen::formatPercent0(double fraction)
+std::wstring zen::formatProgressPercent(double fraction, int decPlaces)
 {
-    return numberTo<std::wstring>(std::lround(fraction * 100)) + L'%'; //need to localize percent!?
-    //return printNumber<std::wstring>(L"%.2f", fraction * 100) + L'%';
+#if 0 //special case for perf!?
+    if (decPlaces == 0)
+        return numberTo<std::wstring>(static_cast<int>(fraction * 100)) + L'%';
+#endif
+    //round down! don't show 100% when not actually done: https://freefilesync.org/forum/viewtopic.php?t=9781
+    const double blocks = std::pow(10, decPlaces);
+    const double percent = std::floor(fraction * 100 * blocks) / blocks;
+
+    assert(0 <= decPlaces && decPlaces <= 9);
+    wchar_t format[] = L"%.0f" L"%%" /*literal %: need to localize?*/;
+    format[2] += static_cast<wchar_t>(std::clamp(decPlaces, 0, 9));
+
+    return printNumber<std::wstring>(format, percent);
 }
 
 

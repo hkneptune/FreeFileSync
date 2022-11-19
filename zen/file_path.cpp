@@ -77,6 +77,8 @@ std::optional<Zstring> zen::getParentFolderPath(const Zstring& itemPath)
 
 Zstring zen::appendSeparator(Zstring path) //support rvalue references!
 {
+    assert(!endsWith(path, FILE_NAME_SEPARATOR == Zstr('/') ? Zstr('\\' ) : Zstr('/' )));
+
     if (!endsWith(path, FILE_NAME_SEPARATOR))
         path += FILE_NAME_SEPARATOR;
     return path; //returning a by-value parameter => RVO if possible, r-value otherwise!
@@ -156,8 +158,8 @@ Zstring zen::getFileExtension(const Zstring& filePath)
 
 std::weak_ordering zen::compareNativePath(const Zstring& lhs, const Zstring& rhs)
 {
-    assert(lhs.find(Zchar('\0')) == Zstring::npos); //don't expect embedded nulls!
-    assert(rhs.find(Zchar('\0')) == Zstring::npos); //
+    assert(!contains(lhs, Zchar('\0'))); //don't expect embedded nulls!
+    assert(!contains(rhs, Zchar('\0'))); //
 
     return lhs <=> rhs;
 

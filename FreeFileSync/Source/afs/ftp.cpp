@@ -79,7 +79,7 @@ namespace
 Zstring concatenateFtpFolderPathPhrase(const FtpLogin& login, const AfsPath& itemPath); //noexcept
 
 
-Zstring ansiToUtfEncoding(const std::string& str) //throw SysError
+Zstring ansiToUtfEncoding(const std::string_view& str) //throw SysError
 {
     if (str.empty()) return {};
 
@@ -89,7 +89,7 @@ Zstring ansiToUtfEncoding(const std::string& str) //throw SysError
     ZEN_ON_SCOPE_EXIT(if (error) ::g_error_free(error));
 
     //https://developer.gnome.org/glib/stable/glib-Character-Set-Conversion.html#g-convert
-    gchar* utfStr = ::g_convert(str.c_str(),   //const gchar* str
+    gchar* utfStr = ::g_convert(str.data(),    //const gchar* str
                                 str.size(),    //gssize len
                                 "UTF-8",       //const gchar* to_codeset
                                 "LATIN1",      //const gchar* from_codeset
@@ -97,7 +97,7 @@ Zstring ansiToUtfEncoding(const std::string& str) //throw SysError
                                 &bytesWritten, //gsize* bytes_written
                                 &error);       //GError** error
     if (!utfStr)
-        throw SysError(formatGlibError("g_convert(" + utfTo<std::string>(str) + ", LATIN1 -> UTF-8)", error));
+        throw SysError(formatGlibError("g_convert(" + std::string(str) + ", LATIN1 -> UTF-8)", error));
     ZEN_ON_SCOPE_EXIT(::g_free(utfStr));
 
     return {utfStr, bytesWritten};
@@ -155,15 +155,17 @@ std::wstring getCurlDisplayPath(const FtpSessionId& sessionId, const AfsPath& it
 }
 
 
-std::vector<std::string> splitFtpResponse(const std::string& buf)
+std::vector<std::string_view> splitFtpResponse(std::string&&) = delete;
+
+std::vector<std::string_view> splitFtpResponse(const std::string& buf)
 {
-    std::vector<std::string> lines;
+    std::vector<std::string_view> lines;
 
     split2(buf, [](char c) { return isLineBreak(c) || c == '\0'; }, //is 0-char check even needed?
-    [&lines](const char* blockFirst, const char* blockLast)
+    [&lines](const std::string_view block)
     {
-        if (blockFirst != blockLast) //consider Windows' <CR><LF>
-            lines.emplace_back(blockFirst, blockLast);
+        if (!block.empty()) //consider Windows' <CR><LF>
+            lines.push_back(block);
     });
 
     return lines;
@@ -173,37 +175,39 @@ std::vector<std::string> splitFtpResponse(const std::string& buf)
 class FtpLineParser
 {
 public:
-    explicit FtpLineParser(const std::string& line) : line_(line), it_(line_.begin()) {}
+    explicit FtpLineParser(const std::string_view& line) : it_(line.begin()), itEnd_(line.end()) {}
+    /**/     FtpLineParser(std::string_view&&) = delete;
 
     template <class Function>
-    std::string readRange(size_t count, Function acceptChar) //throw SysError
+    std::string_view readRange(size_t count, Function acceptChar) //throw SysError
     {
-        if (static_cast<ptrdiff_t>(count) > line_.end() - it_)
+        if (static_cast<ptrdiff_t>(count) > itEnd_ - it_)
             throw SysError(L"Unexpected end of line.");
 
-        if (!std::all_of(it_, it_ + count, acceptChar))
+        const auto rngEnd = it_ + count;
+
+        if (!std::all_of(it_, rngEnd, acceptChar))
             throw SysError(L"Expected char type not found.");
 
-        std::string output(it_, it_ + count);
-        it_ += count;
-        return output;
+        return makeStringView(std::exchange(it_, rngEnd), rngEnd);
     }
 
     template <class Function> //expects non-empty range!
-    std::string readRange(Function acceptChar) //throw SysError
+    std::string_view readRange(Function acceptChar) //throw SysError
     {
-        auto itEnd = std::find_if_not(it_, line_.end(), acceptChar);
-        if (itEnd == it_)
+        auto rngEnd = std::find_if_not(it_, itEnd_, acceptChar);
+        if (rngEnd == it_)
             throw SysError(L"Expected char range not found.");
 
-        return {std::exchange(it_, itEnd), itEnd};
+        return makeStringView(std::exchange(it_, rngEnd), rngEnd);
     }
 
-    char peekNextChar() const { return it_ == line_.end() ? '\0' : *it_; }
+    char peekNextChar() const { return it_ == itEnd_ ? '\0' : *it_; }
 
 private:
-    const std::string line_;
-    std::string::const_iterator it_;
+    /**/
+    std::string_view::const_iterator it_;
+    const std::string_view::const_iterator itEnd_;
 };
 
 //----------------------------------------------------------------------------------------------------------------
@@ -267,9 +271,10 @@ class FtpSession
 {
 public:
     explicit FtpSession(const FtpSessionId& sessionId) : //throw SysError
-        sessionId_(sessionId),
-        libsshCurlUnifiedInitCookie_(getLibsshCurlUnifiedInitCookie(globalFtpSessionCount)), //throw SysError
-        lastSuccessfulUseTime_(std::chrono::steady_clock::now()) {}
+        sessionId_(sessionId) 
+    {
+        lastSuccessfulUseTime_ = std::chrono::steady_clock::now();
+    }
 
     ~FtpSession()
     {
@@ -488,9 +493,9 @@ public:
         {
             std::wstring errorMsg = trimCpy(utfTo<std::wstring>(curlErrorBuf)); //optional
 
-            if (const std::vector<std::string>& headerLines = splitFtpResponse(headerData);
+            if (const std::vector<std::string_view>& headerLines = splitFtpResponse(headerData);
                 !headerLines.empty())
-                if (const std::string& response = trimCpy(headerLines.back()); //that *should* be the server's error response
+                if (const std::string_view& response = trimCpy(headerLines.back()); //that *should* be the server's error response
                     !response.empty())
                     errorMsg += (errorMsg.empty() ? L"" : L"\n") + utfTo<std::wstring>(response);
 #if 0
@@ -536,7 +541,7 @@ public:
         //=> * to the rescue: as long as we get an FTP response - *any* FTP response (including 550) - the connection itself is fine!
         const std::string& featBuf = runSingleFtpCommand("*FEAT", false /*requiresUtf8*/); //throw SysError
 
-        for (const std::string& line : splitFtpResponse(featBuf))
+        for (const std::string_view& line : splitFtpResponse(featBuf))
             if (startsWith(line, "211-") ||
                 startsWith(line, "211 ") ||
                 startsWith(line, "500 ") ||
@@ -570,7 +575,7 @@ public:
 
             const std::string& pwdBuf = runSingleFtpCommand("PWD", true /*requiresUtf8*/); //throw SysError
 
-            for (const std::string& line : splitFtpResponse(pwdBuf))
+            for (const std::string_view& line : splitFtpResponse(pwdBuf))
                 if (startsWith(line, "257 "))
                 {
                     /* 257<space>[rubbish]"<directory-name>"<space><commentary>        according to libcurl
@@ -638,7 +643,7 @@ public:
         return utfToServerEncoding(serverPath); //throw SysError
     }
 
-    Zstring serverToUtfEncoding(const std::string& str) //throw SysError
+    Zstring serverToUtfEncoding(const std::string_view& str) //throw SysError
     {
         if (isAsciiString(str)) //fast path
             return {str.begin(), str.end()};
@@ -704,17 +709,21 @@ private:
     {
         std::string curlRelPath; //libcurl expects encoded paths (except for '/' char!!!) => bug: https://github.com/curl/curl/pull/4423
 
-        for (const std::string& comp : split(getServerPathInternal(itemPath), '/', SplitOnEmpty::skip)) //throw SysError
+        split(getServerPathInternal(itemPath), //throw SysError
+              '/', [&](std::string_view comp)
         {
-            char* compFmt = ::curl_easy_escape(easyHandle_, comp.c_str(), static_cast<int>(comp.size()));
-            if (!compFmt)
-                throw SysError(formatSystemError("curl_easy_escape(" + comp + ')', L"", L"Conversion failure"));
-            ZEN_ON_SCOPE_EXIT(::curl_free(compFmt));
+            if (!comp.empty())
+            {
+                char* compFmt = ::curl_easy_escape(easyHandle_, comp.data(), static_cast<int>(comp.size()));
+                if (!compFmt)
+                    throw SysError(formatSystemError(std::string("curl_easy_escape(") + comp + ')', L"", L"Conversion failure"));
+                ZEN_ON_SCOPE_EXIT(::curl_free(compFmt));
 
-            if (!curlRelPath.empty())
-                curlRelPath += '/';
-            curlRelPath += compFmt;
-        }
+                if (!curlRelPath.empty())
+                    curlRelPath += '/';
+                curlRelPath += compFmt;
+            }
+        });
 
         static_assert(LIBCURL_VERSION_MAJOR > 7 || (LIBCURL_VERSION_MAJOR == 7 && LIBCURL_VERSION_MINOR >= 67));
         /*  1. CURLFTPMETHOD_NOCWD requires absolute paths to unconditionally skip CWDs: https://github.com/curl/curl/pull/4382
@@ -812,19 +821,19 @@ private:
     static Features parseFeatResponse(const std::string& featResponse)
     {
         Features output; //FEAT command: https://tools.ietf.org/html/rfc2389#page-4
-        std::vector<std::string> lines = splitFtpResponse(featResponse);
+        std::vector<std::string_view> lines = splitFtpResponse(featResponse);
 
-        auto it = std::find_if(lines.begin(), lines.end(), [](const std::string& line) { return startsWith(line, "211-") || startsWith(line, "211 "); });
+        auto it = std::find_if(lines.begin(), lines.end(), [](const std::string_view& line) { return startsWith(line, "211-") || startsWith(line, "211 "); });
         if (it != lines.end())
         {
             ++it;
             for (; it != lines.end(); ++it)
             {
-                std::string& line = *it;
-                if (equalAsciiNoCase     (line, "211 End") ||
-                    startsWithAsciiNoCase(line, "211 End ")) //Serv-U: "211 End (for details use "HELP commmand" where command is the command of interest)"
-                    break;                                   //Home Ftp Server: "211 End of extentions."
+                if (equalAsciiNoCase     (*it, "211 End") || //Serv-U: "211 End (for details use "HELP commmand" where command is the command of interest)"
+                    startsWithAsciiNoCase(*it, "211 End "))  //Home Ftp Server: "211 End of extentions."
+                    break;
 
+                std::string line(*it);
                 //suppport ProFTPD with "MultilineRFC2228 = on" https://freefilesync.org/forum/viewtopic.php?t=7243
                 if (startsWith(line, "211-"))
                     line = ' ' + afterFirst(line, '-', IfNotFoundReturn::none);
@@ -833,10 +842,9 @@ private:
                 //"a server-FTP process that supports MLST, and MLSD [...] MUST indicate that this support exists"
                 //"there is no distinct FEAT output for MLSD. The presence of the MLST feature indicates that both MLST and MLSD are supported"
                 if (equalAsciiNoCase     (line, " MLST") ||
-                    startsWithAsciiNoCase(line, " MLST ")) //SP "MLST" [SP factlist] CRLF
-                    output.mlsd = true;
-                //so much the theory. In practice FTP server implementers can't read specs, of course: https://freefilesync.org/forum/viewtopic.php?t=6752
-                if (equalAsciiNoCase(line, " MLSD"))
+                    startsWithAsciiNoCase(line, " MLST ") || //SP "MLST" [SP factlist] CRLF
+                    //so much the theory. In practice FTP server implementers can't read (specs): https://freefilesync.org/forum/viewtopic.php?t=6752
+                    equalAsciiNoCase(line, " MLSD"))
                     output.mlsd = true;
 
                 //https://tools.ietf.org/html/draft-somers-ftp-mfxx-04#section-3.3
@@ -845,7 +853,8 @@ private:
                     output.mfmt = true;
 
                 else if (equalAsciiNoCase(line, " UTF8") ||
-                         equalAsciiNoCase(line, " UTF8 ON")) //support non-compliant servers: https://freefilesync.org/forum/viewtopic.php?t=7355#p24694
+                         equalAsciiNoCase(line, " UTF8 ON") || //support non-compliant servers: https://freefilesync.org/forum/viewtopic.php?t=7355#p24694
+                         equalAsciiNoCase(line, " UTF-8"))     //Android 12: "File Manager" by Xiaomi
                     output.utf8 = true;
 
                 else if (equalAsciiNoCase(line, " CLNT"))
@@ -866,7 +875,7 @@ private:
     std::optional<Features> featureCache_;
     std::optional<AfsPath> homePathCached_;
 
-    const std::shared_ptr<UniCounterCookie> libsshCurlUnifiedInitCookie_;
+            const std::shared_ptr<UniCounterCookie> libsshCurlUnifiedInitCookie_{getLibsshCurlUnifiedInitCookie(globalFtpSessionCount)}; //throw SysError
     std::chrono::steady_clock::time_point lastSuccessfulUseTime_;
     std::weak_ptr<int> timeoutSec_;
 };
@@ -1026,7 +1035,7 @@ FtpItem getFtpSymlinkInfo(const FtpLogin& login, const AfsPath& linkPath) //thro
             const std::string sizeBuf = session.runSingleFtpCommand("*SIZE " + session.getServerPathInternal(linkPath),
                                                                     true /*requiresUtf8*/); //throw SysError
             //alternative: use libcurl + CURLINFO_CONTENT_LENGTH_DOWNLOAD_T? => nah, suprise (motherfucker)! libcurl adds needless "REST 0" command!
-            for (const std::string& line : splitFtpResponse(sizeBuf))
+            for (const std::string_view& line : splitFtpResponse(sizeBuf))
                 if (startsWith(line, "213 ")) // 213<space>[rubbish]<file size>        according to libcurl
                 {
                     if (isDigit(line.back())) //https://tools.ietf.org/html/rfc3659#section-4
@@ -1053,7 +1062,7 @@ FtpItem getFtpSymlinkInfo(const FtpLogin& login, const AfsPath& linkPath) //thro
 
         output.modTime = [&] //https://tools.ietf.org/html/rfc3659#section-3
         {
-            for (const std::string& line : splitFtpResponse(mdtmBuf))
+            for (const std::string_view& line : splitFtpResponse(mdtmBuf))
                 if (startsWith(line, "213 ")) // 213<space> YYYYMMDDHHMMSS[.sss]       "Time values are always represented in UTC (GMT)" ...and libcurl thinks so, too
                 {
                     const auto itStart = line.begin() + 4;
@@ -1116,16 +1125,10 @@ public:
                     //      ? (not between brackets) matches any single character
                     //
                     //of course this "helpfulness" blows up with MLSD + paths that incidentally contain wildcards: https://freefilesync.org/forum/viewtopic.php?t=5575
-                    const bool pathHasWildcards = [&] //=> globbing is reproducible even with freefilesync.org's FTP!
-                    {
-                        const size_t pos = afsDirPath.value.find(Zstr('['));
-                        if (pos != Zstring::npos)
-                            if (afsDirPath.value.find(Zstr(']'), pos + 1) != Zstring::npos)
-                                return true;
-
-                        return contains(afsDirPath.value, Zstr('*')) ||
-                        /**/   contains(afsDirPath.value, Zstr('?'));
-                    }();
+                    const bool pathHasWildcards = //=> globbing is reproducible even with freefilesync.org's FTP!
+                        contains(afterFirst<ZstringView>(afsDirPath.value, Zstr('['), IfNotFoundReturn::none), Zstr(']')) ||
+                        contains(afsDirPath.value, Zstr('*')) ||
+                        contains(afsDirPath.value, Zstr('?'));
 
                     if (!pathHasWildcards)
                         pathMethod = CURLFTPMETHOD_NOCWD; //16% faster traversal compared to CURLFTPMETHOD_SINGLECWD (35% faster than CURLFTPMETHOD_MULTICWD)
@@ -1155,17 +1158,17 @@ private:
     static std::vector<FtpItem> parseMlsd(const std::string& buf, FtpSession& session) //throw SysError
     {
         std::vector<FtpItem> output;
-        for (const std::string& line : splitFtpResponse(buf))
+        for (const std::string_view& line : splitFtpResponse(buf))
         {
-            const FtpItem item = parseMlstLine(line, session); //throw SysError
+            FtpItem item = parseMlstLine(line, session); //throw SysError
             if (item.itemName != Zstr(".") &&
                 item.itemName != Zstr(".."))
-                output.push_back(item);
+                output.push_back(std::move(item));
         }
         return output;
     }
 
-    static FtpItem parseMlstLine(const std::string& rawLine, FtpSession& session) //throw SysError
+    static FtpItem parseMlstLine(const std::string_view& rawLine, FtpSession& session) //throw SysError
     {
         /*  https://tools.ietf.org/html/rfc3659
             type=cdir;sizd=4096;modify=20170116230740;UNIX.mode=0755;UNIX.uid=874;UNIX.gid=869;unique=902g36e1c55; .
@@ -1183,48 +1186,53 @@ private:
             if (itBlank == rawLine.end())
                 throw SysError(L"Item name not available.");
 
-            const std::string facts(itBegin, itBlank);
-            item.itemName = session.serverToUtfEncoding(std::string(itBlank + 1, rawLine.end())); //throw SysError
+            const std::string_view facts = makeStringView(itBegin, itBlank);
+            item.itemName = session.serverToUtfEncoding(makeStringView(itBlank + 1, rawLine.end())); //throw SysError
 
-            std::string typeFact;
-            std::optional<uint64_t> fileSize;
+            std::string_view typeFact;
+            std::string_view fileSize;
 
-            for (const std::string& fact : split(facts, ';', SplitOnEmpty::skip))
-                if (startsWithAsciiNoCase(fact, "type=")) //must be case-insensitive!!!
+            split(facts, ';', [&](const std::string_view fact)
+            {
+                if (!fact.empty())
                 {
-                    const std::string tmp = afterFirst(fact, '=', IfNotFoundReturn::none);
-                    typeFact = beforeFirst(tmp, ':', IfNotFoundReturn::all);
-                }
-                else if (startsWithAsciiNoCase(fact, "size="))
-                    fileSize = stringTo<uint64_t>(afterFirst(fact, '=', IfNotFoundReturn::none));
-                else if (startsWithAsciiNoCase(fact, "modify="))
-                {
-                    std::string modifyFact = afterFirst(fact, '=', IfNotFoundReturn::none);
-                    modifyFact = beforeLast(modifyFact, '.', IfNotFoundReturn::all); //truncate millisecond precision if available
+                    if (startsWithAsciiNoCase(fact, "type=")) //must be case-insensitive!!!
+                    {
+                        const std::string_view tmp = afterFirst(fact, '=', IfNotFoundReturn::none);
+                        typeFact = beforeFirst(tmp, ':', IfNotFoundReturn::all);
+                    }
+                    else if (startsWithAsciiNoCase(fact, "size="))
+                        fileSize = afterFirst(fact, '=', IfNotFoundReturn::none);
+                    else if (startsWithAsciiNoCase(fact, "modify="))
+                    {
+                        std::string_view modifyFact = afterFirst(fact, '=', IfNotFoundReturn::none);
+                        modifyFact = beforeLast(modifyFact, '.', IfNotFoundReturn::all); //truncate millisecond precision if available
 
-                    const TimeComp tc = parseTime("%Y%m%d%H%M%S", modifyFact);
-                    if (tc == TimeComp())
-                        throw SysError(L"Modification time could not be parsed.");
+                        const TimeComp tc = parseTime("%Y%m%d%H%M%S", modifyFact);
+                        if (tc == TimeComp())
+                            throw SysError(L"Modification time is invalid.");
 
-                    if (const auto [modTime, timeValid] = utcToTimeT(tc);
-                        timeValid)
-                        item.modTime = modTime;
-                    else
-                        throw SysError(L"Modification time could not be parsed.");
-                }
-                else if (startsWithAsciiNoCase(fact, "unique="))
-                {
-                    /*  https://tools.ietf.org/html/rfc3659#section-7.5.2
-                        "The mapping between files, and unique fact tokens should be maintained, [...] for
-                         *at least* the lifetime of the control connection from user-PI to server-PI."
+                        if (const auto [modTime, timeValid] = utcToTimeT(tc);
+                            timeValid)
+                            item.modTime = modTime;
+                        else
+                            throw SysError(L"Modification time is invalid.");
+                    }
+                    else if (startsWithAsciiNoCase(fact, "unique="))
+                    {
+                        /*  https://tools.ietf.org/html/rfc3659#section-7.5.2
+                            "The mapping between files, and unique fact tokens should be maintained, [...] for
+                             *at least* the lifetime of the control connection from user-PI to server-PI."
 
-                        => not necessarily *persistent* as far as the RFC goes!
-                           BUT: practially this will be the inode ID/file index, so we can assume persistence */
-                    const std::string uniqueId = afterFirst(fact, '=', IfNotFoundReturn::none);
-                    assert(!uniqueId.empty());
-                    item.filePrint = hashString<AFS::FingerPrint>(uniqueId);
-                    //other metadata to hash e.g. create fact? => not available on Linux-hosted FTP!
+                            => not necessarily *persistent* as far as the RFC goes!
+                               BUT: practially this will be the inode ID/file index, so we can assume persistence */
+                        const std::string_view uniqueId = afterFirst(fact, '=', IfNotFoundReturn::none);
+                        assert(!uniqueId.empty());
+                        item.filePrint = hashString<AFS::FingerPrint>(uniqueId);
+                        //other metadata to hash e.g. create fact? => not available on Linux-hosted FTP!
+                    }
                 }
+            });
 
             if (equalAsciiNoCase(typeFact, "cdir"))
                 return {AFS::ItemType::folder, Zstr("."), 0, 0};
@@ -1244,9 +1252,9 @@ private:
 
             if (item.type == AFS::ItemType::file)
             {
-                if (!fileSize)
-                    throw SysError(L"File size not available.");
-                item.fileSize = *fileSize;
+                if (fileSize.empty() || !std::all_of(fileSize.begin(), fileSize.end(), &isDigit<char>))
+                    throw SysError(L"File size not available."); //crazy, but can be "-1": https://freefilesync.org/forum/viewtopic.php?t=9720#p35757
+                item.fileSize = stringTo<uint64_t>(fileSize);
             }
             return item;
         }
@@ -1266,7 +1274,7 @@ private:
     //"ls -l"
     static std::vector<FtpItem> parseUnix(const std::string& buf, FtpSession& session) //throw SysError
     {
-        const std::vector<std::string> lines = splitFtpResponse(buf);
+        const std::vector<std::string_view> lines = splitFtpResponse(buf);
         auto it = lines.begin();
 
         if (it != lines.end() && startsWith(*it, "total "))
@@ -1314,7 +1322,7 @@ private:
         return output;
     }
 
-    static FtpItem parseUnixLine(const std::string& rawLine, time_t utcTimeNow, int utcCurrentYear, bool haveGroup, FtpSession& session) //throw SysError
+    static FtpItem parseUnixLine(const std::string_view& rawLine, time_t utcTimeNow, int utcCurrentYear, bool haveGroup, FtpSession& session) //throw SysError
     {
         /*  total 4953                                                  <- optional first line
             drwxr-xr-x 1 root root    4096 Jan 10 11:58 version
@@ -1344,7 +1352,7 @@ private:
         {
             FtpLineParser parser(rawLine);
 
-            const std::string typeTag = parser.readRange(1, [](char c) //throw SysError
+            const std::string_view typeTag = parser.readRange(1, [](char c) //throw SysError
             {
                 return c == '-' || c == 'b' || c == 'c' || c == 'd' || c == 'l' || c == 'p' || c == 's';
             });
@@ -1375,8 +1383,8 @@ private:
             const uint64_t fileSize = stringTo<uint64_t>(parser.readRange(&isDigit<char>)); //throw SysError
             parser.readRange(&isWhiteSpace<char>);                                          //throw SysError
             //------------------------------------------------------------------------------------
-            const std::string monthStr = parser.readRange(std::not_fn(isWhiteSpace<char>)); //throw SysError
-            parser.readRange(&isWhiteSpace<char>);                                                  //throw SysError
+            const std::string_view monthStr = parser.readRange(std::not_fn(isWhiteSpace<char>)); //throw SysError
+            parser.readRange(&isWhiteSpace<char>);                                               //throw SysError
 
             const char* months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
             auto itMonth = std::find_if(std::begin(months), std::end(months), [&](const char* name) { return equalAsciiNoCase(name, monthStr); });
@@ -1388,8 +1396,8 @@ private:
             if (day < 1 || day > 31)
                 throw SysError(L"Failed to parse day of month.");
             //------------------------------------------------------------------------------------
-            const std::string timeOrYear = parser.readRange([](char c) { return c == ':' || isDigit(c); }); //throw SysError
-            parser.readRange(&isWhiteSpace<char>);                                                          //throw SysError
+            const std::string_view timeOrYear = parser.readRange([](char c) { return c == ':' || isDigit(c); }); //throw SysError
+            parser.readRange(&isWhiteSpace<char>);                                                               //throw SysError
 
             TimeComp timeComp;
             timeComp.month = 1 + static_cast<int>(itMonth - std::begin(months));
@@ -1400,7 +1408,7 @@ private:
                 const int hour   = stringTo<int>(beforeFirst(timeOrYear, ':', IfNotFoundReturn::none));
                 const int minute = stringTo<int>(afterFirst (timeOrYear, ':', IfNotFoundReturn::none));
                 if (hour < 0 || hour > 23 || minute < 0 || minute > 59)
-                    throw SysError(L"Failed to parse file time.");
+                    throw SysError(L"Failed to parse modification time.");
 
                 timeComp.hour   = hour;
                 timeComp.minute = minute;
@@ -1408,7 +1416,7 @@ private:
 
                 const auto [serverLocalTime, timeValid] = utcToTimeT(timeComp);
                 if (!timeValid)
-                    throw SysError(L"Modification time could not be parsed.");
+                    throw SysError(L"Modification time is invalid.");
 
                 if (serverLocalTime > utcTimeNow + 24 * 3600 ) //time-zones range from UTC-12:00 to UTC+14:00, consider DST; FileZilla uses 1 day tolerance
                     --timeComp.year; //"more likely" this time is from last year
@@ -1418,19 +1426,19 @@ private:
                 timeComp.year = stringTo<int>(timeOrYear);
 
                 if (timeComp.year < 1600 || timeComp.year > utcCurrentYear + 1 /*leeway*/)
-                    throw SysError(L"Failed to parse file time.");
+                    throw SysError(L"Failed to parse modification time.");
             }
             else
-                throw SysError(L"Failed to parse file time.");
+                throw SysError(L"Failed to parse modification time.");
 
             //let's pretend the time listing is UTC (same behavior as FileZilla): hopefully MLSD will make this mess obsolete soon...
             //  => find exact offset with some MDTM hackery? yes, could do that, but this doesn't solve the bigger problem of imprecise LIST file times, so why bother?
             const auto [modTime, timeValid] = utcToTimeT(timeComp);
             if (!timeValid)
-                throw SysError(L"Modification time could not be parsed.");
+                throw SysError(L"Modification time is invalid.");
             //------------------------------------------------------------------------------------
-            const std::string trail = parser.readRange([](char) { return true; }); //throw SysError
-            std::string itemName;
+            const std::string_view trail = parser.readRange([](char) { return true; }); //throw SysError
+            std::string_view itemName;
             if (typeTag == "l")
                 itemName = beforeFirst(trail, " -> ", IfNotFoundReturn::none);
             else
@@ -1492,21 +1500,21 @@ private:
         const int utcCurrentYear = tc.year;
 
         std::vector<FtpItem> output;
-        for (const std::string& line : splitFtpResponse(buf))
+        for (const std::string_view& line : splitFtpResponse(buf))
         {
             try
             {
                 FtpLineParser parser(line);
 
-                const int month = stringTo<int>(parser.readRange(2, &isDigit<char>));     //throw SysError
-                parser.readRange(1, [](char c) { return c == '-' || c == '/'; });         //throw SysError
-                const int day = stringTo<int>(parser.readRange(2, &isDigit<char>));       //throw SysError
-                parser.readRange(1, [](char c) { return c == '-' || c == '/'; });         //throw SysError
-                const std::string yearString = parser.readRange(&isDigit<char>);          //throw SysError
-                parser.readRange(&isWhiteSpace<char>);                                    //throw SysError
+                const int month = stringTo<int>(parser.readRange(2, &isDigit<char>)); //throw SysError
+                parser.readRange(1, [](char c) { return c == '-' || c == '/'; });     //throw SysError
+                const int day = stringTo<int>(parser.readRange(2, &isDigit<char>));   //throw SysError
+                parser.readRange(1, [](char c) { return c == '-' || c == '/'; });     //throw SysError
+                const std::string_view yearString = parser.readRange(&isDigit<char>); //throw SysError
+                parser.readRange(&isWhiteSpace<char>);                                //throw SysError
 
                 if (month < 1 || month > 12 || day < 1 || day > 31)
-                    throw SysError(L"Failed to parse file time.");
+                    throw SysError(L"Failed to parse modification time.");
 
                 int year = 0;
                 if (yearString.size() == 2)
@@ -1518,14 +1526,14 @@ private:
                 else if (yearString.size() == 4)
                     year = stringTo<int>(yearString);
                 else
-                    throw SysError(L"Failed to parse file time.");
+                    throw SysError(L"Failed to parse modification time.");
                 //------------------------------------------------------------------------------------
                 int hour = stringTo<int>(parser.readRange(2, &isDigit<char>));         //throw SysError
                 parser.readRange(1, [](char c) { return c == ':'; });                  //throw SysError
                 const int minute = stringTo<int>(parser.readRange(2, &isDigit<char>)); //throw SysError
                 if (!isWhiteSpace(parser.peekNextChar()))
                 {
-                    const std::string period = parser.readRange(2, [](char c) { return c == 'A' || c == 'P' || c == 'M'; }); //throw SysError
+                    const std::string_view period = parser.readRange(2, [](char c) { return c == 'A' || c == 'P' || c == 'M'; }); //throw SysError
                     if (period == "PM")
                     {
                         if (0 <= hour && hour < 12)
@@ -1537,7 +1545,7 @@ private:
                 parser.readRange(&isWhiteSpace<char>); //throw SysError
 
                 if (hour < 0 || hour > 23 || minute < 0 || minute > 59)
-                    throw SysError(L"Failed to parse file time.");
+                    throw SysError(L"Failed to parse modification time.");
                 //------------------------------------------------------------------------------------
                 TimeComp timeComp;
                 timeComp.year   = year;
@@ -1549,24 +1557,24 @@ private:
                 //  => find exact offset with some MDTM hackery? yes, could do that, but this doesn't solve the bigger problem of imprecise LIST file times, so why bother?
                 const auto [modTime, timeValid] = utcToTimeT(timeComp);
                 if (!timeValid)
-                    throw SysError(L"Modification time could not be parsed.");
+                    throw SysError(L"Modification time is invalid.");
                 //------------------------------------------------------------------------------------
-                const std::string dirTagOrSize = parser.readRange(std::not_fn(isWhiteSpace<char>)); //throw SysError
+                const std::string_view dirTagOrSize = parser.readRange(std::not_fn(isWhiteSpace<char>)); //throw SysError
                 parser.readRange(&isWhiteSpace<char>); //throw SysError
 
                 const bool isDir = dirTagOrSize == "<DIR>";
                 uint64_t fileSize = 0;
                 if (!isDir)
                 {
-                    std::string sizeStr = dirTagOrSize;
+                    std::string sizeStr(dirTagOrSize);
                     replace(sizeStr, ',', "");
                     replace(sizeStr, '.', "");
-                    if (!std::all_of(sizeStr.begin(), sizeStr.end(), &isDigit<char>))
+                    if (sizeStr.empty() || !std::all_of(sizeStr.begin(), sizeStr.end(), &isDigit<char>))
                         throw SysError(L"Failed to parse file size.");
                     fileSize = stringTo<uint64_t>(sizeStr);
                 }
                 //------------------------------------------------------------------------------------
-                const std::string itemName = parser.readRange([](char) { return true; }); //throw SysError
+                const std::string_view itemName = parser.readRange([](char) { return true; }); //throw SysError
                 if (itemName.empty())
                     throw SysError(L"Folder contains an item without name.");
 
@@ -2065,10 +2073,10 @@ private:
 
         try
         {
-        const Zstring itemName = getItemName(itemPath);
-        assert(!itemName.empty());
+            const Zstring itemName = getItemName(itemPath);
+            assert(!itemName.empty());
 
-        traverseFolderFlat(*parentAfsPath, //throw FileError
+            traverseFolderFlat(*parentAfsPath, //throw FileError
             [&](const    FileInfo& fi) { if (fi.itemName == itemName) throw ItemType::file;    },
             [&](const  FolderInfo& fi) { if (fi.itemName == itemName) throw ItemType::folder;  },
             [&](const SymlinkInfo& si) { if (si.itemName == itemName) throw ItemType::symlink; });
@@ -2424,33 +2432,37 @@ AbstractPath fff::createItemPathFtp(const Zstring& itemPathPhrase) //noexcept
         pathPhrase = pathPhrase.c_str() + strLength(ftpPrefix);
     trim(pathPhrase, true, false, [](Zchar c) { return c == Zstr('/') || c == Zstr('\\'); });
 
-    const Zstring credentials = beforeFirst(pathPhrase, Zstr('@'), IfNotFoundReturn::none);
-    const Zstring fullPathOpt =  afterFirst(pathPhrase, Zstr('@'), IfNotFoundReturn::all);
+    const ZstringView credentials = beforeFirst<ZstringView>(pathPhrase, Zstr('@'), IfNotFoundReturn::none);
+    const ZstringView fullPathOpt =  afterFirst<ZstringView>(pathPhrase, Zstr('@'), IfNotFoundReturn::all);
 
     FtpLogin login;
-    login.username = decodeFtpUsername(beforeFirst(credentials, Zstr(':'), IfNotFoundReturn::all)); //support standard FTP syntax, even though
-    login.password =                    afterFirst(credentials, Zstr(':'), IfNotFoundReturn::none); //concatenateFtpFolderPathPhrase() uses "pass64" instead
+    login.username = decodeFtpUsername(Zstring(beforeFirst(credentials, Zstr(':'), IfNotFoundReturn::all))); //support standard FTP syntax, even though
+    login.password =                   Zstring( afterFirst(credentials, Zstr(':'), IfNotFoundReturn::none)); //concatenateFtpFolderPathPhrase() uses "pass64" instead
 
-    const Zstring fullPath = beforeFirst(fullPathOpt, Zstr('|'), IfNotFoundReturn::all);
-    const Zstring options  =  afterFirst(fullPathOpt, Zstr('|'), IfNotFoundReturn::none);
+    const ZstringView fullPath = beforeFirst(fullPathOpt, Zstr('|'), IfNotFoundReturn::all);
+    const ZstringView options  =  afterFirst(fullPathOpt, Zstr('|'), IfNotFoundReturn::none);
 
     auto it = std::find_if(fullPath.begin(), fullPath.end(), [](Zchar c) { return c == '/' || c == '\\'; });
-    const Zstring serverPort(fullPath.begin(), it);
+    const ZstringView serverPort = makeStringView(fullPath.begin(), it);
     const AfsPath serverRelPath = sanitizeDeviceRelativePath({it, fullPath.end()});
 
-    login.server       = beforeLast(serverPort, Zstr(':'), IfNotFoundReturn::all);
-    const Zstring port =  afterLast(serverPort, Zstr(':'), IfNotFoundReturn::none);
+    login.server           = Zstring(beforeLast(serverPort, Zstr(':'), IfNotFoundReturn::all));
+    const ZstringView port =          afterLast(serverPort, Zstr(':'), IfNotFoundReturn::none);
     login.port = stringTo<int>(port); //0 if empty
 
-    for (const Zstring& optPhrase : split(options, Zstr('|'), SplitOnEmpty::skip))
-        if (startsWith(optPhrase, Zstr("timeout=")))
-            login.timeoutSec = stringTo<int>(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
-        else if (optPhrase == Zstr("ssl"))
-            login.useTls = true;
-        else if (startsWith(optPhrase, Zstr("pass64=")))
-            login.password = decodePasswordBase64(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
-        else
-            assert(false);
-
+    split(options, Zstr('|'), [&](const ZstringView optPhrase)
+    {
+        if (!optPhrase.empty())
+        {
+            if (startsWith(optPhrase, Zstr("timeout=")))
+                login.timeoutSec = stringTo<int>(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
+            else if (optPhrase == Zstr("ssl"))
+                login.useTls = true;
+            else if (startsWith(optPhrase, Zstr("pass64=")))
+                login.password = decodePasswordBase64(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
+            else
+                assert(false);
+        }
+    });
     return AbstractPath(makeSharedRef<FtpFileSystem>(login), serverRelPath);
 }

@@ -213,7 +213,7 @@ public:
 
         //create new HTTP session outside the lock: 1. don't block other threads 2. non-atomic regarding "sessionStore"! => one session too many is not a problem!
         if (!httpSession)
-            httpSession = std::make_unique<HttpInitSession>(getLibsshCurlUnifiedInitCookie(httpSessionCount), login.server, caCertFilePath_); //throw SysError
+            httpSession = std::make_unique<HttpInitSession>(login.server, caCertFilePath_); //throw SysError
 
         ZEN_ON_SCOPE_EXIT(
             if (isHealthy(httpSession->session)) //thread that created the "!isHealthy()" session is responsible for clean up (avoid hitting server connection limits!)
@@ -229,10 +229,10 @@ private:
     //associate session counting (for initialization/teardown)
     struct HttpInitSession
     {
-        HttpInitSession(std::shared_ptr<UniCounterCookie> cook, const Zstring& server, const Zstring& caCertFilePath) :
-            cookie(std::move(cook)), session(server, true /*useTls*/, caCertFilePath) {}
+        HttpInitSession(const Zstring& server, const Zstring& caCertFilePath) :
+            session(server, true /*useTls*/, caCertFilePath) {}
 
-        std::shared_ptr<UniCounterCookie> cookie;
+        const std::shared_ptr<UniCounterCookie> cookie{getLibsshCurlUnifiedInitCookie(httpSessionCount)}; //throw SysError
         HttpSession session; //life time must be subset of UniCounterCookie
     };
     static bool isHealthy(const HttpSession& s) { return std::chrono::steady_clock::now() - s.getLastUseTime() <= HTTP_SESSION_MAX_IDLE_TIME; }
@@ -595,7 +595,7 @@ GdriveAccessInfo gdriveAuthorizeAccess(const std::string& gdriveLoginHint, const
         std::string error;
 
         //parse header; e.g.: GET http://127.0.0.1:62054/?code=4/ZgBRsB9k68sFzc1Pz1q0__Kh17QK1oOmetySrGiSliXt6hZtTLUlYzm70uElNTH9vt1OqUMzJVeFfplMsYsn4uI HTTP/1.1
-        const std::vector<std::string> statusItems = split(reqLine, ' ', SplitOnEmpty::allow); //Method SP Request-URI SP HTTP-Version CRLF
+        const std::vector<std::string_view> statusItems = splitCpy<std::string_view>(reqLine, ' ', SplitOnEmpty::allow); //Method SP Request-URI SP HTTP-Version CRLF
 
         if (statusItems.size() == 3 && statusItems[0] == "GET" && startsWith(statusItems[2], "HTTP/"))
         {
@@ -947,11 +947,11 @@ GdriveItemDetails extractItemDetails(const JsonValue& jvalue) //throw SysError
     //RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
     const TimeComp tc = parseTime("%Y-%m-%dT%H:%M:%S", beforeLast(*modifiedTime, '.', IfNotFoundReturn::all));
     if (tc == TimeComp() || !endsWith(*modifiedTime, 'Z')) //'Z' means "UTC" => it seems Google doesn't use the time-zone offset postfix
-        throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L')');
+        throw SysError(L"Modification time is invalid. (" + utfTo<std::wstring>(*modifiedTime) + L')');
 
     const auto [modTime, timeValid] = utcToTimeT(tc);
     if (!timeValid)
-        throw SysError(L"Modification time could not be parsed. (" + utfTo<std::wstring>(*modifiedTime) + L')');
+        throw SysError(L"Modification time is invalid. (" + utfTo<std::wstring>(*modifiedTime) + L')');
 
     std::vector<std::string> parentIds;
     if (parents) //item without "parents" array is possible! e.g. 1. shared item located in "Shared with me", referenced via a Shortcut 2. root folder under "Computers"
@@ -1957,7 +1957,7 @@ public:
     };
     PathStatus getPathStatus(const std::string& locationRootId, const AfsPath& itemPath, bool followLeafShortcut) //throw SysError
     {
-        const std::vector<Zstring> relPath = split(itemPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip);
+        const std::vector<Zstring> relPath = splitCpy(itemPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip);
         if (relPath.empty())
             return {locationRootId, GdriveItemType::folder, AfsPath(), {}};
         else
@@ -4033,22 +4033,28 @@ AbstractPath fff::createItemPathGdrive(const Zstring& itemPathPhrase) //noexcept
         pathPhrase = pathPhrase.c_str() + strLength(gdrivePrefix);
     trim(pathPhrase, true, false, [](Zchar c) { return c == Zstr('/') || c == Zstr('\\'); });
 
-    const Zstring fullPath = beforeFirst(pathPhrase, Zstr('|'), IfNotFoundReturn::all);
-    const Zstring options  =  afterFirst(pathPhrase, Zstr('|'), IfNotFoundReturn::none);
+    const ZstringView fullPath = beforeFirst<ZstringView>(pathPhrase, Zstr('|'), IfNotFoundReturn::all);
+    const ZstringView options  =  afterFirst<ZstringView>(pathPhrase, Zstr('|'), IfNotFoundReturn::none);
 
     auto it = std::find_if(fullPath.begin(), fullPath.end(), [](Zchar c) { return c == '/' || c == '\\'; });
-    const Zstring emailAndDrive(fullPath.begin(), it);
+    const ZstringView emailAndDrive = makeStringView(fullPath.begin(), it);
     const AfsPath itemPath = sanitizeDeviceRelativePath({it, fullPath.end()});
 
-    GdriveLogin login;
-    login.email        = utfTo<std::string>(beforeFirst(emailAndDrive, Zstr(':'), IfNotFoundReturn::all));
-    login.locationName =                    afterFirst (emailAndDrive, Zstr(':'), IfNotFoundReturn::none);
+    GdriveLogin login
+    {
+        .email        = utfTo<std::string>(beforeFirst(emailAndDrive, Zstr(':'), IfNotFoundReturn::all)),
+        .locationName =            Zstring(afterFirst (emailAndDrive, Zstr(':'), IfNotFoundReturn::none)),
+    };
 
-    for (const Zstring& optPhrase : split(options, Zstr('|'), SplitOnEmpty::skip))
-        if (startsWith(optPhrase, Zstr("timeout=")))
-            login.timeoutSec = stringTo<int>(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
-        else
-            assert(false);
-
+    split(options, Zstr('|'), [&](const ZstringView optPhrase)
+    {
+        if (!optPhrase.empty())
+        {
+            if (startsWith(optPhrase, Zstr("timeout=")))
+                login.timeoutSec = stringTo<int>(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
+            else
+                assert(false);
+        }
+    });
     return AbstractPath(makeSharedRef<GdriveFileSystem>(login), itemPath);
 }

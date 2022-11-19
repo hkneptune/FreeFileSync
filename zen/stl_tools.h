@@ -58,14 +58,22 @@ void removeDuplicatesStable(std::vector<T, Alloc>& v);
 template <class BidirectionalIterator, class T>
 BidirectionalIterator findLast(BidirectionalIterator first, BidirectionalIterator last, const T& value);
 
+template <class RandomAccessIterator1, class RandomAccessIterator2> inline
+RandomAccessIterator1 searchFirst(const RandomAccessIterator1 first,       const RandomAccessIterator1 last,
+                                  const RandomAccessIterator2 needleFirst, const RandomAccessIterator2 needleLast);
+
+template <class RandomAccessIterator1, class RandomAccessIterator2, class IsEq> inline
+RandomAccessIterator1 searchFirst(const RandomAccessIterator1 first,       const RandomAccessIterator1 last,
+                                  const RandomAccessIterator2 needleFirst, const RandomAccessIterator2 needleLast, IsEq isEqual);
+
 //replacement for std::find_end taking advantage of bidirectional iterators (and giving the algorithm a reasonable name)
-template <class BidirectionalIterator1, class BidirectionalIterator2>
-BidirectionalIterator1 searchLast(BidirectionalIterator1 first1, BidirectionalIterator1 last1,
-                                  BidirectionalIterator2 first2, BidirectionalIterator2 last2);
+template <class RandomAccessIterator1, class RandomAccessIterator2>
+RandomAccessIterator1 searchLast(RandomAccessIterator1 first, RandomAccessIterator1 last,
+                                 RandomAccessIterator2 needleFirst, RandomAccessIterator2 needleLast);
 
 //binary search returning an iterator
-template <class Iterator, class T, class CompLess>
-Iterator binarySearch(Iterator first, Iterator last, const T& value, CompLess less);
+template <class RandomAccessIterator, class T, class CompLess>
+RandomAccessIterator binarySearch(RandomAccessIterator first, RandomAccessIterator last, const T& value, CompLess less);
 
 //read-only variant of std::merge; input: two sorted ranges
 template <class Iterator, class FunctionLeftOnly, class FunctionBoth, class FunctionRightOnly, class Compare>
@@ -199,10 +207,10 @@ void removeDuplicatesStable(std::vector<T, Alloc>& v)
 }
 
 
-template <class Iterator, class T, class CompLess> inline
-Iterator binarySearch(Iterator first, Iterator last, const T& value, CompLess less)
+template <class RandomAccessIterator, class T, class CompLess> inline
+RandomAccessIterator binarySearch(RandomAccessIterator first, RandomAccessIterator last, const T& value, CompLess less)
 {
-    static_assert(std::is_same_v<typename std::iterator_traits<Iterator>::iterator_category, std::random_access_iterator_tag>);
+    static_assert(std::is_same_v<typename std::iterator_traits<RandomAccessIterator>::iterator_category, std::random_access_iterator_tag>);
 
     first = std::lower_bound(first, last, value, less); //alternative: std::partition_point
     if (first != last && !less(value, *first))
@@ -226,29 +234,56 @@ BidirectionalIterator findLast(const BidirectionalIterator first, const Bidirect
 }
 
 
-template <class BidirectionalIterator1, class BidirectionalIterator2> inline
-BidirectionalIterator1 searchLast(const BidirectionalIterator1 first1,       BidirectionalIterator1 last1,
-                                  const BidirectionalIterator2 first2, const BidirectionalIterator2 last2)
+template <class RandomAccessIterator1, class RandomAccessIterator2> inline
+RandomAccessIterator1 searchFirst(const RandomAccessIterator1 first,       const RandomAccessIterator1 last,
+                                  const RandomAccessIterator2 needleFirst, const RandomAccessIterator2 needleLast)
 {
-    const BidirectionalIterator1 itNotFound = last1;
+    if (needleLast - needleFirst == 1) //don't use expensive std::search unless required!
+        return std::find(first, last, *needleFirst);
+
+    return std::search(first, last,
+                       needleFirst, needleLast);
+}
+
+
+template <class RandomAccessIterator1, class RandomAccessIterator2, class IsEq> inline
+RandomAccessIterator1 searchFirst(const RandomAccessIterator1 first,       const RandomAccessIterator1 last,
+                                  const RandomAccessIterator2 needleFirst, const RandomAccessIterator2 needleLast, IsEq isEqual)
+{
+    if (needleLast - needleFirst == 1) //don't use expensive std::search unless required!
+        return std::find_if(first, last, [needleFirst, isEqual](const auto c){ return isEqual(*needleFirst, c); });
+
+    return std::search(first, last,
+                       needleFirst, needleLast, isEqual);
+}
+
+
+template <class RandomAccessIterator1, class RandomAccessIterator2> inline
+RandomAccessIterator1 searchLast(const RandomAccessIterator1 first,       RandomAccessIterator1 last,
+                                 const RandomAccessIterator2 needleFirst, const RandomAccessIterator2 needleLast)
+{
+    if (needleLast - needleFirst == 1) //fast-path
+        return findLast(first, last, *needleFirst);
+
+    const RandomAccessIterator1 itNotFound = last;
 
     //reverse iteration: 1. check 2. decrement 3. evaluate
     for (;;)
     {
-        BidirectionalIterator1 it1 = last1;
-        BidirectionalIterator2 it2 = last2;
+        RandomAccessIterator1 it1 = last;
+        RandomAccessIterator2 it2 = needleLast;
 
         for (;;)
         {
-            if (it2 == first2) return it1;
-            if (it1 == first1) return itNotFound;
+            if (it2 == needleFirst) return it1;
+            if (it1 == first) return itNotFound;
 
             --it1;
             --it2;
 
             if (*it1 != *it2) break;
         }
-        --last1;
+        --last;
     }
 }
 

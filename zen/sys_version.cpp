@@ -47,13 +47,14 @@ OsVersionDetail zen::getOsVersionDetail() //throw SysError
         }
         catch (const FileError& e) { throw SysError(replaceCpy(e.toString(), L"\n\n", L'\n')); } //errors should be further enriched by context info => SysError
 
-        for (const std::string& line : split(releaseInfo, '\n', SplitOnEmpty::skip))
+        split(releaseInfo, '\n', [&](const std::string_view line)
+        {
             if (startsWith(line, "NAME="))
                 osName = utfTo<std::wstring>(afterFirst(line, '=', IfNotFoundReturn::none));
             else if (startsWith(line, "VERSION_ID="))
                 osVersion = utfTo<std::wstring>(afterFirst(line, '=', IfNotFoundReturn::none));
-        //PRETTY_NAME? too wordy! e.g. "Fedora 17 (Beefy Miracle)"
-
+            //PRETTY_NAME? too wordy! e.g. "Fedora 17 (Beefy Miracle)"
+        });
         trim(osName,    true, true, [](char c) { return c == L'"' || c == L'\''; });
         trim(osVersion, true, true, [](char c) { return c == L'"' || c == L'\''; });
     }
@@ -64,7 +65,7 @@ OsVersionDetail zen::getOsVersionDetail() //throw SysError
     //  lsb_release Release is "rolling"
     //  etc/os-release: VERSION_ID is missing
 
-    std::vector<std::wstring> verDigits = split<std::wstring>(osVersion, L'.', SplitOnEmpty::allow); //e.g. "7.7.1908"
+    std::vector<std::wstring_view> verDigits = splitCpy<std::wstring_view>(osVersion, L'.', SplitOnEmpty::allow); //e.g. "7.7.1908"
     verDigits.resize(2);
 
     return OsVersionDetail

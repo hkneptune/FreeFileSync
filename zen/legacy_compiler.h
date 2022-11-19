@@ -8,6 +8,7 @@
 #define LEGACY_COMPILER_H_839567308565656789
 
 #include <version> //contains all __cpp_lib_<feature> macros
+#include <string>
 
 /*  C++ standard conformance:
     https://en.cppreference.com/w/cpp/feature_test
@@ -25,6 +26,16 @@
 
 namespace std
 {
+
+
+//W(hy)TF is this not standard? https://stackoverflow.com/a/47735624
+template <class Char, class Traits, class Alloc> inline
+basic_string<Char, Traits, Alloc> operator+(basic_string<Char, Traits, Alloc>&& lhs, const basic_string_view<Char> rhs)
+{ return move(lhs.append(rhs.begin(), rhs.end())); } //the move *is* needed!!!
+
+//template <class Char> inline
+//basic_string<Char> operator+(const basic_string<Char>& lhs, const basic_string_view<Char>& rhs) { return basic_string<Char>(lhs) + rhs; }
+//-> somewhat inefficient: enable + optimize when needed
 }
 //---------------------------------------------------------------------------------
 

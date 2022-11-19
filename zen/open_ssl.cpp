@@ -419,30 +419,29 @@ bool zen::isPuttyKeyStream(const std::string& keyStream)
 
 std::string zen::convertPuttyKeyToPkix(const std::string& keyStream, const std::string& passphrase) //throw SysError
 {
-    std::vector<std::string> lines;
+    std::vector<std::string_view> lines;
 
-    split2(keyStream, isLineBreak<char>,
-           [&lines](const char* blockFirst, const char* blockLast)
+    split2(keyStream, isLineBreak<char>, [&lines](const std::string_view block)
     {
-        if (blockFirst != blockLast) //consider Windows' <CR><LF>
-            lines.emplace_back(blockFirst, blockLast);
+        if (!block.empty()) //consider Windows' <CR><LF>
+            lines.push_back(block);
     });
 
     //----------- parse PuTTY ppk structure ----------------------------------
     auto itLine = lines.begin();
     if (itLine == lines.end() || !startsWith(*itLine, "PuTTY-User-Key-File-2: "))
         throw SysError(L"Unknown key file format");
-    const std::string algorithm = afterFirst(*itLine, ' ', IfNotFoundReturn::none);
+    const std::string_view algorithm = afterFirst(*itLine, ' ', IfNotFoundReturn::none);
     ++itLine;
 
     if (itLine == lines.end() || !startsWith(*itLine, "Encryption: "))
         throw SysError(L"Unknown key encryption");
-    const std::string keyEncryption = afterFirst(*itLine, ' ', IfNotFoundReturn::none);
+    const std::string_view keyEncryption = afterFirst(*itLine, ' ', IfNotFoundReturn::none);
     ++itLine;
 
     if (itLine == lines.end() || !startsWith(*itLine, "Comment: "))
         throw SysError(L"Invalid key comment");
-    const std::string comment = afterFirst(*itLine, ' ', IfNotFoundReturn::none);
+    const std::string_view comment = afterFirst(*itLine, ' ', IfNotFoundReturn::none);
     ++itLine;
 
     if (itLine == lines.end() || !startsWith(*itLine, "Public-Lines: "))
@@ -471,7 +470,7 @@ std::string zen::convertPuttyKeyToPkix(const std::string& keyStream, const std::
 
     if (itLine == lines.end() || !startsWith(*itLine, "Private-MAC: "))
         throw SysError(L"Invalid key: MAC missing");
-    const std::string macHex = afterFirst(*itLine, ' ', IfNotFoundReturn::none);
+    const std::string_view macHex = afterFirst(*itLine, ' ', IfNotFoundReturn::none);
     ++itLine;
 
     //----------- unpack key file elements ---------------------
@@ -784,7 +783,7 @@ std::string zen::convertPuttyKeyToPkix(const std::string& keyStream, const std::
              algorithm == "ecdsa-sha2-nistp384" ||
              algorithm == "ecdsa-sha2-nistp521")
     {
-        const std::string algoShort = afterLast(algorithm, '-', IfNotFoundReturn::none);
+        const std::string_view algoShort = afterLast(algorithm, '-', IfNotFoundReturn::none);
         if (extractStringPub() != algoShort)
             throw SysError(L"Invalid public key stream (header)");
 

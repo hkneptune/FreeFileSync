@@ -466,33 +466,29 @@ std::vector<LogFileInfo> getLogFiles(const AbstractPath& logFolderPath) //throw 
         if (endsWith(fi.itemName, Zstr(".log")) || //case-sensitive: e.g. ".LOG" is not from FFS, right?
             endsWith(fi.itemName, Zstr(".html")))
         {
-            auto tsBegin = fi.itemName.begin();
-            auto tsEnd   = tsBegin + fi.itemName.rfind('.');
+            ZstringView itemPhrase = beforeLast<ZstringView>(fi.itemName, Zstr('.'), IfNotFoundReturn::none);
+            
+            if (endsWith(itemPhrase, STATUS_END_TOKEN))
+                itemPhrase = beforeLast(itemPhrase, STATUS_BEGIN_TOKEN, IfNotFoundReturn::all);
 
-            if (tsBegin != tsEnd && tsEnd[-1] == STATUS_END_TOKEN)
-                tsEnd = searchLast(tsBegin, tsEnd,
-                                   std::begin(STATUS_BEGIN_TOKEN), std::end(STATUS_BEGIN_TOKEN) - 1);
-
-            if (tsEnd - tsBegin >= TIME_STAMP_LENGTH &&
-                tsEnd[-4] == Zstr('.') &&
-                isdigit(tsEnd[-3]) &&
-                isdigit(tsEnd[-2]) &&
-                isdigit(tsEnd[-1]))
+            if (itemPhrase.size() >= TIME_STAMP_LENGTH &&
+                itemPhrase.end()[-4] == Zstr('.') &&
+                isdigit(itemPhrase.end()[-3]) &&
+                isdigit(itemPhrase.end()[-2]) &&
+                isdigit(itemPhrase.end()[-1]))
             {
-                tsBegin = tsEnd - TIME_STAMP_LENGTH;
-                const TimeComp tc = parseTime(Zstr("%Y-%m-%d %H%M%S"), makeStringView(tsBegin, 17)); //returns TimeComp() on error
-
+                const TimeComp tc = parseTime(Zstr("%Y-%m-%d %H%M%S"), makeStringView(itemPhrase.end() - TIME_STAMP_LENGTH, 17)); //returns TimeComp() on error
                 if (const auto [localTime, timeValid] = localToTimeT(tc);
                     timeValid)
                 {
-                    Zstring jobNames(fi.itemName.begin(), tsBegin);
-                    if (!jobNames.empty())
+                    itemPhrase.remove_suffix(TIME_STAMP_LENGTH);
+                    if (!itemPhrase.empty())
                     {
-                        assert(jobNames.size() >= 2 && endsWith(jobNames, Zstr(' ')));
-                        jobNames.pop_back();
+                        assert(itemPhrase.size() >= 2 && endsWith(itemPhrase, Zstr(' ')));
+                        itemPhrase = trimCpy(itemPhrase);
                     }
 
-                    logfiles.push_back({AFS::appendRelPath(logFolderPath, fi.itemName), localTime, utfTo<std::wstring>(jobNames)});
+                    logfiles.push_back({AFS::appendRelPath(logFolderPath, fi.itemName), localTime, utfTo<std::wstring>(itemPhrase)});
                 }
             }
         }

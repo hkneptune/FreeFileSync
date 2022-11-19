@@ -1165,7 +1165,9 @@ private:
             if (const ColumnTypeRim* sortType = std::get_if<ColumnTypeRim>(&sortInfo->sortCol))
                 if (*sortType == static_cast<ColumnTypeRim>(colType) && sortInfo->onLeft == (side == SelectSide::left))
                 {
-                    const wxImage sortMarker = loadImage(sortInfo->ascending ? "sort_ascending" : "sort_descending");
+                      bool ascending = sortInfo->ascending; //work around MSVC 17.4 compiler bug :( "error C2039: 'sortCol': is not a member of 'fff::FileView::SortInfo'"
+
+                    const wxImage sortMarker = loadImage(ascending ? "sort_ascending" : "sort_descending");
                     drawBitmapRtlNoMirror(dc, enabled ? sortMarker : sortMarker.ConvertToDisabled(), rectInner, wxALIGN_CENTER_HORIZONTAL);
                 }
     }

@@ -50,11 +50,11 @@ HttpInputStream sendHttpPost(const Zstring& url,
 
 bool internetIsAlive(); //noexcept
 std::wstring formatHttpError(int httpStatus);
-bool isValidEmail(const std::string& email);
+bool isValidEmail(const std::string_view& email);
 std::string htmlSpecialChars(const std::string_view& str);
 
 std::string xWwwFormUrlEncode(const std::vector<std::pair<std::string, std::string>>& paramPairs);
-std::vector<std::pair<std::string, std::string>> xWwwFormUrlDecode(const std::string& str);
+std::vector<std::pair<std::string, std::string>> xWwwFormUrlDecode(const std::string_view str);
 }
 
 #endif //HTTP_H_879083425703425702

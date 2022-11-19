@@ -4055,6 +4055,8 @@ void MainDialog::showConfigDialog(SyncConfigPanel panelToShow, int localPairInde
 
 void MainDialog::onGlobalFilterContext(wxEvent& event)
 {
+    warn_static("why not support clipboard instead of filterCfgOnClipboard_!")
+
     auto cutFilter = [&]
     {
         filterCfgOnClipboard_ = std::exchange(currentCfg_.mainCfg.globalFilter, FilterConfig());

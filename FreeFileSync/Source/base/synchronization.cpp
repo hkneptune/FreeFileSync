@@ -602,8 +602,8 @@ void getPathRaceCondition(const BaseFolderPair& baseFolderP, const BaseFolderPai
             if (basePathP.afsPath.value.size() > basePathC.afsPath.value.size())
                 return getPathRaceCondition<sideC, sideP>(baseFolderC, baseFolderP, result);
 
-            const std::vector<Zstring> relPathP = split(basePathP.afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip);
-            const std::vector<Zstring> relPathC = split(basePathC.afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip);
+            const std::vector<Zstring> relPathP = splitCpy(basePathP.afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip);
+            const std::vector<Zstring> relPathC = splitCpy(basePathC.afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip);
 
             if (relPathP.size() <= relPathC.size() &&
             /**/std::equal(relPathP.begin(), relPathP.end(), relPathC.begin(), [](const Zstring& lhs, const Zstring& rhs) { return equalNoCase(lhs, rhs); }))
@@ -722,10 +722,6 @@ inline
 void removeFilePlain(const AbstractPath& filePath, std::mutex& singleThread) //throw FileError
 { parallelScope([filePath] { AFS::removeFilePlain(filePath); /*throw FileError*/ }, singleThread); }
 
-inline
-std::unique_ptr<AFS::RecycleSession> createRecyclerSession(const AbstractPath& folderPath, std::mutex& singleThread) //throw FileError, RecycleBinUnavailable
-{ return parallelScope([folderPath] { return AFS::createRecyclerSession(folderPath); /*throw FileError, RecycleBinUnavailable*/ }, singleThread); }
-
 //--------------------------------------------------------------
 //ATTENTION CALLBACKS: they also run asynchronously *outside* the singleThread lock!
 //--------------------------------------------------------------
@@ -805,14 +801,16 @@ private:
     DeletionHandler& operator=(const DeletionHandler&) = delete;
 
     //might not be needed => create lazily:
-    AFS::RecycleSession& getOrCreateRecyclerSession(std::mutex& singleThread) //throw FileError, RecycleBinUnavailable
+    AFS::RecycleSession& getOrCreateRecyclerSession() //throw FileError, RecycleBinUnavailable
     {
         assert(deletionVariant_ == DeletionVariant::recycler);
 
         if (!recyclerSession_ && !recyclerUnavailableExcept_)
             try
             {
-                recyclerSession_ = parallel::createRecyclerSession(baseFolderPath_, singleThread); //throw FileError, RecycleBinUnavailable
+                recyclerSession_ = AFS::createRecyclerSession(baseFolderPath_); //throw FileError, RecycleBinUnavailable
+                //double-initialization caveat: do NOT run session initialization in parallel!
+                // => createRecyclerSession must *not* do file I/O!
             }
             catch (const RecycleBinUnavailable& e) { recyclerUnavailableExcept_ = e; }
 
@@ -935,7 +933,7 @@ void DeletionHandler::removeFileWithCallback(const FileDescriptor& fileDescr, co
                 if (!beforeOverwrite) reportInfo(replaceCpy(txtDelFileRecycler_, L"%x", fmtPath(AFS::getDisplayPath(fileDescr.path))), statReporter); //throw ThreadStopRequest
                 try
                 {
-                    parallel::moveToRecycleBinIfExists(getOrCreateRecyclerSession(singleThread), fileDescr.path, relPath, singleThread); //throw FileError, RecycleBinUnavailable
+                    parallel::moveToRecycleBinIfExists(getOrCreateRecyclerSession(), fileDescr.path, relPath, singleThread); //throw FileError, RecycleBinUnavailable
                 }
                 catch (const RecycleBinUnavailable& e)
                 {
@@ -993,7 +991,7 @@ void DeletionHandler::removeLinkWithCallback(const AbstractPath& linkPath, const
             if (!beforeOverwrite) reportInfo(replaceCpy(txtDelSymlinkRecycler_, L"%x", fmtPath(AFS::getDisplayPath(linkPath))), statReporter); //throw ThreadStopRequest
             try
             {
-                parallel::moveToRecycleBinIfExists(getOrCreateRecyclerSession(singleThread), linkPath, relPath, singleThread); //throw FileError, RecycleBinUnavailable
+                parallel::moveToRecycleBinIfExists(getOrCreateRecyclerSession(), linkPath, relPath, singleThread); //throw FileError, RecycleBinUnavailable
             }
             catch (const RecycleBinUnavailable& e)
             {
@@ -1051,7 +1049,7 @@ void DeletionHandler::removeDirWithCallback(const AbstractPath& folderPath, cons
             reportInfo(replaceCpy(txtDelFolderRecycler_, L"%x", fmtPath(AFS::getDisplayPath(folderPath))), statReporter); //throw ThreadStopRequest
             try
             {
-                parallel::moveToRecycleBinIfExists(getOrCreateRecyclerSession(singleThread), folderPath, relPath, singleThread); //throw FileError, RecycleBinUnavailable
+                parallel::moveToRecycleBinIfExists(getOrCreateRecyclerSession(), folderPath, relPath, singleThread); //throw FileError, RecycleBinUnavailable
                 statReporter.reportDelta(1, 0); //moving to recycler is ONE logical operation, irrespective of the number of child elements!
             }
             catch (const RecycleBinUnavailable& e)
@@ -2523,7 +2521,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
         checkBaseFolderRaceCondition.emplace_back(&baseFolder, SelectSide::left,  writeLeft);
         checkBaseFolderRaceCondition.emplace_back(&baseFolder, SelectSide::right, writeRight);
 
-            //prepare: check if versioning path itself will be synchronized (and was not excluded via filter)
+        //prepare: check if versioning path itself will be synchronized (and was not excluded via filter)
         if (folderPairCfg.handleDeletion == DeletionVariant::versioning)
             checkVersioningPaths.insert(versioningFolderPath);
 
@@ -2583,7 +2581,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
             continue;
         }
 
-            //check if user-defined directory for deletion was specified
+        //check if user-defined directory for deletion was specified
         if (folderPairCfg.handleDeletion == DeletionVariant::versioning)
             if (AFS::isNullPath(versioningFolderPath))
             {

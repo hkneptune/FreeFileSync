@@ -37,7 +37,7 @@ double zen::nextNiceNumber(double blockSize) //round to next number which is a c
 
     //have a look at leading two digits: "nice" numbers start with 1, 2, 2.5 and 5
     const double steps[] = {1, 2, 2.5, 5, 10};
-    return e * numeric::nearMatch(a, std::begin(steps), std::end(steps));
+    return e * numeric::roundToGrid(a, std::begin(steps), std::end(steps));
 }
 
 

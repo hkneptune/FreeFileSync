@@ -78,7 +78,7 @@ std::vector<Zstring> splitFilterByLines(Zstring filterPhrase)
     if (filterPhrase.empty())
         return {};
 
-    return split(filterPhrase, Zstr('\n'), SplitOnEmpty::allow);
+    return splitCpy(filterPhrase, Zstr('\n'), SplitOnEmpty::allow);
 }
 
 Zstring mergeFilterLines(const std::vector<Zstring>& filterLines)
@@ -1136,11 +1136,11 @@ void readConfig(const XmlIn& in, LocalPairConfig& lpc, std::map<AfsDevice, size_
         {
             if (startsWithAsciiNoCase(folderPathPhrase, "sftp:") ||
                 startsWithAsciiNoCase(folderPathPhrase,  "ftp:"))
+                split(folderPathPhrase, Zstr('|'), [&](const ZstringView optPhrase)
             {
-                for (const Zstring& optPhrase : split(folderPathPhrase, Zstr('|'), SplitOnEmpty::skip))
                     if (startsWith(optPhrase, Zstr("con=")))
                         parallelOps = stringTo<int>(afterFirst(optPhrase, Zstr("con="), IfNotFoundReturn::none));
-            }
+            });
         };
         getParallelOps(lpc.folderPathPhraseLeft,  parallelOpsL);
         getParallelOps(lpc.folderPathPhraseRight, parallelOpsR);
@@ -1169,26 +1169,6 @@ void readConfig(const XmlIn& in, LocalPairConfig& lpc, std::map<AfsDevice, size_
     ciReplace(lpc.folderPathPhraseRight, Zstr("%csidl_MyMusic%"    ), Zstr("%csidl_Music%"));
     ciReplace(lpc.folderPathPhraseRight, Zstr("%csidl_MyPictures%" ), Zstr("%csidl_Pictures%"));
     ciReplace(lpc.folderPathPhraseRight, Zstr("%csidl_MyVideos%"   ), Zstr("%csidl_Videos%"));
-
-    //TODO: remove after migration 2016-09-27
-    if (formatVer < 6) //the-base64-encoded password is now stored as an option at the string end
-    {
-        //sftp://username:[base64]c2VjcmV0c@private.example.com ->
-        //sftp://username@private.example.com|pass64=c2VjcmV0c
-        auto updateSftpSyntax = [](Zstring& pathPhrase)
-        {
-            const size_t pos = pathPhrase.find(Zstr(":[base64]"));
-            if (pos != Zstring::npos)
-            {
-                const size_t posEnd = pathPhrase.find(Zstr("@"), pos);
-                if (posEnd != Zstring::npos)
-                    pathPhrase = Zstring(pathPhrase.begin(), pathPhrase.begin() + pos) + (pathPhrase.c_str() + posEnd) +
-                                 Zstr("|pass64=") + Zstring(pathPhrase.begin() + pos + strLength(Zstr(":[base64]")), pathPhrase.begin() + posEnd);
-            }
-        };
-        updateSftpSyntax(lpc.folderPathPhraseLeft);
-        updateSftpSyntax(lpc.folderPathPhraseRight);
-    }
 
     //TODO: remove after migration! 2020-04-24
     if (formatVer < 16)
@@ -1805,7 +1785,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     //TODO: remove after migration! 2019-11-30
     auto splitEditMerge = [](wxString& perspective, wchar_t delim, const std::function<void(wxString& item)>& editItem)
     {
-        std::vector<wxString> v = split(perspective, delim, SplitOnEmpty::allow);
+        std::vector<wxString> v = splitCpy(perspective, delim, SplitOnEmpty::allow);
         assert(!v.empty());
         perspective.clear();
 

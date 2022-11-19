@@ -37,8 +37,7 @@ public:
                   time_t syncStartTime) :
         versioningFolderPath_(versioningFolderPath),
         versioningStyle_(versioningStyle),
-        syncStartTime_(syncStartTime),
-        timeStamp_(zen::formatTime(Zstr("%Y-%m-%d %H%M%S"), zen::getLocalTime(syncStartTime))) //e.g. "2012-05-15 131513"
+        syncStartTime_(syncStartTime)
     {
         using namespace zen;
 
@@ -84,7 +83,7 @@ private:
     const AbstractPath versioningFolderPath_;
     const VersioningStyle versioningStyle_;
     const time_t syncStartTime_;
-    const Zstring timeStamp_;
+    const Zstring timeStamp_{zen::formatTime(Zstr("%Y-%m-%d %H%M%S"), zen::getLocalTime(syncStartTime_))}; //e.g. "2012-05-15 131513"
 };
 
 //--------------------------------------------------------------------------------

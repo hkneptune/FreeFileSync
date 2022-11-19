@@ -305,8 +305,8 @@ std::optional<AFS::ItemType> AFS::itemStillExists(const AfsPath& itemPath) const
         if (parentType && *parentType != ItemType::file /*obscure, but possible (and not an error)*/)
             try
             {
-        const Zstring itemName = getItemName(itemPath);
-        assert(!itemName.empty());
+                const Zstring itemName = getItemName(itemPath);
+                assert(!itemName.empty());
 
                 traverseFolderFlat(*parentAfsPath, //throw FileError
                 [&](const    FileInfo& fi) { if (fi.itemName == itemName) throw ItemType::file;    },

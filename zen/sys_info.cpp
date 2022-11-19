@@ -131,10 +131,28 @@ ComputerModel zen::getComputerModel() //throw FileError
         cm.model  = beforeFirst(cm.model,  L'\u00ff', IfNotFoundReturn::all); //fix broken BIOS entries:
         cm.vendor = beforeFirst(cm.vendor, L'\u00ff', IfNotFoundReturn::all); //0xff can be considered 0
 
+        trim(cm.model,  false, true, [](wchar_t c) { return c == L'_'; }); //e.g. "CBX3___" or just "_"
+        trim(cm.vendor, false, true, [](wchar_t c) { return c == L'_'; }); //e.g. "DELL__"  or just "_"
+
         for (const char* dummyModel :
              {
-                 "To Be Filled By O.E.M.", "Default string", "$(DEFAULT_STRING)", "Undefined", "empty", "O.E.M", "OEM", "NA",
-                 "System Product Name", "Please change product name", "INVALID",
+                 "Please change product name",
+                 "SYSTEM_PRODUCT_NAME",
+                 "System Product Name",
+                 "To Be Filled By O.E.M.",
+                 "Default string",
+                 "$(DEFAULT_STRING)",
+                 "<null string>",
+                 "Product Name",
+                 "Undefined",
+                 "INVALID",
+                 "Unknow",
+                 "empty",
+                 "O.E.M.",
+                 "O.E.M",
+                 "OEM",
+                 "NA",
+                 ".",
              })
             if (equalAsciiNoCase(cm.model, dummyModel))
             {
@@ -144,8 +162,21 @@ ComputerModel zen::getComputerModel() //throw FileError
 
         for (const char* dummyVendor :
              {
-                 "To Be Filled By O.E.M.", "Default string", "$(DEFAULT_STRING)", "Undefined",  "empty", "O.E.M", "OEM", "NA",
-                 "System manufacturer", "OEM Manufacturer",
+                 "OEM Manufacturer",
+                 "SYSTEM_MANUFACTURER",
+                 "System manufacturer",
+                 "System Manufacter",
+                 "To Be Filled By O.E.M.",
+                 "Default string",
+                 "$(DEFAULT_STRING)",
+                 "Undefined",
+                 "Unknow",
+                 "empty",
+                 "O.E.M.",
+                 "O.E.M",
+                 "OEM",
+                 "NA",
+                 ".",
              })
             if (equalAsciiNoCase(cm.vendor, dummyVendor))
             {

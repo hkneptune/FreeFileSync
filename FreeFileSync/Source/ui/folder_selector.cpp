@@ -44,8 +44,17 @@ void setFolderPathPhrase(const Zstring& folderPathPhrase, FolderHistoryBox* comb
     else
         tooltipWnd.SetToolTip(utfTo<wxString>(folderPathPhraseFmt));
 
+    auto trimTrailingSep = [](Zstring path)
+    {
+        if (endsWith(path, Zstr('/')) ||
+            endsWith(path, Zstr('\\')))
+            path.pop_back();
+        return path;
+    };
+
     if (staticText) //change static box label only if there is a real difference to what is shown in wxTextCtrl anyway
-        staticText->SetLabel(equalNoCase(appendSeparator(trimCpy(folderPathPhrase)), appendSeparator(folderPathPhraseFmt)) ?
+        staticText->SetLabel(equalNoCase(trimTrailingSep(trimCpy(folderPathPhrase)),
+                                         trimTrailingSep(folderPathPhraseFmt)) ?
                              wxString(_("Drag && drop")) : utfTo<wxString>(folderPathPhraseFmt));
 }
 

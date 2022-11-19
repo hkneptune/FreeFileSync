@@ -27,8 +27,6 @@ const int DB_FILE_VERSION   = 11; //2020-02-07
 const int DB_STREAM_VERSION =  4; //2021-02-14
 //-------------------------------------------------------------------------------------------------------------------------------
 
-DEFINE_NEW_FILE_ERROR(FileErrorDatabaseNotExisting)
-
 struct SessionData
 {
     bool isLeadStream = false;
@@ -104,7 +102,10 @@ void saveStreams(const DbStreams& streamList, const AbstractPath& dbPath, const 
 }
 
 
-DbStreams loadStreams(const AbstractPath& dbPath, const IoCallback& notifyUnbufferedIO /*throw X*/) //throw FileError, FileErrorDatabaseNotExisting, X
+DEFINE_NEW_FILE_ERROR(FileErrorDatabaseNotExisting)
+DEFINE_NEW_FILE_ERROR(FileErrorDatabaseCorrupted)
+
+DbStreams loadStreams(const AbstractPath& dbPath, const IoCallback& notifyUnbufferedIO /*throw X*/) //throw FileError, FileErrorDatabaseNotExisting, FileErrorDatabaseCorrupted, X
 {
     std::string byteStream;
     try
@@ -190,7 +191,7 @@ DbStreams loadStreams(const AbstractPath& dbPath, const IoCallback& notifyUnbuff
     }
     catch (const SysError& e)
     {
-        throw FileError(replaceCpy(_("Cannot read database file %x."), L"%x", fmtPath(AFS::getDisplayPath(dbPath))), e.toString());
+        throw FileErrorDatabaseCorrupted(replaceCpy(_("Cannot read database file %x."), L"%x", fmtPath(AFS::getDisplayPath(dbPath))), e.toString());
     }
 }
 
@@ -810,17 +811,16 @@ std::unordered_map<const BaseFolderPair*, SharedRef<const InSyncFolder>> fff::lo
         for (const AbstractPath& dbPath : dbFilePaths)
             parallelWorkload.emplace_back(dbPath, [&dbStreamsByPathShared](ParallelContext& ctx) //throw ThreadStopRequest
         {
-            StreamStatusNotifier notifyLoad(replaceCpy(_("Loading file %x..."), L"%x", fmtPath(AFS::getDisplayPath(ctx.itemPath))), ctx.acb);
-
             tryReportingError([&] //throw ThreadStopRequest
             {
+                StreamStatusNotifier notifyLoad(replaceCpy(_("Loading file %x..."), L"%x", fmtPath(AFS::getDisplayPath(ctx.itemPath))), ctx.acb);
                 try
                 {
-                    DbStreams dbStreams = ::loadStreams(ctx.itemPath, notifyLoad); //throw FileError, FileErrorDatabaseNotExisting, ThreadStopRequest
+                    DbStreams dbStreams = ::loadStreams(ctx.itemPath, notifyLoad); //throw FileError, FileErrorDatabaseNotExisting, FileErrorDatabaseCorrupted, ThreadStopRequest
 
                     dbStreamsByPathShared.access([&](auto& dbStreamsByPath2) { dbStreamsByPath2.emplace(ctx.itemPath, std::move(dbStreams)); });
                 }
-                catch (const FileErrorDatabaseNotExisting&) {} //redundant info => no reportInfo()
+                catch (FileErrorDatabaseNotExisting&) {} //redundant info => no reportInfo()
             }, ctx.acb);
         });
 
@@ -891,13 +891,15 @@ void fff::saveLastSynchronousState(const BaseFolderPair& baseFolder, bool transa
              })
             parallelWorkload.emplace_back(dbPath, [&streamsOut = *streamsOut, &loadSuccess = *loadSuccess](ParallelContext& ctx) //throw ThreadStopRequest
         {
-            StreamStatusNotifier notifyLoad(replaceCpy(_("Loading file %x..."), L"%x", fmtPath(AFS::getDisplayPath(ctx.itemPath))), ctx.acb);
-
             const std::wstring errMsg = tryReportingError([&] //throw ThreadStopRequest
             {
-                try { streamsOut = ::loadStreams(ctx.itemPath, notifyLoad); } //throw FileError, FileErrorDatabaseNotExisting, ThreadStopRequest
+                StreamStatusNotifier notifyLoad(replaceCpy(_("Loading file %x..."), L"%x", fmtPath(AFS::getDisplayPath(ctx.itemPath))), ctx.acb);
+
+                try { streamsOut = ::loadStreams(ctx.itemPath, notifyLoad); } //throw FileError, FileErrorDatabaseNotExisting, FileErrorDatabaseCorrupted, ThreadStopRequest
                 catch (FileErrorDatabaseNotExisting&) {}
+                catch (FileErrorDatabaseCorrupted&) {} //=> just overwrite corrupted DB file: error already reported by loadLastSynchronousState()
             }, ctx.acb);
+
             loadSuccess = errMsg.empty();
         });
 
@@ -963,41 +965,51 @@ void fff::saveLastSynchronousState(const BaseFolderPair& baseFolder, bool transa
         streamsR.erase(itStreamOldR);
 
     //create new session data
-    const std::string sessionID = zen::generateGUID();
+    const std::string sessionID = generateGUID();
 
     streamsL[sessionID] = std::move(sessionDataL);
     streamsR[sessionID] = std::move(sessionDataR);
 
     //------------ save DB files in parallel -------------------------
-    {
-        std::vector<std::pair<AbstractPath, ParallelWorkItem>> parallelWorkload;
+    //1. create *both* ffs_tmp files first (caveat: *not* necessarily in parallel, depending on deviceParallelOps!)
+    //2. if successful, rename both files (almost) transactionally!
+    bool saveSuccessL = false;
+    bool saveSuccessR = false;
+    std::optional<AbstractPath> dbPathTmpL;
+    std::optional<AbstractPath> dbPathTmpR;
+    ZEN_ON_SCOPE_EXIT
+    (
+        //*INDENT-OFF*
+        if (dbPathTmpL) try { AFS::removeFilePlain(*dbPathTmpL); } catch (FileError&) {}
+        if (dbPathTmpR) try { AFS::removeFilePlain(*dbPathTmpR); } catch (FileError&) {}
+        //*INDENT-ON*
+    )
+    warn_static("log it!")
 
-        for (const auto& [dbPath, streams] :
-             {
-                 std::pair(dbPathL, &streamsL),
-                 std::pair(dbPathR, &streamsR)
-             })
-            parallelWorkload.emplace_back(dbPath, [&streams = *streams, transactionalCopy](ParallelContext& ctx) //throw ThreadStopRequest
+    std::vector<std::pair<AbstractPath, ParallelWorkItem>> parallelWorkloadSave, parallelWorkloadMove;
+
+    for (const auto& [dbPath, streams, saveSuccess, dbPathTmp] :
+         {
+             std::tuple(dbPathL, &streamsL, &saveSuccessL, &dbPathTmpL),
+             std::tuple(dbPathR, &streamsR, &saveSuccessR, &dbPathTmpR)
+         })
+    {
+        parallelWorkloadSave.emplace_back(dbPath, [&streams = *streams,
+                                                            &saveSuccess = *saveSuccess,
+                                                            &dbPathTmp = *dbPathTmp,
+                                                            transactionalCopy](ParallelContext& ctx) //throw ThreadStopRequest
         {
-            tryReportingError([&] //throw ThreadStopRequest
+            const std::wstring errMsg = tryReportingError([&] //throw ThreadStopRequest
             {
                 StreamStatusNotifier notifySave(replaceCpy(_("Saving file %x..."), L"%x", fmtPath(AFS::getDisplayPath(ctx.itemPath))), ctx.acb);
 
-                if (transactionalCopy && !AFS::hasNativeTransactionalCopy(ctx.itemPath))
+                if (transactionalCopy && !AFS::hasNativeTransactionalCopy(ctx.itemPath)) //=> write (both?) DB files as a transaction
                 {
-                    //write (temp-) files as a transaction
                     const Zstring shortGuid = printNumber<Zstring>(Zstr("%04x"), static_cast<unsigned int>(getCrc16(generateGUID())));
-                    const AbstractPath dbPathTmp = AFS::appendRelPath(*AFS::getParentPath(ctx.itemPath), AFS::getItemName(ctx.itemPath) + Zstr('.') + shortGuid + AFS::TEMP_FILE_ENDING);
+                    const AbstractPath tmpPath = AFS::appendRelPath(*AFS::getParentPath(ctx.itemPath), AFS::getItemName(ctx.itemPath) + Zstr('.') + shortGuid + AFS::TEMP_FILE_ENDING);
 
-                    saveStreams(streams, dbPathTmp, notifySave); //throw FileError, ThreadStopRequest
-                    ZEN_ON_SCOPE_FAIL(try { AFS::removeFilePlain(dbPathTmp); }
-                    catch (FileError&) {});
-                    warn_static("log it!")
-
-                    //operation finished: rename temp file -> this should work (almost) transactionally:
-                    //if there were no write access, creation of temp file would have failed
-                    AFS::removeFileIfExists(ctx.itemPath);           //throw FileError
-                    AFS::moveAndRenameItem(dbPathTmp, ctx.itemPath); //throw FileError, (ErrorMoveUnsupported)
+                    saveStreams(streams, tmpPath, notifySave); //throw FileError, ThreadStopRequest
+                    dbPathTmp = tmpPath; //pass file ownership
                 }
                 else //some MTP devices don't even allow renaming files: https://freefilesync.org/forum/viewtopic.php?t=6531
                 {
@@ -1005,10 +1017,30 @@ void fff::saveLastSynchronousState(const BaseFolderPair& baseFolder, bool transa
                     saveStreams(streams, ctx.itemPath, notifySave); //throw FileError, ThreadStopRequest
                 }
             }, ctx.acb);
-        });
 
-        massParallelExecute(parallelWorkload,
-                            Zstr("Save sync.ffs_db"), callback /*throw X*/); //throw X
+            saveSuccess = errMsg.empty();
+        });
+        //----------------------------------------------------------------------------
+        if (transactionalCopy && !AFS::hasNativeTransactionalCopy(dbPath))
+            parallelWorkloadMove.emplace_back(dbPath, [&dbPathTmp = *dbPathTmp,
+                                                                  transactionalCopy](ParallelContext& ctx) //throw ThreadStopRequest
+        {
+            tryReportingError([&] //throw ThreadStopRequest
+            {
+                //rename temp file (almost) transactionally: without write access, file creation would have failed
+                AFS::removeFileIfExists(ctx.itemPath);            //throw FileError
+                AFS::moveAndRenameItem(*dbPathTmp, ctx.itemPath); //throw FileError, (ErrorMoveUnsupported)
+
+                dbPathTmp = std::nullopt; //basically a "ScopeGuard::dismiss()"
+            }, ctx.acb);
+        });
     }
+
+    massParallelExecute(parallelWorkloadSave,
+                        Zstr("Save sync.ffs_db"), callback /*throw X*/); //throw X
+
+    if (saveSuccessL && saveSuccessR)
+        massParallelExecute(parallelWorkloadMove,
+                            Zstr("Move sync.ffs_db"), callback /*throw X*/); //throw X
     //----------------------------------------------------------------
 }

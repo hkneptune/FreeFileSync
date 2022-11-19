@@ -309,12 +309,14 @@ void traverseFolderRecursiveNative(const std::vector<std::pair<Zstring, std::sha
 class RecycleSessionNative : public AFS::RecycleSession
 {
 public:
-    explicit RecycleSessionNative(const Zstring& baseFolderPath); //throw FileError, RecycleBinUnavailable
+    explicit RecycleSessionNative(const Zstring& baseFolderPath) : baseFolderPath_(baseFolderPath) {}
+    //constructor will be running on main thread => keep trivial and defer work to getRecyclerTempPath()!
 
     void moveToRecycleBin(const AbstractPath& itemPath, const Zstring& logicalRelPath) override; //throw FileError, RecycleBinUnavailable
     void tryCleanup(const std::function<void(const std::wstring& displayPath)>& notifyDeletionStatus /*throw X*/) override; //throw FileError, X
 
 private:
+    const Zstring baseFolderPath_;
 };
 
 //===========================================================================================================================
@@ -622,7 +624,10 @@ private:
                                        _("Operation not supported between different devices."));
         initComForThread(); //throw FileError
         const Zstring nativePathTarget = static_cast<const NativeFileSystem&>(pathTo.afsDevice.ref()).getNativePath(pathTo.afsPath);
+
         zen::moveAndRenameItem(getNativePath(pathFrom), nativePathTarget, false /*replaceExisting*/); //throw FileError, ErrorTargetExisting, ErrorMoveUnsupported
+        //may fail with ERROR_ALREADY_EXISTS despite previously existing file already deleted
+        //=> reason: corrupted disk, fixable via Windows error checking! https://freefilesync.org/forum/viewtopic.php?t=9776
     }
 
     bool supportsPermissions(const AfsPath& folderPath) const override //throw FileError
@@ -667,10 +672,10 @@ private:
         return zen::getFreeDiskSpace(getNativePath(folderPath)); //throw FileError
     }
 
-    std::unique_ptr<RecycleSession> createRecyclerSession(const AfsPath& folderPath) const override //throw FileError, RecycleBinUnavailable
+    std::unique_ptr<RecycleSession> createRecyclerSession(const AfsPath& folderPath) const override //throw FileError, (RecycleBinUnavailable)
     {
         initComForThread(); //throw FileError
-        return std::make_unique<RecycleSessionNative>(getNativePath(folderPath)); //throw FileError, RecycleBinUnavailable
+        return std::make_unique<RecycleSessionNative>(getNativePath(folderPath));
     }
 
     //fails if item is not existing
@@ -685,8 +690,6 @@ private:
 
 //===========================================================================================================================
 
-RecycleSessionNative::RecycleSessionNative(const Zstring& baseFolderPath)
-{}
 
 
 //- fails if item is not existing

@@ -1904,8 +1904,7 @@ private:
     void updateGui()
     {
         const double fraction = bytesTotal_ == 0 ? 0 : 1.0 * bytesCurrent_ / bytesTotal_;
-        m_staticTextHeader->SetLabelText(_("Downloading update...") + L' ' +
-                                         numberTo<std::wstring>(std::lround(fraction * 100)) + L"% (" + formatFilesizeShort(bytesCurrent_) + L')');
+        m_staticTextHeader->SetLabelText(_("Downloading update...") + L' ' + formatProgressPercent(fraction) + L" (" + formatFilesizeShort(bytesCurrent_) + L')');
         m_gaugeProgress->SetValue(std::round(fraction * GAUGE_FULL_RANGE));
 
         m_staticTextDetails->SetLabelText(utfTo<std::wstring>(filePath_));

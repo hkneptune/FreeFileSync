@@ -21,19 +21,20 @@ Zstring zen::escapeCommandArg(const Zstring& arg)
 {
 //*INDENT-OFF*    if not put exactly here, Astyle will seriously mess this .cpp file up!
     Zstring output;
-    for (const Zchar c : arg)
+    for (const char c : arg)
         switch (c)
         {
+            //case  ' ': output += "\\ "; break; -> maybe nicer to use quotes instead?
             case  '"': output += "\\\""; break; //Windows: not needed; " cannot be used as file name
             case '\\': output += "\\\\"; break; //Windows: path separator! => don't escape
             case '`':  output += "\\`";  break; //yes, used in some paths => Windows: no escaping required
             default:   output += c; break;
         }
-//*INDENT-ON*
-    if (contains(output, Zstr(' ')))
-        output = Zstr('"') + output + Zstr('"'); //Windows: escaping a single blank instead would not work
+    if (contains(arg, ' '))
+        output = '"' + output + '"'; //caveat: single-quotes not working on macOS if string contains escaped chars! no such issue on Linux
 
     return output;
+//*INDENT-ON*
 }
 
 

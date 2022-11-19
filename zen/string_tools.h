@@ -70,11 +70,11 @@ enum class SplitOnEmpty
     allow,
     skip
 };
-template <class S, class Char> [[nodiscard]] std::vector<S> split(const S& str, Char delimiter, SplitOnEmpty soe);
+template <class S, class Char, class Function> void split(const S& str, Char delimiter, Function onStringPart);
 template <class S, class Function1, class Function2> void split2(const S& str, Function1 isDelimiter, Function2 onStringPart);
+template <class S, class Char> [[nodiscard]] std::vector<S> splitCpy(const S& str, Char delimiter, SplitOnEmpty soe);
 
-template <class S> [[nodiscard]] S trimCpy(S  str, bool fromLeft = true, bool fromRight = true);
-template <class Char, class Function> [[nodiscard]] std::pair<Char*, Char*> trimCpy(Char* first, Char* last, bool fromLeft, bool fromRight, Function trimThisChar);
+template <class S> [[nodiscard]] S trimCpy(const S& str, bool fromLeft = true, bool fromRight = true);
 template <class S>                 void trim   (S& str, bool fromLeft = true, bool fromRight = true);
 template <class S, class Function> void trim(S& str, bool fromLeft, bool fromRight, Function trimThisChar);
 
@@ -315,8 +315,8 @@ bool contains(const S& str, const T& term)
     const auto* const strFirst  = strBegin(str);
     const auto* const strLast   = strFirst + strLen;
     const auto* const termFirst = strBegin(term);
-
-    return std::search(strFirst, strLast,
+     
+    return searchFirst(strFirst, strLast,
                        termFirst, termFirst + termLen) != strLast;
 }
 
@@ -331,7 +331,7 @@ S afterLast(const S& str, const T& term, IfNotFoundReturn infr)
     const auto* const strFirst  = strBegin(str);
     const auto* const strLast   = strFirst + strLength(str);
     const auto* const termFirst = strBegin(term);
-
+     
     const auto* it = searchLast(strFirst, strLast,
                                 termFirst, termFirst + termLen);
     if (it == strLast)
@@ -348,7 +348,7 @@ S beforeLast(const S& str, const T& term, IfNotFoundReturn infr)
     static_assert(std::is_same_v<GetCharTypeT<S>, GetCharTypeT<T>>);
     const size_t termLen = strLength(term);
     assert(termLen > 0);
-
+     
     const auto* const strFirst  = strBegin(str);
     const auto* const strLast   = strFirst + strLength(str);
     const auto* const termFirst = strBegin(term);
@@ -372,8 +372,8 @@ S afterFirst(const S& str, const T& term, IfNotFoundReturn infr)
     const auto* const strFirst  = strBegin(str);
     const auto* const strLast   = strFirst + strLength(str);
     const auto* const termFirst = strBegin(term);
-
-    const auto* it = std::search(strFirst, strLast,
+     
+    const auto* it = searchFirst(strFirst, strLast,
                                  termFirst, termFirst + termLen);
     if (it == strLast)
         return infr == IfNotFoundReturn::all ? str : S();
@@ -393,8 +393,8 @@ S beforeFirst(const S& str, const T& term, IfNotFoundReturn infr)
     const auto* const strFirst  = strBegin(str);
     const auto* const strLast   = strFirst + strLength(str);
     const auto* const termFirst = strBegin(term);
-
-    auto it = std::search(strFirst, strLast,
+     
+    auto it = searchFirst(strFirst, strLast,
                           termFirst,  termFirst  + termLen);
     if (it == strLast)
         return infr == IfNotFoundReturn::all ? str : S();
@@ -412,7 +412,7 @@ void split2(const S& str, Function1 isDelimiter, Function2 onStringPart)
     for (;;)
     {
         const auto* const blockLast = std::find_if(blockFirst, strEnd, isDelimiter);
-        onStringPart(blockFirst, blockLast);
+        onStringPart(makeStringView(blockFirst, blockLast));
 
         if (blockLast == strEnd)
             return;
@@ -422,16 +422,24 @@ void split2(const S& str, Function1 isDelimiter, Function2 onStringPart)
 }
 
 
+template <class S, class Char, class Function> inline
+void split(const S& str, Char delimiter, Function onStringPart)
+{
+    static_assert(std::is_same_v<GetCharTypeT<S>, Char>);
+    split2(str, [delimiter](Char c) { return c == delimiter; }, onStringPart);
+}
+
+
 template <class S, class Char> inline
-std::vector<S> split(const S& str, Char delimiter, SplitOnEmpty soe)
+std::vector<S> splitCpy(const S& str, Char delimiter, SplitOnEmpty soe)
 {
     static_assert(std::is_same_v<GetCharTypeT<S>, Char>);
     std::vector<S> output;
 
-    split2(str, [delimiter](Char c) { return c == delimiter; }, [&](const Char* blockFirst, const Char* blockLast)
+    split2(str, [delimiter](Char c) { return c == delimiter; }, [&, soe](std::basic_string_view<Char> block)
     {
-        if (blockFirst != blockLast || soe == SplitOnEmpty::allow)
-            output.emplace_back(blockFirst, blockLast);
+        if (!block.empty() || soe == SplitOnEmpty::allow)
+            output.emplace_back(block.data(), block.size());
     });
     return output;
 }
@@ -474,7 +482,7 @@ void replace(S& str, const T& oldTerm, const U& newTerm, CharEq charEqual)
     auto* it = strBegin(str); //don't use str.begin() or wxString will return this wxUni* nonsense!
     auto* const strEnd = it + strLength(str);
 
-    auto itFound = std::search(it, strEnd,
+    auto itFound = searchFirst(it, strEnd,
                                oldBegin, oldEnd, charEqual);
     if (itFound == strEnd)
         return; //optimize "oldTerm not found"
@@ -489,7 +497,7 @@ void replace(S& str, const T& oldTerm, const U& newTerm, CharEq charEqual)
             itFound = strEnd;
         else
 #endif
-            itFound = std::search(it, strEnd,
+            itFound = searchFirst(it, strEnd,
                                   oldBegin, oldEnd, charEqual);
 
         impl::stringAppend(output, it, itFound);
@@ -531,8 +539,9 @@ S replaceCpyAsciiNoCase(S str, const T& oldTerm, const U& newTerm)
 }
 
 
-template <class Char, class Function> inline
-std::pair<Char*, Char*> trimCpy(Char* first, Char* last, bool fromLeft, bool fromRight, Function trimThisChar)
+template <class Char, class Function>
+[[nodiscard]] inline
+std::pair<Char*, Char*> trimCpy2(Char* first, Char* last, bool fromLeft, bool fromRight, Function trimThisChar)
 {
     assert(fromLeft || fromRight);
 
@@ -554,7 +563,7 @@ void trim(S& str, bool fromLeft, bool fromRight, Function trimThisChar)
     assert(fromLeft || fromRight);
 
     const auto* const oldBegin = strBegin(str);
-    const auto& [newBegin, newEnd] = trimCpy(oldBegin, oldBegin + strLength(str), fromLeft, fromRight, trimThisChar);
+    const auto& [newBegin, newEnd] = trimCpy2(oldBegin, oldBegin + strLength(str), fromLeft, fromRight, trimThisChar);
 
     if (newBegin != oldBegin)
         str = S(newBegin, newEnd); //minor inefficiency: in case "str" is not shared, we could save an allocation and do a memory move only
@@ -572,11 +581,18 @@ void trim(S& str, bool fromLeft, bool fromRight)
 
 
 template <class S> inline
-S trimCpy(S str, bool fromLeft, bool fromRight)
+S trimCpy(const S& str, bool fromLeft, bool fromRight)
 {
-    //implementing trimCpy() in terms of trim(), instead of the other way round, avoids memory allocations when trimming from right!
-    trim(str, fromLeft, fromRight);
-    return str;
+    using CharType = GetCharTypeT<S>;
+    const auto* const oldBegin = strBegin(str);
+    const auto* const oldEnd = oldBegin + strLength(str);
+
+    const auto& [newBegin, newEnd] = trimCpy2(oldBegin, oldEnd, fromLeft, fromRight, [](CharType c) { return isWhiteSpace(c); });
+
+    if (newBegin == oldBegin && newEnd == oldEnd)
+        return str;
+    else
+        return S(newBegin, newEnd - newBegin);
 }
 
 
@@ -626,6 +642,7 @@ S printNumber(const T& format, const Num& number) //format a single number using
 #error refactor?
 #endif
     static_assert(std::is_same_v<GetCharTypeT<S>, GetCharTypeT<T>>);
+        assert(strBegin(format)[strLength(format)] == 0); //format must be null-terminated!
 
     S buf(128, static_cast<GetCharTypeT<S>>('0'));
     const int charsWritten = impl::saferPrintf(buf.data(), buf.size(), strBegin(format), number);
@@ -634,7 +651,7 @@ S printNumber(const T& format, const Num& number) //format a single number using
         return S();
 
     buf.resize(charsWritten);
-        return buf;
+    return buf;
 }
 
 
@@ -849,7 +866,7 @@ Num stringTo(const S& str, std::integral_constant<NumberType, NumberType::unsign
     if (hasMinusSign)
     {
         assert(false);
-        return 0U;
+        return -makeSigned(number); //at least make some noise
     }
     return number;
 }

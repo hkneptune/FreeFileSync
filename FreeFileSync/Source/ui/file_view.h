@@ -113,7 +113,7 @@ public:
     struct SortInfo
     {
         std::variant<ColumnTypeRim, ColumnTypeCenter> sortCol;
-        bool onLeft    = false; //if sortCol is ColumnTypeRim
+        bool onLeft    = false; //only use if sortCol is ColumnTypeRim
         bool ascending = false;
     };
     const SortInfo* getSortConfig() const { return zen::get(currentSort_); } //return nullptr if currently not sorted

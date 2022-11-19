@@ -173,7 +173,7 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
     dc.SetFont(font); //the font parameter of GetMultiLineTextExtent() is not evaluated on OS X, wxWidgets 2.9.5, so apply it to the DC directly!
 
     std::vector<std::pair<wxString, wxSize>> lineInfo; //text + extent
-    for (const wxString& line : split(text, L'\n', SplitOnEmpty::allow))
+    for (const wxString& line : splitCpy(text, L'\n', SplitOnEmpty::allow))
         lineInfo.emplace_back(line, line.empty() ? wxSize() : dc.GetTextExtent(line));
     //------------------------------------------------------------------------------------------------
 

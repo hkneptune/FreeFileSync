@@ -311,7 +311,8 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
         virtual void tryCleanup(const std::function<void(const std::wstring& displayPath)>& notifyDeletionStatus /*throw X*; displayPath may be empty*/) = 0; //throw FileError, X
     };
 
-    //return value always bound!
+    //- return value always bound!
+    //- constructor will be running on main thread => *no* file I/O!
     static std::unique_ptr<RecycleSession> createRecyclerSession(const AbstractPath& folderPath) { return folderPath.afsDevice.ref().createRecyclerSession(folderPath.afsPath); } //throw FileError, RecycleBinUnavailable
 
     //- returns empty on success, item type if recycle bin is not available

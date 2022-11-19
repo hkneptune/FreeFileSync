@@ -1071,8 +1071,8 @@ std::optional<PathDependency> fff::getPathDependency(const AbstractPath& folderP
     {
         if (folderPathL.afsDevice == folderPathR.afsDevice)
         {
-            const std::vector<Zstring> relPathL = split(folderPathL.afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip);
-            const std::vector<Zstring> relPathR = split(folderPathR.afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip);
+            const std::vector<Zstring> relPathL = splitCpy(folderPathL.afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip);
+            const std::vector<Zstring> relPathR = splitCpy(folderPathR.afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip);
 
             const bool leftParent = relPathL.size() <= relPathR.size();
 
@@ -1520,7 +1520,7 @@ void fff::deleteListOfFiles(const std::vector<Zstring>& filesToDeletePaths,
                     cb.reportWarning(e.toString() + L"\n\n" + _("Ignore and delete permanently each time recycle bin is unavailable?"), warnRecyclerMissing); //throw X
                 }
                 cb.logMessage(replaceCpy(_("Deleting file %x"), L"%x", fmtPath(AFS::getDisplayPath(cfgPath))) +
-                                    L" [" + _("The recycle bin is not available") + L']', PhaseCallback::MsgType::warning); //throw X
+                              L" [" + _("The recycle bin is not available") + L']', PhaseCallback::MsgType::warning); //throw X
                 AFS::removeFileIfExists(cfgPath); //throw FileError
             }
         else

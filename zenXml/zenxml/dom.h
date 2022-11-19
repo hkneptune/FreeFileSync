@@ -248,7 +248,7 @@ private:
     std::list<Attribute>                                            attributes_;      //attributes in order of creation
     std::unordered_map<std::string, std::list<Attribute>::iterator> attributesByName; //alternate view for lookup
 
-    std::list<XmlElement>                             childElements_;       //child elements in order of creation
+    std::list<XmlElement>                   childElements_;       //child elements in order of creation
     std::multimap<std::string, XmlElement*> childElementsByName_; //alternate view for lookup
     //alternative: std::unordered_map => but let's keep std::map, so which guarantees consistent order of duplicate items!
     //e.g. std::unordered_map on Linux inserts duplicates in reverse!

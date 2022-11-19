@@ -126,9 +126,6 @@ namespace
 int64_t zen::getFreeDiskSpace(const Zstring& folderPath) //throw FileError
 {
     const auto& [existingPath, existingType] = getExistingPath(folderPath); //throw FileError
-
-    warn_static("what if existingType is symlink?")
-
     try
     {
         struct statfs info = {};

@@ -221,7 +221,7 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
         options.emplace_back(CURLOPT_READFUNCTION, getBytesToSendWrapper);
         //{CURLOPT_UPLOAD_BUFFERSIZE, 256 * 1024} -> default is 64 kB. apparently no performance improvement for larger buffers like 256 kB
 
-         //Contradicting options: CURLOPT_READFUNCTION, CURLOPT_POSTFIELDS:
+        //Contradicting options: CURLOPT_READFUNCTION, CURLOPT_POSTFIELDS:
         if (std::any_of(extraOptions.begin(), extraOptions.end(), [](const CurlOption& o) { return o.option == CURLOPT_POSTFIELDS; }))
         /**/ throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
     }

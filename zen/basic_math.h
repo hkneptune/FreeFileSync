@@ -20,7 +20,7 @@ template <class T> int sign(T value); //returns one of {-1, 0, 1}
 template <class T> bool isNull(T value); //...definitively fishy...
 
 template <class T, class InputIterator> //precondition: range must be sorted!
-auto nearMatch(const T& val, InputIterator first, InputIterator last);
+auto roundToGrid(T val, InputIterator first, InputIterator last);
 
 template <class N, class D> auto intDivRound(N numerator, D denominator);
 template <class N, class D> auto intDivCeil (N numerator, D denominator);
@@ -122,12 +122,12 @@ std::pair<InputIterator, InputIterator> minMaxElement(InputIterator first, Input
 */
 
 template <class T, class InputIterator> inline
-auto nearMatch(const T& val, InputIterator first, InputIterator last)
+auto roundToGrid(T val, InputIterator first, InputIterator last)
 {
-    if (first == last)
-        return static_cast<decltype(*first)>(0);
-
     assert(std::is_sorted(first, last));
+    if (first == last)
+        return static_cast<decltype(*first)>(val);
+
     InputIterator it = std::lower_bound(first, last, val);
     if (it == last)
         return *--last;

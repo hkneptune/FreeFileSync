@@ -330,9 +330,14 @@ public:
 
                     //libssh2 doesn't support the PuTTY key file format, but we do!
                     if (isPuttyKeyStream(pkStream))
+                        try
                     {
                         pkStream = convertPuttyKeyToPkix(pkStream, passphrase); //throw SysError
                         passphrase.clear();
+                    }
+                    catch (const SysError& e) //add file path to error message:
+                    {
+                        throw SysError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(sessionId_.privateKeyFilePath)) + L' ' + e.toString());
                     }
 
                     if (::libssh2_userauth_publickey_frommemory(sshSession_, usernameUtf8, pkStream, passphrase) != 0) //const char* passphrase
@@ -341,25 +346,20 @@ public:
                         //=> detect invalid key files and give better error message:
                         const wchar_t* invalidKeyFormat = [&]() -> const wchar_t*
                         {
-                            std::string firstLine(pkStream.begin(), std::find_if(pkStream.begin(), pkStream.end(), isLineBreak<char>));
-                            trim(firstLine);
-
                             //"-----BEGIN PUBLIC KEY-----"      OpenSSH SSH-2 public key (X.509 SubjectPublicKeyInfo) = PKIX
                             //"-----BEGIN RSA PUBLIC KEY-----"  OpenSSH SSH-2 public key (PKCS#1 RSAPublicKey)
                             //"---- BEGIN SSH2 PUBLIC KEY ----" SSH-2 public key (RFC 4716 format)
+                            const std::string_view firstLine = makeStringView(pkStream.begin(), std::find_if(pkStream.begin(), pkStream.end(), isLineBreak<char>));
                             if (contains(firstLine, "PUBLIC KEY"))
                                 return L"OpenSSH public key";
 
-                            if (startsWith(firstLine, "ssh-") || //ssh-rsa, ssh-dss, ssh-ed25519
-                                startsWith(firstLine, "ecdsa-")) //ecdsa-sha2-nistp256, ecdsa-sha2-nistp384, ecdsa-sha2-nistp521
+                            if (startsWith(pkStream, "ssh-") || //ssh-rsa, ssh-dss, ssh-ed25519
+                                startsWith(pkStream, "ecdsa-")) //ecdsa-sha2-nistp256, ecdsa-sha2-nistp384, ecdsa-sha2-nistp521
                                 return L"OpenSSH public key"; //OpenSSH SSH-2 public key
 
                             if (std::count(pkStream.begin(), pkStream.end(), ' ') == 2 &&
                             std::all_of(pkStream.begin(), pkStream.end(), [](char c) { return isDigit(c) || c == ' '; }))
                             return L"SSH-1 public key";
-
-                            if (startsWith(firstLine, "PuTTY-User-Key-File-1")) //PuTTY SSH-2 private key
-                                return L"Old PuTTY v1 key"; //we only support v2!
 
                             //"-----BEGIN PRIVATE KEY-----"                => OpenSSH SSH-2 private key (PKCS#8 PrivateKeyInfo)          => should work
                             //"-----BEGIN ENCRYPTED PRIVATE KEY-----"      => OpenSSH SSH-2 private key (PKCS#8 EncryptedPrivateKeyInfo) => should work

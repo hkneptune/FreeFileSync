@@ -261,6 +261,7 @@ rts::AbortReason rts::runFolderMonitor(const XmlRealConfig& config, const wxStri
                 exitCode != 0)
                 throw SysError(formatSystemError("", replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), utfTo<std::wstring>(output)));
             //okay to fail when FFS returns exit code 1 (warning)?
+            warn_static("evaluate!") //https://freefilesync.org/forum/viewtopic.php?t=9395 https://freefilesync.org/forum/viewtopic.php?t=9399
         }
         catch (const SysError& e) { throw FileError(replaceCpy(_("Command %x failed."), L"%x", fmtPath(cmdLineExp)), e.toString()); }
     };

@@ -87,7 +87,7 @@ void rts::readConfig(const Zstring& filePath, XmlRealConfig& cfg, std::wstring& 
 
     try
     {
-        checkXmlMappingErrors(in, filePath); //throw FileError
+        checkXmlMappingErrors(in); //throw FileError
 
         //(try to) migrate old configuration automatically
         if (formatVer < XML_FORMAT_RTS_CFG)
@@ -95,7 +95,11 @@ void rts::readConfig(const Zstring& filePath, XmlRealConfig& cfg, std::wstring& 
             catch (FileError&) { assert(false); } //don't bother user!
         warn_static("at least log on failure!")
     }
-    catch (const FileError& e) { warningMsg = e.toString(); }
+    catch (const FileError& e)
+    { 
+        warningMsg = replaceCpy(_("Configuration file %x is incomplete. The missing elements have been set to their default values."), L"%x", fmtPath(filePath)) + 
+            L"\n\n" + e.toString(); 
+    }
 }
 
 
@@ -136,8 +140,11 @@ void rts::readRealOrBatchConfig(const Zstring& filePath, XmlRealConfig& cfg, std
             uniqueFolders.insert(folderPathPhraseRight);
         }
 
-        //don't report failure as warning only:
-        checkXmlMappingErrors(in, filePath); //throw FileError
+    try
+    {
+        checkXmlMappingErrors(in); //throw FileError
+    }
+    catch (const FileError& e) { throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)) + L"\n\n" + e.toString()); }
         //---------------------------------------------------------------------------------------
 
         std::erase_if(uniqueFolders, [](const Zstring& str) { return trimCpy(str).empty(); });
@@ -172,7 +179,12 @@ wxLanguage rts::getProgramLanguage() //throw FileError
 
     wxLanguage lng = wxLANGUAGE_UNKNOWN;
     in["Language"].attribute("Code", lng);
+    
+    try
+    {
+        checkXmlMappingErrors(in); //throw FileError
+    }
+    catch (const FileError& e) { throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)) + L"\n\n" + e.toString()); }
 
-    checkXmlMappingErrors(in, filePath); //throw FileError
     return lng;
 }

@@ -5,7 +5,6 @@
 // *****************************************************************************
 
 #include "log_panel.h"
-#include <wx/clipbrd.h>
 #include <wx+/window_tools.h>
 #include <wx+/image_resources.h>
 #include <wx+/rtl.h>
@@ -432,7 +431,7 @@ void LogPanel::onMsgGridContext(GridContextMenuEvent& event)
     }();
 
     ContextMenu menu;
-    menu.addItem(_("Copy") + L"\tCtrl+C", [this] { copySelectionToClipboard(); }, wxNullImage, !selection.empty());
+    menu.addItem(_("&Copy") + L"\tCtrl+C", [this] { copySelectionToClipboard(); }, loadImage("item_copy_sicon"), !selection.empty());
     menu.addSeparator();
 
     menu.addItem(_("Select all") + L"\tCtrl+A", [this] { m_gridMessages->selectAllRows(GridEventPolicy::allow); }, wxNullImage, rowCount > 0);
@@ -450,6 +449,7 @@ void LogPanel::onGridButtonEvent(wxKeyEvent& event)
         {
             case 'C':
             case WXK_INSERT: //CTRL + C || CTRL + INS
+            case WXK_NUMPAD_INSERT:
                 copySelectionToClipboard();
                 return; // -> swallow event! don't allow default grid commands!
         }
@@ -548,13 +548,7 @@ void LogPanel::copySelectionToClipboard()
                 }
         }
 
-        if (!clipBuf.empty())
-            if (wxClipboard::Get()->Open())
-            {
-                ZEN_ON_SCOPE_EXIT(wxClipboard::Get()->Close());
-                wxClipboard::Get()->SetData(new wxTextDataObject(std::move(clipBuf))); //ownership passed
-                wxClipboard::Get()->Flush();
-            }
+        setClipboardText(clipBuf);
     }
     catch (const std::bad_alloc& e)
     {

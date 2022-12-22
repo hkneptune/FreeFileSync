@@ -61,11 +61,11 @@ protected:
     ~StorageDeepCopy() {}
 
     Char* create(size_t size) { return create(size, size); }
-    Char* create(size_t size, size_t capacity)
+    Char* create(size_t size, size_t minCapacity)
     {
-        assert(size <= capacity);
-        const size_t newCapacity = AP::calcCapacity(capacity);
-        assert(newCapacity >= capacity);
+        assert(size <= minCapacity);
+        const size_t newCapacity = AP::calcCapacity(minCapacity);
+        assert(newCapacity >= minCapacity);
 
         Descriptor* const newDescr = static_cast<Descriptor*>(this->allocate(sizeof(Descriptor) + (newCapacity + 1) * sizeof(Char))); //throw std::bad_alloc
         new (newDescr) Descriptor(size, newCapacity);
@@ -124,18 +124,18 @@ protected:
     ~StorageRefCountThreadSafe() {}
 
     Char* create(size_t size) { return create(size, size); }
-    Char* create(size_t size, size_t capacity)
+    Char* create(size_t size, size_t minCapacity)
     {
-        assert(size <= capacity);
+        assert(size <= minCapacity);
 
-        if (capacity == 0) //perf: avoid memory allocation for empty string
+        if (minCapacity == 0) //perf: avoid memory allocation for empty string
         {
             ++globalEmptyString.descr.refCount;
             return &globalEmptyString.nullTerm;
         }
 
-        const size_t newCapacity = AP::calcCapacity(capacity);
-        assert(newCapacity >= capacity);
+        const size_t newCapacity = AP::calcCapacity(minCapacity);
+        assert(newCapacity >= minCapacity);
 
         Descriptor* const newDescr = static_cast<Descriptor*>(this->allocate(sizeof(Descriptor) + (newCapacity + 1) * sizeof(Char))); //throw std::bad_alloc
         new (newDescr) Descriptor(size, newCapacity);
@@ -230,8 +230,8 @@ public:
     Zbase(const Char* str, size_t len) : Zbase(str, str + len) {}
     explicit Zbase(const std::basic_string_view<Char> view) : Zbase(view.begin(), view.end()) {}
     Zbase(size_t count, Char fillChar);
-    template <class InputIterator>
-    Zbase(InputIterator first, InputIterator last);
+    template <class RandomAccessIterator>
+    Zbase(RandomAccessIterator first, RandomAccessIterator last);
     Zbase(const Zbase& str);
     Zbase(Zbase&& tmp) noexcept;
     //explicit Zbase(Char ch); //dangerous if implicit: Char buffer[]; return buffer[0]; ups... forgot &, but not a compiler error! //-> non-standard extension!!!
@@ -241,7 +241,7 @@ public:
     //operator const Char* () const; //NO implicit conversion to a C-string!! Many problems... one of them: if we forget to provide operator overloads, it'll just work with a Char*...
 
     operator std::basic_string_view<Char>() const& noexcept { return {data(), size()}; }
-    operator std::basic_string_view<Char>() const&& = delete; //=> probably a bug!
+    //operator std::basic_string_view<Char>() const&& = delete; //=> probably a bug!
 
     //STL accessors
     using iterator        = Char*;
@@ -281,8 +281,8 @@ public:
     Zbase& assign(const Char* str, size_t len) { return assign(str, str + len); }
     Zbase& append(const Char* str, size_t len) { return append(str, str + len); }
 
-    template <class InputIterator> Zbase& assign(InputIterator first, InputIterator last);
-    template <class InputIterator> Zbase& append(InputIterator first, InputIterator last);
+    template <class RandomAccessIterator> Zbase& assign(RandomAccessIterator first, RandomAccessIterator last);
+    template <class RandomAccessIterator> Zbase& append(RandomAccessIterator first, RandomAccessIterator last);
 
     void resize(size_t newSize, Char fillChar = 0);
     void swap(Zbase& str) { std::swap(rawStr_, str.rawStr_); }
@@ -296,8 +296,13 @@ public:
     Zbase& operator+=(const Zbase& str) { return append(str.c_str(), str.size()); }
     Zbase& operator+=(const Char* str)  { return append(str, strLength(str)); }
     Zbase& operator+=(Char ch)          { return append(&ch, 1); }
+    Zbase& operator+=(const std::basic_string_view<Char> str) { return append(str.begin(), str.end()); }
 
     static const size_t npos = static_cast<size_t>(-1);
+
+    inline friend Zbase operator+(                       const Char* lhs, const Zbase& rhs) { return Zbase(lhs, strLength(lhs),    rhs.c_str(), rhs.size()); }
+    inline friend Zbase operator+(                             Char  lhs, const Zbase& rhs) { return Zbase(&lhs, 1,                rhs.c_str(), rhs.size()); }
+    inline friend Zbase operator+(const std::basic_string_view<Char> lhs, const Zbase& rhs) { return Zbase(lhs.data(), lhs.size(), rhs.c_str(), rhs.size()); }
 
 private:
     Zbase              (int) = delete; //
@@ -305,11 +310,16 @@ private:
     Zbase& operator=   (int) = delete; //detect usage errors by creating an intentional ambiguity with "Char"
     Zbase& operator+=  (int) = delete; //
     void   push_back   (int) = delete; //
+
     Zbase              (std::nullptr_t) = delete;
     Zbase(size_t count, std::nullptr_t) = delete;
     Zbase& operator=   (std::nullptr_t) = delete;
     Zbase& operator+=  (std::nullptr_t) = delete;
     void   push_back   (std::nullptr_t) = delete;
+
+    //not part of std::string API => private:
+    Zbase(const Char* str1, size_t len1, const Char* str2, size_t len2);
+    //alternative: Zbase() + reserve() + 2 x append()
 
     Char* rawStr_;
 };
@@ -328,14 +338,13 @@ template <class Char, template <class> class SP> std::strong_ordering operator<=
 template <class Char, template <class> class SP> inline Zbase<Char, SP> operator+(const Zbase<Char, SP>& lhs, const Zbase<Char, SP>& rhs) { return Zbase<Char, SP>(lhs) += rhs; }
 template <class Char, template <class> class SP> inline Zbase<Char, SP> operator+(const Zbase<Char, SP>& lhs, const Char*            rhs) { return Zbase<Char, SP>(lhs) += rhs; }
 template <class Char, template <class> class SP> inline Zbase<Char, SP> operator+(const Zbase<Char, SP>& lhs,       Char             rhs) { return Zbase<Char, SP>(lhs) += rhs; }
+template <class Char, template <class> class SP> inline Zbase<Char, SP> operator+(const Zbase<Char, SP>& lhs, const std::basic_string_view<Char> rhs) { return Zbase<Char, SP>(lhs) += rhs; }
 
 //don't use unified first argument but save one move-construction in the r-value case instead!
 template <class Char, template <class> class SP> inline Zbase<Char, SP> operator+(Zbase<Char, SP>&& lhs, const Zbase<Char, SP>& rhs) { return std::move(lhs += rhs); } //the move *is* needed!!!
 template <class Char, template <class> class SP> inline Zbase<Char, SP> operator+(Zbase<Char, SP>&& lhs, const Char*            rhs) { return std::move(lhs += rhs); } //lhs, is an l-value parameter...
 template <class Char, template <class> class SP> inline Zbase<Char, SP> operator+(Zbase<Char, SP>&& lhs,       Char             rhs) { return std::move(lhs += rhs); } //and not a local variable => no copy elision
-
-template <class Char, template <class> class SP> inline Zbase<Char, SP> operator+(const Char*       lhs, const Zbase<Char, SP>& rhs) { return Zbase<Char, SP>(lhs    ) += rhs; }
-template <class Char, template <class> class SP> inline Zbase<Char, SP> operator+(      Char        lhs, const Zbase<Char, SP>& rhs) { return Zbase<Char, SP>(&lhs, 1) += rhs; }
+template <class Char, template <class> class SP> inline Zbase<Char, SP> operator+(Zbase<Char, SP>&& lhs, const std::basic_string_view<Char> rhs) { return std::move(lhs += rhs); }
 
 template <class Char, template <class> class SP> inline Zbase<Char, SP> operator+(const Zbase<Char, SP>&, int) = delete; //detect usage errors
 template <class Char, template <class> class SP> inline Zbase<Char, SP> operator+(int, const Zbase<Char, SP>&) = delete; //
@@ -359,8 +368,8 @@ Zbase<Char, SP>::Zbase()
 
 
 template <class Char, template <class> class SP>
-template <class InputIterator> inline
-Zbase<Char, SP>::Zbase(InputIterator first, InputIterator last)
+template <class RandomAccessIterator> inline
+Zbase<Char, SP>::Zbase(RandomAccessIterator first, RandomAccessIterator last)
 {
     rawStr_ = this->create(last - first);
     *std::copy(first, last, rawStr_) = 0;
@@ -389,6 +398,15 @@ Zbase<Char, SP>::Zbase(Zbase<Char, SP>&& tmp) noexcept
     rawStr_ = std::exchange(tmp.rawStr_, nullptr);
     //usually nullptr would violate the class invarants, but it is good enough for the destructor!
     //caveat: do not increment ref-count of an unshared string! We'd lose optimization opportunity of reusing its memory!
+}
+
+
+template <class Char, template <class> class SP> inline
+Zbase<Char, SP>::Zbase(const Char* str1, size_t len1, const Char* str2, size_t len2)
+{
+    rawStr_ = this->create(len1 + len2);
+    std::copy (str1, str1 + len1, rawStr_);
+    *std::copy(str2, str2 + len2, rawStr_ + len1) = 0;
 }
 
 
@@ -568,7 +586,7 @@ void Zbase<Char, SP>::reserve(size_t minCapacity) //make unshared and check capa
         //allocate a new string
         const size_t len = size();
         Char* newStr = this->create(len, std::max(len, minCapacity)); //reserve() must NEVER shrink the string: logical const!
-        std::copy(rawStr_, rawStr_ + len + 1 /*0-termination*/, newStr);
+        *std::copy(rawStr_, rawStr_ + len , newStr) = 0;
 
         this->destroy(rawStr_);
         rawStr_ = newStr;
@@ -577,10 +595,10 @@ void Zbase<Char, SP>::reserve(size_t minCapacity) //make unshared and check capa
 
 
 template <class Char, template <class> class SP>
-template <class InputIterator> inline
-Zbase<Char, SP>& Zbase<Char, SP>::assign(InputIterator first, InputIterator last)
+template <class RandomAccessIterator> inline
+Zbase<Char, SP>& Zbase<Char, SP>::assign(RandomAccessIterator first, RandomAccessIterator last)
 {
-    const size_t len = std::distance(first, last);
+    const size_t len = last - first;
     if (this->canWrite(rawStr_, len))
     {
         *std::copy(first, last, rawStr_) = 0;
@@ -594,10 +612,10 @@ Zbase<Char, SP>& Zbase<Char, SP>::assign(InputIterator first, InputIterator last
 
 
 template <class Char, template <class> class SP>
-template <class InputIterator> inline
-Zbase<Char, SP>& Zbase<Char, SP>::append(InputIterator first, InputIterator last)
+template <class RandomAccessIterator> inline
+Zbase<Char, SP>& Zbase<Char, SP>::append(RandomAccessIterator first, RandomAccessIterator last)
 {
-    const size_t len = std::distance(first, last);
+    const size_t len = last - first; //std::distance(first, last);
     if (len > 0) //avoid making this string unshared for no reason
     {
         const size_t thisLen = size();
@@ -622,7 +640,7 @@ Zbase<Char, SP>& Zbase<Char, SP>::operator=(const Zbase<Char, SP>& str)
 template <class Char, template <class> class SP> inline
 Zbase<Char, SP>& Zbase<Char, SP>::operator=(Zbase<Char, SP>&& tmp) noexcept
 {
-    //don't use swap() but end rawStr_ life time immediately
+    //don't swap() but end rawStr_ life time immediately
     this->destroy(rawStr_);
 
     rawStr_ = std::exchange(tmp.rawStr_, nullptr);

@@ -219,8 +219,8 @@ bool fff::haveNewerVersionOnline(const std::string& onlineVersion)
     auto parseVersion = [](const std::string_view& version)
     {
         std::vector<size_t> output;
-        split(version, FFS_VERSION_SEPARATOR, 
-            [&](const std::string_view digit) { output.push_back(stringTo<size_t>(digit)); });
+        split(version, FFS_VERSION_SEPARATOR,
+        [&](const std::string_view digit) { output.push_back(stringTo<size_t>(digit)); });
         assert(!output.empty());
         return output;
     };

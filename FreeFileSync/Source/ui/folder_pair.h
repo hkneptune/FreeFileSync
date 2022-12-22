@@ -105,39 +105,41 @@ private:
 
     void onLocalFilterCfgContext(wxEvent& event)
     {
-        std::optional<FilterConfig>& filterCfgOnClipboard = getFilterCfgOnClipboardRef();
+        using namespace zen;
+
+        std::optional<FilterConfig> filterCfgOnClipboard;
+        if (std::optional<wxString> clipTxt = getClipboardText())
+            filterCfgOnClipboard = parseFilterBuf(utfTo<std::string>(*clipTxt));
 
         auto cutFilter = [&]
         {
-            filterCfgOnClipboard = std::exchange(this->localFilter_, FilterConfig());
+            setClipboardText(utfTo<wxString>(serializeFilter(this->localFilter_)));
+            this->localFilter_ = FilterConfig();
             this->refreshButtons();
             this->onLocalFilterCfgChange();
         };
 
-        auto copyFilter = [&] { filterCfgOnClipboard = this->localFilter_; };
+        auto copyFilter = [&] { setClipboardText(utfTo<wxString>(serializeFilter(this->localFilter_))); };
 
         auto pasteFilter = [&]
         {
-            if (filterCfgOnClipboard)
-            {
-                this->localFilter_ = *filterCfgOnClipboard;
-                this->refreshButtons();
-                this->onLocalFilterCfgChange();
-            }
+            this->localFilter_ = *filterCfgOnClipboard;
+            this->refreshButtons();
+            this->onLocalFilterCfgChange();
         };
 
         zen::ContextMenu menu;
-        menu.addItem( _("Cut"), cutFilter, wxNullImage, !isNullFilter(localFilter_));
+        menu.addItem( _("Cu&t"), cutFilter, loadImage("item_cut_sicon"), !isNullFilter(localFilter_));
         menu.addSeparator();
-        menu.addItem( _("Copy"), copyFilter, wxNullImage, !isNullFilter(localFilter_));
-        menu.addItem( _("Paste"), pasteFilter, wxNullImage, filterCfgOnClipboard.has_value());
+        menu.addItem( _("&Copy"), copyFilter, loadImage("item_copy_sicon"), !isNullFilter(localFilter_));
+        menu.addItem( _("&Paste"), pasteFilter, loadImage("item_paste_sicon"), filterCfgOnClipboard.has_value());
+
         menu.popup(*basicPanel_.m_bpButtonLocalFilter, {basicPanel_.m_bpButtonLocalFilter->GetSize().x, 0});
     }
 
 
     virtual MainConfiguration getMainConfig() const = 0;
     virtual wxWindow* getParentWindow() = 0;
-    virtual std::optional<FilterConfig>& getFilterCfgOnClipboardRef() = 0;
 
     virtual void onLocalCompCfgChange  () = 0;
     virtual void onLocalSyncCfgChange  () = 0;

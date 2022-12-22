@@ -353,8 +353,6 @@ private:
 
     zen::AsyncGuiQueue guiQueue_; //schedule and run long-running tasks asynchronously, but process results on GUI queue
 
-    std::optional<FilterConfig> filterCfgOnClipboard_; //copy/paste of filter config
-
     wxWindowID focusAfterCloseLog_    = wxID_ANY; //
     wxWindowID focusAfterCloseSearch_ = wxID_ANY; //restore focus after panel is closed
     //don't save wxWindow* to arbitrary window: might not exist anymore when hideFindPanel() uses it!!! (e.g. some folder pair panel)

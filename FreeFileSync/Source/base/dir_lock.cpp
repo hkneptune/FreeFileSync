@@ -127,6 +127,8 @@ private:
         {
             const std::wstring logMsg = replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(lockFilePath_)) + L' ' + e.toString();
             std::cerr << utfTo<std::string>(logMsg) + '\n';
+
+            warn_static("log on failure!")
         }
     }
 
@@ -418,7 +420,7 @@ void releaseLock(const Zstring& lockFilePath) //noexcept
         removeFilePlain(lockFilePath); //throw FileError
     }
     catch (FileError&) {}
-    warn_static("log!!! at the very least")
+    warn_static("log!!! at the very least") //https://freefilesync.org/forum/viewtopic.php?t=7655
 }
 
 

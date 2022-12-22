@@ -179,7 +179,7 @@ namespace
 
 
 //expand volume name if possible, return original input otherwise
-Zstring expandVolumeName(Zstring pathPhrase)  // [volname]:\folder    [volname]\folder    [volname]folder    -> C:\folder
+Zstring tryExpandVolumeName(Zstring pathPhrase)  // [volname]:\folder    [volname]\folder    [volname]folder    -> C:\folder
 {
     //we only expect the [.*] pattern at the beginning => do not touch dir names like "C:\somedir\[stuff]"
     trim(pathPhrase, true, false);
@@ -205,7 +205,7 @@ std::vector<Zstring> zen::getPathPhraseAliases(const Zstring& itemPath)
         {
             //should use a replaceCpy() that considers "local path" case-sensitivity (if only we had one...)
             if (contains(itemPath, macroPath))
-                pathAliases.push_back(makePathPhrase(replaceCpyAsciiNoCase(itemPath, macroPath, MACRO_SEP + Zstring(macroName) + MACRO_SEP)));
+                pathAliases.push_back(makePathPhrase(replaceCpyAsciiNoCase(itemPath, macroPath, Zstring() + MACRO_SEP + macroName + MACRO_SEP)));
         };
 
         for (const Zchar* envName :
@@ -242,7 +242,7 @@ Zstring zen::getResolvedFilePath(const Zstring& pathPhrase) //noexcept
     trim(path); //remove leading/trailing whitespace before allowing misinterpretation in applyLongPathPrefix()
 
     {
-        path = expandVolumeName(path); //may block for slow USB sticks and idle HDDs!
+        path = tryExpandVolumeName(path); //may block for slow USB sticks and idle HDDs!
 
         /* need to resolve relative paths:
              WINDOWS:

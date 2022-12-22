@@ -1,3 +1,18 @@
+FreeFileSync 11.29 [2022-12-16]
+-------------------------------
+Fixed crash after 1-byte file copy from MTP device
+Fixed incorrect installer z-order during auto-update (macOS)
+Compress copied file only if target folder is marked as NTFS-compressed (Windows)
+Show install errors without requiring access to "System Events" (macOS)
+Fall back to creation time if modification time is missing on MTP device
+Copy/paste filter config via operating system clipboard
+Show FreeFileSync startup error message when called from RealTimeSync
+Avoid server round trip when preparing summary email
+Show path conflict warning aggregated into groups
+Don't assume path conflict if single write and multiple ignored items
+Fixed CTRL + Insert clipboard copy for some text controls (Windows, Linux)
+
+
 FreeFileSync 11.28 [2022-11-16]
 -------------------------------
 Recover from corrupted database file

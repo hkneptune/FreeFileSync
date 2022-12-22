@@ -13,7 +13,6 @@
 #include <zen/perf.h>
 #include <zen/shutdown.h>
 #include <zen/resolve_path.h>
-#include <wx/clipbrd.h>
 #include <wx/colordlg.h>
 #include <wx/wupdlock.h>
 #include <wx/sound.h>
@@ -192,7 +191,6 @@ public:
 private:
     MainConfiguration getMainConfig() const override { return mainDlg_.getConfig().mainCfg; }
     wxWindow*         getParentWindow() override { return &mainDlg_; }
-    std::optional<FilterConfig>& getFilterCfgOnClipboardRef() override { return mainDlg_.filterCfgOnClipboard_; }
 
     void onLocalCompCfgChange  () override { mainDlg_.applyCompareConfig(false /*setDefaultViewType*/); }
     void onLocalSyncCfgChange  () override { mainDlg_.applySyncDirections(); }
@@ -1328,12 +1326,7 @@ void MainDialog::copyGridSelectionToClipboard(const zen::Grid& grid)
         }
 
         if (!clipBuf.empty())
-            if (wxClipboard::Get()->Open())
-            {
-                ZEN_ON_SCOPE_EXIT(wxClipboard::Get()->Close());
-                wxClipboard::Get()->SetData(new wxTextDataObject(std::move(clipBuf))); //ownership passed
-                wxClipboard::Get()->Flush();
-            }
+            setClipboardText(clipBuf);
     }
     catch (const std::bad_alloc& e)
     {
@@ -1364,12 +1357,7 @@ void MainDialog::copyPathsToClipboard(const std::vector<FileSystemObject*>& sele
             appendPath(fsObj->getAbstractPath<SelectSide::right>());
 
         if (!clipBuf.empty())
-            if (wxClipboard::Get()->Open())
-            {
-                ZEN_ON_SCOPE_EXIT(wxClipboard::Get()->Close());
-                wxClipboard::Get()->SetData(new wxTextDataObject(std::move(clipBuf))); //ownership passed
-                wxClipboard::Get()->Flush();
-            }
+            setClipboardText(clipBuf);
     }
     catch (const std::bad_alloc& e)
     {
@@ -2024,6 +2012,7 @@ void MainDialog::onTreeKeyEvent(wxKeyEvent& event)
         {
             case 'C':
             case WXK_INSERT: //CTRL + C || CTRL + INS
+            case WXK_NUMPAD_INSERT:
                 copyGridSelectionToClipboard(*m_gridOverview);
                 return;
         }
@@ -2095,6 +2084,7 @@ void MainDialog::onGridKeyEvent(wxKeyEvent& event, Grid& grid, bool leftSide)
         {
             case 'C':
             case WXK_INSERT: //CTRL + C || CTRL + INS
+            case WXK_NUMPAD_INSERT:
                 copyPathsToClipboard(selectionL, selectionR);
                 return; // -> swallow event! don't allow default grid commands!
 
@@ -3099,7 +3089,7 @@ void MainDialog::onConfigSave(wxCommandEvent& event)
             trySaveBatchConfig(&activeCfgFilePath);
         else
             showNotificationDialog(this, DialogInfoType::error,
-                                   PopupDialogCfg().setDetailInstructions(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(activeCfgFilePath)) +
+                                   PopupDialogCfg().setDetailInstructions(replaceCpy(_("Cannot open file %x."), L"%x", fmtPath(activeCfgFilePath)) +
                                                                           L"\n\n" + _("Unexpected file extension:") + L' ' + fmtPath(getFileExtension(activeCfgFilePath))));
     }
 }
@@ -3273,7 +3263,7 @@ bool MainDialog::saveOldConfig() //"false": error/cancel
                         else
                         {
                             showNotificationDialog(this, DialogInfoType::error,
-                                                   PopupDialogCfg().setDetailInstructions(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(activeCfgFilePath)) +
+                                                   PopupDialogCfg().setDetailInstructions(replaceCpy(_("Cannot open file %x."), L"%x", fmtPath(activeCfgFilePath)) +
                                                                                           L"\n\n" + _("Unexpected file extension:") + L' ' + fmtPath(getFileExtension(activeCfgFilePath)) ));
                             return false;
                         }
@@ -4055,32 +4045,32 @@ void MainDialog::showConfigDialog(SyncConfigPanel panelToShow, int localPairInde
 
 void MainDialog::onGlobalFilterContext(wxEvent& event)
 {
-    warn_static("why not support clipboard instead of filterCfgOnClipboard_!")
+    std::optional<FilterConfig> filterCfgOnClipboard;
+    if (std::optional<wxString> clipTxt = getClipboardText())
+        filterCfgOnClipboard = parseFilterBuf(utfTo<std::string>(*clipTxt));
 
     auto cutFilter = [&]
     {
-        filterCfgOnClipboard_ = std::exchange(currentCfg_.mainCfg.globalFilter, FilterConfig());
+        setClipboardText(utfTo<wxString>(serializeFilter(currentCfg_.mainCfg.globalFilter)));
+        currentCfg_.mainCfg.globalFilter = FilterConfig();
         updateGlobalFilterButton();
         applyFilterConfig();
     };
 
-    auto copyFilter = [&] { filterCfgOnClipboard_ = currentCfg_.mainCfg.globalFilter; };
+    auto copyFilter = [&] { setClipboardText(utfTo<wxString>(serializeFilter(currentCfg_.mainCfg.globalFilter))); };
 
     auto pasteFilter = [&]
     {
-        if (filterCfgOnClipboard_)
-        {
-            currentCfg_.mainCfg.globalFilter = *filterCfgOnClipboard_;
-            updateGlobalFilterButton();
-            applyFilterConfig();
-        }
+        currentCfg_.mainCfg.globalFilter = *filterCfgOnClipboard;
+        updateGlobalFilterButton();
+        applyFilterConfig();
     };
 
     ContextMenu menu;
-    menu.addItem( _("Cut"), cutFilter, wxNullImage, !isNullFilter(currentCfg_.mainCfg.globalFilter));
+    menu.addItem( _("Cu&t"), cutFilter, loadImage("item_cut_sicon"), !isNullFilter(currentCfg_.mainCfg.globalFilter));
     menu.addSeparator();
-    menu.addItem( _("Copy"), copyFilter, wxNullImage, !isNullFilter(currentCfg_.mainCfg.globalFilter));
-    menu.addItem( _("Paste"), pasteFilter, wxNullImage, filterCfgOnClipboard_.has_value());
+    menu.addItem( _("&Copy"), copyFilter, loadImage("item_copy_sicon"), !isNullFilter(currentCfg_.mainCfg.globalFilter));
+    menu.addItem( _("&Paste"), pasteFilter, loadImage("item_paste_sicon"), filterCfgOnClipboard.has_value());
 
     menu.popup(*m_bpButtonFilterContext, {m_bpButtonFilterContext->GetSize().x, 0});
 }

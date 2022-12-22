@@ -9,7 +9,6 @@
 #include <zen/http.h>
 #include <zen/sys_info.h>
 #include <wx/datetime.h>
-//#include "ffs_paths.h"
 #include "afs/concrete.h"
 
 using namespace zen;
@@ -19,11 +18,18 @@ using AFS = AbstractFileSystem;
 
 namespace
 {
-const int LOG_PREVIEW_FAIL_MAX = 25;
+const int LOG_PREVIEW_MAX = 25;
+
+const int EMAIL_PREVIEW_MAX = LOG_PREVIEW_MAX;
+const int EMAIL_ITEMS_MAX = 250;
+
+const int EMAIL_SHORT_PREVIEW_MAX = 5; //summary email
+const int EMAIL_SHORT_ITEMS_MAX   = 0; //
+
 const int SEPARATION_LINE_LEN = 40;
 
 
-std::string generateLogHeaderTxt(const ProcessSummary& s, const ErrorLog& log, int logPreviewFailsMax)
+std::string generateLogHeaderTxt(const ProcessSummary& s, const ErrorLog& log, int logPreviewMax)
 {
     const auto tabSpace = utfTo<std::string>(TAB_SPACE);
 
@@ -81,14 +87,14 @@ std::string generateLogHeaderTxt(const ProcessSummary& s, const ErrorLog& log, i
         output += std::string(SEPARATION_LINE_LEN, '_') + '\n';
 
         int previewCount = 0;
-        if (logPreviewFailsMax > 0)
-            for (const LogEntry& entry : log)
-                if (entry.type & (MSG_TYPE_WARNING | MSG_TYPE_ERROR))
-                {
-                    output += utfTo<std::string>(formatMessage(entry));
-                    if (++previewCount >= logPreviewFailsMax)
-                        break;
-                }
+        for (const LogEntry& entry : log)
+            if (entry.type & (MSG_TYPE_WARNING | MSG_TYPE_ERROR))
+            {
+                if (previewCount++ >= logPreviewMax)
+                    break;
+                output += utfTo<std::string>(formatMessage(entry));
+            }
+
         if (logFailTotal > previewCount)
             output += "  [...]  " + utfTo<std::string>(replaceCpy(_P("Showing %y of 1 item", "Showing %y of %x items", logFailTotal), //%x used as plural form placeholder!
                                                                   L"%y", formatNumber(previewCount))) + '\n';
@@ -98,14 +104,14 @@ std::string generateLogHeaderTxt(const ProcessSummary& s, const ErrorLog& log, i
 }
 
 
-std::string generateLogFooterTxt(const std::wstring& logFilePath /*optional*/, int logItemsTotal, int logPreviewItemsMax) //throw FileError
+std::string generateLogFooterTxt(const std::wstring& logFilePath /*optional*/, int logItemsTotal, int logItemsMax) //throw FileError
 {
     const ComputerModel cm = getComputerModel(); //throw FileError
 
     std::string output;
-    if (logItemsTotal > logPreviewItemsMax)
+    if (logItemsTotal > logItemsMax)
         output += "  [...]  " + utfTo<std::string>(replaceCpy(_P("Showing %y of 1 item", "Showing %y of %x items", logItemsTotal), //%x used as plural form placeholder!
-                                                              L"%y", formatNumber(logPreviewItemsMax))) + '\n';
+                                                              L"%y", formatNumber(logItemsMax))) + '\n';
 
     output += std::string(SEPARATION_LINE_LEN, '_') + '\n' +
 
@@ -197,7 +203,7 @@ std::wstring generateLogTitle(const ProcessSummary& s)
 }
 
 
-std::string generateLogHeaderHtml(const ProcessSummary& s, const ErrorLog& log, int logPreviewFailsMax)
+std::string generateLogHeaderHtml(const ProcessSummary& s, const ErrorLog& log, int logPreviewMax)
 {
     std::string output = R"(<!DOCTYPE html>
 <html lang="en">
@@ -303,14 +309,14 @@ std::string generateLogHeaderHtml(const ProcessSummary& s, const ErrorLog& log, 
     <table class="log-items" style="line-height:1em; border-spacing:0;">
 )";
         int previewCount = 0;
-        if (logPreviewFailsMax > 0)
-            for (const LogEntry& entry : log)
-                if (entry.type & (MSG_TYPE_WARNING | MSG_TYPE_ERROR))
-                {
-                    output += formatMessageHtml(entry);
-                    if (++previewCount >= logPreviewFailsMax)
-                        break;
-                }
+        for (const LogEntry& entry : log)
+            if (entry.type & (MSG_TYPE_WARNING | MSG_TYPE_ERROR))
+            {
+                if (previewCount++ >= logPreviewMax)
+                    break;
+                output += formatMessageHtml(entry);
+            }
+
         output += R"(	</table>
 )";
         if (logFailTotal > previewCount)
@@ -329,7 +335,7 @@ std::string generateLogHeaderHtml(const ProcessSummary& s, const ErrorLog& log, 
 }
 
 
-std::string generateLogFooterHtml(const std::wstring& logFilePath /*optional*/, int logItemsTotal, int logPreviewItemsMax) //throw FileError
+std::string generateLogFooterHtml(const std::wstring& logFilePath /*optional*/, int logItemsTotal, int logItemsMax) //throw FileError
 {
     const std::string osImage = "os-linux.png";
     const ComputerModel cm = getComputerModel(); //throw FileError
@@ -337,10 +343,10 @@ std::string generateLogFooterHtml(const std::wstring& logFilePath /*optional*/, 
     std::string output = R"(	</table>
 )";
 
-    if (logItemsTotal > logPreviewItemsMax)
+    if (logItemsTotal > logItemsMax)
         output += R"(	<div><span style="font-weight:600; padding:0 10px;">[&hellip;]</span>)" + 
                   htmlTxt(replaceCpy(_P("Showing %y of 1 item", "Showing %y of %x items", logItemsTotal), //%x used as plural form placeholder!
-                          L"%y", formatNumber(logPreviewItemsMax))) + "</div>\n";
+                          L"%y", formatNumber(logItemsMax))) + "</div>\n";
 
     output += R"(
     <div style="border-bottom:1px solid #AAA; margin:5px 0;"></div>
@@ -369,29 +375,39 @@ std::string generateLogFooterHtml(const std::wstring& logFilePath /*optional*/, 
 //-> Astyle fucks up! => no INDENT-ON
 
 
-    //write log items in blocks instead of creating one big string: memory allocation might fail; think 1 million entries!
+//write log items in blocks instead of creating one big string: memory allocation might fail; think 1 million entries!
 template <class Function> 
-void streamToLogFile(const ProcessSummary& summary, 
-                     const ErrorLog& log,
-                     Function stringOut /*(const std::string& s); throw X*/,
-                     LogFileFormat logFormat) //throw FileError, X
+void streamToLogFile(const ProcessSummary& summary, const ErrorLog& log,
+                     int logPreviewMax, int logItemsMax, 
+                     const std::wstring& logFilePath /*optional*/,
+                     LogFileFormat logFormat, Function stringOut /*(const std::string& s); throw X*/) //throw SysError, X
 {
-    const int logItemsTotal = log.end() - log.begin();
-    const int logPreviewItemsMax = std::numeric_limits<int>::max();
+    stringOut(logFormat == LogFileFormat::html ?
+              generateLogHeaderHtml(summary, log, logPreviewMax) :
+              generateLogHeaderTxt (summary, log, logPreviewMax)); //throw X
 
-    stringOut(logFormat == LogFileFormat::html ? 
-                         generateLogHeaderHtml(summary, log, LOG_PREVIEW_FAIL_MAX) :
-                         generateLogHeaderTxt (summary, log, LOG_PREVIEW_FAIL_MAX)); //throw X
-
+    int itemCount = 0;
     for (const LogEntry& entry : log)
+    {
+        if (itemCount++ >= logItemsMax)
+            break;
         stringOut(logFormat == LogFileFormat::html ?
-                  formatMessageHtml(entry) :
-                  formatMessage    (entry)); //throw X
+                    formatMessageHtml(entry) :
+                    formatMessage    (entry)); //throw X
+    }
 
-    stringOut(logFormat == LogFileFormat::html ? 
-              generateLogFooterHtml(std::wstring() /*logFilePath*/, logItemsTotal, logPreviewItemsMax) /*throw FileError*/: 
-              generateLogFooterTxt (std::wstring() /*logFilePath*/, logItemsTotal, logPreviewItemsMax) /*throw FileError*/); //throw FileError, X
-    //=> log file path is irrelevant, except when sending email!
+    const std::string footer = [&]
+    {
+        try
+        {
+            return logFormat == LogFileFormat::html ?
+                   generateLogFooterHtml(logFilePath, static_cast<int>(log.size()), logItemsMax): //throw FileError
+                   generateLogFooterTxt (logFilePath, static_cast<int>(log.size()), logItemsMax); //
+        }
+        catch (const FileError& e) { throw SysError(replaceCpy(e.toString(), L"\n\n", L'\n')); } //errors should be further enriched by context info => SysError
+    }(); //caveat: don't catch exceptions thrown by stringOut()!
+
+    stringOut(footer); //throw X
 }
 
 
@@ -417,15 +433,15 @@ void saveNewLogFile(const AbstractPath& logFilePath, //throw FileError, X
                                bytesWritten_ = int64_t(0),
                                msg_ = replaceCpy(_("Saving file %x..."), L"%x", fmtPath(AFS::getDisplayPath(logFilePath)))]
          (int64_t bytesDelta) mutable
-    {
-        if (notifyStatus)
-            notifyStatus(msg_ + L" (" + formatFilesizeShort(bytesWritten_ += bytesDelta) + L')'); //throw X
-    };
+         {
+              if (notifyStatus)
+                  notifyStatus(msg_ + L" (" + formatFilesizeShort(bytesWritten_ += bytesDelta) + L')'); //throw X
+         };
 
     //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
     std::unique_ptr<AFS::OutputStream> logFileOut = AFS::getOutputStream(logFilePath, 
-        std::nullopt /*streamSize*/, 
-        std::nullopt /*modTime*/); //throw FileError
+                                                                         std::nullopt /*streamSize*/, 
+                                                                         std::nullopt /*modTime*/); //throw FileError
 
     BufferedOutputStream streamOut([&](const void* buffer, size_t bytesToWrite)
     {
@@ -433,8 +449,17 @@ void saveNewLogFile(const AbstractPath& logFilePath, //throw FileError, X
     },
     logFileOut->getBlockSize());
 
-    auto stringOut = [&](const std::string& str){ streamOut.write(str.data(), str.size()); }; //throw FileError, X
-    streamToLogFile(summary, log, stringOut, logFormat); //throw FileError, X
+    try
+    {
+        streamToLogFile(summary, log, LOG_PREVIEW_MAX, std::numeric_limits<int>::max() /*logItemsMax*/, 
+                        std::wstring() /*logFilePath -> superfluous*/, logFormat, 
+                        [&](const std::string& str){ streamOut.write(str.data(), str.size()); } /*throw FileError, X*/); //throw SysError, FileError, X
+    }
+    catch (const SysError& e)
+    {
+        throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(AFS::getDisplayPath(logFilePath))), e.toString());
+    }
+
     streamOut.flushBuffer(); //throw FileError, X
 
     logFileOut->finalize(notifyUnbufferedIO); //throw FileError, X

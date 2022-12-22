@@ -228,7 +228,8 @@ public:
     const FolderList& refSubFolders() const { return subFolders_; }
     /**/  FolderList& refSubFolders()       { return subFolders_; }
 
-    BaseFolderPair& getBase() { return base_; }
+    const BaseFolderPair& getBase() const { return base_; }
+    /**/  BaseFolderPair& getBase()       { return base_; }
 
 protected:
     ContainerObject(BaseFolderPair& baseFolder) : //used during BaseFolderPair constructor

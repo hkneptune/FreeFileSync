@@ -225,7 +225,7 @@ Zstring zen::getUserHome() //throw FileError
             return homePath;
 
     //root(0) => consider as request for elevation, NOT impersonation!
-    //=> no support for HOME variable :(
+    //=> "HOME=/root" :(
 
     const Zstring loginUser = getLoginUser(); //throw FileError
 

@@ -301,15 +301,16 @@ void unbufferedStreamCopy(Function1 tryRead /*(void* buffer, size_t bytesToRead)
                           Function2 tryWrite /*(const void* buffer, size_t bytesToWrite) throw X; may return short*/,
                           size_t blockSizeOut) //throw X
 {
-    /*  caveat: buffer block sizes might not be power of 2:
+    /*  caveat: buffer block sizes might not be a power of 2:
          - f_iosize for network share on macOS
          - libssh2 uses weird packet sizes like MAX_SFTP_OUTGOING_SIZE (30000), and will send incomplete packages if block size is not an exact multiple :(
+         - MTP uses file size as blocksize if under 256 kB (=> can be as small as 1 byte! https://freefilesync.org/forum/viewtopic.php?t=9823)
         => that's a problem because we want input/output sizes to be multiples of each other to help avoid the std::memmove() below */
 #if 0
     blockSizeIn  = std::bit_ceil(blockSizeIn);
     blockSizeOut = std::bit_ceil(blockSizeOut);
 #endif
-    if (blockSizeIn <= 1 || blockSizeOut <= 1)
+    if (blockSizeIn == 0 || blockSizeOut == 0)
         throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
 
     const size_t bufCapacity = blockSizeOut - 1 + blockSizeIn;

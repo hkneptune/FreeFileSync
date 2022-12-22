@@ -33,7 +33,7 @@ void verifySignature(const std::string& message,
 std::string convertRsaKey(const std::string& keyStream, RsaStreamType typeFrom, RsaStreamType typeTo, bool publicKey); //throw SysError
 
 
-bool isPuttyKeyStream(const std::string& keyStream);
+bool isPuttyKeyStream(const std::string_view keyStream);
 std::string convertPuttyKeyToPkix(const std::string& keyStream, const std::string& passphrase); //throw SysError
 }
 

@@ -317,7 +317,8 @@ private:
     XmlDoc           (const XmlDoc&) = delete; //not implemented, thanks to XmlElement::parent_
     XmlDoc& operator=(const XmlDoc&) = delete;
 
-    std::string version_ {"1.0"};
+    //std::string version_ {"1.0"}; -> who cares!?
+    std::string version_;
     std::string encoding_{"utf-8"};
     std::string standalone_;
 

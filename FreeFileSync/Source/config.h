@@ -268,6 +268,10 @@ XmlGuiConfig   convertBatchToGui(const XmlBatchConfig& batchCfg); //noexcept
 XmlBatchConfig convertGuiToBatch(const XmlGuiConfig&   guiCfg, const BatchExclusiveConfig& batchExCfg); //
 
 std::wstring extractJobName(const Zstring& cfgFilePath);
+
+//human-readable/editable format suitable for clipboard
+std::string serializeFilter(const FilterConfig& filterCfg);
+std::optional<FilterConfig> parseFilterBuf(const std::string& filterBuf);
 }
 
 #endif //PROCESS_XML_H_28345825704254262435

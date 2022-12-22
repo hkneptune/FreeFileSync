@@ -1109,14 +1109,14 @@ void readConfig(const XmlIn& in, FilterConfig& filter /*int formatVer? but which
     if (in["Exclude"](tmpEx)) //else: keep default value
         filter.excludeFilter = mergeFilterLines(tmpEx);
 
-    in["TimeSpan"](filter.timeSpan);
-    in["TimeSpan"].attribute("Type", filter.unitTimeSpan);
-
     in["SizeMin"](filter.sizeMin);
     in["SizeMin"].attribute("Unit", filter.unitSizeMin);
 
     in["SizeMax"](filter.sizeMax);
     in["SizeMax"].attribute("Unit", filter.unitSizeMax);
+
+    in["TimeSpan"](filter.timeSpan);
+    in["TimeSpan"].attribute("Type", filter.unitTimeSpan);
 }
 
 
@@ -1138,8 +1138,8 @@ void readConfig(const XmlIn& in, LocalPairConfig& lpc, std::map<AfsDevice, size_
                 startsWithAsciiNoCase(folderPathPhrase,  "ftp:"))
                 split(folderPathPhrase, Zstr('|'), [&](const ZstringView optPhrase)
             {
-                    if (startsWith(optPhrase, Zstr("con=")))
-                        parallelOps = stringTo<int>(afterFirst(optPhrase, Zstr("con="), IfNotFoundReturn::none));
+                if (startsWith(optPhrase, Zstr("con=")))
+                    parallelOps = stringTo<int>(afterFirst(optPhrase, Zstr("con="), IfNotFoundReturn::none));
             });
         };
         getParallelOps(lpc.folderPathPhraseLeft,  parallelOpsL);
@@ -2022,7 +2022,7 @@ std::pair<ConfigType, std::wstring /*warningMsg*/> parseConfig(const XmlDoc& doc
     std::wstring warningMsg;
     try
     {
-        checkXmlMappingErrors(in, filePath); //throw FileError
+        checkXmlMappingErrors(in); //throw FileError
 
         //(try to) migrate old configuration if needed
         if (formatVer < currentXmlFormatVer)
@@ -2030,7 +2030,11 @@ std::pair<ConfigType, std::wstring /*warningMsg*/> parseConfig(const XmlDoc& doc
             catch (FileError&) { assert(false); } //don't bother user!
         warn_static("at least log on failure!")
     }
-    catch (const FileError& e) { warningMsg = e.toString(); }
+    catch (const FileError& e)
+    {
+        warningMsg = replaceCpy(_("Configuration file %x is incomplete. The missing elements have been set to their default values."), L"%x", fmtPath(filePath)) + 
+            L"\n\n" + e.toString(); 
+    }
 
     return {cfg, warningMsg};
 }
@@ -2111,7 +2115,7 @@ std::pair<XmlGuiConfig, std::wstring /*warningMsg*/> fff::readAnyConfig(const st
                 warningMsgAll += warningMsg + L"\n\n";
         }
         else
-            throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)),
+            throw FileError(replaceCpy(_("Cannot open file %x."), L"%x", fmtPath(filePath)),
                             _("Unexpected file extension:") + L' ' + fmtPath(getFileExtension(filePath)));
     }
     cfg.mainCfg = merge(mainCfgs);
@@ -2176,14 +2180,14 @@ void writeConfig(const FilterConfig& filter, XmlOut& out)
     out["Include"](splitFilterByLines(filter.includeFilter));
     out["Exclude"](splitFilterByLines(filter.excludeFilter));
 
-    out["TimeSpan"](filter.timeSpan);
-    out["TimeSpan"].attribute("Type", filter.unitTimeSpan);
-
     out["SizeMin"](filter.sizeMin);
     out["SizeMin"].attribute("Unit", filter.unitSizeMin);
 
     out["SizeMax"](filter.sizeMax);
     out["SizeMax"].attribute("Unit", filter.unitSizeMax);
+
+    out["TimeSpan"](filter.timeSpan);
+    out["TimeSpan"].attribute("Type", filter.unitTimeSpan);
 }
 
 
@@ -2496,4 +2500,37 @@ std::wstring fff::extractJobName(const Zstring& cfgFilePath)
     const Zstring fileName = afterLast(cfgFilePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
     const Zstring jobName  = beforeLast(fileName, Zstr('.'), IfNotFoundReturn::all);
     return utfTo<std::wstring>(jobName);
+}
+
+
+std::string fff::serializeFilter(const FilterConfig& filterCfg)
+{
+    XmlDoc doc("Filter");
+    doc.setEncoding("");
+
+    XmlOut out(doc);
+    ::writeConfig(filterCfg, out);
+
+    return serializeXml(doc); //noexcept
+}
+
+
+std::optional<FilterConfig> fff::parseFilterBuf(const std::string& filterBuf)
+{
+    try
+    {
+        XmlDoc doc = parseXml(filterBuf); //throw XmlParsingError
+
+        XmlIn in(doc);
+        FilterConfig filterCfg;
+        ::readConfig(in, filterCfg);
+
+        checkXmlMappingErrors(in); //throw FileError
+
+        return filterCfg;
+    }
+    catch (XmlParsingError&){}
+    catch (FileError&){}
+
+    return std::nullopt;
 }

@@ -13,9 +13,9 @@
 #include <zen/http.h>
 #include <wx/wupdlock.h>
 #include <wx/filedlg.h>
-#include <wx/clipbrd.h>
 #include <wx/sound.h>
 #include <wx+/choice_enum.h>
+#include <wx+/context_menu.h>
 #include <wx+/bitmap_button.h>
 #include <wx+/rtl.h>
 #include <wx+/no_flicker.h>
@@ -1836,15 +1836,10 @@ ActivationDlg::ActivationDlg(wxWindow* parent,
 
 void ActivationDlg::onCopyUrl(wxCommandEvent& event)
 {
-    if (wxClipboard::Get()->Open())
-    {
-        ZEN_ON_SCOPE_EXIT(wxClipboard::Get()->Close());
-        wxClipboard::Get()->SetData(new wxTextDataObject(m_richTextManualActivationUrl->GetValue())); //ownership passed
-        wxClipboard::Get()->Flush();
+    setClipboardText(m_richTextManualActivationUrl->GetValue());
 
         m_richTextManualActivationUrl->SetFocus(); //[!] otherwise selection is lost
         m_richTextManualActivationUrl->SelectAll(); //some visual feedback
-    }
 }
 
 

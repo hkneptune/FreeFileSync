@@ -25,7 +25,7 @@ using AFS = AbstractFileSystem;
 namespace
 {
 //Extensions to FTP: https://tools.ietf.org/html/rfc3659
-//FTP commands       https://en.wikipedia.org/wiki/List_of_FTP_commands
+//FTP commands:      https://en.wikipedia.org/wiki/List_of_FTP_commands
 
 constexpr std::chrono::seconds FTP_SESSION_MAX_IDLE_TIME  (20);
 constexpr std::chrono::seconds FTP_SESSION_CLEANUP_INTERVAL(4);

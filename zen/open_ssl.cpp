@@ -151,7 +151,13 @@ std::shared_ptr<EVP_PKEY> streamToKey(const std::string& keyStream, RsaStreamTyp
                 throw SysError(formatLastOpenSSLError("OSSL_DECODER_CTX_new_for_pkey"));
             ZEN_ON_SCOPE_EXIT(::OSSL_DECODER_CTX_free(decCtx));
 
-            //key stream is password-protected? => OSSL_DECODER_CTX_set_passphrase()
+#if 0 //key stream is password-protected? => OSSL_DECODER_CTX_set_passphrase()
+            if (!password.empty())
+                if (::OSSL_DECODER_CTX_set_passphrase(decCtx,                                                   //OSSL_DECODER_CTX *ctx
+                                                      reinterpret_cast<const unsigned char*>(password.c_str()), //const unsigned char* kstr
+                                                      password.size()) != 1)                                    //size_t klen
+                    throw SysError(formatLastOpenSSLError("OSSL_DECODER_CTX_set_passphrase"));
+#endif
 
             const unsigned char* keyBuf = reinterpret_cast<const unsigned char*>(keyStream.c_str());
             size_t keyLen = keyStream.size();
@@ -409,11 +415,9 @@ void zen::verifySignature(const std::string& message, const std::string& signatu
 }
 
 
-bool zen::isPuttyKeyStream(const std::string& keyStream)
+bool zen::isPuttyKeyStream(const std::string_view keyStream)
 {
-    std::string firstLine(keyStream.begin(), std::find_if(keyStream.begin(), keyStream.end(), isLineBreak<char>));
-    trim(firstLine);
-    return startsWith(firstLine, "PuTTY-User-Key-File-2:");
+   return startsWith(trimCpy(keyStream, true, false), "PuTTY-User-Key-File-");
 }
 
 
@@ -548,7 +552,7 @@ std::string zen::convertPuttyKeyToPkix(const std::string& keyStream, const std::
 
     auto numToBeString = [](size_t n) -> std::string
     {
-        static_assert(std::endian::native == std::endian::little && sizeof(n) >= 4);
+        static_assert(std::endian::native == std::endian::little&& sizeof(n) >= 4);
         const char* numStr = reinterpret_cast<const char*>(&n);
         return {numStr[3], numStr[2], numStr[1], numStr[0]}; //big endian!
     };

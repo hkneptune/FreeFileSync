@@ -107,15 +107,48 @@ void setTextWithUrls(wxRichTextCtrl& richCtrl, const wxString& newText)
             break;
         }
 
-    if (std::any_of(blocks.begin(), blocks.end(), [](const auto& item) { return item.first == BlockType::url; }))
-    {
-        //register only once! => use a global function pointer, so that Unbind() works correctly:
-        using LaunchUrlFun = void(*)(wxTextUrlEvent& event);
-        static const LaunchUrlFun launchUrl = [](wxTextUrlEvent& event) { wxLaunchDefaultBrowser(event.GetString()); };
+    //register only once! => use a global function pointer, so that Unbind() works correctly:
+    using LaunchUrlFun = void(*)(wxTextUrlEvent& event);
+    static const LaunchUrlFun launchUrl = [](wxTextUrlEvent& event) { wxLaunchDefaultBrowser(event.GetString()); };
 
-        [[maybe_unused]] const bool unbindOk = richCtrl.Unbind(wxEVT_TEXT_URL, launchUrl);
-        richCtrl.Bind(wxEVT_TEXT_URL, launchUrl);
-    }
+    [[maybe_unused]] const bool unbindOk1 = richCtrl.Unbind(wxEVT_TEXT_URL, launchUrl);
+    if (std::any_of(blocks.begin(), blocks.end(), [](const auto& item) { return item.first == BlockType::url; }))
+    /**/richCtrl.Bind(wxEVT_TEXT_URL, launchUrl);
+
+    struct UserData : public wxObject
+    {
+        explicit UserData(wxRichTextCtrl& rtc) : richCtrl(rtc) {}
+        wxRichTextCtrl& richCtrl;
+    };
+    using KeyEventsFun = void(*)(wxKeyEvent& event);
+    static const KeyEventsFun onKeyEvents = [](wxKeyEvent& event)
+    {
+        wxRichTextCtrl& richCtrl = dynamic_cast<UserData*>(event.GetEventUserData())->richCtrl; //unclear if we can rely on event.GetEventObject() == richCtrl
+
+        //CTRL/SHIFT + INS is broken for wxRichTextCtrl on Windows/Linux (apparently never was a thing on macOS)
+        if (event.ControlDown())
+            switch (event.GetKeyCode())
+            {
+                case WXK_INSERT:
+                case WXK_NUMPAD_INSERT:
+                    assert(richCtrl.CanCopy()); //except when no selection
+                    richCtrl.Copy();
+                    return;
+            }
+
+        if (event.ShiftDown())
+            switch (event.GetKeyCode())
+            {
+                case WXK_INSERT:
+                case WXK_NUMPAD_INSERT:
+                    assert(richCtrl.CanPaste()); //except wxTE_READONLY
+                    richCtrl.Paste();
+                    return;
+            }
+        event.Skip();
+    };
+    [[maybe_unused]] const bool unbindOk2 = richCtrl.Unbind(wxEVT_KEY_DOWN, onKeyEvents);
+    /**/                                    richCtrl.  Bind(wxEVT_KEY_DOWN, onKeyEvents, wxID_ANY, wxID_ANY, new UserData(richCtrl) /*pass ownership*/);
 }
 }
 }

@@ -35,7 +35,7 @@ basic_string<Char, Traits, Alloc> operator+(basic_string<Char, Traits, Alloc>&& 
 
 //template <class Char> inline
 //basic_string<Char> operator+(const basic_string<Char>& lhs, const basic_string_view<Char>& rhs) { return basic_string<Char>(lhs) + rhs; }
-//-> somewhat inefficient: enable + optimize when needed
+//-> somewhat inefficient: single memory allocation should suffice!!!
 }
 //---------------------------------------------------------------------------------
 

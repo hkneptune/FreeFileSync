@@ -25,6 +25,7 @@
 #include "ui/main_dlg.h"
 #include "base_tools.h"
 #include "ffs_paths.h"
+#include "return_codes.h"
 
     #include <gtk/gtk.h>
 
@@ -78,7 +79,7 @@ void Application::notifyAppError(const std::wstring& msg, FfsExitCode rc)
 {
     raiseExitCode(exitCode_, rc);
 
-    const std::wstring msgTypeName = [&]
+    const std::wstring msgType = [&]
     {
         switch (rc)
         {
@@ -93,14 +94,13 @@ void Application::notifyAppError(const std::wstring& msg, FfsExitCode rc)
         assert(false);
         return std::wstring{};
     }();
-    const std::wstring title = copyStringTo<std::wstring>(wxTheApp->GetAppDisplayName()) +
-                               (msgTypeName.empty() ? L"" : SPACED_DASH + msgTypeName);
-
     //error handling strategy unknown and no sync log output available at this point!
-    std::cerr << '[' + utfTo<std::string>(title) + "] " + utfTo<std::string>(msg) + '\n';
+        std::cerr << utfTo<std::string>(msgType + L": " + msg) + '\n';
     //alternative0: std::wcerr: cannot display non-ASCII at all, so why does it exist???
     //alternative1: wxSafeShowMessage => NO console output on Debian x86, WTF!
     //alternative2: wxMessageBox() => works, but we probably shouldn't block during command line usage
+
+    warn_static(" show message box on linux/macos, too!?")
 }
 
 //##################################################################################################################
@@ -363,7 +363,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
                     else if (endsWithAsciiNoCase(filePath, Zstr(".xml")))
                         globalConfigFile = filePath;
                     else
-                        throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)),
+                        throw FileError(replaceCpy(_("Cannot open file %x."), L"%x", fmtPath(filePath)),
                                         _("Unexpected file extension:") + L' ' + fmtPath(getFileExtension(filePath)));
                 }
         }
@@ -463,7 +463,7 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
     }
     catch (const FileError& e)
     {
-        notifyAppError(e.toString(), FfsExitCode::aborted);
+        notifyAppError(e.toString(), FfsExitCode::exception);
     }
 }
 
@@ -502,7 +502,7 @@ void Application::runBatchMode(const Zstring& globalConfigFilePath, const XmlBat
         }
         catch (const FileError& e3)
         {
-            return notifyAppError(e3.toString(), FfsExitCode::aborted); //abort sync!
+            return notifyAppError(e3.toString(), FfsExitCode::exception);
         }
     }
 

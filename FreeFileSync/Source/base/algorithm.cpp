@@ -1496,7 +1496,7 @@ void fff::deleteListOfFiles(const std::vector<Zstring>& filesToDeletePaths,
 {
     assert(deletedPaths.empty());
 
-    cb.initNewPhase(filesToDeletePaths.size(), 0 /*bytesTotal*/, ProcessPhase::none); //throw X
+    cb.initNewPhase(static_cast<int>(filesToDeletePaths.size()), 0 /*bytesTotal*/, ProcessPhase::none); //throw X
 
     bool recyclerMissingReportOnce = false;
 

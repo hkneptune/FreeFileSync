@@ -200,6 +200,9 @@ void zen::removeDirectoryPlain(const Zstring& dirPath) //throw FileError
                 THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot delete directory %x."), L"%x", fmtPath(dirPath)), "unlink");
             return;
         }
+        //if (ec == ERROR_SHARING_VIOLATION) => getLockingProcesses() can't handle directory paths! :( RmGetList() fails with ERROR_ACCESS_DENIED
+        //https://blog.yaakov.online/failed-experiment-what-processes-have-a-lock-on-this-folder/
+
         throw FileError(replaceCpy(_("Cannot delete directory %x."), L"%x", fmtPath(dirPath)), formatSystemError(functionName, ec));
     }
     /*  Windows: may spuriously fail with ERROR_DIR_NOT_EMPTY(145) even though all child items have

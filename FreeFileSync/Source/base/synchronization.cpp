@@ -437,70 +437,6 @@ bool significantDifferenceDetected(const SyncStatistics& folderPairStat)
 
 //---------------------------------------------------------------------------------------------
 
-struct ChildPathRef
-{
-    const FileSystemObject* fsObj = nullptr;
-    uint64_t childPathHash = 0;
-};
-
-
-template <SelectSide side>
-class GetChildPathsHashed
-{
-public:
-    static std::vector<ChildPathRef> execute(const ContainerObject& folder)
-    {
-        GetChildPathsHashed inst;
-        inst.recurse(folder, FNV1aHash<uint64_t>().get() /*don't start with 0!*/);
-        return std::move(inst.childPathRefs_);
-    }
-
-private:
-    GetChildPathsHashed           (const GetChildPathsHashed&) = delete;
-    GetChildPathsHashed& operator=(const GetChildPathsHashed&) = delete;
-
-    GetChildPathsHashed() {}
-
-    void recurse(const ContainerObject& hierObj, uint64_t parentPathHash)
-    {
-        for (const FilePair& file : hierObj.refSubFiles())
-            if (file.isActive())
-                childPathRefs_.push_back({&file, getPathHash(file, parentPathHash)});
-
-        for (const SymlinkPair& symlink : hierObj.refSubLinks())
-            if (symlink.isActive())
-                childPathRefs_.push_back({&symlink, getPathHash(symlink, parentPathHash)});
-
-        for (const FolderPair& subFolder : hierObj.refSubFolders())
-        {
-            const uint64_t folderPathHash = getPathHash(subFolder, parentPathHash);
-
-            if (subFolder.isActive())
-                childPathRefs_.push_back({&subFolder, folderPathHash});
-
-            recurse(subFolder, folderPathHash);
-        }
-    }
-
-    static uint64_t getPathHash(const FileSystemObject& fsObj, uint64_t parentPathHash)
-    {
-        FNV1aHash<uint64_t> hash(parentPathHash);
-        const Zstring& itemName = fsObj.getItemName<side>();
-
-        if (isAsciiString(itemName)) //fast path: no need for extra memory allocation!
-            for (const Zchar c : itemName)
-                hash.add(asciiToUpper(c));
-        else
-            for (const Zchar c : getUpperCase(itemName))
-                hash.add(c);
-
-        return hash.get();
-    }
-
-    std::vector<ChildPathRef> childPathRefs_;
-};
-
-
 template <SelectSide side>
 bool plannedWriteAccess(const FileSystemObject& fsObj)
 {
@@ -511,10 +447,136 @@ bool plannedWriteAccess(const FileSystemObject& fsObj)
 }
 
 
-template <SelectSide sideL, SelectSide sideR>
-std::weak_ordering comparePathRef(const ChildPathRef& lhs, const ChildPathRef& rhs)
+bool plannedReadOrWrite(const FileSystemObject& fsObj)
 {
-    if (const std::weak_ordering cmp = lhs.childPathHash <=> rhs.childPathHash;
+    return !!getTargetDirection(fsObj.getSyncOperation());
+}
+
+
+inline
+AbstractPath getAbstractPath(const FileSystemObject& fsObj, SelectSide side)
+{
+    return side == SelectSide::left ? fsObj.getAbstractPath<SelectSide::left>() : fsObj.getAbstractPath<SelectSide::right>();
+}
+
+
+struct PathRaceItem
+{
+    const FileSystemObject* fsObj;
+    SelectSide side;
+
+    std::strong_ordering operator<=>(const PathRaceItem&) const = default;
+};
+
+
+std::weak_ordering comparePathNoCase(const PathRaceItem& lhs, const PathRaceItem& rhs)
+{
+    const AbstractPath& itemPathL = getAbstractPath(*lhs.fsObj, lhs.side);
+    const AbstractPath& itemPathR = getAbstractPath(*rhs.fsObj, rhs.side);
+
+    if (const std::weak_ordering cmp = itemPathL.afsDevice <=> itemPathR.afsDevice;
+        cmp != std::weak_ordering::equivalent)
+        return cmp;
+
+    return compareNoCase(itemPathL.afsPath.value,
+                         itemPathR.afsPath.value);
+}
+
+
+std::wstring formatRaceItem(const PathRaceItem& item)
+{
+    const wchar_t arrowLeft [] = L" <- ";
+    const wchar_t arrowRight[] = L" -> ";
+
+    const SelectSide dir = *getTargetDirection(item.fsObj->getSyncOperation()); //non-null! see plannedReadOrWrite()
+
+    return AFS::getDisplayPath(item.fsObj->base().getAbstractPath<SelectSide::left>()) +
+           (dir == SelectSide::left ? arrowLeft : arrowRight) +
+           AFS::getDisplayPath(item.fsObj->base().getAbstractPath<SelectSide::right>()) +
+           (dir == item.side ? L" 💾 "  : L" 👓 ") +
+           utfTo<std::wstring>(item.side == SelectSide::left ? item.fsObj->getRelativePath<SelectSide::left>() : item.fsObj->getRelativePath<SelectSide::right>());
+    //e.g. C:\Source -> D:\Target 💾 subfolder\file.txt
+}
+
+
+struct ChildPathRef
+{
+    const FileSystemObject* fsObj = nullptr;
+    uint64_t afsPathHash = 0; //of *case-normalized* AfsPath
+};
+
+
+template <SelectSide side>
+class GetChildItemsHashed
+{
+public:
+    static std::vector<ChildPathRef> execute(const ContainerObject& folder)
+    {
+        FNV1aHash<uint64_t> pathHash;
+        for (const Zstring& itemName : splitCpy<Zstring>(folder.getAbstractPath<side>().afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip))
+            hashAdd(pathHash, itemName); //not really needed ATM, but it's cleaner to hash *full* afsPath
+
+        GetChildItemsHashed inst;
+        inst.recurse(folder, pathHash.get());
+        return std::move(inst.childPathRefs_);
+    }
+
+private:
+    GetChildItemsHashed           (const GetChildItemsHashed&) = delete;
+    GetChildItemsHashed& operator=(const GetChildItemsHashed&) = delete;
+
+    GetChildItemsHashed() {}
+
+    void recurse(const ContainerObject& hierObj, uint64_t parentPathHash)
+    {
+        for (const FilePair& file : hierObj.refSubFiles())
+            if (plannedReadOrWrite(file))
+                childPathRefs_.push_back({&file, getPathHash(file, parentPathHash)});
+        //S1 -> T (update)   is not a conflict (anymore) if S1, S2 contain different files https://freefilesync.org/forum/viewtopic.php?t=9365#p36466
+        //S2 -> T (update)   => ignore all items that are not physically read/written (e.g. categories "equal", "do nothing")
+        for (const SymlinkPair& symlink : hierObj.refSubLinks())
+            if (plannedReadOrWrite(symlink))
+                childPathRefs_.push_back({&symlink, getPathHash(symlink, parentPathHash)});
+
+        for (const FolderPair& subFolder : hierObj.refSubFolders())
+        {
+            const uint64_t folderPathHash = getPathHash(subFolder, parentPathHash);
+
+            if (plannedReadOrWrite(subFolder))
+                childPathRefs_.push_back({&subFolder, folderPathHash});
+
+            recurse(subFolder, folderPathHash);
+        }
+    }
+
+    static void hashAdd(FNV1aHash<uint64_t>& hash, const Zstring& itemName)
+    {
+        if (isAsciiString(itemName)) //fast path: no need for extra memory allocation!
+            for (const Zchar c : itemName)
+                hash.add(asciiToUpper(c));
+        else
+            for (const Zchar c : getUpperCase(itemName))
+                hash.add(c);
+    }
+
+    static uint64_t getPathHash(const FileSystemObject& fsObj, uint64_t parentPathHash)
+    {
+        FNV1aHash<uint64_t> hash(parentPathHash);
+        hashAdd(hash, fsObj.getItemName<side>());
+        return hash.get();
+    }
+
+    std::vector<ChildPathRef> childPathRefs_;
+};
+
+
+template <SelectSide sideL, SelectSide sideR>
+std::weak_ordering compareHashedPath(const ChildPathRef& lhs, const ChildPathRef& rhs)
+{
+    assert(lhs.fsObj->getAbstractPath<sideL>().afsDevice ==
+           rhs.fsObj->getAbstractPath<sideR>().afsDevice);
+
+    if (const std::weak_ordering cmp = lhs.afsPathHash <=> rhs.afsPathHash;
         cmp != std::weak_ordering::equivalent)
         return cmp; //fast path!
 
@@ -528,7 +590,7 @@ void sortAndRemoveDuplicates(std::vector<ChildPathRef>& pathRefs)
 {
     std::sort(pathRefs.begin(), pathRefs.end(), [](const ChildPathRef& lhs, const ChildPathRef& rhs)
     {
-        if (const std::weak_ordering cmp = comparePathRef<side, side>(lhs, rhs);
+        if (const std::weak_ordering cmp = compareHashedPath<side, side>(lhs, rhs);
             cmp != std::weak_ordering::equivalent)
             return cmp < 0;
 
@@ -538,52 +600,10 @@ void sortAndRemoveDuplicates(std::vector<ChildPathRef>& pathRefs)
     });
 
     pathRefs.erase(std::unique(pathRefs.begin(), pathRefs.end(),
-    [](const ChildPathRef& lhs, const ChildPathRef& rhs) { return comparePathRef<side, side>(lhs, rhs) == std::weak_ordering::equivalent; }),
+    [](const ChildPathRef& lhs, const ChildPathRef& rhs) { return compareHashedPath<side, side>(lhs, rhs) == std::weak_ordering::equivalent; }),
     pathRefs.end());
 
     //let's not use removeDuplicates(): we rely too much on implementation details!
-}
-
-template <SelectSide side>
-std::wstring formatRaceItem(const FileSystemObject& fsObj)
-{
-    return AFS::getDisplayPath(fsObj.base().getAbstractPath<side>()) + (plannedWriteAccess<side>(fsObj) ? L" 💾 "  : L" 👓 " ) +
-           utfTo<std::wstring>(fsObj.getRelativePath<side>()); //e.g. C:\Folder 💾 subfolder\file.txt
-}
-
-struct PathRaceCondition
-{
-    std::wstring itemList;
-    size_t count = 0;
-};
-
-
-template <SelectSide side1, SelectSide side2>
-void getChildItemRaceCondition(std::vector<ChildPathRef>& pathRefs1, std::vector<ChildPathRef>& pathRefs2, PathRaceCondition& result)
-{
-    //use case-sensitive comparison because items were scanned by FFS (=> no messy user input)?
-    //not good enough! E.g. not-yet-existing files are set to be created with different case!
-    // + (weird) a file and a folder are set to be created with same name
-    // => (throw hands in the air) fine, check path only and don't consider case
-
-    sortAndRemoveDuplicates<side1>(pathRefs1);
-    sortAndRemoveDuplicates<side2>(pathRefs2);
-
-    mergeTraversal(pathRefs1.begin(), pathRefs1.end(),
-                   pathRefs2.begin(), pathRefs2.end(),
-    [](const ChildPathRef&) {} /*left only*/,
-    [&](const ChildPathRef& lhs, const ChildPathRef& rhs)
-    {
-        if (plannedWriteAccess<side1>(*lhs.fsObj) ||
-            plannedWriteAccess<side2>(*rhs.fsObj))
-        {
-            if (result.count < CONFLICTS_PREVIEW_MAX)
-                result.itemList += formatRaceItem<side1>(*lhs.fsObj) + L"\n" +
-                                   formatRaceItem<side2>(*rhs.fsObj) + L"\n\n";
-            ++result.count;
-        }
-    },
-    [](const ChildPathRef&) {} /*right only*/, comparePathRef<side1, side2>);
 }
 
 
@@ -591,7 +611,7 @@ void getChildItemRaceCondition(std::vector<ChildPathRef>& pathRefs1, std::vector
 // - checking filter for subfolder exclusion is not good enough: one folder may have a *.txt include-filter, the other a *.lng include filter => still no dependencies
 // - user may have manually excluded the conflicting items or changed the filter settings without running a re-compare
 template <SelectSide sideP, SelectSide sideC>
-void getPathRaceCondition(const BaseFolderPair& baseFolderP, const BaseFolderPair& baseFolderC, PathRaceCondition& result)
+void checkPathRaceCondition(const BaseFolderPair& baseFolderP, const BaseFolderPair& baseFolderC, std::vector<PathRaceItem>& pathRaceItems)
 {
     const AbstractPath basePathP = baseFolderP.getAbstractPath<sideP>(); //parent/child notion is tentative at this point
     const AbstractPath basePathC = baseFolderC.getAbstractPath<sideC>(); //=> will be swapped if necessary
@@ -600,7 +620,7 @@ void getPathRaceCondition(const BaseFolderPair& baseFolderP, const BaseFolderPai
         if (basePathP.afsDevice == basePathC.afsDevice)
         {
             if (basePathP.afsPath.value.size() > basePathC.afsPath.value.size())
-                return getPathRaceCondition<sideC, sideP>(baseFolderC, baseFolderP, result);
+                return checkPathRaceCondition<sideC, sideP>(baseFolderC, baseFolderP, pathRaceItems);
 
             const std::vector<Zstring> relPathP = splitCpy(basePathP.afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip);
             const std::vector<Zstring> relPathC = splitCpy(basePathC.afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip);
@@ -621,18 +641,38 @@ void getPathRaceCondition(const BaseFolderPair& baseFolderP, const BaseFolderPai
                         for (const FolderPair& folder : childFolder->refSubFolders())
                             if (equalNoCase(folder.getItemName<sideP>(), itemName))
                                 childFolderP2.push_back(&folder);
-                    //no "break"? yes, weird, but there could be more than one (for case-sensitive file system)
+                    //no "break": yes, weird, but there could be more than one (for case-sensitive file system)
 
                     childFolderP = std::move(childFolderP2);
                 });
 
                 std::vector<ChildPathRef> pathRefsP;
                 for (const ContainerObject* childFolder : childFolderP)
-                    append(pathRefsP, GetChildPathsHashed<sideP>::execute(*childFolder));
+                    append(pathRefsP, GetChildItemsHashed<sideP>::execute(*childFolder));
 
-                std::vector<ChildPathRef> pathRefsC = GetChildPathsHashed<sideC>::execute(baseFolderC);
+                std::vector<ChildPathRef> pathRefsC = GetChildItemsHashed<sideC>::execute(baseFolderC);
 
-                getChildItemRaceCondition<sideP, sideC>(pathRefsP, pathRefsC, result);
+                //---------------------------------------------------------------------------------------------------
+                //use case-sensitive comparison because items were scanned by FFS (=> no messy user input)?
+                //not good enough! E.g. not-yet-existing files are set to be created with different case!
+                // + (weird) a file and a folder are set to be created with same name
+                // => (throw hands in the air) fine, check path only and don't consider case
+                sortAndRemoveDuplicates<sideP>(pathRefsP);
+                sortAndRemoveDuplicates<sideC>(pathRefsC);
+
+                mergeTraversal(pathRefsP.begin(), pathRefsP.end(),
+                               pathRefsC.begin(), pathRefsC.end(),
+                [](const ChildPathRef&) {} /*left only*/,
+                [&](const ChildPathRef& lhs, const ChildPathRef& rhs)
+                {
+                    if (plannedWriteAccess<sideP>(*lhs.fsObj) ||
+                        plannedWriteAccess<sideC>(*rhs.fsObj))
+                    {
+                        pathRaceItems.emplace_back(lhs.fsObj, sideP);
+                        pathRaceItems.emplace_back(rhs.fsObj, sideC);
+                    }
+                },
+                [](const ChildPathRef&) {} /*right only*/, compareHashedPath<sideP, sideC>);
             }
         }
 }
@@ -2698,7 +2738,7 @@ break2:
 
     //check if folders are used by multiple pairs in read/write access
     {
-        PathRaceCondition conflicts;
+        std::vector<PathRaceItem> pathRaceItems;
 
         //race condition := multiple accesses of which at least one is a write
         //=> use "writeAccess" to reduce list of - not necessarily conflicting - candidates to check (=> perf!)
@@ -2713,26 +2753,52 @@ break2:
                         it < it2) //avoid duplicate comparisons
                     {
                         //"The Things We Do for [Perf]"
-                        /**/ if (side1 == SelectSide::left  && side2 == SelectSide::left ) getPathRaceCondition<SelectSide::left,  SelectSide::left >(*baseFolder1, *baseFolder2, conflicts);
-                        else if (side1 == SelectSide::left  && side2 == SelectSide::right) getPathRaceCondition<SelectSide::left,  SelectSide::right>(*baseFolder1, *baseFolder2, conflicts);
-                        else if (side1 == SelectSide::right && side2 == SelectSide::left ) getPathRaceCondition<SelectSide::right, SelectSide::left >(*baseFolder1, *baseFolder2, conflicts);
-                        else                                                               getPathRaceCondition<SelectSide::right, SelectSide::right>(*baseFolder1, *baseFolder2, conflicts);
+                        /**/ if (side1 == SelectSide::left  && side2 == SelectSide::left ) checkPathRaceCondition<SelectSide::left,  SelectSide::left >(*baseFolder1, *baseFolder2, pathRaceItems);
+                        else if (side1 == SelectSide::left  && side2 == SelectSide::right) checkPathRaceCondition<SelectSide::left,  SelectSide::right>(*baseFolder1, *baseFolder2, pathRaceItems);
+                        else if (side1 == SelectSide::right && side2 == SelectSide::left ) checkPathRaceCondition<SelectSide::right, SelectSide::left >(*baseFolder1, *baseFolder2, pathRaceItems);
+                        else                                                               checkPathRaceCondition<SelectSide::right, SelectSide::right>(*baseFolder1, *baseFolder2, pathRaceItems);
                     }
                 }
-        assert(makeUnsigned(std::count(conflicts.itemList.begin(), conflicts.itemList.end(), L'\n')) == 3 * std::min(conflicts.count, CONFLICTS_PREVIEW_MAX));
 
-        if (conflicts.count > 0)
+        removeDuplicates(pathRaceItems);
+
+        //create mapping table for folder pair positions
+        std::unordered_map<const BaseFolderPair*, size_t> folderPairIdxs;
+        for (size_t folderIndex = 0; folderIndex < folderCmp.size(); ++folderIndex)
+            folderPairIdxs[folderCmp[folderIndex].get()] = folderIndex;
+
+        std::partial_sort(pathRaceItems.begin(),
+                          pathRaceItems.begin() + std::min(pathRaceItems.size(), CONFLICTS_PREVIEW_MAX),
+                          pathRaceItems.end(), [&](const PathRaceItem& lhs, const PathRaceItem& rhs)
+        {
+            if (const std::weak_ordering cmp = comparePathNoCase(lhs, rhs);
+                cmp != std::weak_ordering::equivalent)
+                return cmp < 0; //1. order by device, and case-insensitive path
+
+            return folderPairIdxs.find(&lhs.fsObj->base())->second < //2. order by folder pair position
+                   folderPairIdxs.find(&rhs.fsObj->base())->second;
+        });
+
+        if (!pathRaceItems.empty())
         {
             std::wstring msg = _("Some files will be synchronized as part of multiple base folders.") + L'\n' +
-                               _("To avoid conflicts, set up exclude filters so that each updated file is included by only one base folder.") + L"\n\n" +
-                               conflicts.itemList;
+                               _("To avoid conflicts, set up exclude filters so that each updated file is included by only one base folder.") + L"\n\n";
 
-            assert(endsWith(conflicts.itemList, L"\n\n"));
-            if (conflicts.count > CONFLICTS_PREVIEW_MAX)
-                msg += L"[...]  " + replaceCpy(_P("Showing %y of 1 item", "Showing %y of %x items", conflicts.count), //%x used as plural form placeholder!
-                                               L"%y", formatNumber(CONFLICTS_PREVIEW_MAX));
-            else
-                trim(msg);
+            auto prevItem = pathRaceItems[0];
+            std::for_each(pathRaceItems.begin(), pathRaceItems.begin() + std::min(pathRaceItems.size(), CONFLICTS_PREVIEW_MAX), [&](const PathRaceItem& item)
+            {
+                if (comparePathNoCase(item, prevItem) != std::weak_ordering::equivalent)
+                    msg += L"\n"; //visually separate path groups
+
+                msg += formatRaceItem(item) + L"\n";
+                prevItem = item;
+            });
+
+            if (pathRaceItems.size() > CONFLICTS_PREVIEW_MAX)
+                msg += L"\n[...]  " + replaceCpy(_P("Showing %y of 1 item", "Showing %y of %x items", pathRaceItems.size()), //%x used as plural form placeholder!
+                                                 L"%y", formatNumber(CONFLICTS_PREVIEW_MAX));
+
+            msg += L"\n💾: " + _("Write access") + L"  👓: " + _("Read access");
 
             callback.reportWarning(msg, warnings.warnDependentBaseFolders); //throw X
         }

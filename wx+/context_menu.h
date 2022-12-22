@@ -10,8 +10,9 @@
 #include <map>
 #include <vector>
 #include <functional>
-#include <wx/menu.h>
 #include <wx/app.h>
+#include <wx/clipbrd.h>
+#include <wx/menu.h>
 #include "dc.h"
 
 
@@ -122,6 +123,39 @@ void fixMenuIcons(wxMenu& menu)
     for (const auto& [item, pos] : itemsWithBmp)
         if (!menu.Insert(pos, menu.Remove(item))) //detach + reinsert
             assert(false);
+}
+
+
+inline
+void setClipboardText(const wxString& txt)
+{
+    wxClipboard& clip = *wxClipboard::Get();
+    if (clip.Open())
+    {
+        ZEN_ON_SCOPE_EXIT(clip.Close());
+        [[maybe_unused]] const bool rv1 = clip.SetData(new wxTextDataObject(txt)); //ownership passed
+        [[maybe_unused]] const bool rv2 = clip.Flush();
+        assert(rv1 && rv2);
+    }
+    else assert(false);
+}
+
+
+inline
+std::optional<wxString> getClipboardText()
+{
+    wxClipboard& clip = *wxClipboard::Get();
+    if (clip.Open())
+    {
+        ZEN_ON_SCOPE_EXIT(clip.Close());
+
+        //if (clip.IsSupported(wxDF_TEXT or wxDF_UNICODETEXT !???)) - superfluous? already handled by wxClipboard::GetData()!?
+        wxTextDataObject data;
+        if (clip.GetData(data))
+            return data.GetText();
+    }
+    else assert(false);
+    return std::nullopt;
 }
 }
 

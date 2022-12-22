@@ -36,7 +36,6 @@ XmlDoc loadXml(const Zstring& filePath) //throw FileError
 {
     FileInputPlain fileIn(filePath); //throw FileError
     const size_t blockSize = fileIn.getBlockSize(); //throw FileError
-    const std::string xmlPrefix = "<?xml version=";
     bool xmlPrefixChecked = false;
 
     std::string buffer;
@@ -48,11 +47,16 @@ XmlDoc loadXml(const Zstring& filePath) //throw FileError
         buffer.resize(buffer.size() - blockSize + bytesRead); //caveat: unsigned arithmetics
 
         //quick test whether input is an XML: avoid loading large binary files up front!
-        if (!xmlPrefixChecked && buffer.size() >= xmlPrefix.size() + strLength(BYTE_ORDER_MARK_UTF8))
+        if (!xmlPrefixChecked && buffer.size() >= strLength(BYTE_ORDER_MARK_UTF8) + strLength("<?xml?>"))
         {
             xmlPrefixChecked = true;
-            if (!startsWith(buffer, xmlPrefix) &&
-                !startsWith(buffer, BYTE_ORDER_MARK_UTF8 + xmlPrefix)) //allow BOM!
+
+            std::string_view bufStart = buffer;
+            if (startsWith(bufStart, BYTE_ORDER_MARK_UTF8))
+                bufStart.remove_prefix(strLength(BYTE_ORDER_MARK_UTF8));
+
+            if (!startsWith(bufStart, "<?xml ") &&
+                !startsWith(bufStart, "<?xml?>"))
                 throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)));
         }
 
@@ -423,11 +427,10 @@ private:
 ///Check XML input proxy for errors and map to FileError exception
 /**
 \param xmlInput XML input proxy
-\param filePath Input file path
 \throw FileError
 */
 inline
-void checkXmlMappingErrors(const XmlIn& xmlInput, const Zstring& filePath) //throw FileError
+void checkXmlMappingErrors(const XmlIn& xmlInput) //throw FileError
 {
     if (const std::vector<std::wstring>& errors = xmlInput.getErrors();
         !errors.empty())
@@ -436,7 +439,7 @@ void checkXmlMappingErrors(const XmlIn& xmlInput, const Zstring& filePath) //thr
         for (const std::wstring& elem : errors)
             msg += L'\n' + elem;
 
-        throw FileError(replaceCpy(_("Configuration file %x is incomplete. The missing elements will be set to their default values."), L"%x", fmtPath(filePath)) + L"\n\n" + msg);
+        throw FileError(msg);
     }
 }
 }

@@ -475,7 +475,7 @@ AbstractFileSystem::OutputStream::~OutputStream()
 
 
 inline
-size_t AbstractFileSystem::OutputStream::tryWrite(const void* buffer, size_t bytesToWrite, const zen::IoCallback& notifyUnbufferedIO /*throw X*/)
+size_t AbstractFileSystem::OutputStream::tryWrite(const void* buffer, size_t bytesToWrite, const zen::IoCallback& notifyUnbufferedIO /*throw X*/) //throw FileError, X
 {
     const size_t bytesWritten = outStream_->tryWrite(buffer, bytesToWrite, notifyUnbufferedIO /*throw X*/); //throw FileError, X may return short!
     bytesWrittenTotal_ += bytesWritten;

@@ -43,6 +43,8 @@ zen::ConfirmationButton showOptionsDlg(wxWindow* parent, XmlGlobalSettings& glob
 
 zen::ConfirmationButton showSelectTimespanDlg(wxWindow* parent, time_t& timeFrom, time_t& timeTo);
 
+zen::ConfirmationButton showPasswordPrompt(wxWindow* parent, const std::wstring& msg, const std::wstring& lastErrorMsg /*optional*/, Zstring& password);
+
 zen::ConfirmationButton showCfgHighlightDlg(wxWindow* parent, int& cfgHistSyncOverdueDays);
 
 zen::ConfirmationButton showCloudSetupDialog(wxWindow* parent, Zstring& folderPathPhrase, Zstring& sftpKeyFileLastSelected,

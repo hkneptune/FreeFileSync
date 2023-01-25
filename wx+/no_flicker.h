@@ -123,7 +123,7 @@ void setTextWithUrls(wxRichTextCtrl& richCtrl, const wxString& newText)
     using KeyEventsFun = void(*)(wxKeyEvent& event);
     static const KeyEventsFun onKeyEvents = [](wxKeyEvent& event)
     {
-        wxRichTextCtrl& richCtrl = dynamic_cast<UserData*>(event.GetEventUserData())->richCtrl; //unclear if we can rely on event.GetEventObject() == richCtrl
+        wxRichTextCtrl& richCtrl2 = dynamic_cast<UserData*>(event.GetEventUserData())->richCtrl; //unclear if we can rely on event.GetEventObject() == richCtrl
 
         //CTRL/SHIFT + INS is broken for wxRichTextCtrl on Windows/Linux (apparently never was a thing on macOS)
         if (event.ControlDown())
@@ -131,8 +131,8 @@ void setTextWithUrls(wxRichTextCtrl& richCtrl, const wxString& newText)
             {
                 case WXK_INSERT:
                 case WXK_NUMPAD_INSERT:
-                    assert(richCtrl.CanCopy()); //except when no selection
-                    richCtrl.Copy();
+                    assert(richCtrl2.CanCopy()); //except when no selection
+                    richCtrl2.Copy();
                     return;
             }
 
@@ -141,8 +141,8 @@ void setTextWithUrls(wxRichTextCtrl& richCtrl, const wxString& newText)
             {
                 case WXK_INSERT:
                 case WXK_NUMPAD_INSERT:
-                    assert(richCtrl.CanPaste()); //except wxTE_READONLY
-                    richCtrl.Paste();
+                    assert(richCtrl2.CanPaste()); //except wxTE_READONLY
+                    richCtrl2.Paste();
                     return;
             }
         event.Skip();

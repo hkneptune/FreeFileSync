@@ -295,9 +295,7 @@ public:
     template <class T>
     bool sendEventToParent(T&& event) //take both "rvalue + lvalues", return "true" if a suitable event handler function was found and executed, and the function did not call wxEvent::Skip.
     {
-        if (wxEvtHandler* evtHandler = parent_.GetEventHandler())
-            return evtHandler->ProcessEvent(event);
-        return false;
+        return parent_.GetEventHandler()->ProcessEvent(event);
     }
 
 protected:
@@ -1412,8 +1410,7 @@ private:
         if (!gridUpdatePending_) //without guarding, the number of outstanding async events can become very high during scrolling!! test case: Ubuntu: 170; Windows: 20
         {
             gridUpdatePending_ = true;
-            wxCommandEvent scrollEvent(EVENT_GRID_HAS_SCROLLED);
-            AddPendingEvent(scrollEvent); //asynchronously call updateAfterScroll()
+            GetEventHandler()->AddPendingEvent(wxCommandEvent(EVENT_GRID_HAS_SCROLLED)); //asynchronously call updateAfterScroll()
         }
     }
 
@@ -1776,8 +1773,7 @@ void Grid::onKeyDown(wxKeyEvent& event)
             const wxPoint mousePos = mainWin_->GetPosition() + wxPoint(0, clientPosMainWinY); //mainWin_-relative to Grid-relative
 
             GridContextMenuEvent contextEvent(mousePos);
-            if (wxEvtHandler* evtHandler = GetEventHandler())
-                evtHandler->ProcessEvent(contextEvent);
+            GetEventHandler()->ProcessEvent(contextEvent);
         }
         return;
 
@@ -1907,19 +1903,21 @@ void Grid::selectRange(size_t rowFirst, size_t rowLast, bool positive, GridEvent
 void Grid::selectRange2(size_t rowFirst, size_t rowLast, bool positive, const GridClickEvent* mouseClick, GridEventPolicy rangeEventPolicy)
 {
     assert(rowFirst <= rowLast);
+    assert(getRowCount() == selection_.gridSize());
+    rowFirst = std::clamp<size_t>(rowFirst, 0, selection_.gridSize());
+    rowLast  = std::clamp<size_t>(rowLast,  0, selection_.gridSize());
 
-    const size_t rowCount = getRowCount();
-    rowFirst = std::clamp<size_t>(rowFirst, 0, rowCount);
-    rowLast  = std::clamp<size_t>(rowLast,  0, rowCount);
+    if (rowFirst < rowLast && !selection_.matchesRange(rowFirst, rowLast, positive))
+    {
+        selection_.selectRange(rowFirst, rowLast, positive);
+        mainWin_->Refresh();
+    }
 
-    selection_.selectRange(rowFirst, rowLast, positive);
-    mainWin_->Refresh();
-
+    //issue event even for unchanged selection! e.g. MainWin::onMouseDown() temporarily clears range with GridEventPolicy::deny!
     if (rangeEventPolicy == GridEventPolicy::allow)
     {
         GridSelectEvent selEvent(rowFirst, rowLast, positive, mouseClick);
-        if (wxEvtHandler* evtHandler = GetEventHandler())
-            [[maybe_unused]] const bool processed = evtHandler->ProcessEvent(selEvent);
+        [[maybe_unused]] const bool processed = GetEventHandler()->ProcessEvent(selEvent);
     }
 }
 
@@ -1962,8 +1960,19 @@ void Grid::Refresh(bool eraseBackground, const wxRect* rect)
         updateWindowSizes();
     }
 
-    if (selection_.gridSize() != rowCountNew) //clear selection only when needed (consider setSelectedRows())
-        selection_.init(rowCountNew);
+    if (selection_.gridSize() != rowCountNew)
+    {
+        const bool priorSelection = !selection_.matchesRange(0, selection_.gridSize(), false /*positive*/);
+
+        selection_.resize(rowCountNew);
+
+        if (priorSelection) //clear selection only when needed
+        {
+            //clearSelection(GridEventPolicy::allow); -> no, we need async event to make filegrid::refresh(*m_gridMainL, *m_gridMainC, *m_gridMainR) work
+            selection_.clear();
+            GetEventHandler()->AddPendingEvent(GridSelectEvent(0, rowCountNew, false /*positive*/, nullptr /*mouseClick*/));
+        }
+    }
 
     wxScrolledWindow::Refresh(eraseBackground, rect);
 }
@@ -2306,13 +2315,10 @@ void Grid::setColumnWidth(int width, size_t col, GridEventPolicy columnResizeEve
         if (columnResizeEventPolicy == GridEventPolicy::allow)
         {
             GridColumnResizeEvent sizeEvent(vcRs.offset, vcRs.type);
-            if (wxEvtHandler* evtHandler = GetEventHandler())
-            {
-                if (notifyAsync)
-                    evtHandler->AddPendingEvent(sizeEvent);
-                else
-                    evtHandler->ProcessEvent(sizeEvent);
-            }
+            if (notifyAsync)
+                GetEventHandler()->AddPendingEvent(sizeEvent);
+            else
+                GetEventHandler()->ProcessEvent(sizeEvent);
         }
     }
     else

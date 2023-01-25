@@ -121,7 +121,7 @@ DbStreams loadStreams(const AbstractPath& dbPath, const IoCallback& notifyUnbuff
     catch (const FileError& e)
     {
         bool dbNotYetExisting = false;
-        try { dbNotYetExisting = !AFS::itemStillExists(dbPath); /*throw FileError*/ }
+        try { dbNotYetExisting = !AFS::itemExists(dbPath); /*throw FileError*/ }
         //abstract context => unclear which exception is more relevant/useless:
         catch (const FileError& e2) { throw FileError(replaceCpy(e.toString(), L"\n\n", L'\n'), replaceCpy(e2.toString(), L"\n\n", L'\n')); }
         //caveat: merging FileError might create redundant error message: https://freefilesync.org/forum/viewtopic.php?t=9377
@@ -805,11 +805,11 @@ std::unordered_map<const BaseFolderPair*, SharedRef<const InSyncFolder>> fff::lo
     std::map<AbstractPath, DbStreams> dbStreamsByPath;
     //------------ (try to) load DB files in parallel -------------------------
     {
-        Protected<std::map<AbstractPath, DbStreams>&> dbStreamsByPathShared(dbStreamsByPath);
+        Protected<std::map<AbstractPath, DbStreams>&> protDbStreamsByPath(dbStreamsByPath);
         std::vector<std::pair<AbstractPath, ParallelWorkItem>> parallelWorkload;
 
         for (const AbstractPath& dbPath : dbFilePaths)
-            parallelWorkload.emplace_back(dbPath, [&dbStreamsByPathShared](ParallelContext& ctx) //throw ThreadStopRequest
+            parallelWorkload.emplace_back(dbPath, [&protDbStreamsByPath](ParallelContext& ctx) //throw ThreadStopRequest
         {
             tryReportingError([&] //throw ThreadStopRequest
             {
@@ -818,7 +818,7 @@ std::unordered_map<const BaseFolderPair*, SharedRef<const InSyncFolder>> fff::lo
                 {
                     DbStreams dbStreams = ::loadStreams(ctx.itemPath, notifyLoad); //throw FileError, FileErrorDatabaseNotExisting, FileErrorDatabaseCorrupted, ThreadStopRequest
 
-                    dbStreamsByPathShared.access([&](auto& dbStreamsByPath2) { dbStreamsByPath2.emplace(ctx.itemPath, std::move(dbStreams)); });
+                    protDbStreamsByPath.access([&](auto& dbStreamsByPath2) { dbStreamsByPath2.emplace(ctx.itemPath, std::move(dbStreams)); });
                 }
                 catch (FileErrorDatabaseNotExisting&) {} //redundant info => no reportInfo()
             }, ctx.acb);
@@ -1022,8 +1022,7 @@ void fff::saveLastSynchronousState(const BaseFolderPair& baseFolder, bool transa
         });
         //----------------------------------------------------------------------------
         if (transactionalCopy && !AFS::hasNativeTransactionalCopy(dbPath))
-            parallelWorkloadMove.emplace_back(dbPath, [&dbPathTmp = *dbPathTmp,
-                                                                  transactionalCopy](ParallelContext& ctx) //throw ThreadStopRequest
+            parallelWorkloadMove.emplace_back(dbPath, [&dbPathTmp = *dbPathTmp](ParallelContext& ctx) //throw ThreadStopRequest
         {
             tryReportingError([&] //throw ThreadStopRequest
             {

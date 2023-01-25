@@ -2032,8 +2032,8 @@ std::pair<ConfigType, std::wstring /*warningMsg*/> parseConfig(const XmlDoc& doc
     }
     catch (const FileError& e)
     {
-        warningMsg = replaceCpy(_("Configuration file %x is incomplete. The missing elements have been set to their default values."), L"%x", fmtPath(filePath)) + 
-            L"\n\n" + e.toString(); 
+        warningMsg = replaceCpy(_("Configuration file %x is incomplete. The missing elements have been set to their default values."), L"%x", fmtPath(filePath)) +
+                     L"\n\n" + e.toString();
     }
 
     return {cfg, warningMsg};
@@ -2116,7 +2116,8 @@ std::pair<XmlGuiConfig, std::wstring /*warningMsg*/> fff::readAnyConfig(const st
         }
         else
             throw FileError(replaceCpy(_("Cannot open file %x."), L"%x", fmtPath(filePath)),
-                            _("Unexpected file extension:") + L' ' + fmtPath(getFileExtension(filePath)));
+                            _("Unexpected file extension:") + L' ' + fmtPath(getFileExtension(filePath)) + L'\n' +
+                            _("Expected:") + L" ffs_gui, ffs_batch");
     }
     cfg.mainCfg = merge(mainCfgs);
 
@@ -2497,7 +2498,7 @@ void fff::writeConfig(const XmlGlobalSettings& cfg, const Zstring& filePath)
 
 std::wstring fff::extractJobName(const Zstring& cfgFilePath)
 {
-    const Zstring fileName = afterLast(cfgFilePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
+    const Zstring fileName = getItemName(cfgFilePath);
     const Zstring jobName  = beforeLast(fileName, Zstr('.'), IfNotFoundReturn::all);
     return utfTo<std::wstring>(jobName);
 }
@@ -2529,8 +2530,8 @@ std::optional<FilterConfig> fff::parseFilterBuf(const std::string& filterBuf)
 
         return filterCfg;
     }
-    catch (XmlParsingError&){}
-    catch (FileError&){}
+    catch (XmlParsingError&) {}
+    catch (FileError&) {}
 
     return std::nullopt;
 }

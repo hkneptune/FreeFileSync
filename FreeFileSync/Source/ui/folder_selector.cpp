@@ -211,7 +211,7 @@ void FolderSelector::onSelectFolder(wxCommandEvent& event)
     Zstring defaultFolderNative;
     {
         //make sure default folder exists: don't let folder picker hang on non-existing network share!
-        auto folderAccessible = [waitEndTime = std::chrono::steady_clock::now() + FOLDER_SELECTED_EXISTENCE_CHECK_TIME_MAX](const AbstractPath& folderPath)
+        auto folderAccessible = [stopTime = std::chrono::steady_clock::now() + FOLDER_SELECTED_EXISTENCE_CHECK_TIME_MAX](const AbstractPath& folderPath)
         {
             if (AFS::isNullPath(folderPath))
                 return false;
@@ -224,7 +224,7 @@ void FolderSelector::onSelectFolder(wxCommandEvent& event)
                 }
                 catch (FileError&) { return false; }
             });
-            return ft.wait_until(waitEndTime) == std::future_status::ready && ft.get(); //potentially slow network access: wait 200ms at most
+            return ft.wait_until(stopTime) == std::future_status::ready && ft.get(); //potentially slow network access: wait 200ms at most
         };
 
         auto trySetDefaultPath = [&](const Zstring& folderPathPhrase)

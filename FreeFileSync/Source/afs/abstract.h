@@ -9,6 +9,7 @@
 
 #include <functional>
 #include <chrono>
+#include <variant>
 #include <zen/file_error.h>
 #include <zen/file_path.h>
 #include <zen/serialize.h> //InputStream/OutputStream support buffered stream concept
@@ -71,10 +72,9 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     static std::vector<Zstring> getPathPhraseAliases(const AbstractPath& itemPath) { return itemPath.afsDevice.ref().getPathPhraseAliases(itemPath.afsPath); }
 
     //----------------------------------------------------------------------------------------------------------------
-    static void authenticateAccess(const AfsDevice& afsDevice, bool allowUserInteraction) //throw FileError
-    { return afsDevice.ref().authenticateAccess(allowUserInteraction); }
-
-    static int getAccessTimeout(const AbstractPath& itemPath) { return itemPath.afsDevice.ref().getAccessTimeout(); } //returns "0" if no timeout in force
+    using RequestPasswordFun = std::function<Zstring(const std::wstring& msg, const std::wstring& lastErrorMsg)>; //throw X
+    static void authenticateAccess(const AfsDevice& afsDevice, const RequestPasswordFun& requestPassword /*throw X*/) //throw FileError, X
+    { return afsDevice.ref().authenticateAccess(requestPassword); }
 
     static bool supportPermissionCopy(const AbstractPath& sourcePath, const AbstractPath& targetPath); //throw FileError
 
@@ -93,11 +93,14 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     //root path? => do access test
     static ItemType getItemType(const AbstractPath& itemPath) { return itemPath.afsDevice.ref().getItemType(itemPath.afsPath); } //throw FileError
 
-    //assumes: - base path still exists
+    //assumes: - folder traversal access right (=> yes, because we can assume base path exist at this point; e.g. avoids problem when SFTP parent paths might deny access)
     //         - all child item path parts must correspond to folder traversal
-    //    => we can conclude whether an item is *not* existing anymore by doing a *case-sensitive* name search => potentially SLOW!
-    //      root path? => do access test
-    static std::optional<ItemType> itemStillExists(const AbstractPath& itemPath) { return itemPath.afsDevice.ref().itemStillExists(itemPath.afsPath); } //throw FileError
+    //           => conclude whether an item is *not* existing anymore by doing a *case-sensitive* name search => potentially SLOW!
+    //         - root path? => do access test
+    static std::variant<ItemType, AfsPath /*last existing parent path*/> getItemTypeIfExists(const AbstractPath& itemPath)
+    { return itemPath.afsDevice.ref().getItemTypeIfExists(itemPath.afsPath); } //throw FileError
+
+    static bool itemExists(const AbstractPath& itemPath) { return itemPath.afsDevice.ref().itemExists(itemPath.afsPath); } //throw FileError
     //----------------------------------------------------------------------------------------------------------------
 
     //already existing: fail
@@ -106,12 +109,13 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
 
     //creates directories recursively if not existing
     //returns false if folder already exists
-    static bool createFolderIfMissingRecursion(const AbstractPath& folderPath); //throw FileError
+    static void createFolderIfMissingRecursion(const AbstractPath& folderPath); //throw FileError
 
     static void removeFolderIfExistsRecursion(const AbstractPath& folderPath, //throw FileError
-                                              const std::function<void(const std::wstring& displayPath)>& onBeforeFileDeletion /*throw X*/, //optional
-                                              const std::function<void(const std::wstring& displayPath)>& onBeforeFolderDeletion)           //one call for each object!
-    { return folderPath.afsDevice.ref().removeFolderIfExistsRecursion(folderPath.afsPath, onBeforeFileDeletion, onBeforeFolderDeletion); }
+                                              const std::function<void(const std::wstring& displayPath)>& onBeforeFileDeletion    /*throw X*/, //
+                                              const std::function<void(const std::wstring& displayPath)>& onBeforeSymlinkDeletion /*throw X*/, //optional; one call for each object!
+                                              const std::function<void(const std::wstring& displayPath)>& onBeforeFolderDeletion  /*throw X*/) //
+    { return folderPath.afsDevice.ref().removeFolderIfExistsRecursion(folderPath.afsPath, onBeforeFileDeletion, onBeforeSymlinkDeletion, onBeforeFolderDeletion); }
 
     static void removeFileIfExists       (const AbstractPath& filePath);   //
     static void removeSymlinkIfExists    (const AbstractPath& linkPath);   //throw FileError
@@ -247,11 +251,11 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     //- client needs to handle duplicate file reports! (FilePlusTraverser fallback, retrying to read directory contents, ...)
     static void traverseFolderRecursive(const AfsDevice& afsDevice, const TraverserWorkload& workload /*throw X*/, size_t parallelOps) { afsDevice.ref().traverseFolderRecursive(workload, parallelOps); }
 
-    static void traverseFolderFlat(const AbstractPath& folderPath, //throw FileError
-                                   const std::function<void(const FileInfo&    fi)>& onFile,    //
-                                   const std::function<void(const FolderInfo&  fi)>& onFolder,  //optional
-                                   const std::function<void(const SymlinkInfo& si)>& onSymlink) //
-    { folderPath.afsDevice.ref().traverseFolderFlat(folderPath.afsPath, onFile, onFolder, onSymlink); }
+    static void traverseFolder(const AbstractPath& folderPath, //throw FileError
+                               const std::function<void(const FileInfo&    fi)>& onFile,    //
+                               const std::function<void(const FolderInfo&  fi)>& onFolder,  //optional
+                               const std::function<void(const SymlinkInfo& si)>& onSymlink) //
+    { folderPath.afsDevice.ref().traverseFolder(folderPath.afsPath, onFile, onFolder, onSymlink); }
     //----------------------------------------------------------------------------------------------------------------
 
     //already existing: undefined behavior! (e.g. fail/overwrite)
@@ -304,7 +308,7 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
         //- multi-threaded access: internally synchronized!
         void moveToRecycleBinIfExists(const AbstractPath& itemPath, const Zstring& logicalRelPath); //throw FileError, RecycleBinUnavailable
 
-        //- fails if item is not existing
+        //- fails if item is not existing: don't leave user wonder why it isn't in the recycle bin!
         //- multi-threaded access: internally synchronized!
         virtual void moveToRecycleBin(const AbstractPath& itemPath, const Zstring& logicalRelPath) = 0; //throw FileError, RecycleBinUnavailable
 
@@ -328,18 +332,18 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
 
 
 protected:
-    //default implementation: folder traversal
-    virtual std::optional<ItemType> itemStillExists(const AfsPath& itemPath) const = 0; //throw FileError
+    bool itemExists(const AfsPath& itemPath) const; //throw FileError
 
     //default implementation: folder traversal
     virtual void removeFolderIfExistsRecursion(const AfsPath& folderPath, //throw FileError
-                                               const std::function<void(const std::wstring& displayPath)>& onBeforeFileDeletion,              //optional
-                                               const std::function<void(const std::wstring& displayPath)>& onBeforeFolderDeletion) const = 0; //one call for each object!
+                                               const std::function<void(const std::wstring& displayPath)>& onBeforeFileDeletion,
+                                               const std::function<void(const std::wstring& displayPath)>& onBeforeSymlinkDeletion,
+                                               const std::function<void(const std::wstring& displayPath)>& onBeforeFolderDeletion) const = 0;
 
-    void traverseFolderFlat(const AfsPath& folderPath, //throw FileError
-                            const std::function<void(const FileInfo&    fi)>& onFile,           //
-                            const std::function<void(const FolderInfo&  fi)>& onFolder,         //optional
-                            const std::function<void(const SymlinkInfo& si)>& onSymlink) const; //
+    void traverseFolder(const AfsPath& folderPath, //throw FileError
+                        const std::function<void(const FileInfo&    fi)>& onFile,           //
+                        const std::function<void(const FolderInfo&  fi)>& onFolder,         //optional
+                        const std::function<void(const SymlinkInfo& si)>& onSymlink) const; //
 
     //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
     FileCopyResult copyFileAsStream(const AfsPath& sourcePath, const StreamAttributes& attrSource, //throw FileError, ErrorFileLocked, X
@@ -360,7 +364,8 @@ private:
 
     //----------------------------------------------------------------------------------------------------------------
     virtual ItemType getItemType(const AfsPath& itemPath) const = 0; //throw FileError
-    //----------------------------------------------------------------------------------------------------------------
+
+    virtual std::variant<ItemType, AfsPath /*last existing parent path*/> getItemTypeIfExists(const AfsPath& itemPath) const = 0; //throw FileError
 
     //already existing: fail
     virtual void createFolderPlain(const AfsPath& folderPath) const = 0; //throw FileError
@@ -410,9 +415,7 @@ private:
     virtual zen::FileIconHolder getFileIcon      (const AfsPath& filePath, int pixelSize) const = 0; //throw FileError; optional return value
     virtual zen::ImageHolder    getThumbnailImage(const AfsPath& filePath, int pixelSize) const = 0; //throw FileError; optional return value
 
-    virtual void authenticateAccess(bool allowUserInteraction) const = 0; //throw FileError
-
-    virtual int getAccessTimeout() const = 0; //returns "0" if no timeout in force
+    virtual void authenticateAccess(const RequestPasswordFun& requestPassword /*throw X*/) const = 0; //throw FileError, X
 
     virtual bool hasNativeTransactionalCopy() const = 0;
     //----------------------------------------------------------------------------------------------------------------
@@ -491,9 +494,8 @@ AbstractFileSystem::FinalizeResult AbstractFileSystem::OutputStream::finalize(co
     //important check: catches corrupt SFTP download with libssh2!
     if (bytesExpected_ && *bytesExpected_ != bytesWrittenTotal_)
         throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getDisplayPath(filePath_))), //instead we should report the source file, but don't have it here...
-                        replaceCpy(replaceCpy(_("Unexpected size of data stream.\nExpected: %x bytes\nActual: %y bytes"),
-                                              L"%x", formatNumber(*bytesExpected_)),
-                                   L"%y", formatNumber(bytesWrittenTotal_)));
+                        _("Unexpected size of data stream:") + L' ' + formatNumber(bytesWrittenTotal_) + L'\n' +
+                        _("Expected:") + L' ' + formatNumber(*bytesExpected_));
 
     const FinalizeResult result = outStream_->finalize(notifyUnbufferedIO); //throw FileError, X
     finalizeSucceeded_ = true;

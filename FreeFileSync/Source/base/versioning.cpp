@@ -89,8 +89,8 @@ AbstractPath FileVersioner::generateVersionedPath(const Zstring& relativePath) c
             break;
         case VersioningStyle::timestampFile: //assemble time-stamped version name
             versionedRelPath = relativePath + Zstr(' ') + timeStamp_ + getDotExtension(relativePath);
-            assert(impl::parseVersionedFileName(afterLast(versionedRelPath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all)) ==
-                   std::pair(syncStartTime_, afterLast(relativePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all)));
+            assert(impl::parseVersionedFileName(getItemName(versionedRelPath)) ==
+                   std::pair(syncStartTime_, getItemName(relativePath)));
             (void)syncStartTime_; //clang: -Wunused-private-field
             break;
     }
@@ -125,7 +125,7 @@ void moveExistingItemToVersioning(const AbstractPath& sourcePath, const Abstract
         }
         catch (FileError&) {} //=> not yet existing (=> fine, no path issue) or access error:
         //- let's pretend it doesn't happen :> if it does, worst case: the retry fails with (useless) already existing error
-        //- AFS::itemStillExists()? too expensive, considering that "already existing" is the most common case
+        //- AFS::itemExists()? too expensive, considering that "already existing" is the most common case
 
         if (alreadyExisting)
         {
@@ -183,8 +183,11 @@ void moveExistingItemToVersioning(const AbstractPath& sourcePath, const Abstract
 
 void FileVersioner::revisionFile(const FileDescriptor& fileDescr, const Zstring& relativePath, const IoCallback& notifyUnbufferedIO /*throw X*/) const //throw FileError, X
 {
-    if (std::optional<AFS::ItemType> type = AFS::itemStillExists(fileDescr.path)) //throw FileError
+    const std::variant<AFS::ItemType, AfsPath /*last existing parent path*/> typeOrPath = AFS::getItemTypeIfExists(fileDescr.path); //throw FileError
+    if (const AFS::ItemType* type = std::get_if<AFS::ItemType>(&typeOrPath))
     {
+        assert(*type != AFS::ItemType::symlink);
+
         if (*type == AFS::ItemType::symlink)
             revisionSymlinkImpl(fileDescr.path, relativePath, nullptr /*onBeforeMove*/); //throw FileError
         else
@@ -222,7 +225,7 @@ void FileVersioner::revisionFileImpl(const FileDescriptor& fileDescr, const Zstr
 
 void FileVersioner::revisionSymlink(const AbstractPath& linkPath, const Zstring& relativePath) const //throw FileError
 {
-    if (AFS::itemStillExists(linkPath)) //throw FileError
+    if (AFS::itemExists(linkPath)) //throw FileError
         revisionSymlinkImpl(linkPath, relativePath, nullptr /*onBeforeMove*/); //throw FileError
     //else -> missing source item is not an error => check BEFORE deleting target
 }
@@ -247,14 +250,17 @@ void FileVersioner::revisionFolder(const AbstractPath& folderPath, const Zstring
                                    const IoCallback& notifyUnbufferedIO /*throw X*/) const
 {
     //no error situation if directory is not existing! manual deletion relies on it!
-    if (std::optional<AFS::ItemType> type = AFS::itemStillExists(folderPath)) //throw FileError
+    const std::variant<AFS::ItemType, AfsPath /*last existing parent path*/> typeOrPath = AFS::getItemTypeIfExists(folderPath); //throw FileError
+    if (const AFS::ItemType* type = std::get_if<AFS::ItemType>(&typeOrPath))
     {
+        assert(*type != AFS::ItemType::symlink);
+
         if (*type == AFS::ItemType::symlink) //on Linux there is just one type of symlink, and since we do revision file symlinks, we should revision dir symlinks as well!
             revisionSymlinkImpl(folderPath, relativePath, onBeforeFileMove); //throw FileError
         else
             revisionFolderImpl(folderPath, relativePath, onBeforeFileMove, onBeforeFolderMove, notifyUnbufferedIO); //throw FileError, X
     }
-    else //even if the folder did not exist anymore, significant I/O work was done => report
+    else //even if the folder does not exist anymore, significant I/O work was done => report
         if (onBeforeFolderMove) onBeforeFolderMove(AFS::getDisplayPath(folderPath), AFS::getDisplayPath(AFS::appendRelPath(versioningFolderPath_, relativePath)));
 }
 
@@ -266,26 +272,28 @@ void FileVersioner::revisionFolderImpl(const AbstractPath& folderPath, const Zst
 {
 
     //create target directories only when needed in moveFileToVersioning(): avoid empty directories!
-    std::vector<AFS::FileInfo>    files;
-    std::vector<AFS::FolderInfo>  folders;
-    std::vector<AFS::SymlinkInfo> symlinks;
-
-    AFS::traverseFolderFlat(folderPath, //throw FileError
-    [&](const AFS::FileInfo&    fi) { files   .push_back(fi); assert(!files.back().isFollowedSymlink); },
-    [&](const AFS::FolderInfo&  fi) { folders .push_back(fi); },
-    [&](const AFS::SymlinkInfo& si) { symlinks.push_back(si); });
-
-    for (const AFS::FileInfo& fileInfo : files)
+    std::vector<AFS::FolderInfo> folders;
     {
-        const FileDescriptor fileDescr{AFS::appendRelPath(folderPath, fileInfo.itemName),
-                                       FileAttributes(fileInfo.modTime, fileInfo.fileSize, fileInfo.filePrint, false /*isFollowedSymlink*/)};
+        std::vector<AFS::FileInfo>    files;
+        std::vector<AFS::SymlinkInfo> symlinks;
 
-        revisionFileImpl(fileDescr, appendPath(relPath, fileInfo.itemName), onBeforeFileMove, notifyUnbufferedIO); //throw FileError, X
+        AFS::traverseFolder(folderPath, //throw FileError
+        [&](const AFS::FileInfo&    fi) { files   .push_back(fi); assert(!files.back().isFollowedSymlink); },
+        [&](const AFS::FolderInfo&  fi) { folders .push_back(fi); },
+        [&](const AFS::SymlinkInfo& si) { symlinks.push_back(si); });
+
+        for (const AFS::FileInfo& fileInfo : files)
+        {
+            const FileDescriptor fileDescr{AFS::appendRelPath(folderPath, fileInfo.itemName),
+                                           FileAttributes(fileInfo.modTime, fileInfo.fileSize, fileInfo.filePrint, false /*isFollowedSymlink*/)};
+
+            revisionFileImpl(fileDescr, appendPath(relPath, fileInfo.itemName), onBeforeFileMove, notifyUnbufferedIO); //throw FileError, X
+        }
+
+        for (const AFS::SymlinkInfo& linkInfo : symlinks)
+            revisionSymlinkImpl(AFS::appendRelPath(folderPath, linkInfo.itemName),
+                                appendPath(relPath, linkInfo.itemName), onBeforeFileMove); //throw FileError
     }
-
-    for (const AFS::SymlinkInfo& linkInfo : symlinks)
-        revisionSymlinkImpl(AFS::appendRelPath(folderPath, linkInfo.itemName),
-                            appendPath(relPath, linkInfo.itemName), onBeforeFileMove); //throw FileError
 
     //move folders recursively
     for (const AFS::FolderInfo& folderInfo : folders)
@@ -419,8 +427,8 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
         //we don't want to show an error if version path does not yet exist!
         tryReportingError([&]
         {
-            const FolderStatus status = getFolderStatusNonBlocking(pathsToCheck,
-                                                                   false /*allowUserInteraction*/, callback); //throw X
+            const FolderStatus status = getFolderStatusParallel(pathsToCheck,
+                                                                false /*authenticateAccess*/, nullptr /*requestPassword*/, callback); //throw X
             foldersToRead.clear();
             for (const AbstractPath& folderPath : status.existing)
                 foldersToRead.insert(DirectoryKey({folderPath, makeSharedRef<NullFilter>(), SymLinkHandling::asLink}));
@@ -527,12 +535,12 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
     }
 
     //--------- remove excess file versions ---------
-    Protected<std::map<AbstractPath, size_t>&> folderItemCountShared(folderItemCount);
+    Protected<std::map<AbstractPath, size_t>&> protFolderItemCount(folderItemCount);
     const std::wstring txtRemoving = _("Removing old file versions:") + L' ';
     const std::wstring txtDeletingFolder = _("Deleting folder %x");
 
     std::function<void(const AbstractPath& folderPath, AsyncCallback& acb)> deleteEmptyFolderTask;
-    deleteEmptyFolderTask = [&txtDeletingFolder, &folderItemCountShared, &deleteEmptyFolderTask](const AbstractPath& folderPath, AsyncCallback& acb) //throw ThreadStopRequest
+    deleteEmptyFolderTask = [&txtDeletingFolder, &protFolderItemCount, &deleteEmptyFolderTask](const AbstractPath& folderPath, AsyncCallback& acb) //throw ThreadStopRequest
     {
         const std::wstring errMsg = tryReportingError([&] //throw ThreadStopRequest
         {
@@ -544,7 +552,7 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
             if (const std::optional<AbstractPath> parentPath = AFS::getParentPath(folderPath))
             {
                 bool deleteParent = false;
-                folderItemCountShared.access([&](auto& folderItemCount2) { deleteParent = --folderItemCount2[*parentPath] == 0; });
+                protFolderItemCount.access([&](auto& folderItemCount2) { deleteParent = --folderItemCount2[*parentPath] == 0; });
                 if (deleteParent) //we're done here anyway => no need to schedule parent deletion in a separate task!
                     deleteEmptyFolderTask(*parentPath, acb); //throw ThreadStopRequest
             }
@@ -560,7 +568,7 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
         });
 
     for (const auto& [itemPath, isSymlink] : itemsToDelete)
-        parallelWorkload.emplace_back(itemPath, [isSymlink /*clang bug*/= isSymlink, &txtRemoving, &folderItemCountShared, &deleteEmptyFolderTask](ParallelContext& ctx) //throw ThreadStopRequest
+        parallelWorkload.emplace_back(itemPath, [isSymlink /*clang bug*/= isSymlink, &txtRemoving, &protFolderItemCount, &deleteEmptyFolderTask](ParallelContext& ctx) //throw ThreadStopRequest
     {
         const std::wstring errMsg = tryReportingError([&] //throw ThreadStopRequest
         {
@@ -575,7 +583,7 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
             if (const std::optional<AbstractPath> parentPath = AFS::getParentPath(ctx.itemPath))
             {
                 bool deleteParent = false;
-                folderItemCountShared.access([&](auto& folderItemCount2) { deleteParent = --folderItemCount2[*parentPath] == 0; });
+                protFolderItemCount.access([&](auto& folderItemCount2) { deleteParent = --folderItemCount2[*parentPath] == 0; });
                 if (deleteParent)
                     deleteEmptyFolderTask(*parentPath, ctx.acb); //throw ThreadStopRequest
             }

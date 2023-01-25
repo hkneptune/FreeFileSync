@@ -25,16 +25,16 @@ enum class RsaStreamType
 };
 
 //verify signatures produced with: "openssl dgst -sha256 -sign private.pem -out file.sig file.txt"
-void verifySignature(const std::string& message,
-                     const std::string& signature,
-                     const std::string& publicKeyStream,
+void verifySignature(const std::string_view message,
+                     const std::string_view signature,
+                     const std::string_view publicKeyStream,
                      RsaStreamType streamType); //throw SysError
 
-std::string convertRsaKey(const std::string& keyStream, RsaStreamType typeFrom, RsaStreamType typeTo, bool publicKey); //throw SysError
+std::string convertRsaKey(const std::string_view keyStream, RsaStreamType typeFrom, RsaStreamType typeTo, bool publicKey); //throw SysError
 
 
 bool isPuttyKeyStream(const std::string_view keyStream);
-std::string convertPuttyKeyToPkix(const std::string& keyStream, const std::string& passphrase); //throw SysError
+std::string convertPuttyKeyToPkix(const std::string_view keyStream, const std::string_view passphrase); //throw SysError
 }
 
 #endif //OPEN_SSL_H_801974580936508934568792347506

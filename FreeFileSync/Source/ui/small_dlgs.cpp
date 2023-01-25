@@ -198,7 +198,9 @@ private:
     void gdriveUpdateDrivesAndSelect(const std::string& accountEmail, const Zstring& locationToSelect);
 
     void onDetectServerChannelLimit(wxCommandEvent& event) override;
+    void onTypingPassword(wxCommandEvent& event) override;
     void onToggleShowPassword(wxCommandEvent& event) override;
+    void onTogglePasswordPrompt(wxCommandEvent& event) override { updateGui(); }
     void onBrowseCloudFolder (wxCommandEvent& event) override;
 
     void onConnectionGdrive(wxCommandEvent& event) override { type_ = CloudType::gdrive; updateGui(); }
@@ -219,6 +221,7 @@ private:
     static bool acceptFileDrop(const std::vector<Zstring>& shellItemPaths);
     void onKeyFileDropped(FileDropEvent& event);
 
+    bool validateParameters();
     AbstractPath getFolderPath() const;
 
     enum class CloudType
@@ -269,7 +272,8 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, Zstrin
     setImage(*m_bitmapCloud,       loadImage("cloud"));
     setImage(*m_bitmapPerf,        loadImage("speed"));
     setImage(*m_bitmapServerDir, IconBuffer::genericDirIcon(IconBuffer::IconSize::small));
-    m_checkBoxShowPassword->SetValue(false);
+    m_checkBoxShowPassword  ->SetValue(false);
+    m_checkBoxPasswordPrompt->SetValue(false);
 
     m_textCtrlServer->SetHint(_("Example:") + L"    website.com    66.198.240.22");
     m_textCtrlServer->SetMinSize({fastFromDIP(260), -1});
@@ -339,12 +343,15 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, Zstrin
         const AbstractPath folderPath = createItemPathSftp(folderPathPhrase);
         const SftpLogin login = extractSftpLogin(folderPath.afsDevice); //noexcept
 
-        if (login.port > 0)
-            m_textCtrlPort->ChangeValue(numberTo<wxString>(login.port));
+        if (login.portCfg > 0)
+            m_textCtrlPort->ChangeValue(numberTo<wxString>(login.portCfg));
         m_textCtrlServer        ->ChangeValue(utfTo<wxString>(login.server));
         m_textCtrlUserName      ->ChangeValue(utfTo<wxString>(login.username));
         sftpAuthType_ = login.authType;
-        m_textCtrlPasswordHidden->ChangeValue(utfTo<wxString>(login.password));
+        if (login.password)
+            m_textCtrlPasswordHidden->ChangeValue(utfTo<wxString>(*login.password));
+        else
+            m_checkBoxPasswordPrompt->SetValue(true);
         m_textCtrlKeyfilePath   ->ChangeValue(utfTo<wxString>(login.privateKeyFilePath));
         m_textCtrlServerPath    ->ChangeValue(utfTo<wxString>(FILE_NAME_SEPARATOR + folderPath.afsPath.value));
         m_checkBoxAllowZlib     ->SetValue(login.allowZlib);
@@ -357,11 +364,14 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, Zstrin
         const AbstractPath folderPath = createItemPathFtp(folderPathPhrase);
         const FtpLogin login = extractFtpLogin(folderPath.afsDevice); //noexcept
 
-        if (login.port > 0)
-            m_textCtrlPort->ChangeValue(numberTo<wxString>(login.port));
+        if (login.portCfg > 0)
+            m_textCtrlPort->ChangeValue(numberTo<wxString>(login.portCfg));
         m_textCtrlServer         ->ChangeValue(utfTo<wxString>(login.server));
         m_textCtrlUserName       ->ChangeValue(utfTo<wxString>(login.username));
-        m_textCtrlPasswordHidden ->ChangeValue(utfTo<wxString>(login.password));
+        if (login.password)
+            m_textCtrlPasswordHidden ->ChangeValue(utfTo<wxString>(*login.password));
+        else
+            m_checkBoxPasswordPrompt->SetValue(true);
         m_textCtrlServerPath     ->ChangeValue(utfTo<wxString>(FILE_NAME_SEPARATOR + folderPath.afsPath.value));
         (login.useTls ? m_radioBtnEncryptSsl : m_radioBtnEncryptNone)->SetValue(true);
         m_spinCtrlTimeout        ->SetValue(login.timeoutSec);
@@ -379,7 +389,8 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, Zstrin
     //set up default view for dialog size calculation
     bSizerGdrive->Show(false);
     bSizerFtpEncrypt->Show(false);
-    m_textCtrlPasswordHidden->Hide();
+    m_textCtrlPasswordVisible->Hide();
+    m_checkBoxPasswordPrompt->Hide();
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
     //=> works like a charm for GTK2 with window resizing problems and title bar corruption; e.g. Debian!!!
@@ -516,13 +527,26 @@ void CloudSetupDlg::onDetectServerChannelLimit(wxCommandEvent& event)
         m_spinCtrlChannelCountSftp->SetSelection(0, 0); //some visual feedback: clear selection
         m_spinCtrlChannelCountSftp->Refresh(); //both needed for wxGTK: meh!
         m_spinCtrlChannelCountSftp->Update();  //
+        
+        AbstractPath folderPath = getFolderPath(); //noexcept
+        //-------------------------------------------------------------------
+        auto requestPassword = [&, password = Zstring()](const std::wstring& msg, const std::wstring& lastErrorMsg) mutable
+        {
+            assert(runningOnMainThread());
+            if (showPasswordPrompt(this, msg, lastErrorMsg, password) != ConfirmationButton::accept)
+                throw AbortProcess();
+            return password;
+        };
+        AFS::authenticateAccess(folderPath.afsDevice, requestPassword); //throw FileError, AbortProcess
+        //-------------------------------------------------------------------
 
-        const int channelCountMax = getServerMaxChannelsPerConnection(extractSftpLogin(getFolderPath().afsDevice)); //throw FileError
+        const int channelCountMax = getServerMaxChannelsPerConnection(extractSftpLogin(folderPath.afsDevice)); //throw FileError
         m_spinCtrlChannelCountSftp->SetValue(channelCountMax);
 
         m_spinCtrlChannelCountSftp->SetFocus(); //[!] otherwise selection is lost
         m_spinCtrlChannelCountSftp->SetSelection(-1, -1); //some visual feedback: select all
     }
+        catch (AbortProcess&) { return; }
     catch (const FileError& e)
     {
         showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
@@ -537,7 +561,22 @@ void CloudSetupDlg::onToggleShowPassword(wxCommandEvent& event)
         m_textCtrlPasswordVisible->ChangeValue(m_textCtrlPasswordHidden->GetValue());
     else
         m_textCtrlPasswordHidden->ChangeValue(m_textCtrlPasswordVisible->GetValue());
+
     updateGui();
+
+    wxTextCtrl& textCtrl = *(m_checkBoxShowPassword->GetValue() ? m_textCtrlPasswordVisible : m_textCtrlPasswordHidden);
+    textCtrl.SetFocus(); //macOS: selects text as unwanted side effect => *before* SetInsertionPointEnd()
+    textCtrl.SetInsertionPointEnd();
+}
+
+
+void CloudSetupDlg::onTypingPassword(wxCommandEvent& event)
+{
+    assert(m_staticTextPassword->IsShown());
+    const wxString password = (m_checkBoxShowPassword->GetValue() ? m_textCtrlPasswordVisible : m_textCtrlPasswordHidden)->GetValue();
+    if (m_checkBoxShowPassword  ->IsShown() != !password.empty() || //let's avoid some minor flicker
+        m_checkBoxPasswordPrompt->IsShown() !=  password.empty())   //in updateGui() Layout()
+        updateGui();
 }
 
 
@@ -606,6 +645,13 @@ void CloudSetupDlg::updateGui()
     {
         m_textCtrlPasswordVisible->Show( m_checkBoxShowPassword->GetValue());
         m_textCtrlPasswordHidden ->Show(!m_checkBoxShowPassword->GetValue());
+
+        m_textCtrlPasswordVisible->Enable(!m_checkBoxPasswordPrompt->GetValue());
+        m_textCtrlPasswordHidden ->Enable(!m_checkBoxPasswordPrompt->GetValue());
+
+        const wxString password = (m_checkBoxShowPassword->GetValue() ? m_textCtrlPasswordVisible : m_textCtrlPasswordHidden)->GetValue();
+        m_checkBoxShowPassword  ->Show(!password.empty());
+        m_checkBoxPasswordPrompt->Show( password.empty());
     }
 
     switch (type_)
@@ -654,6 +700,55 @@ void CloudSetupDlg::updateGui()
 }
 
 
+bool CloudSetupDlg::validateParameters()
+{
+    if (type_ == CloudType::sftp ||
+        type_ == CloudType::ftp)
+    {
+        if (trimCpy(m_textCtrlServer->GetValue()).empty())
+        {
+            showNotificationDialog(this, DialogInfoType::info, PopupDialogCfg().setMainInstructions(_("Server name must not be empty.")));
+            m_textCtrlServer->SetFocus();
+            return false;
+        }
+    }
+
+    switch (type_)
+    {
+        case CloudType::gdrive:
+            if (m_listBoxGdriveUsers->GetSelection() == wxNOT_FOUND)
+            {
+                showNotificationDialog(this, DialogInfoType::info, PopupDialogCfg().setMainInstructions(_("Please select a user account first.")));
+                return false;
+            }
+            break;
+
+        case CloudType::sftp:
+            //username *required* for SFTP, but optional for FTP: libcurl will use "anonymous"
+            if (trimCpy(m_textCtrlUserName->GetValue()).empty())
+            {
+                showNotificationDialog(this, DialogInfoType::info, PopupDialogCfg().setMainInstructions(_("Please enter a username.")));
+                m_textCtrlUserName->SetFocus();
+                return false;
+            }
+
+            if (sftpAuthType_ == SftpAuthType::keyFile)
+                if (trimCpy(m_textCtrlKeyfilePath->GetValue()).empty())
+                {
+                    showNotificationDialog(this, DialogInfoType::info, PopupDialogCfg().setMainInstructions(_("Please enter a file path.")));
+                    //don't show error icon to follow "Windows' encouraging tone"
+                    m_textCtrlKeyfilePath->SetFocus();
+                    return false;
+                }
+            break;
+
+        case CloudType::ftp:
+            break;
+    }
+    return true;
+}
+
+
 AbstractPath CloudSetupDlg::getFolderPath() const
 {
     //clean up (messy) user input, but no trim: support folders with trailing blanks!
@@ -686,11 +781,14 @@ AbstractPath CloudSetupDlg::getFolderPath() const
         {
             SftpLogin login;
             login.server   = utfTo<Zstring>(m_textCtrlServer  ->GetValue());
-            login.port     = stringTo<int> (m_textCtrlPort    ->GetValue()); //0 if empty
+            login.portCfg  = stringTo<int> (m_textCtrlPort    ->GetValue()); //0 if empty
             login.username = utfTo<Zstring>(m_textCtrlUserName->GetValue());
             login.authType = sftpAuthType_;
             login.privateKeyFilePath = utfTo<Zstring>(m_textCtrlKeyfilePath->GetValue());
-            login.password = utfTo<Zstring>((m_checkBoxShowPassword->GetValue() ? m_textCtrlPasswordVisible : m_textCtrlPasswordHidden)->GetValue());
+            if (m_checkBoxPasswordPrompt->GetValue())
+                login.password = std::nullopt;
+            else
+                login.password = utfTo<Zstring>((m_checkBoxShowPassword->GetValue() ? m_textCtrlPasswordVisible : m_textCtrlPasswordHidden)->GetValue());
             login.allowZlib  = m_checkBoxAllowZlib->GetValue();
             login.timeoutSec = m_spinCtrlTimeout->GetValue();
             login.traverserChannelsPerConnection = m_spinCtrlChannelCountSftp->GetValue();
@@ -701,9 +799,12 @@ AbstractPath CloudSetupDlg::getFolderPath() const
         {
             FtpLogin login;
             login.server   = utfTo<Zstring>(m_textCtrlServer  ->GetValue());
-            login.port     = stringTo<int> (m_textCtrlPort    ->GetValue()); //0 if empty
+            login.portCfg  = stringTo<int> (m_textCtrlPort    ->GetValue()); //0 if empty
             login.username = utfTo<Zstring>(m_textCtrlUserName->GetValue());
-            login.password = utfTo<Zstring>((m_checkBoxShowPassword->GetValue() ? m_textCtrlPasswordVisible : m_textCtrlPasswordHidden)->GetValue());
+            if (m_checkBoxPasswordPrompt->GetValue())
+                login.password = std::nullopt;
+            else
+                login.password = utfTo<Zstring>((m_checkBoxShowPassword->GetValue() ? m_textCtrlPasswordVisible : m_textCtrlPasswordHidden)->GetValue());
             login.useTls = m_radioBtnEncryptSsl->GetValue();
             login.timeoutSec = m_spinCtrlTimeout->GetValue();
             return AbstractPath(condenseToFtpDevice(login), serverRelPath); //noexcept
@@ -716,10 +817,26 @@ AbstractPath CloudSetupDlg::getFolderPath() const
 
 void CloudSetupDlg::onBrowseCloudFolder(wxCommandEvent& event)
 {
-    AbstractPath folderPath = getFolderPath(); //noexcept
+    if (!validateParameters())
+        return;
 
-    if (!AFS::getParentPath(folderPath))
-        try //for (S)FTP it makes more sense to start with the home directory rather than root (which often denies access!)
+    AbstractPath folderPath = getFolderPath(); //noexcept
+    try
+    {
+                //-------------------------------------------------------------------
+        auto requestPassword = [&, password = Zstring()](const std::wstring& msg, const std::wstring& lastErrorMsg) mutable
+        {
+            assert(runningOnMainThread());
+            if (showPasswordPrompt(this, msg, lastErrorMsg, password) != ConfirmationButton::accept)
+                throw AbortProcess();
+            return password;
+        };
+        AFS::authenticateAccess(folderPath.afsDevice, requestPassword); //throw FileError, AbortProcess
+        //caveat: this could block *indefinitely* for Google Drive, but luckily already authenticated in this context
+        //-------------------------------------------------------------------
+        //         
+        //for (S)FTP it makes more sense to start with the home directory rather than root (which often denies access!)
+        if (!AFS::getParentPath(folderPath))
         {
             if (type_ == CloudType::sftp)
                 folderPath.afsPath = getSftpHomePath(extractSftpLogin(folderPath.afsDevice)); //throw FileError
@@ -727,11 +844,13 @@ void CloudSetupDlg::onBrowseCloudFolder(wxCommandEvent& event)
             if (type_ == CloudType::ftp)
                 folderPath.afsPath = getFtpHomePath(extractFtpLogin(folderPath.afsDevice)); //throw FileError
         }
-        catch (const FileError& e)
-        {
-            showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
-            return;
-        }
+    }
+    catch (AbortProcess&) { return; }
+    catch (const FileError& e)
+    {
+        showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
+        return;
+    }
 
     if (showAbstractFolderPicker(this, folderPath) == ConfirmationButton::accept)
         m_textCtrlServerPath->ChangeValue(utfTo<wxString>(FILE_NAME_SEPARATOR + folderPath.afsPath.value));
@@ -741,14 +860,8 @@ void CloudSetupDlg::onBrowseCloudFolder(wxCommandEvent& event)
 void CloudSetupDlg::onOkay(wxCommandEvent& event)
 {
     //------- parameter validation (BEFORE writing output!) -------
-    if (type_ == CloudType::sftp && sftpAuthType_ == SftpAuthType::keyFile)
-        if (trimCpy(m_textCtrlKeyfilePath->GetValue()).empty())
-        {
-            showNotificationDialog(this, DialogInfoType::info, PopupDialogCfg().setMainInstructions(_("Please enter a file path.")));
-            //don't show error icon to follow "Windows' encouraging tone"
-            m_textCtrlKeyfilePath->SetFocus();
-            return;
-        }
+    if (!validateParameters())
+        return;
     //-------------------------------------------------------------
 
     folderPathPhraseOut_ = AFS::getInitPathPhrase(getFolderPath());
@@ -1212,9 +1325,9 @@ private:
         {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnFoldersDifferInCase; },
          [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnFoldersDifferInCase = show; }, _("The following folder paths differ in case. Please use a single form in order to avoid duplicate accesses.")},
         {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnDependentFolderPair; },
-         [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnDependentFolderPair = show; }, _("One base folder of a folder pair is contained in the other one.") + L' ' + _("The folder should be excluded from synchronization via filter.")},
+         [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnDependentFolderPair = show; }, _("One folder of the folder pair is a subfolder of the other.") + L' ' + _("The folder should be excluded via filter.")},
         {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnDependentBaseFolders; },
-         [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnDependentBaseFolders = show; }, _("Some files will be synchronized as part of multiple base folders.") + L' ' + _("To avoid conflicts, set up exclude filters so that each updated file is included by only one base folder.")},
+         [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnDependentBaseFolders = show; }, _("Some files will be synchronized as part of multiple folder pairs.") + L' ' + _("To avoid conflicts, set up exclude filters so that each updated file is included by only one folder pair.")},
         {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnSignificantDifference; },
          [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnSignificantDifference = show; }, _("The following folders are significantly different. Please check that the correct folders are selected for synchronization.")},
         {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnNotEnoughDiskSpace; },
@@ -1228,7 +1341,7 @@ private:
         {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnDirectoryLockFailed; },
          [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnDirectoryLockFailed = show; }, _("Cannot set directory locks for the following folders:")},
         {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnVersioningFolderPartOfSync; },
-         [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnVersioningFolderPartOfSync = show; }, _("The versioning folder is contained in a base folder.") + L' ' +  _("The folder should be excluded from synchronization via filter.")},
+         [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnVersioningFolderPartOfSync = show; }, _("The versioning folder is part of the synchronization.") + L' ' +  _("The folder should be excluded via filter.")},
         //*INDENT-ON*
     };
 
@@ -1306,8 +1419,7 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalCfg) :
 
                     wxCommandEvent chkEvent(wxEVT_CHECKLISTBOX);
                     chkEvent.SetInt(selection[0]);
-                    if (wxEvtHandler* evtHandler = checklist.GetEventHandler())
-                        evtHandler->ProcessEvent(chkEvent);
+                    checklist.GetEventHandler()->ProcessEvent(chkEvent);
                 }
                 return;
         }
@@ -1729,6 +1841,113 @@ ConfirmationButton fff::showSelectTimespanDlg(wxWindow* parent, time_t& timeFrom
 
 namespace
 {
+class PasswordPromptDlg : public PasswordPromptDlgGenerated
+{
+public:
+    PasswordPromptDlg(wxWindow* parent, const std::wstring& msg, const std::wstring& lastErrorMsg /*optional*/, Zstring& password);
+
+private:
+    void onOkay  (wxCommandEvent& event) override;
+    void onCancel(wxCommandEvent& event) override { EndModal(static_cast<int>(ConfirmationButton::cancel)); }
+    void onClose (wxCloseEvent&   event) override { EndModal(static_cast<int>(ConfirmationButton::cancel)); }
+
+    void onToggleShowPassword(wxCommandEvent& event) override;
+
+    void updateGui();
+
+    //work around defunct keyboard focus on macOS (or is it wxMac?) => not needed for this dialog!
+    //void onLocalKeyEvent(wxKeyEvent& event);
+
+    //output-only parameters:
+    Zstring& passwordOut_;
+};
+
+
+PasswordPromptDlg::PasswordPromptDlg(wxWindow* parent, const std::wstring& msg, const std::wstring& lastErrorMsg /*optional*/, Zstring& password) :
+    PasswordPromptDlgGenerated(parent),
+    passwordOut_(password)
+{
+    setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
+
+    wxString titleTmp;
+    if (!parent || !parent->IsShownOnScreen())
+        titleTmp = wxTheApp->GetAppDisplayName();
+    SetTitle(titleTmp);
+
+    const int maxWidthDip = 600;
+
+    m_staticTextMain->SetLabelText(msg);
+    m_staticTextMain->Wrap(fastFromDIP(maxWidthDip));
+
+    m_checkBoxShowPassword->SetValue(false);
+
+    m_textCtrlPasswordHidden->ChangeValue(utfTo<wxString>(password));
+
+    bSizerError->Show(!lastErrorMsg.empty());
+    if (!lastErrorMsg.empty())
+    {
+        setImage(*m_bitmapError, loadImage("msg_error", fastFromDIP(32)));
+
+        m_staticTextError->SetLabelText(lastErrorMsg);
+        m_staticTextError->Wrap(fastFromDIP(maxWidthDip) - m_bitmapError->GetSize().x - 10 /*border in non-DIP pixel*/);
+    }
+
+    //set up default view for dialog size calculation
+    m_textCtrlPasswordVisible->Hide();
+
+    GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
+    //=> works like a charm for GTK2 with window resizing problems and title bar corruption; e.g. Debian!!!
+    Center(); //needs to be re-applied after a dialog size change!
+
+    updateGui(); //*after* SetSizeHints when standard dialog height has been calculated
+
+    //m_textCtrlPasswordHidden->SelectAll(); -> apparantly implicitly caused by SetFocus!?
+    m_textCtrlPasswordHidden->SetFocus();
+}
+
+
+void PasswordPromptDlg::onToggleShowPassword(wxCommandEvent& event)
+{
+    if (m_checkBoxShowPassword->GetValue())
+        m_textCtrlPasswordVisible->ChangeValue(m_textCtrlPasswordHidden->GetValue());
+    else
+        m_textCtrlPasswordHidden->ChangeValue(m_textCtrlPasswordVisible->GetValue());
+
+    updateGui();
+
+    wxTextCtrl& textCtrl = *(m_checkBoxShowPassword->GetValue() ? m_textCtrlPasswordVisible : m_textCtrlPasswordHidden);
+    textCtrl.SetFocus(); //macOS: selects text as unwanted side effect => *before* SetInsertionPointEnd()
+    textCtrl.SetInsertionPointEnd();
+}
+
+
+void PasswordPromptDlg::updateGui()
+{
+    m_textCtrlPasswordVisible->Show( m_checkBoxShowPassword->GetValue());
+    m_textCtrlPasswordHidden ->Show(!m_checkBoxShowPassword->GetValue());
+
+    Layout();
+    Refresh();
+}
+
+
+void PasswordPromptDlg::onOkay(wxCommandEvent& event)
+{
+    passwordOut_ = utfTo<Zstring>((m_checkBoxShowPassword->GetValue() ? m_textCtrlPasswordVisible : m_textCtrlPasswordHidden)->GetValue());
+    EndModal(static_cast<int>(ConfirmationButton::accept));
+}
+}
+
+ConfirmationButton fff::showPasswordPrompt(wxWindow* parent, const std::wstring& msg, const std::wstring& lastErrorMsg /*optional*/, Zstring& password)
+{
+    PasswordPromptDlg dlg(parent, msg, lastErrorMsg, password);
+    return static_cast<ConfirmationButton>(dlg.ShowModal());
+}
+
+//########################################################################################
+
+namespace
+{
 class CfgHighlightDlg : public CfgHighlightDlgGenerated
 {
 public:
@@ -1751,12 +1970,11 @@ CfgHighlightDlg::CfgHighlightDlg(wxWindow* parent, int& cfgHistSyncOverdueDays) 
     CfgHighlightDlgGenerated(parent),
     cfgHistSyncOverdueDaysOut_(cfgHistSyncOverdueDays)
 {
+    setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
 
     m_staticTextHighlight->Wrap(fastFromDIP(300));
 
     m_spinCtrlOverdueDays->SetMinSize({fastFromDIP(70), -1}); //Hack: set size (why does wxWindow::Size() not work?)
-
-    setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
 
     m_spinCtrlOverdueDays->SetValue(cfgHistSyncOverdueDays);
 
@@ -1838,8 +2056,8 @@ void ActivationDlg::onCopyUrl(wxCommandEvent& event)
 {
     setClipboardText(m_richTextManualActivationUrl->GetValue());
 
-        m_richTextManualActivationUrl->SetFocus(); //[!] otherwise selection is lost
-        m_richTextManualActivationUrl->SelectAll(); //some visual feedback
+    m_richTextManualActivationUrl->SetFocus(); //[!] otherwise selection is lost
+    m_richTextManualActivationUrl->SelectAll(); //some visual feedback
 }
 
 

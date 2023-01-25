@@ -97,18 +97,23 @@ std::string getGdriveClientSecret() { return ""; } //
 
 struct HttpSessionId
 {
-    /*explicit*/ HttpSessionId(const Zstring& serverName) :
+    explicit HttpSessionId(const Zstring& serverName) :
         server(serverName) {}
 
     Zstring server;
 };
-std::weak_ordering operator<=>(const HttpSessionId& lhs, const HttpSessionId& rhs)
-{
-    //exactly the type of case insensitive comparison we need for server names!
-    return compareAsciiNoCase(lhs.server, rhs.server); //https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
+
+inline 
+bool operator==(const HttpSessionId& lhs, const HttpSessionId& rhs) { return equalAsciiNoCase(lhs.server, rhs.server); }
 }
 
+//exactly the type of case insensitive comparison we need for server names!
+//https://docs.microsoft.com/en-us/windows/win32/api/ws2tcpip/nf-ws2tcpip-getaddrinfow#IDNs
+template<> struct std::hash<HttpSessionId> { size_t operator()(const HttpSessionId& sessionId) const { return StringHashAsciiNoCase()(sessionId.server); } };
 
+
+namespace
+{
 Zstring concatenateGdriveFolderPathPhrase(const GdrivePath& gdrivePath); //noexcept
 
 
@@ -195,13 +200,13 @@ public:
         runGlobalSessionCleanUp(); //throw ThreadStopRequest
     }) {}
 
-    void access(const HttpSessionId& login, const std::function<void(HttpSession& session)>& useHttpSession /*throw X*/) //throw SysError, X
+    void access(const HttpSessionId& sessionId, const std::function<void(HttpSession& session)>& useHttpSession /*throw X*/) //throw SysError, X
     {
-        Protected<HttpSessionManager::IdleHttpSessions>& sessionStore = getSessionStore(login);
+        Protected<HttpSessionManager::HttpSessionCache>& sessionCache = getSessionCache(sessionId);
 
         std::unique_ptr<HttpInitSession> httpSession;
 
-        sessionStore.access([&](HttpSessionManager::IdleHttpSessions& sessions)
+        sessionCache.access([&](HttpSessionManager::HttpSessionCache& sessions)
         {
             //assume "isHealthy()" to avoid hitting server connection limits: (clean up of !isHealthy() after use, idle sessions via worker thread)
             if (!sessions.empty())
@@ -211,13 +216,13 @@ public:
             }
         });
 
-        //create new HTTP session outside the lock: 1. don't block other threads 2. non-atomic regarding "sessionStore"! => one session too many is not a problem!
+        //create new HTTP session outside the lock: 1. don't block other threads 2. non-atomic regarding "sessionCache"! => one session too many is not a problem!
         if (!httpSession)
-            httpSession = std::make_unique<HttpInitSession>(login.server, caCertFilePath_); //throw SysError
+            httpSession = std::make_unique<HttpInitSession>(sessionId.server, caCertFilePath_); //throw SysError
 
         ZEN_ON_SCOPE_EXIT(
             if (isHealthy(httpSession->session)) //thread that created the "!isHealthy()" session is responsible for clean up (avoid hitting server connection limits!)
-        sessionStore.access([&](HttpSessionManager::IdleHttpSessions& sessions) { sessions.push_back(std::move(httpSession)); }); );
+        sessionCache.access([&](HttpSessionManager::HttpSessionCache& sessions) { sessions.push_back(std::move(httpSession)); }); );
 
         useHttpSession(httpSession->session); //throw X
     }
@@ -237,20 +242,20 @@ private:
     };
     static bool isHealthy(const HttpSession& s) { return std::chrono::steady_clock::now() - s.getLastUseTime() <= HTTP_SESSION_MAX_IDLE_TIME; }
 
-    using IdleHttpSessions = std::vector<std::unique_ptr<HttpInitSession>>;
+    using HttpSessionCache = std::vector<std::unique_ptr<HttpInitSession>>;
 
-    Protected<IdleHttpSessions>& getSessionStore(const HttpSessionId& login)
+    Protected<HttpSessionCache>& getSessionCache(const HttpSessionId& sessionId)
     {
-        //single global session store per login; life-time bound to globalInstance => never remove a sessionStore!!!
-        Protected<IdleHttpSessions>* store = nullptr;
+        //single global session store per sessionId; life-time bound to globalInstance => never remove a sessionCache!!!
+        Protected<HttpSessionCache>* sessionCache = nullptr;
 
-        globalSessionStore_.access([&](GlobalHttpSessions& sessionsById)
+        globalSessionCache_.access([&](GlobalHttpSessions& sessionsById)
         {
-            store = &sessionsById[login]; //get or create
+            sessionCache = &sessionsById[sessionId]; //get or create
         });
-        static_assert(std::is_same_v<GlobalHttpSessions, std::map<HttpSessionId, Protected<IdleHttpSessions>>>, "require std::map so that the pointers we return remain stable");
+        static_assert(std::is_same_v<GlobalHttpSessions, std::unordered_map<HttpSessionId, Protected<HttpSessionCache>>>, "require std::unordered_map so that the pointers we return remain stable");
 
-        return *store;
+        return *sessionCache;
     }
 
     //run a dedicated clean-up thread => it's unclear when the server let's a connection time out, so we do it preemptively
@@ -267,34 +272,39 @@ private:
 
             lastCleanupTime = std::chrono::steady_clock::now();
 
-            std::vector<Protected<IdleHttpSessions>*> sessionStores; //pointers remain stable, thanks to std::unordered_map<>
+            std::vector<Protected<HttpSessionCache>*> sessionCaches; //pointers remain stable, thanks to std::unordered_map<>
 
-            globalSessionStore_.access([&](GlobalHttpSessions& sessionsById)
+            globalSessionCache_.access([&](GlobalHttpSessions& sessionsByCfg)
             {
-                for (auto& [sessionId, idleSession] : sessionsById)
-                    sessionStores.push_back(&idleSession);
+                for (auto& [sessionCfg, idleSession] : sessionsByCfg)
+                    sessionCaches.push_back(&idleSession);
             });
 
-            for (Protected<IdleHttpSessions>* sessionStore : sessionStores)
-                for (bool done = false; !done;)
-                    sessionStore->access([&](IdleHttpSessions& sessions)
+            for (Protected<HttpSessionCache>* sessionCache : sessionCaches)
+                for (;;)
                 {
-                    for (std::unique_ptr<HttpInitSession>& sshSession : sessions)
-                        if (!isHealthy(sshSession->session)) //!isHealthy() sessions are destroyed after use => in this context this means they have been idle for too long
-                        {
-                            sshSession.swap(sessions.back());
-                            /**/            sessions.pop_back(); //run ~HttpSession *inside* the lock! => avoid hitting server limits!
-                            std::this_thread::yield();
-                            return; //don't hold lock for too long: delete only one session at a time, then yield...
-                        }
-                    done = true;
-                });
+                    bool done = false;
+                    sessionCache->access([&](HttpSessionCache& sessions)
+                    {
+                        for (std::unique_ptr<HttpInitSession>& sshSession : sessions)
+                            if (!isHealthy(sshSession->session)) //!isHealthy() sessions are destroyed after use => in this context this means they have been idle for too long
+                            {
+                                sshSession.swap(sessions.back());
+                                /**/            sessions.pop_back(); //run ~HttpSession *inside* the lock! => avoid hitting server limits!
+                                return; //don't hold lock for too long: delete only one session at a time, then yield...
+                            }
+                        done = true;
+                    });
+                    if (done)
+                        break;
+                    std::this_thread::yield();
+                }
         }
     }
 
-    using GlobalHttpSessions = std::map<HttpSessionId, Protected<IdleHttpSessions>>;
+    using GlobalHttpSessions = std::unordered_map<HttpSessionId, Protected<HttpSessionCache>>;
 
-    Protected<GlobalHttpSessions> globalSessionStore_;
+    Protected<GlobalHttpSessions> globalSessionCache_;
     const Zstring caCertFilePath_;
     InterruptibleThread sessionCleaner_;
 };
@@ -448,15 +458,15 @@ GdriveAccessInfo gdriveExchangeAuthCode(const GdriveAuthCode& authCode, int time
 GdriveAccessInfo gdriveAuthorizeAccess(const std::string& gdriveLoginHint, const std::function<void()>& updateGui /*throw X*/, int timeoutSec) //throw SysError, X
 {
     //spin up a web server to wait for the HTTP GET after Google authentication
-    const ::addrinfo hints 
+    const addrinfo hints 
     {
-    .ai_flags    = AI_PASSIVE //the returned socket addresses will be suitable for bind(2)ing a socket that will accept(2) connections.
-    | AI_ADDRCONFIG //no such issue on Linux: https://bugs.chromium.org/p/chromium/issues/detail?id=5234
-    ,
-    .ai_family   = AF_INET, //make sure our server is reached by IPv4 127.0.0.1, not IPv6 [::1]
-    .ai_socktype = SOCK_STREAM, //we *do* care about this one!
+        .ai_flags =  
+                    AI_ADDRCONFIG | //no such issue on Linux: https://bugs.chromium.org/p/chromium/issues/detail?id=5234
+                    AI_PASSIVE, //the returned socket addresses will be suitable for bind(2)ing a socket that will accept(2) connections.
+        .ai_family   = AF_INET, //make sure our server is reached by IPv4 127.0.0.1, not IPv6 [::1]
+        .ai_socktype = SOCK_STREAM, //we *do* care about this one!
     };
-    ::addrinfo* servinfo = nullptr;
+    addrinfo* servinfo = nullptr;
     ZEN_ON_SCOPE_EXIT(if (servinfo) ::freeaddrinfo(servinfo));
 
     //ServiceName == "0" => open the next best free port
@@ -471,10 +481,10 @@ GdriveAccessInfo gdriveAuthorizeAccess(const std::string& gdriveLoginHint, const
 
     const auto getBoundSocket = [](const auto& /*::addrinfo*/ ai)
     {
-            SocketType testSocket = ::socket(ai.ai_family,    //int socket_family
-                                             SOCK_CLOEXEC |
-                                             ai.ai_socktype,  //int socket_type
-                                             ai.ai_protocol); //int protocol
+        SocketType testSocket = ::socket(ai.ai_family,    //int socket_family
+                                         SOCK_CLOEXEC |
+                                         ai.ai_socktype,  //int socket_type
+                                         ai.ai_protocol); //int protocol
         if (testSocket == invalidSocket)
             THROW_LAST_SYS_ERROR_WSA("socket");
         ZEN_ON_SCOPE_FAIL(closeSocket(testSocket));
@@ -553,11 +563,11 @@ GdriveAccessInfo gdriveAuthorizeAccess(const std::string& gdriveLoginHint, const
             if (updateGui) updateGui(); //throw X
 
             const int waitTimeMs = 100;
-             pollfd fds[] = {{socket, POLLIN}};
+            pollfd fds[] = {{socket, POLLIN}};
 
             const char* functionName = "poll";
-            if (const int rv = ::poll(fds, std::size(fds), waitTimeMs); //int timeout
-                rv < 0)
+            const int rv = ::poll(fds, std::size(fds), waitTimeMs); //int timeout
+            if (rv < 0)
                 THROW_LAST_SYS_ERROR_WSA(functionName);
             else if (rv != 0)
                 break;
@@ -1970,8 +1980,7 @@ public:
         if (ps.relPath.empty())
             return ps.existingItemId;
 
-        const AfsPath itemPathMissingChild(appendPath(ps.existingPath.value, ps.relPath.front()));
-        throw SysError(replaceCpy(_("Cannot find %x."), L"%x", fmtPath(getShortDisplayPath(itemPathMissingChild))));
+        throw SysError(replaceCpy(_("%x does not exist."), L"%x", fmtPath(ps.relPath.front())));
     }
 
     std::pair<std::string /*itemId*/, GdriveItemDetails> getFileAttributes(const std::string& locationRootId, const AfsPath& itemPath, bool followLeafShortcut) //throw SysError
@@ -1992,7 +2001,7 @@ public:
             it != itemDetails_.end())
             return *it;
 
-        //itemId was found! => (must either be a location root) or buffered in itemDetails_
+        //itemId was already found! => (must either be a location root) or buffered in itemDetails_
         throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
     }
 
@@ -2129,11 +2138,6 @@ private:
 
     friend class GdriveDrivesBuffer;
 
-    std::wstring getShortDisplayPath(const AfsPath& itemPath) const
-    {
-        return utfTo<std::wstring>(FILE_NAME_SEPARATOR + itemPath.value); //sufficient info for SysError + we don't have a locationName anyway
-    }
-
     void notifyItemUpdated(const FileStateDelta& stateDelta, const std::string& itemId, const GdriveItemDetails* details)
     {
         if (!stateDelta.changedIds->contains(itemId)) //no conflicting changes in the meantime?
@@ -2195,9 +2199,7 @@ private:
             if (equalNativePath(itChild->second.itemName, relPath.front()))
             {
                 if (itFound != itemDetails_.end())
-                    throw SysError(replaceCpy(_("Cannot find %x."), L"%x",
-                                              fmtPath(getShortDisplayPath(AfsPath(appendPath(folderPath.value, relPath.front()))))) + L' ' +
-                                   replaceCpy(_("The name %x is used by more than one item in the folder."), L"%x", fmtPath(relPath.front())));
+                    throw SysError(replaceCpy(_("The name %x is used by more than one item in the folder."), L"%x", fmtPath(relPath.front())));
 
                 itFound = itChild;
             }
@@ -2233,8 +2235,8 @@ private:
 
             switch (childDetails.type)
             {
-                case GdriveItemType::file: //parent/file/child-rel-path... => obscure, but possible (and not an error)
-                    return {childId, childDetails.type, childItemPath, childRelPath};
+                case GdriveItemType::file: //parent/file/child-rel-path... => obscure, but possible
+                    throw SysError(replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(AFS::getItemName(childItemPath))));
 
                 case GdriveItemType::folder:
                     return getPathStatusSub(childId, childItemPath, childRelPath, followLeafShortcut); //throw SysError
@@ -2242,16 +2244,14 @@ private:
                 case GdriveItemType::shortcut:
                     switch (getItemDetailsBuffered(childDetails.targetId).type)
                     {
-                        case GdriveItemType::file: //parent/file-symlink/child-rel-path... => obscure, but possible (and not an error)
-                            return {childDetails.targetId, GdriveItemType::file, childItemPath, childRelPath}; //resolve symlinks if in the *middle* of a path!
+                        case GdriveItemType::file: //parent/file-symlink/child-rel-path... => obscure, but possible
+                            throw SysError(replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(AFS::getItemName(childItemPath))));
 
                         case GdriveItemType::folder: //parent/folder-symlink/child-rel-path... => always follow
                             return getPathStatusSub(childDetails.targetId, childItemPath, childRelPath, followLeafShortcut); //throw SysError
 
                         case GdriveItemType::shortcut: //should never happen: creating shortcuts to shortcuts fails with "Internal Error"
-                            throw SysError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x",
-                                                      fmtPath(getShortDisplayPath(AfsPath(appendPath(folderPath.value, relPath.front()))))) + L' ' +
-                                           L"Google Drive Shortcut points to another Shortcut.");
+                            throw SysError(replaceCpy<std::wstring>(L"Google Drive Shortcut %x is pointing to another Shortcut.", L"%x", fmtPath(AFS::getItemName(childItemPath))));
                     }
                     break;
             }
@@ -2504,9 +2504,7 @@ private:
             if (equalNativePath(fileStateRef.ref().getSharedDriveName(), locationName))
             {
                 if (fileState)
-                    throw SysError(replaceCpy(_("Cannot find %x."), L"%x",
-                    fmtPath(getGdriveDisplayPath({{accessBuf_.getUserEmail(), locationName}, AfsPath()}))) + L' ' +
-                replaceCpy(_("The name %x is used by more than one item in the folder."), L"%x", fmtPath(locationName)));
+                    throw SysError(replaceCpy(_("The name %x is used by more than one item in the folder."), L"%x", fmtPath(locationName)));
 
                 fileState = &fileStateRef.ref();
                 locationRootId = driveId;
@@ -2516,9 +2514,7 @@ private:
             if (equalNativePath(sfd.folderName, locationName))
             {
                 if (fileState)
-                    throw SysError(replaceCpy(_("Cannot find %x."), L"%x",
-                    fmtPath(getGdriveDisplayPath({{accessBuf_.getUserEmail(), locationName}, AfsPath()}))) + L' ' +
-                replaceCpy(_("The name %x is used by more than one item in the folder."), L"%x", fmtPath(locationName)));
+                    throw SysError(replaceCpy(_("The name %x is used by more than one item in the folder."), L"%x", fmtPath(locationName)));
 
                 if (sfd.sharedDriveId.empty()) //=> My Drive
                     fileState = &myDrive_;
@@ -2534,8 +2530,7 @@ private:
             }
 
         if (!fileState)
-            throw SysError(replaceCpy(_("Cannot find %x."), L"%x",
-            fmtPath(getGdriveDisplayPath({{accessBuf_.getUserEmail(), locationName}, AfsPath()}))));
+            throw SysError(replaceCpy(_("%x does not exist."), L"%x", fmtPath(locationName)));
 
         return {*fileState, locationRootId};
     }
@@ -2637,7 +2632,7 @@ public:
             }
             catch (FileError&)
             {
-                if (itemStillExists(dbFilePath)) //throw FileError
+                if (itemExists(dbFilePath)) //throw FileError
                     throw;
             }
         }
@@ -2670,19 +2665,22 @@ public:
         });
 
         //also include available, but not-yet-loaded sessions
-        traverseFolder(configDirPath_,
-        [&](const    FileInfo& fi) { if (endsWith(fi.itemName, Zstr(".db"))) emails.push_back(utfTo<std::string>(beforeLast(fi.itemName, Zstr('.'), IfNotFoundReturn::none))); },
-        [&](const  FolderInfo& fi) {},
-        [&](const SymlinkInfo& si) {},
-        [&](const std::wstring& errorMsg)
+        try
+        {
+            traverseFolder(configDirPath_,
+            [&](const    FileInfo& fi) { if (endsWith(fi.itemName, Zstr(".db"))) emails.push_back(utfTo<std::string>(beforeLast(fi.itemName, Zstr('.'), IfNotFoundReturn::none))); },
+            [&](const  FolderInfo& fi) {},
+            [&](const SymlinkInfo& si) {}); //throw FileError
+        }
+        catch (FileError&)
         {
             try
             {
-                if (itemStillExists(configDirPath_)) //throw FileError
-                    throw FileError(errorMsg);
+                if (itemExists(configDirPath_)) //throw FileError
+                    throw;
             }
             catch (const FileError& e) { throw SysError(replaceCpy(e.toString(), L"\n\n", L'\n')); } //file access errors should be further enriched by context info => SysError
-        });
+        }
 
         removeDuplicates(emails, LessAsciiNoCase());
         return emails;
@@ -2792,7 +2790,7 @@ private:
         }
         catch (FileError&)
         {
-            if (itemStillExists(dbFilePath)) //throw FileError
+            if (itemExists(dbFilePath)) //throw FileError
                 throw;
 
             return std::nullopt;
@@ -3184,8 +3182,8 @@ struct OutputStreamGdrive : public AFS::OutputStreamImpl
                        std::optional<time_t> modTime,
                        std::unique_ptr<PathAccessLock>&& pal) //throw SysError
     {
-        std::promise<AFS::FingerPrint> pFilePrint;
-        futFilePrint_ = pFilePrint.get_future();
+        std::promise<AFS::FingerPrint> promFilePrint;
+        futFilePrint_ = promFilePrint.get_future();
 
         //CAVEAT: if file is already existing, OutputStreamGdrive *constructor* must fail, not OutputStreamGdrive::write(),
         //        otherwise ~OutputStreamImpl() will delete the already existing file! => don't check asynchronously!
@@ -3198,13 +3196,13 @@ struct OutputStreamGdrive : public AFS::OutputStreamImpl
                 throw SysError(replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(fileName)));
 
             if (ps.relPath.size() > 1) //parent folder missing
-                throw SysError(replaceCpy(_("Cannot find %x."), L"%x",
-                                          fmtPath(getGdriveDisplayPath({gdrivePath.gdriveLogin, AfsPath(appendPath(ps.existingPath.value, ps.relPath.front()))}))));
+                throw SysError(replaceCpy(_("%x does not exist."), L"%x", fmtPath(ps.relPath.front())));
+
             parentId = ps.existingItemId;
         });
 
         worker_ = InterruptibleThread([gdrivePath, modTime, fileName, asyncStreamIn = this->asyncStreamOut_,
-                                                   pFilePrint = std::move(pFilePrint),
+                                                   pFilePrint = std::move(promFilePrint),
                                                    parentId   = std::move(parentId),
                                                    aai        = std::move(aai),
                                                    pal        = std::move(pal)]() mutable
@@ -3330,10 +3328,11 @@ public:
             });
 
             if (!ps.relPath.empty())
-                throw FileError(replaceCpy(_("Cannot find %x."), L"%x", fmtPath(getDisplayPath(folderPath))));
+                throw SysError(replaceCpy(_("%x does not exist."), L"%x", fmtPath(ps.relPath.front())));
 
             if (ps.existingType != GdriveItemType::folder)
                 throw SysError(replaceCpy<std::wstring>(L"%x is not a folder.", L"%x", fmtPath(getItemName(folderPath))));
+            warn_static("weird in combination with 'file attributes'")
 
             return Zstr("https://drive.google.com/drive/folders/") + utfTo<Zstring>(ps.existingItemId);
         }
@@ -3380,12 +3379,29 @@ private:
     //----------------------------------------------------------------------------------------------------------------
     ItemType getItemType(const AfsPath& itemPath) const override //throw FileError
     {
-        if (const std::optional<ItemType> type = itemStillExists(itemPath)) //throw FileError
-            return *type;
-        throw FileError(replaceCpy(_("Cannot find %x."), L"%x", fmtPath(getDisplayPath(itemPath))));
+        try
+        {
+            GdriveFileState::PathStatus ps;
+            accessGlobalFileState(gdriveLogin_, [&](GdriveFileStateAtLocation& fileState) //throw SysError
+            {
+                ps = fileState.getPathStatus(itemPath, false /*followLeafShortcut*/); //throw SysError
+            });
+            if (ps.relPath.empty())
+                switch (ps.existingType)
+                {
+                    //*INDENT-OFF*
+                    case GdriveItemType::file:     return ItemType::file;
+                    case GdriveItemType::folder:   return ItemType::folder;
+                    case GdriveItemType::shortcut: return ItemType::symlink;
+                    //*INDENT-ON*
+                }
+
+            throw SysError(replaceCpy(_("%x does not exist."), L"%x", fmtPath(Zstring(ps.relPath.front()))));
+        }
+        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getDisplayPath(itemPath))), e.toString()); }
     }
 
-    std::optional<ItemType> itemStillExists(const AfsPath& itemPath) const override //throw FileError
+    std::variant<ItemType, AfsPath /*last existing parent path*/> getItemTypeIfExists(const AfsPath& itemPath) const override //throw FileError
     {
         try
         {
@@ -3403,12 +3419,12 @@ private:
                     case GdriveItemType::shortcut: return ItemType::symlink;
                     //*INDENT-ON*
                 }
-            return {};
+            return ps.existingPath;
         }
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getDisplayPath(itemPath))), e.toString()); }
     }
-    //----------------------------------------------------------------------------------------------------------------
 
+    //----------------------------------------------------------------------------------------------------------------
     //already existing: 1. fails or 2. creates duplicate (unlikely)
     void createFolderPlain(const AfsPath& folderPath) const override //throw FileError
     {
@@ -3426,7 +3442,8 @@ private:
                     throw SysError(replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(folderName)));
 
                 if (ps.relPath.size() > 1) //parent folder missing
-                    throw SysError(replaceCpy(_("Cannot find %x."), L"%x", fmtPath(getDisplayPath(AfsPath(appendPath(ps.existingPath.value, ps.relPath.front()))))));
+                    throw SysError(replaceCpy(_("%x does not exist."), L"%x", fmtPath(ps.relPath.front())));
+
                 parentId = ps.existingItemId;
             });
 
@@ -3442,23 +3459,44 @@ private:
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot create directory %x."), L"%x", fmtPath(getDisplayPath(folderPath))), e.toString()); }
     }
 
-    void removeItemPlainImpl(const AfsPath& folderPath, bool permanent /*...or move to trash*/) const //throw SysError
+    void removeItemPlainImpl(const AfsPath& itemPath, std::optional<GdriveItemType> expectedType, bool permanent /*...or move to trash*/, bool failIfNotExist) const //throw SysError
     {
+        const std::optional<AfsPath> parentPath = getParentPath(itemPath);
+        if (!parentPath) throw SysError(L"Item is device root");
+
         std::string itemId;
         std::optional<std::string> parentIdToUnlink;
         const GdrivePersistentSessions::AsyncAccessInfo aai = accessGlobalFileState(gdriveLogin_, [&](GdriveFileStateAtLocation& fileState) //throw SysError
         {
-            const std::optional<AfsPath> parentPath = getParentPath(folderPath);
-            if (!parentPath) throw SysError(L"Item is device root");
+            const GdriveFileState::PathStatus ps = fileState.getPathStatus(itemPath, false /*followLeafShortcut*/); //throw SysError
+            if (!ps.relPath.empty())
+            {
+                if (failIfNotExist)
+                    throw SysError(replaceCpy(_("%x does not exist."), L"%x", fmtPath(ps.relPath.front())));
+                else
+                    return;
+            }
 
             GdriveItemDetails itemDetails;
-            std::tie(itemId, itemDetails) = fileState.getFileAttributes(folderPath, false /*followLeafShortcut*/); //throw SysError
+            std::tie(itemId, itemDetails) = fileState.getFileAttributes(itemPath, false /*followLeafShortcut*/); //throw SysError
             assert(std::find(itemDetails.parentIds.begin(), itemDetails.parentIds.end(), fileState.getItemId(*parentPath, true /*followLeafShortcut*/)) != itemDetails.parentIds.end());
+
+            if (expectedType && itemDetails.type != *expectedType)
+                switch (*expectedType)
+                {
+                    //*INDENT-OFF*
+                    case GdriveItemType::file:     throw SysError(L"Item is not a file");
+                    case GdriveItemType::folder:   throw SysError(L"Item is not a folder");
+                    case GdriveItemType::shortcut: throw SysError(L"Item is not a shortcut");
+                    //*INDENT-ON*
+                }
 
             //hard-link handling applies to shared files as well: 1. it's the right thing (TM) 2. if we're not the owner: deleting would fail
             if (itemDetails.parentIds.size() > 1 || itemDetails.owner == FileOwner::other) //FileOwner::other behaves like a followed symlink! i.e. vanishes if owner deletes it!
                 parentIdToUnlink = fileState.getItemId(*parentPath, true /*followLeafShortcut*/); //throw SysError
         });
+        if (itemId.empty())
+            return;
 
         if (parentIdToUnlink)
         {
@@ -3487,37 +3525,31 @@ private:
 
     void removeFilePlain(const AfsPath& filePath) const override //throw FileError
     {
-        try { removeItemPlainImpl(filePath, true /*permanent*/); /*throw SysError*/ }
+        try { removeItemPlainImpl(filePath, GdriveItemType::file, true /*permanent*/, false /*failIfNotExist*/); /*throw SysError*/ }
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot delete file %x."), L"%x", fmtPath(getDisplayPath(filePath))), e.toString()); }
     }
 
     void removeSymlinkPlain(const AfsPath& linkPath) const override //throw FileError
     {
-        try { removeItemPlainImpl(linkPath, true /*permanent*/); /*throw SysError*/ }
+        try { removeItemPlainImpl(linkPath, GdriveItemType::shortcut, true /*permanent*/, false /*failIfNotExist*/); /*throw SysError*/ }
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot delete symbolic link %x."), L"%x", fmtPath(getDisplayPath(linkPath))), e.toString()); }
     }
 
     void removeFolderPlain(const AfsPath& folderPath) const override //throw FileError
     {
-        try { removeItemPlainImpl(folderPath, true /*permanent*/); /*throw SysError*/ }
+        try { removeItemPlainImpl(folderPath, GdriveItemType::folder, true /*permanent*/, false /*failIfNotExist*/); /*throw SysError*/ }
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot delete directory %x."), L"%x", fmtPath(getDisplayPath(folderPath))), e.toString()); }
     }
 
     void removeFolderIfExistsRecursion(const AfsPath& folderPath, //throw FileError
-                                       const std::function<void(const std::wstring& displayPath)>& onBeforeFileDeletion /*throw X*/, //optional
-                                       const std::function<void(const std::wstring& displayPath)>& onBeforeFolderDeletion) const override //one call for each object!
+                                       const std::function<void(const std::wstring& displayPath)>& onBeforeFileDeletion   /*throw X*/,
+                                       const std::function<void(const std::wstring& displayPath)>& onBeforeSymlinkDeletion/*throw X*/,
+                                       const std::function<void(const std::wstring& displayPath)>& onBeforeFolderDeletion /*throw X*/) const override
     {
         if (onBeforeFolderDeletion) onBeforeFolderDeletion(getDisplayPath(folderPath)); //throw X
-        try
-        {
-            //deletes recursively with a single call!
-            removeFolderPlain(folderPath); //throw FileError
-        }
-        catch (const FileError&)
-        {
-            if (itemStillExists(folderPath)) //throw FileError
-                throw;
-        }
+
+        try { removeItemPlainImpl(folderPath, GdriveItemType::folder, true /*permanent*/, false /*failIfNotExist*/); /*throw SysError*/ }
+        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot delete directory %x."), L"%x", fmtPath(getDisplayPath(folderPath))), e.toString()); }
     }
 
     //----------------------------------------------------------------------------------------------------------------
@@ -3630,8 +3662,8 @@ private:
                     throw SysError(replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(itemNameNew)));
 
                 if (psTo.relPath.size() > 1) //parent folder missing
-                    throw SysError(replaceCpy(_("Cannot find %x."), L"%x",
-                                              fmtPath(fsTarget.getDisplayPath(AfsPath(appendPath(psTo.existingPath.value, psTo.relPath.front()))))));
+                    throw SysError(replaceCpy(_("%x does not exist."), L"%x", fmtPath(psTo.relPath.front())));
+
                 parentIdTrg = psTo.existingItemId;
             });
 
@@ -3713,7 +3745,8 @@ private:
                     throw SysError(replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(shortcutName)));
 
                 if (ps.relPath.size() > 1) //parent folder missing
-                    throw SysError(replaceCpy(_("Cannot find %x."), L"%x", fmtPath(fsTarget.getDisplayPath(AfsPath(appendPath(ps.existingPath.value, ps.relPath.front()))))));
+                    throw SysError(replaceCpy(_("%x does not exist."), L"%x", fmtPath(ps.relPath.front())));
+
                 parentId = ps.existingItemId;
             });
 
@@ -3783,8 +3816,8 @@ private:
                         throw SysError(replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(itemNameNew)));
 
                     if (psTo.relPath.size() > 1) //parent folder missing
-                        throw SysError(replaceCpy(_("Cannot find %x."), L"%x",
-                                                  fmtPath(fsTarget.getDisplayPath(AfsPath(appendPath(psTo.existingPath.value, psTo.relPath.front()))))));
+                        throw SysError(replaceCpy(_("%x does not exist."), L"%x", fmtPath(psTo.relPath.front())));
+
                     parentIdTo = psTo.existingItemId;
                 }
             });
@@ -3810,26 +3843,28 @@ private:
     FileIconHolder getFileIcon      (const AfsPath& filePath, int pixelSize) const override { return {}; } //throw FileError; optional return value
     ImageHolder    getThumbnailImage(const AfsPath& filePath, int pixelSize) const override { return {}; } //throw FileError; optional return value
 
-    void authenticateAccess(bool allowUserInteraction) const override //throw FileError
+    void authenticateAccess(const RequestPasswordFun& requestPassword /*throw X*/) const override //throw FileError, (X)
     {
-        if (allowUserInteraction)
-            try
-            {
-                const std::shared_ptr<GdrivePersistentSessions> gps = globalGdriveSessions.get();
-                if (!gps)
-                    throw SysError(formatSystemError("GdriveFileSystem::authenticateAccess", L"", L"Function call not allowed during init/shutdown."));
+        try
+        {
+            const std::shared_ptr<GdrivePersistentSessions> gps = globalGdriveSessions.get();
+            if (!gps)
+                throw SysError(formatSystemError("GdriveFileSystem::authenticateAccess", L"", L"Function call not allowed during init/shutdown."));
 
-                for (const std::string& accountEmail : gps->listAccounts()) //throw SysError
-                    if (equalAsciiNoCase(accountEmail, gdriveLogin_.email))
-                        return;
+            for (const std::string& accountEmail : gps->listAccounts()) //throw SysError
+                if (equalAsciiNoCase(accountEmail, gdriveLogin_.email))
+                    return;
+
+            const bool allowUserInteraction = static_cast<bool>(requestPassword);
+            if (allowUserInteraction)
                 gps->addUserSession(gdriveLogin_.email /*gdriveLoginHint*/, nullptr /*updateGui*/, gdriveLogin_.timeoutSec); //throw SysError
-                //error messages will be lost after time out in dir_exist_async.h! However:
-                //The most-likely-to-fail parts (web access) are reported by gdriveAuthorizeAccess() via the browser!
-            }
-            catch (const SysError& e) { throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", fmtPath(getDisplayPath(AfsPath()))), e.toString()); }
+            //error messages will be lost if user cancels in dir_exist_async.h! However:
+            //The most-likely-to-fail parts (web access) are reported by gdriveAuthorizeAccess() via the browser!
+            else
+                throw SysError(replaceCpy(_("Please add a connection to user account %x first."), L"%x", utfTo<std::wstring>(gdriveLogin_.email)));
+        }
+        catch (const SysError& e) { throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", fmtPath(getDisplayPath(AfsPath()))), e.toString()); }
     }
-
-    int getAccessTimeout() const override { return gdriveLogin_.timeoutSec; } //returns "0" if no timeout in force
 
     bool hasNativeTransactionalCopy() const override { return true; }
     //----------------------------------------------------------------------------------------------------------------
@@ -3867,7 +3902,7 @@ private:
     {
         try
         {
-            removeItemPlainImpl(itemPath, false /*permanent*/); //throw SysError
+            removeItemPlainImpl(itemPath, std::nullopt /*expectedType*/, false /*permanent*/, true /*failIfNotExist*/); //throw SysError
         }
         catch (const SysError& e) { throw FileError(replaceCpy(_("Unable to move %x to the recycle bin."), L"%x", fmtPath(getDisplayPath(itemPath))), e.toString()); }
     }
@@ -3964,7 +3999,7 @@ std::vector<std::string /*account email*/> fff::gdriveListAccounts() //throw Fil
 
         throw SysError(formatSystemError("gdriveListAccounts", L"", L"Function call not allowed during init/shutdown."));
     }
-    catch (const SysError& e) { throw FileError(replaceCpy(_("Unable to access %x."), L"%x", L"Google Drive"), e.toString()); }
+    catch (const SysError& e) { throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", L"Google Drive"), e.toString()); }
 }
 
 
@@ -3977,7 +4012,7 @@ std::vector<Zstring /*locationName*/> fff::gdriveListLocations(const std::string
 
         throw SysError(formatSystemError("gdriveListLocations", L"", L"Function call not allowed during init/shutdown."));
     }
-    catch (const SysError& e) { throw FileError(replaceCpy(_("Unable to access %x."), L"%x", fmtPath(getGdriveDisplayPath({{accountEmail, Zstr("")}, AfsPath()}))), e.toString()); }
+    catch (const SysError& e) { throw FileError(replaceCpy(_("Unable to connect to %x."), L"%x", fmtPath(getGdriveDisplayPath({{accountEmail, Zstr("")}, AfsPath()}))), e.toString()); }
 }
 
 

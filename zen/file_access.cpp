@@ -31,51 +31,19 @@ namespace
 {
 
 
-std::pair<Zstring, ItemType> getExistingPath(const Zstring& itemPath) //throw FileError
+struct SysErrorCode : public zen::SysError
 {
-    try
-    {
-        return {itemPath, getItemType(itemPath)}; //throw FileError
-    }
-    catch (const FileError& e) //not existing or access error
-    {
-        const std::optional<Zstring> parentPath = getParentFolderPath(itemPath);
-        if (!parentPath) //device root
-            throw;
-        //else: let's dig deeper... don't bother checking Win32 codes; e.g. not existing item may have the codes:
-        //  ERROR_FILE_NOT_FOUND, ERROR_PATH_NOT_FOUND, ERROR_INVALID_NAME, ERROR_INVALID_DRIVE,
-        //  ERROR_NOT_READY, ERROR_INVALID_PARAMETER, ERROR_BAD_PATHNAME, ERROR_BAD_NETPATH => not reliable
+    SysErrorCode(const std::string& functionName, ErrorCode ec) : SysError(formatSystemError(functionName, ec)), errorCode(ec) {}
 
-        auto [existingPath, existingType] = getExistingPath(*parentPath); //throw FileError
-
-        if (existingPath == *parentPath && existingType != ItemType::file /*obscure, but possible (and not an error)*/)
-            try
-            {
-                const Zstring itemName = afterLast(itemPath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
-                assert(!itemName.empty());
-
-                traverseFolder(*parentPath,
-                [&](const    FileInfo& fi) { if (fi.itemName == itemName) throw ItemType::file;    }, //case-sensitive! itemPath must be normalized!
-                [&](const  FolderInfo& fi) { if (fi.itemName == itemName) throw ItemType::folder;  },
-                [&](const SymlinkInfo& si) { if (si.itemName == itemName) throw ItemType::symlink; },
-                [](const std::wstring& errorMsg) { throw FileError(errorMsg); });
-            }
-            catch (const ItemType&) //finding the item after getItemType() previously failed is exceptional
-            {
-                throw FileError(_("Temporary access error:") + L' ' + e.toString());
-            }
-
-        return {std::move(existingPath), existingType};
-    }
-}
-}
+    const ErrorCode errorCode;
+};
 
 
-ItemType zen::getItemType(const Zstring& itemPath) //throw FileError
+ItemType getItemTypeImpl(const Zstring& itemPath) //throw SysErrorCode
 {
     struct stat itemInfo = {};
     if (::lstat(itemPath.c_str(), &itemInfo) != 0)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(itemPath)), "lstat");
+        throw SysErrorCode("lstat", errno);
 
     if (S_ISLNK(itemInfo.st_mode))
         return ItemType::symlink;
@@ -83,35 +51,72 @@ ItemType zen::getItemType(const Zstring& itemPath) //throw FileError
         return ItemType::folder;
     return ItemType::file; //S_ISREG || S_ISCHR || S_ISBLK || S_ISFIFO || S_ISSOCK
 }
-
-
-std::optional<ItemType> zen::itemStillExists(const Zstring& itemPath) //throw FileError
-{
-    const auto& [existingPath, existingType] = getExistingPath(itemPath); //throw FileError
-    if (existingPath == itemPath)
-        return existingType;
-    else
-        return {};
 }
 
 
-bool zen::fileAvailable(const Zstring& filePath) //noexcept
+ItemType zen::getItemType(const Zstring& itemPath) //throw FileError
 {
-    //symbolic links (broken or not) are also treated as existing files!
-    struct stat fileInfo = {};
-    if (::stat(filePath.c_str(), &fileInfo) == 0) //follow symlinks!
-        return S_ISREG(fileInfo.st_mode);
-    return false;
+    try
+    {
+        return getItemTypeImpl(itemPath); //throw SysErrorCode
+    }
+    catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(itemPath)), e.toString()); }
 }
 
 
-bool zen::dirAvailable(const Zstring& dirPath) //noexcept
+std::variant<ItemType, Zstring /*last existing parent path*/> zen::getItemTypeIfExists(const Zstring& itemPath) //throw FileError
 {
-    //symbolic links (broken or not) are also treated as existing directories!
-    struct stat dirInfo = {};
-    if (::stat(dirPath.c_str(), &dirInfo) == 0) //follow symlinks!
-        return S_ISDIR(dirInfo.st_mode);
-    return false;
+    try
+    {
+        try
+        {
+            //fast check: 1. perf 2. expected by getFolderStatusNonBlocking()
+            return getItemTypeImpl(itemPath); //throw SysErrorCode
+        }
+        catch (const SysErrorCode& e) //let's dig deeper, but *only* if error code sounds like "not existing"
+        {
+            const std::optional<Zstring> parentPath = getParentFolderPath(itemPath);
+            if (!parentPath) //device root => quick access test
+                throw;
+            if (e.errorCode == ENOENT)
+            {
+                const std::variant<ItemType, Zstring /*last existing parent path*/> parentTypeOrPath = getItemTypeIfExists(*parentPath); //throw FileError
+
+                if (const ItemType* parentType = std::get_if<ItemType>(&parentTypeOrPath))
+                {
+                    if (*parentType == ItemType::file /*obscure, but possible*/)
+                        throw SysError(replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(getItemName(*parentPath))));
+
+                    const Zstring itemName = getItemName(itemPath);
+                    assert(!itemName.empty());
+
+                    traverseFolder(*parentPath, //throw FileError
+                    [&](const    FileInfo& fi) { if (fi.itemName == itemName) throw SysError(_("Temporary access error:") + L' ' + e.toString()); },
+                    [&](const  FolderInfo& fi) { if (fi.itemName == itemName) throw SysError(_("Temporary access error:") + L' ' + e.toString()); },
+                    [&](const SymlinkInfo& si) { if (si.itemName == itemName) throw SysError(_("Temporary access error:") + L' ' + e.toString()); });
+                    //- case-sensitive comparison! itemPath must be normalized!
+                    //- finding the item after getItemType() previously failed is exceptional
+
+                    return *parentPath;
+                }
+                else
+                    return parentTypeOrPath;
+            }
+            else
+                throw;
+        }
+    }
+    catch (const SysError& e)
+    {
+        throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(itemPath)), e.toString());
+    }
+}
+
+
+bool zen::itemExists(const Zstring& itemPath) //throw FileError
+{
+    const std::variant<ItemType, Zstring /*last existing parent path*/> typeOrPath = getItemTypeIfExists(itemPath); //throw FileError
+    return std::get_if<ItemType>(&typeOrPath);
 }
 
 
@@ -125,7 +130,14 @@ namespace
 //- folderPath does not need to exist (yet)
 int64_t zen::getFreeDiskSpace(const Zstring& folderPath) //throw FileError
 {
-    const auto& [existingPath, existingType] = getExistingPath(folderPath); //throw FileError
+    const Zstring existingPath = [&]
+    {
+        const std::variant<ItemType, Zstring /*last existing parent path*/> typeOrPath = getItemTypeIfExists(folderPath); //throw FileError
+        if (std::get_if<ItemType>(&typeOrPath))
+            return folderPath;
+        else
+            return std::get<Zstring>(typeOrPath);
+    }();
     try
     {
         struct statfs info = {};
@@ -165,52 +177,42 @@ Zstring zen::getTempFolderPath() //throw FileError
 
 
 
+namespace
+{
+}
+
+
 void zen::removeFilePlain(const Zstring& filePath) //throw FileError
 {
-    const char* functionName = "unlink";
-    if (::unlink(filePath.c_str()) != 0)
+    try
     {
-        ErrorCode ec = getLastError(); //copy before directly/indirectly making other system calls!
-        //begin of "regular" error reporting
-        std::wstring errorDescr = formatSystemError(functionName, ec);
-
-        throw FileError(replaceCpy(_("Cannot delete file %x."), L"%x", fmtPath(filePath)), errorDescr);
+        if (::unlink(filePath.c_str()) != 0)
+            THROW_LAST_SYS_ERROR("unlink");
     }
+    catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot delete file %x."), L"%x", fmtPath(filePath)), e.toString()); }
+}
+
+
+
+void zen::removeDirectoryPlain(const Zstring& dirPath) //throw FileError
+{
+    try
+    {
+        if (::rmdir(dirPath.c_str()) != 0)
+            THROW_LAST_SYS_ERROR("rmdir");
+    }
+    catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot delete directory %x."), L"%x", fmtPath(dirPath)), e.toString()); }
 }
 
 
 void zen::removeSymlinkPlain(const Zstring& linkPath) //throw FileError
 {
-    removeFilePlain(linkPath); //throw FileError
-}
-
-
-void zen::removeDirectoryPlain(const Zstring& dirPath) //throw FileError
-{
-    const char* functionName = "rmdir";
-    if (::rmdir(dirPath.c_str()) != 0)
+    try
     {
-        ErrorCode ec = getLastError(); //copy before making other system calls!
-        bool symlinkExists = false;
-        try { symlinkExists = getItemType(dirPath) == ItemType::symlink; } /*throw FileError*/ catch (FileError&) {} //previous exception is more relevant
-
-        if (symlinkExists)
-        {
-            if (::unlink(dirPath.c_str()) != 0)
-                THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot delete directory %x."), L"%x", fmtPath(dirPath)), "unlink");
-            return;
-        }
-        //if (ec == ERROR_SHARING_VIOLATION) => getLockingProcesses() can't handle directory paths! :( RmGetList() fails with ERROR_ACCESS_DENIED
-        //https://blog.yaakov.online/failed-experiment-what-processes-have-a-lock-on-this-folder/
-
-        throw FileError(replaceCpy(_("Cannot delete directory %x."), L"%x", fmtPath(dirPath)), formatSystemError(functionName, ec));
+        if (::unlink(linkPath.c_str()) != 0)
+            THROW_LAST_SYS_ERROR("unlink");
     }
-    /*  Windows: may spuriously fail with ERROR_DIR_NOT_EMPTY(145) even though all child items have
-        successfully been *marked* for deletion, but some application still has a handle open!
-        e.g. Open "C:\Test\Dir1\Dir2" (filled with lots of files) in Explorer, then delete "C:\Test\Dir1" via ::RemoveDirectory() => Error 145
-        Sample code: http://us.generation-nt.com/answer/createfile-directory-handles-removing-parent-help-29126332.html
-        Alternatives: 1. move file/empty folder to some other location, then DeleteFile()/RemoveDirectory()
-                      2. use CreateFile/FILE_FLAG_DELETE_ON_CLOSE *without* FILE_SHARE_DELETE instead of DeleteFile() => early failure            */
+    catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot delete symbolic link %x."), L"%x", fmtPath(linkPath)), e.toString()); }
 }
 
 
@@ -218,22 +220,23 @@ namespace
 {
 void removeDirectoryImpl(const Zstring& folderPath) //throw FileError
 {
-    std::vector<Zstring> filePaths;
-    std::vector<Zstring> symlinkPaths;
     std::vector<Zstring> folderPaths;
+    {
+        std::vector<Zstring> filePaths;
+        std::vector<Zstring> symlinkPaths;
 
-    //get all files and directories from current directory (WITHOUT subdirectories!)
-    traverseFolder(folderPath,
-    [&](const    FileInfo& fi) {    filePaths.push_back(fi.fullPath); },
-    [&](const  FolderInfo& fi) {  folderPaths.push_back(fi.fullPath); }, //defer recursion => save stack space and allow deletion of extremely deep hierarchies!
-    [&](const SymlinkInfo& si) { symlinkPaths.push_back(si.fullPath); },
-    [](const std::wstring& errorMsg) { throw FileError(errorMsg); });
+        //get all files and directories from current directory (WITHOUT subdirectories!)
+        traverseFolder(folderPath,
+        [&](const    FileInfo& fi) {    filePaths.push_back(fi.fullPath); },
+        [&](const  FolderInfo& fi) {  folderPaths.push_back(fi.fullPath); },
+        [&](const SymlinkInfo& si) { symlinkPaths.push_back(si.fullPath); }); //throw FileError
 
-    for (const Zstring& filePath : filePaths)
-        removeFilePlain(filePath); //throw FileError
+        for (const Zstring& filePath : filePaths)
+            removeFilePlain(filePath); //throw FileError
 
-    for (const Zstring& symlinkPath : symlinkPaths)
-        removeSymlinkPlain(symlinkPath); //throw FileError
+        for (const Zstring& symlinkPath : symlinkPaths)
+            removeSymlinkPlain(symlinkPath); //throw FileError
+    } //=> save stack space and allow deletion of extremely deep hierarchies!
 
     //delete directories recursively
     for (const Zstring& subFolderPath : folderPaths)
@@ -486,7 +489,7 @@ void zen::createDirectory(const Zstring& dirPath) //throw FileError, ErrorTarget
     try
     {
         //don't allow creating irregular folders!
-        const Zstring dirName = afterLast(dirPath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
+        const Zstring dirName = getItemName(dirPath);
 
         //e.g. "...." https://social.technet.microsoft.com/Forums/windows/en-US/ffee2322-bb6b-4fdf-86f9-8f93cf1fa6cb/
         if (std::all_of(dirName.begin(), dirName.end(), [](Zchar c) { return c == Zstr('.'); }))
@@ -505,8 +508,6 @@ void zen::createDirectory(const Zstring& dirPath) //throw FileError, ErrorTarget
             const int ec = errno; //copy before directly or indirectly making other system calls!
             if (ec == EEXIST)
                 throw ErrorTargetExisting(replaceCpy(_("Cannot create directory %x."), L"%x", fmtPath(dirPath)), formatSystemError("mkdir", ec));
-            //else if (ec == ENOENT)
-            //    throw ErrorTargetPathMissing(errorMsg, errorDescr);
             THROW_LAST_SYS_ERROR("mkdir");
         }
     }
@@ -516,34 +517,43 @@ void zen::createDirectory(const Zstring& dirPath) //throw FileError, ErrorTarget
 
 void zen::createDirectoryIfMissingRecursion(const Zstring& dirPath) //throw FileError
 {
-    const std::optional<Zstring> parentPath = getParentFolderPath(dirPath);
-    if (!parentPath) //device root
-        return;
+    //expect that path already exists (see: versioning, base folder, log file path) => check first
+    const std::variant<ItemType, Zstring /*last existing parent path*/> typeOrPath = getItemTypeIfExists(dirPath); //throw FileError
 
-    try //generally expect folder already exists (see: ffs_paths.cpp) => check first
+    if (const ItemType* type = std::get_if<ItemType>(&typeOrPath))
     {
-        if (getItemType(dirPath) != ItemType::file) //throw FileError
-            return;
+        if (*type == ItemType::file /*obscure, but possible*/)
+            throw FileError(replaceCpy(_("Cannot create directory %x."), L"%x", fmtPath(dirPath)),
+                            replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(getItemName(dirPath))));
     }
-    catch (FileError&) {} //not yet existing or access error? let's find out...
-
-    createDirectoryIfMissingRecursion(*parentPath); //throw FileError
-
-    try
+    else
     {
-        createDirectory(dirPath); //throw FileError, ErrorTargetExisting
-        return;
-    }
-    catch (FileError&)
-    {
-        try
-        {
-            if (getItemType(dirPath) != ItemType::file) //throw FileError
-                return; //already existing => possible, if createDirectoryIfMissingRecursion() is run in parallel
-        }
-        catch (FileError&) {} //not yet existing or access error
+        const Zstring existingDirPath = std::get<Zstring>(typeOrPath);
+        assert(startsWith(dirPath, existingDirPath));
 
-        throw;
+        const ZstringView relPath = makeStringView(dirPath.begin() + existingDirPath.size(), dirPath.end());
+        const std::vector<ZstringView> namesMissing = splitCpy(relPath, FILE_NAME_SEPARATOR, SplitOnEmpty::skip);
+        assert(!namesMissing.empty());
+
+        Zstring dirPathNew = existingDirPath;
+        for (const ZstringView folderName : namesMissing)
+            try
+            {
+                dirPathNew = appendPath(dirPathNew, Zstring(folderName));
+
+                createDirectory(dirPathNew); //throw FileError
+            }
+            catch (FileError&)
+            {
+                try
+                {
+                    if (getItemType(dirPathNew) != ItemType::file /*obscure, but possible*/) //throw FileError
+                        continue; //already existing => possible, if createFolderIfMissingRecursion() is run in parallel
+                }
+                catch (FileError&) {} //not yet existing or access error
+
+                throw;
+            }
     }
 }
 

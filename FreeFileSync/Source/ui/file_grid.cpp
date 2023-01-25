@@ -794,6 +794,27 @@ private:
                                 }
                     };
 
+                    bool navMarkerDrawn = false;
+                    auto tryDrawNavMarker = [&](wxRect rectNav)
+                    {
+                        if (!navMarkerDrawn &&
+                            rectNav.x == rect.x && //draw marker *only* if current render group (group parent, group name, item name) is at beginning of a row!
+                            isNavMarked(*pdi.fsObj) &&
+                            (!enabled || !selected))
+                        {
+                            rectNav.width = std::min(rectNav.width, fastFromDIP(10));
+
+                            if (row == pdi.groupLastRow - 1 /*last group item*/) //preserve the group separation line!
+                                rectNav.height -= fastFromDIP(1);
+
+                            //wxColor backCol = wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW);
+                            //dc.GetPixel(rectNav.GetTopRight(), &backCol); //e.g. selected row!
+
+                            dc.GradientFillLinear(rectNav, getColorSelectionGradientFrom(), getColorSelectionGradientTo(), wxEAST);
+                            navMarkerDrawn = true;
+                        }
+                    };
+
                     auto drawIcon = [&](wxImage icon, wxRect rectIcon, bool drawActive)
                     {
                         if (!drawActive)
@@ -893,22 +914,22 @@ private:
                             //accessibility: always set *both* foreground AND background colors!
                         }
 
-                        if (isNavMarked(*pdi.fsObj)) //draw *after* clearing area for parent components
-                            if (!enabled || !selected)
-                            {
-                                wxRect rectNav = rect;
-                                rectNav.width = fastFromDIP(20);
+                        if (!groupParentFolder.empty() &&
+                            (( stackedGroupRender && row == groupFirstRow + 1) ||
+                             (!stackedGroupRender && row == groupFirstRow)) &&
+                            (groupName.empty() || !pdi.folderGroupObj->isEmpty<side>())) //don't show for missing folders
+                        {
+                            tryDrawNavMarker(rectGroupParent);
 
-                                if (row == pdi.groupLastRow - 1 /*last group item*/) //preserve the group separation line!
-                                    rectNav.height -= fastFromDIP(1);
+                            wxRect rectGroupParentText = rectGroupParent;
+                            rectGroupParentText.x     += gapSize_;
+                            rectGroupParentText.width -= stackedGroupRender ? gapSize_ + gapSizeWide_ : gapSize_;
 
-                                wxColor backCol = wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW);
-                                dc.GetPixel(rectNav.GetTopRight(), &backCol); //e.g. selected row!
+                            drawCellText(dc, rectGroupParentText, groupParentFolder, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, &getTextExtentBuffered(dc, groupParentFolder));
+                        }
 
-                                dc.GradientFillLinear(rectNav, getColorSelectionGradientFrom(), backCol, wxEAST);
-                            }
-
-                        if (!groupName.empty() && row == groupFirstRow)
+                        if (!groupName.empty() &&
+                            row == groupFirstRow)
                         {
                             wxRect rectGroupNameBack = rectGroupName;
 
@@ -926,6 +947,7 @@ private:
                                     textColorGroupName.Set(getColorInactiveText());
                                 }
                             drawCudHighlight(rectGroupNameBack, pdi.folderGroupObj->getSyncOperation());
+                            tryDrawNavMarker(rectGroupName);
 
                             wxImage folderIcon;
                             bool drawAsLink = false;
@@ -945,18 +967,6 @@ private:
 
                             if (!pdi.folderGroupObj->isEmpty<side>())
                                 drawCellText(dc, rectGroupName, groupName, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, &getTextExtentBuffered(dc, groupName));
-                        }
-
-                        if (!groupParentFolder.empty() &&
-                            (( stackedGroupRender && row == groupFirstRow + 1) ||
-                             (!stackedGroupRender && row == groupFirstRow)) &&
-                            (groupName.empty() || !pdi.folderGroupObj->isEmpty<side>())) //don't show for missing folders
-                        {
-                            wxRect rectGroupParentText = rectGroupParent;
-                            rectGroupParentText.x     += gapSize_;
-                            rectGroupParentText.width -= stackedGroupRender ? gapSize_ + gapSizeWide_ : gapSize_;
-
-                            drawCellText(dc, rectGroupParentText, groupParentFolder, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, &getTextExtentBuffered(dc, groupParentFolder));
                         }
                     }
 
@@ -981,6 +991,7 @@ private:
                         rectItemsBack.height -= fastFromDIP(1); //preserve item separation lines!
 
                         drawCudHighlight(rectItemsBack, pdi.fsObj->getSyncOperation());
+                        tryDrawNavMarker(rectGroupItems);
 
                         if (IconBuffer* iconBuf = getIconManager().getIconBuffer()) //=> draw file icons
                         {
@@ -1028,6 +1039,9 @@ private:
                         if (!pdi.fsObj->isEmpty<side>())
                             drawCellText(dc, rectGroupItems, itemName, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, &getTextExtentBuffered(dc, itemName));
                     }
+
+                    //if not done yet:
+                    tryDrawNavMarker(rect);
                 }
                 break;
 
@@ -1165,7 +1179,7 @@ private:
             if (const ColumnTypeRim* sortType = std::get_if<ColumnTypeRim>(&sortInfo->sortCol))
                 if (*sortType == static_cast<ColumnTypeRim>(colType) && sortInfo->onLeft == (side == SelectSide::left))
                 {
-                      bool ascending = sortInfo->ascending; //work around MSVC 17.4 compiler bug :( "error C2039: 'sortCol': is not a member of 'fff::FileView::SortInfo'"
+                    bool ascending = sortInfo->ascending; //work around MSVC 17.4 compiler bug :( "error C2039: 'sortCol': is not a member of 'fff::FileView::SortInfo'"
 
                     const wxImage sortMarker = loadImage(ascending ? "sort_ascending" : "sort_descending");
                     drawBitmapRtlNoMirror(dc, enabled ? sortMarker : sortMarker.ConvertToDisabled(), rectInner, wxALIGN_CENTER_HORIZONTAL);
@@ -1298,36 +1312,35 @@ public:
         //issue custom event
         if (selectionInProgress_) //don't process selections initiated by right-click
             if (rowFirst < rowLast && rowLast <= refGrid().getRowCount()) //empty? probably not in this context
-                if (wxEvtHandler* evtHandler = refGrid().GetEventHandler())
-                    switch (static_cast<HoverAreaCenter>(rowHover))
+                switch (static_cast<HoverAreaCenter>(rowHover))
+                {
+                    case HoverAreaCenter::checkbox:
+                        if (const FileSystemObject* fsObj = getFsObject(clickInitRow))
+                        {
+                            const bool setIncluded = !fsObj->isActive();
+                            CheckRowsEvent evt(rowFirst, rowLast, setIncluded);
+                            refGrid().GetEventHandler()->ProcessEvent(evt);
+                        }
+                        break;
+                    case HoverAreaCenter::dirLeft:
                     {
-                        case HoverAreaCenter::checkbox:
-                            if (const FileSystemObject* fsObj = getFsObject(clickInitRow))
-                            {
-                                const bool setIncluded = !fsObj->isActive();
-                                CheckRowsEvent evt(rowFirst, rowLast, setIncluded);
-                                evtHandler->ProcessEvent(evt);
-                            }
-                            break;
-                        case HoverAreaCenter::dirLeft:
-                        {
-                            SyncDirectionEvent evt(rowFirst, rowLast, SyncDirection::left);
-                            evtHandler->ProcessEvent(evt);
-                        }
-                        break;
-                        case HoverAreaCenter::dirNone:
-                        {
-                            SyncDirectionEvent evt(rowFirst, rowLast, SyncDirection::none);
-                            evtHandler->ProcessEvent(evt);
-                        }
-                        break;
-                        case HoverAreaCenter::dirRight:
-                        {
-                            SyncDirectionEvent evt(rowFirst, rowLast, SyncDirection::right);
-                            evtHandler->ProcessEvent(evt);
-                        }
-                        break;
+                        SyncDirectionEvent evt(rowFirst, rowLast, SyncDirection::left);
+                        refGrid().GetEventHandler()->ProcessEvent(evt);
                     }
+                    break;
+                    case HoverAreaCenter::dirNone:
+                    {
+                        SyncDirectionEvent evt(rowFirst, rowLast, SyncDirection::none);
+                        refGrid().GetEventHandler()->ProcessEvent(evt);
+                    }
+                    break;
+                    case HoverAreaCenter::dirRight:
+                    {
+                        SyncDirectionEvent evt(rowFirst, rowLast, SyncDirection::right);
+                        refGrid().GetEventHandler()->ProcessEvent(evt);
+                    }
+                    break;
+                }
         selectionInProgress_ = false;
 
         //update highlight_ and tooltip: on OS X no mouse movement event is generated after a mouse button click (unlike on Windows)
@@ -1703,8 +1716,13 @@ public:
         gridR_.Bind(EVENT_GRID_MOUSE_LEFT_DOWN, [this](GridClickEvent& event) { onGridClickRim(event, gridR_); });
 
         //clear selection of other grid when selecting on
-        gridL_.Bind(EVENT_GRID_SELECT_RANGE, [this](GridSelectEvent& event) { onGridSelection(event, gridR_); });
-        gridR_.Bind(EVENT_GRID_SELECT_RANGE, [this](GridSelectEvent& event) { onGridSelection(event, gridL_); });
+        gridL_.Bind(EVENT_GRID_SELECT_RANGE,     [this](GridSelectEvent& event) { onGridSelection(event, gridR_); });
+        gridL_.Bind(EVENT_GRID_MOUSE_LEFT_DOWN,  [this]( GridClickEvent& event) { onGridSelection(event, gridR_); }); //clear immediately,
+        gridL_.Bind(EVENT_GRID_MOUSE_RIGHT_DOWN, [this]( GridClickEvent& event) { onGridSelection(event, gridR_); }); //don't wait for GridSelectEvent
+
+        gridR_.Bind(EVENT_GRID_SELECT_RANGE,     [this](GridSelectEvent& event) { onGridSelection(event, gridL_); });
+        gridR_.Bind(EVENT_GRID_MOUSE_LEFT_DOWN,  [this]( GridClickEvent& event) { onGridSelection(event, gridL_); });
+        gridR_.Bind(EVENT_GRID_MOUSE_RIGHT_DOWN, [this]( GridClickEvent& event) { onGridSelection(event, gridL_); });
 
         //parallel grid scrolling: do NOT use DoPrepareDC() to align grids! GDI resource leak! Use regular paint event instead:
         gridL_.getMainWin().Bind(wxEVT_PAINT, [this](wxPaintEvent& event) { onPaintGrid(gridL_); event.Skip(); });
@@ -1788,13 +1806,23 @@ private:
             if (const FileView::PathDrawInfo pdi = provCenter_.getDataView().getDrawInfo(event.row_);
                 pdi.fsObj)
             {
-                grid.setGridCursor(pdi.groupFirstRow, GridEventPolicy::allow);
-                return;
+                const ptrdiff_t topRowOld = grid.getRowAtWinPos(0);
+                grid.makeRowVisible(pdi.groupFirstRow);
+                const ptrdiff_t topRowNew = grid.getRowAtWinPos(0);
+
+                if (topRowNew != topRowOld) //=> grid was scrolled: prevent AddPendingEvent() recursion!
+                {
+                    assert(topRowNew == makeSigned(pdi.groupFirstRow));
+                    assert(topRowNew == grid.getRowAtWinPos((event.mousePos_ - grid.getMainWin().GetPosition()).y));
+                    //don't waste a click: simulate start of new selection at Grid::MainWin-relative position (0/0):
+                    grid.getMainWin().GetEventHandler()->AddPendingEvent(wxMouseEvent(wxEVT_LEFT_DOWN));
+                    return;
+                }
             }
         event.Skip();
     }
 
-    void onGridSelection(GridSelectEvent& event, Grid& gridOther)
+    void onGridSelection(wxEvent& event, Grid& gridOther)
     {
         if (!wxGetKeyState(WXK_CONTROL)) //clear other grid unless user is holding CTRL
             gridOther.clearSelection(GridEventPolicy::deny); //don't emit event, prevent recursion!

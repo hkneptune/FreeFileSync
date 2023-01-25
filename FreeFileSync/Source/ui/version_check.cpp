@@ -259,7 +259,7 @@ void fff::checkForUpdateNow(wxWindow& parent, std::string& lastOnlineVersion)
             showNotificationDialog(&parent, DialogInfoType::info, PopupDialogCfg().
                                    setIcon(loadImage("update_check")).
                                    setTitle(_("Check for Program Updates")).
-                                   setMainInstructions(_("FreeFileSync is up to date.")));
+                                   setMainInstructions(_("FreeFileSync is up-to-date.")));
     }
     catch (const SysError& e)
     {

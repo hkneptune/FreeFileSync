@@ -161,7 +161,7 @@ public:
     ~ThreadGroup()
     {
         for (InterruptibleThread& w : worker_)
-            w.requestStop(); //stop *all* at the same time before join!
+            w.requestStop(); //similar, but not the same as ~InterruptibleThread: stop *all* at the same time before join!
 
         if (detach_) //detach() without requestStop() doesn't make sense
             for (InterruptibleThread& w : worker_)
@@ -190,13 +190,13 @@ public:
     void wait()
     {
         //perf: no difference in xBRZ test case compared to std::condition_variable-based implementation
-        auto promiseDone = std::make_shared<std::promise<void>>(); //
-        std::future<void> allDone = promiseDone->get_future();
+        auto promDone = std::make_shared<std::promise<void>>(); //
+        std::future<void> futDone = promDone->get_future();
 
-        notifyWhenDone([promiseDone] { promiseDone->set_value(); }); //std::function doesn't support construction involving move-only types!
+        notifyWhenDone([promDone] { promDone->set_value(); }); //std::function doesn't support construction involving move-only types!
         //use reference? => potential lifetime issue, e.g. promise object theoretically might be accessed inside set_value() after future gets signalled
 
-        allDone.get();
+        futDone.get();
     }
 
     //non-blocking wait()-alternative: context of controlling thread:

@@ -126,6 +126,9 @@ void fixMenuIcons(wxMenu& menu)
 }
 
 
+//better call wxClipboard::Get()->Flush() *once* during app exit instead of after each setClipboardText()?
+//  => OleFlushClipboard: "Carries out the clipboard shutdown sequence"
+//  => maybe this helps with clipboard randomly "forgetting" content after app exit?
 inline
 void setClipboardText(const wxString& txt)
 {
@@ -133,9 +136,8 @@ void setClipboardText(const wxString& txt)
     if (clip.Open())
     {
         ZEN_ON_SCOPE_EXIT(clip.Close());
-        [[maybe_unused]] const bool rv1 = clip.SetData(new wxTextDataObject(txt)); //ownership passed
-        [[maybe_unused]] const bool rv2 = clip.Flush();
-        assert(rv1 && rv2);
+        [[maybe_unused]] const bool rv = clip.SetData(new wxTextDataObject(txt)); //ownership passed
+        assert(rv);
     }
     else assert(false);
 }

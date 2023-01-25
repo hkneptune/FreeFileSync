@@ -70,7 +70,7 @@ ImageHolder xbrzScale(int width, int height, const unsigned char* imageRgb, cons
 }
 
 
-auto createScalerTask(const std::string& imageName, const wxImage& img, int hqScale, Protected<std::vector<std::pair<std::string, ImageHolder>>>& result)
+auto createScalerTask(const std::string& imageName, const wxImage& img, int hqScale, Protected<std::vector<std::pair<std::string, ImageHolder>>>& protResult)
 {
     assert(runningOnMainThread());
     return [imageName,
@@ -78,10 +78,10 @@ auto createScalerTask(const std::string& imageName, const wxImage& img, int hqSc
             height = img.GetHeight(), //don't call wxWidgets functions from worker thread
             rgb    = img.GetData(),   //
             alpha  = img.GetAlpha(),  //
-            hqScale, &result]
+            hqScale, &protResult]
     {
         ImageHolder ih = xbrzScale(width, height, rgb, alpha, hqScale);
-        result.access([&](std::vector<std::pair<std::string, ImageHolder>>& r) { r.emplace_back(imageName, std::move(ih)); });
+        protResult.access([&](std::vector<std::pair<std::string, ImageHolder>>& result) { result.emplace_back(imageName, std::move(ih)); });
     };
 }
 
@@ -97,7 +97,7 @@ public:
     {
         assert(runningOnMainThread());
         imgKeeper_.push_back(img); //retain (ref-counted) wxImage so that the rgb/alpha pointers remain valid after passed to threads
-        threadGroup_->run(createScalerTask(imageName, img, hqScale_, result_));
+        threadGroup_->run(createScalerTask(imageName, img, hqScale_, protResult_));
     }
 
     std::unordered_map<std::string, wxImage> waitAndGetResult()
@@ -107,9 +107,9 @@ public:
 
         std::unordered_map<std::string, wxImage> output;
 
-        result_.access([&](std::vector<std::pair<std::string, ImageHolder>>& r)
+        protResult_.access([&](std::vector<std::pair<std::string, ImageHolder>>& result)
         {
-            for (auto& [imageName, ih] : r)
+            for (auto& [imageName, ih] : result)
             {
                 wxImage img(ih.getWidth(), ih.getHeight(), ih.releaseRgb(), false /*static_data*/); //pass ownership
                 img.SetAlpha(ih.releaseAlpha(), false /*static_data*/);
@@ -123,7 +123,7 @@ public:
 private:
     const int hqScale_;
     std::vector<wxImage> imgKeeper_;
-    Protected<std::vector<std::pair<std::string, ImageHolder>>> result_;
+    Protected<std::vector<std::pair<std::string, ImageHolder>>> protResult_;
 
     using TaskType = FunctionReturnTypeT<decltype(&createScalerTask)>;
     std::optional<ThreadGroup<TaskType>> threadGroup_{ThreadGroup<TaskType>(std::max<int>(std::thread::hardware_concurrency(), 1), Zstr("xBRZ Scaler"))};
@@ -195,7 +195,7 @@ ImageBuffer::ImageBuffer(const Zstring& zipPath) //throw FileError
     catch (FileError&) //fall back to folder: dev build (only!?)
     {
         const Zstring fallbackFolder = beforeLast(zipPath, Zstr(".zip"), IfNotFoundReturn::none);
-        if (!itemStillExists(fallbackFolder)) //throw FileError
+        if (!itemExists(fallbackFolder)) //throw FileError
             throw;
 
         traverseFolder(fallbackFolder, [&](const FileInfo& fi)
@@ -205,7 +205,7 @@ ImageBuffer::ImageBuffer(const Zstring& zipPath) //throw FileError
                 std::string stream = getFileContent(fi.fullPath, nullptr /*notifyUnbufferedIO*/); //throw FileError
                 streams.emplace_back(fi.itemName, std::move(stream));
             }
-        }, nullptr, nullptr, [](const std::wstring& errorMsg) { throw FileError(errorMsg); });
+        }, nullptr, nullptr); //throw FileError
     }
     //--------------------------------------------------------------------
 

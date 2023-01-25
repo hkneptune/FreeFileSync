@@ -586,7 +586,7 @@ void Zbase<Char, SP>::reserve(size_t minCapacity) //make unshared and check capa
         //allocate a new string
         const size_t len = size();
         Char* newStr = this->create(len, std::max(len, minCapacity)); //reserve() must NEVER shrink the string: logical const!
-        *std::copy(rawStr_, rawStr_ + len , newStr) = 0;
+        *std::copy(rawStr_, rawStr_ + len, newStr) = 0;
 
         this->destroy(rawStr_);
         rawStr_ = newStr;

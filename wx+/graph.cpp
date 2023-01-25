@@ -247,7 +247,7 @@ void cutPoints(std::vector<CurvePoint>& curvePoints, std::vector<unsigned char>&
 
     auto savePoint = [&](const CurvePoint& pt, bool markedOob) { curvePointsTmp.push_back(pt); oobMarkerTmp.push_back(markedOob); };
 
-     bool pointInside = isInside(curvePoints[0]);
+    bool pointInside = isInside(curvePoints[0]);
     if (pointInside)
         savePoint(curvePoints[0], isMarkedOob(0));
 
@@ -283,7 +283,7 @@ void cutPoints(std::vector<CurvePoint>& curvePoints, std::vector<unsigned char>&
 struct GetIntersectionX
 {
     explicit GetIntersectionX(double x) : x_(x) {}
-    
+
     CurvePoint operator()(const CurvePoint& from, const CurvePoint& to) const
     {
         const double deltaX = to.x - from.x;
@@ -493,9 +493,7 @@ void Graph2D::onMouseLeftUp(wxMouseEvent& event)
     {
         if (activeSel_->getStartPos() != activeSel_->refCurrentPos()) //if it's just a single mouse click: discard selection
         {
-            GraphSelectEvent selEvent(activeSel_->refSelection()); //fire off GraphSelectEvent
-            if (wxEvtHandler* handler = GetEventHandler())
-                handler->AddPendingEvent(selEvent);
+            GetEventHandler()->AddPendingEvent(GraphSelectEvent(activeSel_->refSelection()));
 
             oldSel_.push_back(activeSel_->refSelection()); //commit selection
         }

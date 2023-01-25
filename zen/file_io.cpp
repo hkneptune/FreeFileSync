@@ -199,7 +199,6 @@ FileBase::FileHandle openHandleForWrite(const Zstring& filePath) //throw FileErr
             const int ec = errno; //copy before making other system calls!
             if (ec == EEXIST)
                 throw ErrorTargetExisting(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(filePath)), formatSystemError("open", ec));
-            //if (ec == ENOENT) throw ErrorTargetPathMissing(errorMsg, errorDescr);
 
             THROW_LAST_SYS_ERROR("open");
         }

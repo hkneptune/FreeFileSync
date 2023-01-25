@@ -47,7 +47,16 @@ std::set<Zstring, LessNativePath> waitForMissingDirs(const std::vector<Zstring>&
 
             //start all folder checks asynchronously (non-existent network path may block)
             if (!folderInfos.contains(folderPath))
-                folderInfos[folderPath] = { phrase, runAsync([folderPath]{ return dirAvailable(folderPath); }) };
+                folderInfos[folderPath] = { phrase, runAsync([folderPath]
+                {
+                    try
+                    {
+                        getItemType(folderPath); //throw FileError
+                        return true;
+                    }
+                    catch (FileError&) { return false; }
+                })
+            };
         }
 
         std::set<Zstring, LessNativePath> availablePaths;
@@ -85,7 +94,12 @@ std::set<Zstring, LessNativePath> waitForMissingDirs(const std::vector<Zstring>&
 
                 std::future<bool> folderAvailable = runAsync([folderPath]
                 {
-                    return dirAvailable(folderPath);
+                    try
+                    {
+                        getItemType(folderPath); //throw FileError
+                        return true;
+                    }
+                    catch (FileError&) { return false; }
                 });
 
                 while (folderAvailable.wait_for(cbInterval) == std::future_status::timeout)
@@ -104,7 +118,6 @@ std::set<Zstring, LessNativePath> waitForMissingDirs(const std::vector<Zstring>&
 DirWatcher::Change waitForChanges(const std::set<Zstring, LessNativePath>& folderPaths, //throw FileError
                                   const std::function<void(bool readyForSync)>& requestUiUpdate, std::chrono::milliseconds cbInterval)
 {
-    assert(std::all_of(folderPaths.begin(), folderPaths.end(), [](const Zstring& folderPath) { return dirAvailable(folderPath); }));
     if (folderPaths.empty()) //pathological case, but we have to check else this function will wait endlessly
         throw FileError(_("A folder input field is empty.")); //should have been checked by caller!
 
@@ -117,8 +130,13 @@ DirWatcher::Change waitForChanges(const std::set<Zstring, LessNativePath>& folde
         }
         catch (FileError&)
         {
-            if (!dirAvailable(folderPath)) //folder not existing or can't access
+            try { getItemType(folderPath); } //throw FileError
+            catch (FileError&)
+            {
+                assert(false); //why "unavailable"!? violating waitForChanges() precondition!
                 return {DirWatcher::ChangeType::baseFolderUnavailable, folderPath};
+            }
+
             throw;
         }
 
@@ -140,8 +158,12 @@ DirWatcher::Change waitForChanges(const std::set<Zstring, LessNativePath>& folde
         {
             //IMPORTANT CHECK: DirWatcher has problems detecting removal of top watched directories!
             if (checkDirNow)
-                if (!dirAvailable(folderPath)) //catch errors related to directory removal, e.g. ERROR_NETNAME_DELETED
-                    return {DirWatcher::ChangeType::baseFolderUnavailable, folderPath};
+                try //catch errors related to directory removal, e.g. ERROR_NETNAME_DELETED
+                {
+                    getItemType(folderPath); //throw FileError
+                }
+                catch (FileError&) { return {DirWatcher::ChangeType::baseFolderUnavailable, folderPath}; }
+
             try
             {
                 std::vector<DirWatcher::Change> changes = watcher->fetchChanges([&] { requestUiUpdate(false /*readyForSync*/); /*throw X*/ },
@@ -166,8 +188,9 @@ DirWatcher::Change waitForChanges(const std::set<Zstring, LessNativePath>& folde
             }
             catch (FileError&)
             {
-                if (!dirAvailable(folderPath)) //a benign(?) race condition with FileError
-                    return {DirWatcher::ChangeType::baseFolderUnavailable, folderPath};
+                try { getItemType(folderPath); } //throw FileError
+                catch (FileError&) { return {DirWatcher::ChangeType::baseFolderUnavailable, folderPath}; }
+
                 throw;
             }
         }

@@ -53,7 +53,6 @@ struct StringHashAsciiNoCase;
 struct StringEqualAsciiNoCase;
 
 template <class Num, class S> Num hashString(const S& str);
-template <class Num, class S> Num appendHashString(Num hashVal, const S& str);
 
 enum class IfNotFoundReturn
 {
@@ -315,7 +314,7 @@ bool contains(const S& str, const T& term)
     const auto* const strFirst  = strBegin(str);
     const auto* const strLast   = strFirst + strLen;
     const auto* const termFirst = strBegin(term);
-     
+
     return searchFirst(strFirst, strLast,
                        termFirst, termFirst + termLen) != strLast;
 }
@@ -331,7 +330,7 @@ S afterLast(const S& str, const T& term, IfNotFoundReturn infr)
     const auto* const strFirst  = strBegin(str);
     const auto* const strLast   = strFirst + strLength(str);
     const auto* const termFirst = strBegin(term);
-     
+
     const auto* it = searchLast(strFirst, strLast,
                                 termFirst, termFirst + termLen);
     if (it == strLast)
@@ -348,7 +347,7 @@ S beforeLast(const S& str, const T& term, IfNotFoundReturn infr)
     static_assert(std::is_same_v<GetCharTypeT<S>, GetCharTypeT<T>>);
     const size_t termLen = strLength(term);
     assert(termLen > 0);
-     
+
     const auto* const strFirst  = strBegin(str);
     const auto* const strLast   = strFirst + strLength(str);
     const auto* const termFirst = strBegin(term);
@@ -372,7 +371,7 @@ S afterFirst(const S& str, const T& term, IfNotFoundReturn infr)
     const auto* const strFirst  = strBegin(str);
     const auto* const strLast   = strFirst + strLength(str);
     const auto* const termFirst = strBegin(term);
-     
+
     const auto* it = searchFirst(strFirst, strLast,
                                  termFirst, termFirst + termLen);
     if (it == strLast)
@@ -393,7 +392,7 @@ S beforeFirst(const S& str, const T& term, IfNotFoundReturn infr)
     const auto* const strFirst  = strBegin(str);
     const auto* const strLast   = strFirst + strLength(str);
     const auto* const termFirst = strBegin(term);
-     
+
     auto it = searchFirst(strFirst, strLast,
                           termFirst,  termFirst  + termLen);
     if (it == strLast)
@@ -642,7 +641,7 @@ S printNumber(const T& format, const Num& number) //format a single number using
 #error refactor?
 #endif
     static_assert(std::is_same_v<GetCharTypeT<S>, GetCharTypeT<T>>);
-        assert(strBegin(format)[strLength(format)] == 0); //format must be null-terminated!
+    assert(strBegin(format)[strLength(format)] == 0); //format must be null-terminated!
 
     S buf(128, static_cast<GetCharTypeT<S>>('0'));
     const int charsWritten = impl::saferPrintf(buf.data(), buf.size(), strBegin(format), number);

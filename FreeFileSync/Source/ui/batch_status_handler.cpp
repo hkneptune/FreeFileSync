@@ -251,6 +251,12 @@ BatchStatusHandler::Result BatchStatusHandler::reportResults(const Zstring& post
 }
 
 
+wxWindow* BatchStatusHandler::getWindowIfVisible()
+{
+    return progressDlg_ ? progressDlg_->getWindowIfVisible() : nullptr;
+}
+
+
 void BatchStatusHandler::initNewPhase(int itemsTotal, int64_t bytesTotal, ProcessPhase phaseID)
 {
     StatusHandler::initNewPhase(itemsTotal, bytesTotal, phaseID);

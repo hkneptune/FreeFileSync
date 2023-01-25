@@ -26,7 +26,7 @@ namespace fff
 class FfsTrayIcon
 {
 public:
-    FfsTrayIcon(const std::function<void()>& requestResume); //callback only held during lifetime of this instance
+    explicit FfsTrayIcon(const std::function<void()>& requestResume); //callback only held during lifetime of this instance
     ~FfsTrayIcon();
 
     void setToolTip(const wxString& toolTip);

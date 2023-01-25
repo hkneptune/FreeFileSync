@@ -154,7 +154,7 @@ std::pair<int /*exit code*/, std::string> processExecuteImpl(const Zstring& file
             THROW_LAST_SYS_ERROR("fcntl(F_SETFL, O_NONBLOCK)");
 
 
-        const auto endTime = std::chrono::steady_clock::now() + std::chrono::milliseconds(*timeoutMs);
+        const auto stopTime = std::chrono::steady_clock::now() + std::chrono::milliseconds(*timeoutMs);
         for (;;) //EINTR handling? => allow interruption!?
         {
             //read until EAGAIN
@@ -172,18 +172,18 @@ std::pair<int /*exit code*/, std::string> processExecuteImpl(const Zstring& file
 
             //wait for stream input
             const auto now = std::chrono::steady_clock::now();
-            if (now > endTime)
+            if (now > stopTime)
                 throw SysErrorTimeOut(_P("Operation timed out after 1 second.", "Operation timed out after %x seconds.", *timeoutMs / 1000));
 
-            const auto waitTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - now).count();
+            const auto waitTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(stopTime - now).count();
 
             timeval tv{.tv_sec = static_cast<long>(waitTimeMs / 1000)};
             tv.tv_usec = static_cast<long>(waitTimeMs - tv.tv_sec * 1000) * 1000;
 
-            fd_set rfd = {}; //includes FD_ZERO
+            fd_set rfd{}; //includes FD_ZERO
             FD_SET(fdLifeSignR, &rfd);
 
-            if (const int rv = ::select(fdLifeSignR + 1, //int nfds
+            if (const int rv = ::select(fdLifeSignR + 1, //int nfds = "highest-numbered file descriptor in any of the three sets, plus 1"
                                         &rfd,            //fd_set* readfds
                                         nullptr,         //fd_set* writefds
                                         nullptr,         //fd_set* exceptfds

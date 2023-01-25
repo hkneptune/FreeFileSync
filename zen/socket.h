@@ -13,7 +13,6 @@
     #include <netdb.h> //getaddrinfo
 
 
-
 namespace zen
 {
 #define THROW_LAST_SYS_ERROR_WSA(functionName)                       \
@@ -26,14 +25,23 @@ const SocketType invalidSocket = -1;
 inline void closeSocket(SocketType s) { ::close(s); }
 warn_static("log on error!")
 
+void setNonBlocking(SocketType socket, bool value); //throw SysError
+
 
 //Winsock needs to be initialized before calling any of these functions! (WSAStartup/WSACleanup)
+
+
 
 class Socket //throw SysError
 {
 public:
-    Socket(const Zstring& server, const Zstring& serviceName) //throw SysError
+    Socket(const Zstring& server, const Zstring& serviceName, int timeoutSec) //throw SysError
     {
+        //GetAddrInfo(): "If the pNodeName parameter contains an empty string, all registered addresses on the local computer are returned."
+        //               "If the pNodeName parameter points to a string equal to "localhost", all loopback addresses on the local computer are returned."
+        if (trimCpy(server).empty())
+            throw SysError(_("Server name must not be empty."));
+
         const addrinfo hints
         {
             .ai_flags = AI_ADDRCONFIG, //save a AAAA lookup on machines that can't use the returned data anyhow
@@ -49,23 +57,62 @@ public:
         if (!servinfo)
             throw SysError(formatSystemError("getaddrinfo", L"", L"Empty server info."));
 
-        const auto getConnectedSocket = [](const auto& /*::addrinfo*/ ai)
+        const auto getConnectedSocket = [timeoutSec](const auto& /*addrinfo*/ ai)
         {
             SocketType testSocket = ::socket(ai.ai_family,    //int socket_family
-                                             SOCK_CLOEXEC |
+                                             SOCK_CLOEXEC | SOCK_NONBLOCK |
                                              ai.ai_socktype,  //int socket_type
                                              ai.ai_protocol); //int protocol
             if (testSocket == invalidSocket)
                 THROW_LAST_SYS_ERROR_WSA("socket");
             ZEN_ON_SCOPE_FAIL(closeSocket(testSocket));
 
-            warn_static("support timeout!  https://stackoverflow.com/questions/2597608/c-socket-connection-timeout")
-            if (::connect(testSocket, ai.ai_addr, static_cast<int>(ai.ai_addrlen)) != 0)
-                THROW_LAST_SYS_ERROR_WSA("connect");
+
+            if (::connect(testSocket, ai.ai_addr, static_cast<int>(ai.ai_addrlen)) != 0) //0 or SOCKET_ERROR(-1)
+            {
+                if (errno != EINPROGRESS)
+                    THROW_LAST_SYS_ERROR_WSA("connect");
+
+                fd_set writefds{};
+                fd_set exceptfds{}; //mostly only relevant for connect()
+                FD_SET(testSocket, &writefds);
+                FD_SET(testSocket, &exceptfds);
+
+                /*const*/ timeval tv{.tv_sec = timeoutSec};
+
+                const int rv = ::select(
+                                   testSocket + 1, //int nfds = "highest-numbered file descriptor in any of the three sets, plus 1"
+                                   nullptr,       //fd_set* readfds
+                                   &writefds,     //fd_set* writefds
+                                   &exceptfds,    //fd_set* exceptfds
+                                   &tv);          //const timeval* timeout
+                if (rv < 0)
+                    THROW_LAST_SYS_ERROR_WSA("select");
+
+                if (rv == 0) //time-out!
+                    throw SysError(formatSystemError("select, " + utfTo<std::string>(_P("1 sec", "%x sec", timeoutSec)), ETIMEDOUT));
+                int error = 0;
+                socklen_t optLen = sizeof(error);
+                if (::getsockopt(testSocket, //[in]      SOCKET s
+                                 SOL_SOCKET, //[in]      int    level
+                                 SO_ERROR,   //[in]      int    optname
+                                 reinterpret_cast<char*>(&error), //[out]     char*   optval
+                                 &optLen)    //[in, out] socklen_t* optlen
+                    != 0)
+                    THROW_LAST_SYS_ERROR_WSA("getsockopt(SO_ERROR)");
+
+                if (error != 0)
+                    throw SysError(formatSystemError("connect, SO_ERROR", static_cast<ErrorCode>(error))/*== system error code, apparently!?*/);
+            }
+
+            setNonBlocking(testSocket, false); //throw SysError
 
             return testSocket;
         };
 
+        /* getAddrInfo() often returns only one ai_family == AF_INET address, but more items are possible:
+            facebook.com:  1 x AF_INET6, 3 x AF_INET
+            microsoft.com: 5 x AF_INET            => server not allowing connection: hanging for 5x timeoutSec :(       */
         std::optional<SysError> firstError;
         for (const auto* /*::addrinfo*/ si = servinfo; si; si = si->ai_next)
             try
@@ -151,6 +198,23 @@ void shutdownSocketSend(SocketType socket) //throw SysError
 {
     if (::shutdown(socket, SHUT_WR) != 0)
         THROW_LAST_SYS_ERROR_WSA("shutdown");
+}
+
+
+inline
+void setNonBlocking(SocketType socket, bool nonBlocking) //throw SysError
+{
+    int flags = ::fcntl(socket, F_GETFL);
+    if (flags == -1)
+        THROW_LAST_SYS_ERROR("fcntl(F_GETFL)");
+
+    if (nonBlocking)
+        flags |= O_NONBLOCK;
+    else
+        flags &= ~O_NONBLOCK;
+
+    if (::fcntl(socket, F_SETFL, flags) != 0)
+        THROW_LAST_SYS_ERROR(nonBlocking ? "fcntl(F_SETFL, O_NONBLOCK)" : "fcntl(F_SETFL, ~O_NONBLOCK)");
 }
 }
 

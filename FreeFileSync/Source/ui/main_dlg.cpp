@@ -335,7 +335,7 @@ XmlGlobalSettings tryLoadGlobalConfig(const Zstring& globalConfigFilePath) //blo
     {
         try
         {
-            if (itemStillExists(globalConfigFilePath)) //throw FileError
+            if (itemExists(globalConfigFilePath)) //throw FileError
                 throw;
         }
         catch (const FileError& e2)
@@ -361,10 +361,13 @@ void MainDialog::create(const Zstring& globalConfigFilePath)
     for (const Zstring& filePath : cfgFilePaths)
         firstUnavailableFile.addJob([filePath]() -> std::optional<std::false_type>
     {
-        assert(!filePath.empty());
-        if (!fileAvailable(filePath))
-            return std::false_type();
-        return {};
+        try
+        {
+            assert(!filePath.empty());
+            getItemType(filePath); //throw FileError
+            return {};
+        }
+        catch (FileError&) { return std::false_type(); }
     });
 
     //potentially slow network access: give all checks 500ms to finish
@@ -375,12 +378,15 @@ void MainDialog::create(const Zstring& globalConfigFilePath)
     //------------------------------------------------------------------------------------------
 
     if (cfgFilePaths.empty())
-    {
-        const Zstring lastRunConfigFilePath = getLastRunConfigPath();
-        if (fileAvailable(lastRunConfigFilePath)) //3. try to load auto-save config (should not block)
+        try //3. ...to load auto-save config (should not block)
+        {
+            const Zstring lastRunConfigFilePath = getLastRunConfigPath();
+
+            getItemType(lastRunConfigFilePath); //throw FileError
             cfgFilePaths.push_back(lastRunConfigFilePath);
-        //else: not-existing/access error? => user may click on [Last session] later
-    }
+        }
+        catch (FileError&) {} //not-existing/access error? => user may click on [Last session] later
+
 
     XmlGuiConfig guiCfg = getDefaultGuiConfig(globalSettings.defaultFilter);
 
@@ -2245,15 +2251,14 @@ void MainDialog::onLocalKeyEvent(wxKeyEvent& event) //process key events without
                     !isComponentOf(focus, m_panelLog      ) &&
                     !isComponentOf(focus, m_panelDirectoryPairs) && //don't propagate if changing directory fields
                     m_gridMainL->IsEnabled())
-                    if (wxEvtHandler* evtHandler = m_gridMainL->getMainWin().GetEventHandler())
-                    {
-                        m_gridMainL->SetFocus();
+                {
+                    m_gridMainL->SetFocus();
 
-                        event.SetEventType(wxEVT_KEY_DOWN); //the grid event handler doesn't expect wxEVT_CHAR_HOOK!
-                        evtHandler->ProcessEvent(event); //propagating event to child lead to recursion with old key_event.h handling => still an issue?
-                        event.Skip(false); //definitively handled now!
-                        return;
-                    }
+                    event.SetEventType(wxEVT_KEY_DOWN); //the grid event handler doesn't expect wxEVT_CHAR_HOOK!
+                    m_gridMainL->getMainWin().GetEventHandler()->ProcessEvent(event); //propagating event to child lead to recursion with old key_event.h handling => still an issue?
+                    event.Skip(false); //definitively handled now!
+                    return;
+                }
             }
             break;
 
@@ -2298,8 +2303,8 @@ void MainDialog::onTreeGridSelection(GridSelectEvent& event)
     {
         leadRow = std::max<ptrdiff_t>(0, leadRow - 1); //scroll one more row
 
-        m_gridMainL->scrollTo(leadRow); //scroll all of them (including "scroll master")
-        m_gridMainC->scrollTo(leadRow); //
+        m_gridMainL->scrollTo(leadRow); //
+        m_gridMainC->scrollTo(leadRow); //scroll all of them (including "scroll master")
         m_gridMainR->scrollTo(leadRow); //
 
         m_gridOverview->getMainWin().Update(); //draw cursor immediately rather than on next idle event (required for slow CPUs, netbook)
@@ -2307,7 +2312,7 @@ void MainDialog::onTreeGridSelection(GridSelectEvent& event)
 
     //get selection on overview panel and set corresponding markers on main grid
     std::unordered_set<const FileSystemObject*> markedFilesAndLinks; //mark files/symlinks directly
-    std::unordered_set<const ContainerObject*> markedContainer;      //mark full container including child-objects
+    std::unordered_set<const  ContainerObject*> markedContainer;     //mark full container including child-objects
 
     for (size_t row : m_gridOverview->getSelectedRows())
         if (std::unique_ptr<TreeView::Node> node = treegrid::getDataView(*m_gridOverview).getLine(row))
@@ -2322,6 +2327,11 @@ void MainDialog::onTreeGridSelection(GridSelectEvent& event)
 
     filegrid::setNavigationMarker(*m_gridMainL, *m_gridMainR,
                                   std::move(markedFilesAndLinks), std::move(markedContainer));
+
+    //selecting overview should clear main grid selection (if any) but not the other way around:
+    m_gridMainL->clearSelection(GridEventPolicy::deny);
+    m_gridMainC->clearSelection(GridEventPolicy::deny);
+    m_gridMainR->clearSelection(GridEventPolicy::deny);
 
     event.Skip();
 }
@@ -2977,16 +2987,24 @@ void MainDialog::cfgHistoryRemoveObsolete(const std::vector<Zstring>& filePaths)
         std::vector<std::future<bool>> availableFiles; //check existence of all config files in parallel!
 
         for (const Zstring& filePath : filePaths)
-            availableFiles.push_back(runAsync([=] { return fileAvailable(filePath); }));
+            availableFiles.push_back(runAsync([=]
+        {
+            try
+            {
+                getItemType(filePath); //throw FileError
+                return true;
+            }
+            catch (FileError&) { return false; } //not-existing/access error?
+        }));
 
         //potentially slow network access => limit maximum wait time!
-        waitForAllTimed(availableFiles.begin(), availableFiles.end(), std::chrono::seconds(1));
+        waitForAllTimed(availableFiles.begin(), availableFiles.end(), std::chrono::seconds(2));
 
         std::vector<Zstring> pathsToRemove;
 
         auto itFut = availableFiles.begin();
         for (auto it = filePaths.begin(); it != filePaths.end(); ++it, ++itFut)
-            if (isReady(*itFut) && !itFut->get()) //remove only files that are confirmed to be non-existent
+            if (isReady(*itFut) && !itFut->get()) //no ready? maybe on HDD that is just spinning up => better keep it
                 pathsToRemove.push_back(*it); //file access error? probably not accessible network share or usb stick => remove cfg
 
         return pathsToRemove;
@@ -3090,7 +3108,8 @@ void MainDialog::onConfigSave(wxCommandEvent& event)
         else
             showNotificationDialog(this, DialogInfoType::error,
                                    PopupDialogCfg().setDetailInstructions(replaceCpy(_("Cannot open file %x."), L"%x", fmtPath(activeCfgFilePath)) +
-                                                                          L"\n\n" + _("Unexpected file extension:") + L' ' + fmtPath(getFileExtension(activeCfgFilePath))));
+                                                                          L"\n\n" + _("Unexpected file extension:") + L' ' + fmtPath(getFileExtension(activeCfgFilePath)) + L'\n' +
+                                                                          _("Expected:") + L" ffs_gui, ffs_batch"));
     }
 }
 
@@ -3113,7 +3132,7 @@ bool MainDialog::trySaveConfig(const Zstring* guiCfgPath) //"false": error/cance
                                                          getParentFolderPath(globalCfg_.mainDlg.config.lastSelectedFile);
 
         Zstring defaultFileName = !activeCfgFilePath.empty() ?
-                                  afterLast(activeCfgFilePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all) :
+                                  getItemName(activeCfgFilePath) :
                                   Zstr("SyncSettings.ffs_gui");
 
         //attention: activeConfigFiles_ may be an imported ffs_batch file! We don't want to overwrite it with a GUI config!
@@ -3196,7 +3215,7 @@ bool MainDialog::trySaveBatchConfig(const Zstring* batchCfgPath) //"false": erro
                                                          getParentFolderPath(globalCfg_.mainDlg.config.lastSelectedFile);
 
         Zstring defaultFileName = !activeCfgFilePath.empty() ?
-                                  afterLast(activeCfgFilePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all) :
+                                  getItemName(activeCfgFilePath) :
                                   Zstr("BatchRun.ffs_batch");
 
         //attention: activeConfigFiles_ may be an ffs_gui file! We don't want to overwrite it with a BATCH config!
@@ -3250,8 +3269,7 @@ bool MainDialog::saveOldConfig() //"false": error/cancel
                 bool neverSaveChanges = false;
                 switch (showQuestionDialog(this, DialogInfoType::info, PopupDialogCfg().
                                            setTitle(utfTo<wxString>(activeCfgFilePath)).
-                                           setMainInstructions(replaceCpy(_("Do you want to save changes to %x?"), L"%x",
-                                                                          fmtPath(afterLast(activeCfgFilePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all)))).
+                                           setMainInstructions(replaceCpy(_("Do you want to save changes to %x?"), L"%x", fmtPath(getItemName(activeCfgFilePath)))).
                                            setCheckBox(neverSaveChanges, _("Never save &changes"), static_cast<ConfirmationButton3>(QuestionButton2::yes)),
                                            _("&Save"), _("Do&n't save")))
                 {
@@ -3264,7 +3282,8 @@ bool MainDialog::saveOldConfig() //"false": error/cancel
                         {
                             showNotificationDialog(this, DialogInfoType::error,
                                                    PopupDialogCfg().setDetailInstructions(replaceCpy(_("Cannot open file %x."), L"%x", fmtPath(activeCfgFilePath)) +
-                                                                                          L"\n\n" + _("Unexpected file extension:") + L' ' + fmtPath(getFileExtension(activeCfgFilePath)) ));
+                                                                                          L"\n\n" + _("Unexpected file extension:") + L' ' + fmtPath(getFileExtension(activeCfgFilePath)) + L'\n' +
+                                                                                          _("Expected:") + L" ffs_gui, ffs_batch"));
                             return false;
                         }
                         break;
@@ -3483,7 +3502,7 @@ void MainDialog::renameSelectedCfgHistoryItem()
         if (!loadConfiguration({cfgPathOld})) //=> error/cancel
             return;
 
-        const Zstring fileName     =  afterLast(cfgPathOld, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
+        const Zstring fileName     = getItemName(cfgPathOld);
         /**/  Zstring folderPathPf = beforeLast(cfgPathOld, FILE_NAME_SEPARATOR, IfNotFoundReturn::none);
         if (!folderPathPf.empty())
             folderPathPf += FILE_NAME_SEPARATOR;
@@ -3641,7 +3660,7 @@ void MainDialog::onCfgGridContext(GridContextMenuEvent& event)
         dc.DrawText(L"?", wxPoint() + (bmpColorPicker.GetSize() - dc.GetTextExtent(L"?")) / 2);
     }
 
-    submenu.addItem(_("Select different color..."), [&]
+    submenu.addItem(_("Different color..."), [&]
     {
         wxColourData colCfg;
         colCfg.SetChooseFull(true);
@@ -4088,6 +4107,13 @@ void MainDialog::onToggleViewButton(wxCommandEvent& event)
     {
         button->toggle();
         updateGui();
+
+        //consistency: toggling view buttons should *always* clear selections, not only implicitly when row count changes:
+        //
+        //m_gridMainL->clearSelection(GridEventPolicy::deny);
+        //m_gridMainC->clearSelection(GridEventPolicy::deny); -> implicitly called by onTreeGridSelection()
+        //m_gridMainR->clearSelection(GridEventPolicy::deny);
+        m_gridOverview->clearSelection(GridEventPolicy::allow);
     }
     else
         assert(false);
@@ -4215,15 +4241,24 @@ void MainDialog::onCompare(wxCommandEvent& event)
                                               guiCfg.mainCfg.autoRetryCount,
                                               guiCfg.mainCfg.autoRetryDelay,
                                               globalCfg_.soundFileAlertPending);
+
+    auto requestPassword = [&, password = Zstring()](const std::wstring& msg, const std::wstring& lastErrorMsg) mutable //throw AbortProcess
+    {
+        assert(runningOnMainThread());
+        if (showPasswordPrompt(this, msg, lastErrorMsg, password) != ConfirmationButton::accept)
+            statusHandler.abortProcessNow(AbortTrigger::user); //throw AbortProcess
+
+        return password;
+    };
     try
     {
         //GUI mode: place directory locks on directories isolated(!) during both comparison and synchronization
-        std::unique_ptr<LockHolder> dirLocks;
 
         //COMPARE DIRECTORIES
+        std::unique_ptr<LockHolder> dirLocks;
         folderCmp_ = compare(globalCfg_.warnDlgs,
                              globalCfg_.fileTimeTolerance,
-                             true, //allowUserInteraction
+                             requestPassword,
                              globalCfg_.runWithBackgroundPriority,
                              globalCfg_.createLockFile,
                              dirLocks,
@@ -4242,15 +4277,9 @@ void MainDialog::onCompare(wxCommandEvent& event)
         return updateGui(); //refresh grid in ANY case! (also on abort)
 
 
-    filegrid::setData(*m_gridMainC,    folderCmp_); //update view on data
-    treegrid::setData(*m_gridOverview, folderCmp_); //
-    updateGui();
-
-    m_gridMainL->clearSelection(GridEventPolicy::allow);
-    m_gridMainC->clearSelection(GridEventPolicy::allow);
-    m_gridMainR->clearSelection(GridEventPolicy::allow);
-
-    m_gridOverview->clearSelection(GridEventPolicy::allow);
+    filegrid::setData(*m_gridMainC,    folderCmp_); //
+    treegrid::setData(*m_gridOverview, folderCmp_); //update view on data
+    updateGui();                                    //
 
     //play (optional) sound notification
     if (!globalCfg_.soundFileCompareFinished.empty())
@@ -4301,8 +4330,8 @@ void MainDialog::updateGui()
     updateUnsavedCfgStatus();
 
     const auto& mainCfg = getConfig().mainCfg;
-    const std::optional<CompareVariant>           cmpVar  = getCompVariant(mainCfg);
-    const std::optional<SyncVariant> syncVar = getSyncVariant(mainCfg);
+    const std::optional<CompareVariant> cmpVar  = getCompVariant(mainCfg);
+    const std::optional<SyncVariant>    syncVar = getSyncVariant(mainCfg);
 
     const char* cmpVarIconName = nullptr;
     if (cmpVar)
@@ -4870,12 +4899,11 @@ void MainDialog::onGridLabelLeftClickRim(GridLabelClickEvent& event, bool leftSi
     const ItemPathFormat itemPathFormat = leftSide ? globalCfg_.mainDlg.itemPathFormatLeftGrid : globalCfg_.mainDlg.itemPathFormatRightGrid;
 
     filegrid::getDataView(*m_gridMainC).sortView(colType, itemPathFormat, leftSide, sortAscending);
-
-    m_gridMainL->clearSelection(GridEventPolicy::allow);
-    m_gridMainC->clearSelection(GridEventPolicy::allow);
-    m_gridMainR->clearSelection(GridEventPolicy::allow);
-
     updateGui(); //refresh gridDataView
+
+    m_gridMainL->clearSelection(GridEventPolicy::deny); //call *after* updateGui/updateGridViewData() has restored FileView::viewRef_
+    m_gridMainC->clearSelection(GridEventPolicy::deny);
+    m_gridMainR->clearSelection(GridEventPolicy::deny);
 }
 
 
@@ -4892,12 +4920,11 @@ void MainDialog::onGridLabelLeftClickC(GridLabelClickEvent& event)
                     sortAscending = !sortInfo->ascending;
 
         filegrid::getDataView(*m_gridMainC).sortView(colType, sortAscending);
-
-        m_gridMainL->clearSelection(GridEventPolicy::allow);
-        m_gridMainC->clearSelection(GridEventPolicy::allow);
-        m_gridMainR->clearSelection(GridEventPolicy::allow);
-
         updateGui(); //refresh gridDataView
+
+        m_gridMainL->clearSelection(GridEventPolicy::deny);
+        m_gridMainC->clearSelection(GridEventPolicy::deny);
+        m_gridMainR->clearSelection(GridEventPolicy::deny);
     }
 }
 
@@ -5919,7 +5946,7 @@ void MainDialog::switchProgramLanguage(wxLanguage langId)
     //show new dialog, then delete old one
     MainDialog::create(globalConfigFilePath_, &newGlobalCfg, getConfig(), activeConfigFiles_, false);
 
-    //we don't use Close():
+    //don't use Close():
     //1. we don't want to show the prompt to save current config in onClose()
     //2. after getGlobalCfgBeforeExit() the old main dialog is invalid so we want to force deletion
     Destroy(); //alternative: Close(true /*force*/)

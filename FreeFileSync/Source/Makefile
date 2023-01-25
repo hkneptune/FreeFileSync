@@ -79,6 +79,7 @@ cppFiles+=ui/tray_icon.cpp
 cppFiles+=ui/triple_splitter.cpp
 cppFiles+=ui/version_check.cpp
 cppFiles+=../../libcurl/curl_wrap.cpp
+cppFiles+=../../zen/argon2.cpp
 cppFiles+=../../zen/file_access.cpp
 cppFiles+=../../zen/file_io.cpp
 cppFiles+=../../zen/file_path.cpp

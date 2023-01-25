@@ -61,13 +61,23 @@ void FolderHistoryBox::setValueAndUpdateList(const wxString& folderPathPhrase)
 {
     //populate selection list....
     std::vector<wxString> items;
+    {
+        auto trimTrailingSep = [](Zstring path)
+        {
+            if (endsWith(path, Zstr('/')) ||
+                endsWith(path, Zstr('\\')))
+                path.pop_back();
+            return path;
+        };
 
-    const Zstring& pathPhraseTrimmed = utfTo<Zstring>(trimCpy(folderPathPhrase));
+        const Zstring& folderPathPhraseTrimmed = trimTrailingSep(trimCpy(utfTo<Zstring>(folderPathPhrase)));
 
-    //path phrase aliases: allow user changing to volume name and back
-    for (const Zstring& pathPhrase : AFS::getPathPhraseAliases(createAbstractPath(pathPhraseTrimmed))) //may block when resolving [<volume name>]
-        if (!equalNoCase(appendSeparator(pathPhraseTrimmed), appendSeparator(pathPhrase))) //don't add redundant aliases
-            items.push_back(utfTo<wxString>(pathPhrase));
+        //path phrase aliases: allow user changing to volume name and back
+        for (const Zstring& aliasPhrase : AFS::getPathPhraseAliases(createAbstractPath(utfTo<Zstring>(folderPathPhrase)))) //may block when resolving [<volume name>]
+            if (!equalNoCase(folderPathPhraseTrimmed,
+                             trimTrailingSep(aliasPhrase))) //don't add redundant aliases
+                items.push_back(utfTo<wxString>(aliasPhrase));
+    }
 
     if (sharedHistory_.get())
     {

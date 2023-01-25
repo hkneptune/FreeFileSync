@@ -117,7 +117,7 @@ std::vector<TranslationInfo> loadTranslations(const Zstring& zipPath) //throw Fi
     catch (FileError&) //fall back to folder: dev build (only!?)
     {
         const Zstring fallbackFolder = beforeLast(zipPath, Zstr(".zip"), IfNotFoundReturn::none);
-        if (!itemStillExists(fallbackFolder)) //throw FileError
+        if (!itemExists(fallbackFolder)) //throw FileError
             throw;
 
         traverseFolder(fallbackFolder, [&](const FileInfo& fi)
@@ -127,7 +127,7 @@ std::vector<TranslationInfo> loadTranslations(const Zstring& zipPath) //throw Fi
                 std::string stream = getFileContent(fi.fullPath, nullptr /*notifyUnbufferedIO*/); //throw FileError
                 streams.emplace_back(fi.itemName, std::move(stream));
             }
-        }, nullptr, nullptr, [](const std::wstring& errorMsg) { throw FileError(errorMsg); });
+        }, nullptr, nullptr); //throw FileError
     }
     //--------------------------------------------------------------------
 

@@ -89,8 +89,7 @@ void FolderSelector2::onMouseWheel(wxMouseEvent& event)
     //redirect to parent scrolled window!
     for (wxWindow* wnd = folderPathCtrl_.GetParent(); wnd; wnd = wnd->GetParent())
         if (dynamic_cast<wxScrolledWindow*>(wnd) != nullptr)
-            if (wxEvtHandler* evtHandler = wnd->GetEventHandler())
-                return evtHandler->AddPendingEvent(event);
+            return wnd->GetEventHandler()->AddPendingEvent(event);
     assert(false);
     event.Skip();
 }
@@ -133,7 +132,7 @@ void FolderSelector2::onSelectDir(wxCommandEvent& event)
     //IFileDialog requirements for default path: 1. accepts native paths only!!! 2. path must exist!
     Zstring defaultFolderPath;
     {
-        auto folderAccessible = [waitEndTime = std::chrono::steady_clock::now() + FOLDER_SELECTED_EXISTENCE_CHECK_TIME_MAX](const Zstring& folderPath)
+        auto folderAccessible = [stopTime = std::chrono::steady_clock::now() + FOLDER_SELECTED_EXISTENCE_CHECK_TIME_MAX](const Zstring& folderPath)
         {
             auto ft = runAsync([folderPath]
             {
@@ -144,7 +143,7 @@ void FolderSelector2::onSelectDir(wxCommandEvent& event)
                 catch (FileError&) { return false; }
             });
 
-            return ft.wait_until(waitEndTime) == std::future_status::ready && ft.get(); //potentially slow network access: wait 200ms at most
+            return ft.wait_until(stopTime) == std::future_status::ready && ft.get(); //potentially slow network access: wait 200ms at most
         };
 
         auto trySetDefaultPath = [&](const Zstring& folderPathPhrase)

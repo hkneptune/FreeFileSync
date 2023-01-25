@@ -98,3 +98,27 @@ PopupDialogGenerated::PopupDialogGenerated( wxWindow* parent, wxWindowID id, con
 PopupDialogGenerated::~PopupDialogGenerated()
 {
 }
+
+TooltipDlgGenerated::TooltipDlgGenerated( wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style ) : wxDialog( parent, id, title, pos, size, style )
+{
+    this->SetSizeHints( wxDefaultSize, wxDefaultSize );
+
+    wxBoxSizer* bSizer158;
+    bSizer158 = new wxBoxSizer( wxHORIZONTAL );
+
+    m_bitmapLeft = new wxStaticBitmap( this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
+    bSizer158->Add( m_bitmapLeft, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5 );
+
+    m_staticTextMain = new wxStaticText( this, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticTextMain->Wrap( 600 );
+    bSizer158->Add( m_staticTextMain, 0, wxALL|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5 );
+
+
+    this->SetSizer( bSizer158 );
+    this->Layout();
+    bSizer158->Fit( this );
+}
+
+TooltipDlgGenerated::~TooltipDlgGenerated()
+{
+}

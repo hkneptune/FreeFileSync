@@ -48,7 +48,7 @@ Zstring zen::getLoginUser() //throw FileError
                                         &pwEntry);  //struct passwd** result
             rv != 0 || !pwEntry)
         {
-            //"If an error occurs, errno is set appropriately" => why the fuck, then also return errno as return value!?
+            //"If an error occurs, errno is set appropriately" => why the fuck, then, also return errno as return value!?
             errno = rv != 0 ? rv : ENOENT;
             THROW_LAST_FILE_ERROR(_("Cannot get process information."), "getpwuid_r(" + numberTo<std::string>(userIdNo) + ')');
         }
@@ -65,9 +65,9 @@ Zstring zen::getLoginUser() //throw FileError
     //BUT: getlogin() can fail with ENOENT on Linux Mint: https://freefilesync.org/forum/viewtopic.php?t=8181
 
     //getting a little desperate: variables used by installer.sh
-    if (const char* userName = tryGetNonRootUser("USER"))      return userName;
-    if (const char* userName = tryGetNonRootUser("SUDO_USER")) return userName;
-    if (const char* userName = tryGetNonRootUser("LOGNAME"))   return userName;
+    if (const char* username = tryGetNonRootUser("USER"))      return username;
+    if (const char* username = tryGetNonRootUser("SUDO_USER")) return username;
+    if (const char* username = tryGetNonRootUser("LOGNAME"))   return username;
 
 
     //apparently the current user really IS root: https://freefilesync.org/forum/viewtopic.php?t=8405
@@ -78,7 +78,7 @@ Zstring zen::getLoginUser() //throw FileError
 
 Zstring zen::getUserDescription() //throw FileError
 {
-    const Zstring userName     = getLoginUser(); //throw FileError
+    const Zstring username     = getLoginUser(); //throw FileError
     const Zstring computerName = []() -> Zstring //throw FileError
     {
         std::vector<char> buf(10000);
@@ -92,10 +92,10 @@ Zstring zen::getUserDescription() //throw FileError
         return hostName;
     }();
 
-    if (contains(getUpperCase(computerName), getUpperCase(userName)))
-        return userName; //no need for text duplication! e.g. "Zenju (Zenju-PC)"
+    if (contains(getUpperCase(computerName), getUpperCase(username)))
+        return username; //no need for text duplication! e.g. "Zenju (Zenju-PC)"
 
-    return userName + Zstr(" (") + computerName + Zstr(')'); //e.g. "Admin (Zenju-PC)"
+    return username + Zstr(" (") + computerName + Zstr(')'); //e.g. "Admin (Zenju-PC)"
 }
 
 
@@ -118,7 +118,7 @@ ComputerModel zen::getComputerModel() //throw FileError
             }
             catch (FileError&)
             {
-                if (!itemStillExists(filePath)) //throw FileError
+                if (!itemExists(filePath)) //throw FileError
                     return std::wstring();
 
                 throw;

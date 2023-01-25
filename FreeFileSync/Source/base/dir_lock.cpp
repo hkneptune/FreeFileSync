@@ -331,7 +331,7 @@ void waitOnDirLock(const Zstring& lockFilePath, const DirLockCallback& notifySta
     {
         const LockInformation& lockInfo = retrieveLockInfo(lockFilePath); //throw FileError
 
-        infoMsg += SPACED_DASH + _("User name:") +  L' ' + utfTo<std::wstring>(lockInfo.userId);
+        infoMsg += SPACED_DASH + _("Username:") +  L' ' + utfTo<std::wstring>(lockInfo.userId);
 
         originalLockId = lockInfo.lockId;
         switch (getProcessStatus(lockInfo)) //throw FileError

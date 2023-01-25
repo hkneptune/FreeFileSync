@@ -147,6 +147,14 @@ void setScaleFactor(wxDC& dc, double scale)
 }
 
 
+//add some sanity to moronic const/non-const wxRect::Intersect()
+inline
+wxRect getIntersection(const wxRect& rect1, const wxRect& rect2)
+{
+    return rect1.Intersect(rect2);
+}
+
+
 //---------------------- implementation ------------------------
 class RecursiveDcClipper
 {
@@ -158,8 +166,7 @@ public:
         {
             oldRect_ = it->second;
 
-            wxRect tmp = r;
-            tmp.Intersect(*oldRect_); //better safe than sorry
+            const wxRect tmp = getIntersection(r, *oldRect_); //better safe than sorry
 
             assert(!tmp.IsEmpty()); //"setting an empty clipping region is equivalent to DestroyClippingRegion()"
 

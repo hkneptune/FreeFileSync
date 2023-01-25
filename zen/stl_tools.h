@@ -251,7 +251,7 @@ RandomAccessIterator1 searchFirst(const RandomAccessIterator1 first,       const
                                   const RandomAccessIterator2 needleFirst, const RandomAccessIterator2 needleLast, IsEq isEqual)
 {
     if (needleLast - needleFirst == 1) //don't use expensive std::search unless required!
-        return std::find_if(first, last, [needleFirst, isEqual](const auto c){ return isEqual(*needleFirst, c); });
+        return std::find_if(first, last, [needleFirst, isEqual](const auto c) { return isEqual(*needleFirst, c); });
 
     return std::search(first, last,
                        needleFirst, needleLast, isEqual);
@@ -335,7 +335,7 @@ class FNV1aHash //FNV-1a: https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%8
 {
 public:
     FNV1aHash() {}
-    explicit FNV1aHash(Num startVal) : hashVal_(startVal) {}
+    explicit FNV1aHash(Num startVal) : hashVal_(startVal) { assert(startVal != 0); /*(yes, might be a real hash, but) most likely bad init value*/}
 
     void add(Num n)
     {

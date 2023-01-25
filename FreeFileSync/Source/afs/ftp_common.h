@@ -29,7 +29,7 @@ Zstring decodePasswordBase64(const ZstringView pass)
 }
 
 
-//according to the SFTP path syntax, the user name must not contain raw @ and :
+//according to the SFTP path syntax, the username must not contain raw @ and :
 //-> we don't need a full urlencode!
 inline
 Zstring encodeFtpUsername(Zstring name)

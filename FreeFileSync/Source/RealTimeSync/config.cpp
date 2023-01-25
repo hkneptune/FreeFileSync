@@ -96,9 +96,9 @@ void rts::readConfig(const Zstring& filePath, XmlRealConfig& cfg, std::wstring& 
         warn_static("at least log on failure!")
     }
     catch (const FileError& e)
-    { 
-        warningMsg = replaceCpy(_("Configuration file %x is incomplete. The missing elements have been set to their default values."), L"%x", fmtPath(filePath)) + 
-            L"\n\n" + e.toString(); 
+    {
+        warningMsg = replaceCpy(_("Configuration file %x is incomplete. The missing elements have been set to their default values."), L"%x", fmtPath(filePath)) +
+                     L"\n\n" + e.toString();
     }
 }
 
@@ -140,11 +140,11 @@ void rts::readRealOrBatchConfig(const Zstring& filePath, XmlRealConfig& cfg, std
             uniqueFolders.insert(folderPathPhraseRight);
         }
 
-    try
-    {
-        checkXmlMappingErrors(in); //throw FileError
-    }
-    catch (const FileError& e) { throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)) + L"\n\n" + e.toString()); }
+        try
+        {
+            checkXmlMappingErrors(in); //throw FileError
+        }
+        catch (const FileError& e) { throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)) + L"\n\n" + e.toString()); }
         //---------------------------------------------------------------------------------------
 
         std::erase_if(uniqueFolders, [](const Zstring& str) { return trimCpy(str).empty(); });
@@ -167,7 +167,7 @@ wxLanguage rts::getProgramLanguage() //throw FileError
     }
     catch (FileError&)
     {
-        if (!itemStillExists(filePath)) //throw FileError
+        if (!itemExists(filePath)) //throw FileError
             return fff::getDefaultLanguage();
         throw;
     }
@@ -179,7 +179,7 @@ wxLanguage rts::getProgramLanguage() //throw FileError
 
     wxLanguage lng = wxLANGUAGE_UNKNOWN;
     in["Language"].attribute("Code", lng);
-    
+
     try
     {
         checkXmlMappingErrors(in); //throw FileError

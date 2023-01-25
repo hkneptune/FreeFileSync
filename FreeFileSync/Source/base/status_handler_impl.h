@@ -449,7 +449,7 @@ private:
     {
         const double totalSecs = numeric::isNull(bytesPerSec) ? 0 : bytesTotal / bytesPerSec;
         const double expectedSteps = totalSecs * STATUS_PERCENT_MIN_CHANGES_PER_SEC;
-       
+
         const int decPlaces = [&] //TODO? protect against format flickering!?
         {
             if (expectedSteps <=    100) return 0;

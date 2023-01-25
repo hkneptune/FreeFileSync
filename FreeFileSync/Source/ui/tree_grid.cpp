@@ -1146,8 +1146,8 @@ private:
             sortAscending = !ascending;
 
         getDataView().setSortDirection(colTypeTree, sortAscending);
+        grid_.Refresh(); //just in case, but setSortDirection() should not change grid size
         grid_.clearSelection(GridEventPolicy::allow);
-        grid_.Refresh();
     }
 
     void expandNode(size_t row)

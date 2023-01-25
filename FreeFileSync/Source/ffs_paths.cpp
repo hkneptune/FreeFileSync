@@ -65,8 +65,7 @@ Zstring fff::getConfigDirPath()
         {
             try
             {
-                return
-                appendPath(getUserDataPath(), Zstr("FreeFileSync")); //throw FileError
+                return appendPath(getUserDataPath(), Zstr("FreeFileSync")); //throw FileError
             }
             catch (const FileError& e)
             {

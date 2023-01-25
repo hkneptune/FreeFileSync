@@ -90,7 +90,7 @@ void ConfigView::addCfgFilesImpl(const std::vector<Zstring>& filePaths)
                 if (equalNativePath(filePath, lastRunConfigPath_))
                     return std::make_tuple(utfTo<Zstring>(L'[' + _("Last session") + L']'), Details::CFG_TYPE_GUI, true);
 
-                const Zstring fileName = afterLast(filePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
+                const Zstring fileName = getItemName(filePath);
 
                 if (endsWithAsciiNoCase(fileName, ".ffs_gui"))
                     return std::make_tuple(beforeLast(fileName, Zstr('.'), IfNotFoundReturn::none), Details::CFG_TYPE_GUI, false);

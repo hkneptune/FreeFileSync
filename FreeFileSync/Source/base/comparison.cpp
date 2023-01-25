@@ -72,7 +72,7 @@ struct ResolvedBaseFolders
 
 
 ResolvedBaseFolders initializeBaseFolders(const std::vector<FolderPairCfg>& fpCfgList,
-                                          bool allowUserInteraction,
+                                          const AFS::RequestPasswordFun& requestPassword /*throw X*/,
                                           WarningDialogs& warnings,
                                           PhaseCallback& callback /*throw X*/) //throw X
 {
@@ -95,8 +95,8 @@ ResolvedBaseFolders initializeBaseFolders(const std::vector<FolderPairCfg>& fpCf
             allFolders.insert(output.resolvedPairs.back().folderPathRight);
         }
         //---------------------------------------------------------------------------
-        output.baseFolderStatus = getFolderStatusNonBlocking(allFolders,
-                                                             allowUserInteraction, callback); //throw X
+        output.baseFolderStatus = getFolderStatusParallel(allFolders,
+                                                          true /*authenticateAccess*/, requestPassword, callback); //throw X
         if (!output.baseFolderStatus.failedChecks.empty())
         {
             std::wstring msg = _("Cannot find the following folders:") + L'\n';
@@ -691,7 +691,7 @@ private:
     const Zstringc* checkFailedRead(FileSystemObject& fsObj, const Zstringc* errorMsg);
 
     const std::unordered_map<ZstringNoCase, Zstringc>& errorsByRelPath_; //base-relative paths or empty if read-error for whole base directory
-    std::vector<FilePair*>&    undefinedFiles_;
+    std::vector<FilePair*>& undefinedFiles_;
     std::vector<SymlinkPair*>& undefinedSymlinks_;
 };
 
@@ -700,9 +700,10 @@ inline
 const Zstringc* MergeSides::checkFailedRead(FileSystemObject& fsObj, const Zstringc* errorMsg)
 {
     if (!errorMsg)
-        if (const auto it = errorsByRelPath_.find(fsObj.getRelativePathAny());
-            it != errorsByRelPath_.end())
-            errorMsg = &it->second;
+        if (!errorsByRelPath_.empty()) //only pay for ZstringNoCase construction when needed
+            if (const auto it = errorsByRelPath_.find(fsObj.getRelativePathAny());
+                it != errorsByRelPath_.end())
+                errorMsg = &it->second;
 
     if (errorMsg)
     {
@@ -1027,7 +1028,7 @@ std::shared_ptr<BaseFolderPair> ComparisonBuffer::performComparison(const Resolv
 
 FolderComparison fff::compare(WarningDialogs& warnings,
                               int fileTimeTolerance,
-                              bool allowUserInteraction,
+                              const AFS::RequestPasswordFun& requestPassword /*throw X*/,
                               bool runWithBackgroundPriority,
                               bool createDirLocks,
                               std::unique_ptr<LockHolder>& dirLocks,
@@ -1063,7 +1064,7 @@ FolderComparison fff::compare(WarningDialogs& warnings,
     }
 
     const ResolvedBaseFolders& resInfo = initializeBaseFolders(fpCfgList,
-                                                               allowUserInteraction, warnings, callback); //throw X
+                                                               requestPassword, warnings, callback); //throw X
     //directory existence only checked *once* to avoid race conditions!
     if (resInfo.resolvedPairs.size() != fpCfgList.size())
         throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
@@ -1112,8 +1113,8 @@ FolderComparison fff::compare(WarningDialogs& warnings,
             }
 
         if (!msg.empty())
-            callback.reportWarning(_("One base folder of a folder pair is contained in the other one.") +
-                                   (shouldExclude ? L'\n' + _("The folder should be excluded from synchronization via filter.") : L"") +
+            callback.reportWarning(_("One folder of the folder pair is a subfolder of the other.") +
+                                   (shouldExclude ? L'\n' + _("The folder should be excluded via filter.") : L"") +
                                    msg, warnings.warnDependentFolderPair); //throw X
     }
     //-------------------end of basic checks------------------------------------------
@@ -1123,7 +1124,6 @@ FolderComparison fff::compare(WarningDialogs& warnings,
     {
         std::set<Zstring> folderPathsToLock;
         for (const AbstractPath& folderPath : resInfo.baseFolderStatus.existing)
-
             if (const Zstring& nativePath = getNativeItemPath(folderPath); //restrict directory locking to native paths until further
                 !nativePath.empty())
                 folderPathsToLock.insert(nativePath);

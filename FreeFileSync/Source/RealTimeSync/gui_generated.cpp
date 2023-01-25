@@ -102,7 +102,7 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
     wxBoxSizer* bSizer152;
     bSizer152 = new wxBoxSizer( wxHORIZONTAL );
 
-    m_staticText811 = new wxStaticText( this, wxID_ANY, _("To get started just import a \"ffs_batch\" file."), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticText811 = new wxStaticText( this, wxID_ANY, _("To get started, just import a \"ffs_batch\" file."), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticText811->Wrap( -1 );
     m_staticText811->SetForegroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_GRAYTEXT ) );
 

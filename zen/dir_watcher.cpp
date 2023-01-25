@@ -37,15 +37,18 @@ DirWatcher::DirWatcher(const Zstring& dirPath) : //throw FileError
     {
         std::function<void(const Zstring& path)> traverse;
 
-        traverse = [&traverse, &fullFolderList](const Zstring& path)
+        traverse = [&traverse, &fullFolderList](const Zstring& path) //throw FileError
         {
             traverseFolder(path, nullptr,
-            [&](const FolderInfo& fi ) { fullFolderList.push_back(fi.fullPath); traverse(fi.fullPath); },
-            nullptr, //don't traverse into symlinks (analog to windows build)
-            [&](const std::wstring& errorMsg) { throw FileError(errorMsg); });
+            [&](const FolderInfo& fi )
+                {
+                    fullFolderList.push_back(fi.fullPath);
+                    traverse(fi.fullPath); //throw FileError
+                },
+            nullptr /*don't traverse into symlinks (analog to Windows)*/); //throw FileError
         };
 
-        traverse(baseDirPath_);
+        traverse(baseDirPath_); //throw FileError
     }
 
     //init

@@ -182,7 +182,8 @@ FsItemDetails getItemDetails(const Zstring& itemPath) //throw FileError
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(itemPath)), "lstat");
 
     return {S_ISLNK(itemInfo.st_mode) ? ItemType::symlink : //on Linux there is no distinction between file and directory symlinks!
-            /**/ (S_ISDIR(itemInfo.st_mode) ? ItemType::folder : ItemType::file), //a file or named pipe, etc. => dont't check using S_ISREG(): see comment in file_traverser.cpp
+            /**/ (S_ISDIR(itemInfo.st_mode) ? ItemType::folder : ItemType::file), //a file or named pipe, etc. S_ISREG, S_ISCHR, S_ISBLK, S_ISFIFO, S_ISSOCK
+            //=> dont't check using S_ISREG(): see comment in file_traverser.cpp
             itemInfo.st_mtime,
             makeUnsigned(itemInfo.st_size),
             getFileFingerprint(itemInfo.st_ino)};
@@ -426,10 +427,9 @@ private:
     }
 
     //----------------------------------------------------------------------------------------------------------------
-    ItemType getItemType(const AfsPath& itemPath) const override //throw FileError
+    static ItemType zenToAfsItemType(zen::ItemType type)
     {
-        initComForThread(); //throw FileError
-        switch (zen::getItemType(getNativePath(itemPath))) //throw FileError
+        switch (type)
         {
             case zen::ItemType::file:
                 return AFS::ItemType::file;
@@ -439,16 +439,30 @@ private:
                 return AFS::ItemType::symlink;
         }
         assert(false);
-        return AFS::ItemType::file;
+        return static_cast<AFS::ItemType>(type);
     }
 
-    std::optional<ItemType> itemStillExists(const AfsPath& itemPath) const override //throw FileError
+    ItemType getItemType(const AfsPath& itemPath) const override //throw FileError
     {
-        //default implementation: folder traversal
-        return AFS::itemStillExists(itemPath); //throw FileError
+        initComForThread(); //throw FileError
+        return zenToAfsItemType(zen::getItemType(getNativePath(itemPath))); //throw FileError
     }
-    //----------------------------------------------------------------------------------------------------------------
 
+    std::variant<ItemType, AfsPath /*last existing parent path*/> getItemTypeIfExists(const AfsPath& itemPath) const override //throw FileError
+    {
+        initComForThread(); //throw FileError
+        std::variant<zen::ItemType, Zstring /*last existing parent path*/> typeOrPath = zen::getItemTypeIfExists(getNativePath(itemPath)); //throw FileError
+
+        if (const zen::ItemType* type = std::get_if<zen::ItemType>(&typeOrPath))
+            return zenToAfsItemType(*type);
+
+        const Zstring existingFolderPath = std::get<Zstring>(typeOrPath);
+
+        assert(startsWith(existingFolderPath, rootPath_)); //"reverse" getNativePath() => safer than parsePathComponents()->relPath!?
+        return sanitizeDeviceRelativePath({existingFolderPath.begin() + rootPath_.size(), existingFolderPath.end()});
+    }
+
+    //----------------------------------------------------------------------------------------------------------------
     //already existing: fail
     void createFolderPlain(const AfsPath& folderPath) const override //throw FileError
     {
@@ -475,11 +489,12 @@ private:
     }
 
     void removeFolderIfExistsRecursion(const AfsPath& folderPath, //throw FileError
-                                       const std::function<void(const std::wstring& displayPath)>& onBeforeFileDeletion /*throw X*/, //optional
-                                       const std::function<void(const std::wstring& displayPath)>& onBeforeFolderDeletion) const override //one call for each object!
+                                       const std::function<void(const std::wstring& displayPath)>& onBeforeFileDeletion   /*throw X*/,
+                                       const std::function<void(const std::wstring& displayPath)>& onBeforeSymlinkDeletion/*throw X*/,
+                                       const std::function<void(const std::wstring& displayPath)>& onBeforeFolderDeletion /*throw X*/) const override
     {
         //default implementation: folder traversal
-        AFS::removeFolderIfExistsRecursion(folderPath, onBeforeFileDeletion, onBeforeFolderDeletion); //throw FileError, X
+        AFS::removeFolderIfExistsRecursion(folderPath, onBeforeFileDeletion, onBeforeSymlinkDeletion, onBeforeFolderDeletion); //throw FileError, X
     }
 
     //----------------------------------------------------------------------------------------------------------------
@@ -657,11 +672,9 @@ private:
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(getDisplayPath(filePath))), e.toString()); }
     }
 
-    void authenticateAccess(bool allowUserInteraction) const override //throw FileError
+    void authenticateAccess(const RequestPasswordFun& requestPassword /*throw X*/) const override //throw FileError, (X)
     {
     }
-
-    int getAccessTimeout() const override { return 0; } //returns "0" if no timeout in force
 
     bool hasNativeTransactionalCopy() const override { return false; }
     //----------------------------------------------------------------------------------------------------------------

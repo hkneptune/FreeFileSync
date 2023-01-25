@@ -60,8 +60,7 @@ private:
             filePaths.push_back(utfTo<Zstring>(file));
 
         //create a custom event on drop window: execute event after file dropping is completed! (after mouse is released)
-        if (wxEvtHandler* handler = dropWindow_.GetEventHandler())
-            handler->AddPendingEvent(FileDropEvent(filePaths));
+        dropWindow_.GetEventHandler()->AddPendingEvent(FileDropEvent(filePaths));
         return true;
     }
 

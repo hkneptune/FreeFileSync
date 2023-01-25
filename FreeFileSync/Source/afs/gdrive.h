@@ -31,7 +31,7 @@ struct GdriveLogin
 {
     std::string email;
     Zstring locationName; //empty for "My Drive"; can be a shared drive or starred folder name
-    int timeoutSec = 15; //Gdrive can "hang" for 20 seconds when "scanning for viruses": https://freefilesync.org/forum/viewtopic.php?t=9116
+    int timeoutSec = 10; //Gdrive can "hang" for 20 seconds when "scanning for viruses": https://freefilesync.org/forum/viewtopic.php?t=9116
 };
 
 AfsDevice condenseToGdriveDevice(const GdriveLogin& login); //noexcept; potentially messy user input

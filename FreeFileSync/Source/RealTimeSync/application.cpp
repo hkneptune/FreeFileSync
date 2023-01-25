@@ -10,6 +10,7 @@
 #include <zen/thread.h>
 #include <zen/shutdown.h>
 #include <zen/resolve_path.h>
+#include <wx/clipbrd.h>
 #include <wx/event.h>
 #include <wx/log.h>
 #include <wx/tooltip.h>
@@ -189,7 +190,8 @@ void Application::onEnterEventLoop(wxEvent& event)
                 commandArgs.push_back(filePath);
             else
                 throw FileError(replaceCpy(_("Cannot open file %x."), L"%x", fmtPath(filePath)),
-                                _("Unexpected file extension:") + L' ' + fmtPath(getFileExtension(filePath)));
+                                _("Unexpected file extension:") + L' ' + fmtPath(getFileExtension(filePath)) + L'\n' +
+                                _("Expected:") + L" ffs_real, ffs_batch");
         }
 
         Zstring cfgFilePath;
@@ -207,6 +209,8 @@ void Application::onEnterEventLoop(wxEvent& event)
 
 int Application::OnExit()
 {
+    [[maybe_unused]] const bool rv = wxClipboard::Get()->Flush(); //see wx+/context_menu.h
+    //assert(rv); -> fails if clipboard wasn't used
     fff::localizationCleanup();
     imageResourcesCleanup();
     return wxApp::OnExit();

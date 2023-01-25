@@ -15,12 +15,12 @@
 namespace fff
 {
 template <class Function> inline //return ignored error message if available
-std::wstring tryReportingDirError(Function cmd /*throw FileError*/, AbstractFileSystem::TraverserCallback& cb /*throw X*/)
+std::wstring tryReportingDirError(Function cmd /*throw FileError, X*/, AbstractFileSystem::TraverserCallback& cb /*throw X*/)
 {
     for (size_t retryNumber = 0;; ++retryNumber)
         try
         {
-            cmd(); //throw FileError
+            cmd(); //throw FileError, X
             return std::wstring();
         }
         catch (const zen::FileError& e)
@@ -91,7 +91,7 @@ public:
             using namespace zen;
 
             if (const std::shared_ptr<PathAccessLocker> pal = getGlobalInstance())
-                pal->pathLocks_.access([&](std::map<NativePath, std::weak_ptr<BlockInfo>>& pathLocks)
+                pal->protPathLocks_.access([&](std::map<NativePath, std::weak_ptr<BlockInfo>>& pathLocks)
             {
                 //clean up obsolete entries
                 std::erase_if(pathLocks, [](const auto& v) { return !v.second.lock(); });
@@ -146,7 +146,7 @@ private:
     static std::shared_ptr<PathAccessLocker> getGlobalInstance();
     static Zstring getItemName(const NativePath& nativePath);
 
-    zen::Protected<std::map<NativePath, std::weak_ptr<BlockInfo>>> pathLocks_;
+    zen::Protected<std::map<NativePath, std::weak_ptr<BlockInfo>>> protPathLocks_;
 };
 
 }

@@ -494,8 +494,8 @@ std::wstring fff::getSyncOpDescription(const FileSystemObject& fsObj)
                            (beforeLast(relPathFrom, FILE_NAME_SEPARATOR, IfNotFoundReturn::none) ==
                             beforeLast(relPathTo,   FILE_NAME_SEPARATOR, IfNotFoundReturn::none) ?
                             //detected pure "rename"
-                            fmtPath(afterLast(relPathFrom, FILE_NAME_SEPARATOR, IfNotFoundReturn::all)) + L' ' + arrowRight + L'\n' + //show short name only
-                            fmtPath(afterLast(relPathTo,   FILE_NAME_SEPARATOR, IfNotFoundReturn::all)) :
+                            fmtPath(getItemName(relPathFrom)) + L' ' + arrowRight + L'\n' + //show short name only
+                            fmtPath(getItemName(relPathTo)) :
                             //"move" or "move + rename"
                             fmtPath(relPathFrom) + L' ' + arrowRight + L'\n' +
                             fmtPath(relPathTo)) /*+ footer -> redundant */;

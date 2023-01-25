@@ -22,14 +22,15 @@ struct PathComponents
 std::optional<PathComponents> parsePathComponents(const Zstring& itemPath); //no value on failure
 
 std::optional<Zstring> getParentFolderPath(const Zstring& itemPath);
+inline Zstring getItemName(const Zstring& itemPath) { return afterLast(itemPath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all); }
+
+Zstring getFileExtension(const ZstringView filePath);
 
 Zstring appendSeparator(Zstring path); //support rvalue references!
 
 bool isValidRelPath(const Zstring& relPath);
 
 Zstring appendPath(const Zstring& basePath, const Zstring& relPath);
-
-Zstring getFileExtension(const Zstring& filePath);
 
 //------------------------------------------------------------------------------------------
 /* Compare *local* file paths:

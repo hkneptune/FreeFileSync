@@ -150,15 +150,9 @@ public:
         if (iconTmp.IsOk())
             setImage(*m_bitmapMsgType, iconTmp);
 
-        if (titleTmp.empty())
-            SetTitle(wxTheApp->GetAppDisplayName());
-        else
-        {
-            if (parent && parent->IsShownOnScreen())
-                SetTitle(titleTmp);
-            else
-                SetTitle(wxTheApp->GetAppDisplayName() + SPACED_DASH + titleTmp);
-        }
+        if (!parent || !parent->IsShownOnScreen())
+            titleTmp = wxTheApp->GetAppDisplayName() + (!titleTmp.empty() ? SPACED_DASH + titleTmp : wxString());
+        SetTitle(titleTmp);
 
         int maxWidth  = fastFromDIP(500);
         int maxHeight = fastFromDIP(400); //try to determine better value based on actual display resolution:

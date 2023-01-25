@@ -36,7 +36,7 @@ namespace
 
 std::wstring extractJobName(const Zstring& cfgFilePath)
 {
-    const Zstring fileName = afterLast(cfgFilePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
+    const Zstring fileName = getItemName(cfgFilePath);
     const Zstring jobName  = beforeLast(fileName, Zstr('.'), IfNotFoundReturn::all);
     return utfTo<std::wstring>(jobName);
 }
@@ -110,7 +110,7 @@ MainDialog::MainDialog(const Zstring& cfgFilePath) :
     if (currentConfigFile.empty())
         try
         {
-            if (itemStillExists(lastRunConfigPath_)) //throw FileError
+            if (itemExists(lastRunConfigPath_)) //throw FileError
                 currentConfigFile = lastRunConfigPath_;
         }
         catch (FileError&) { currentConfigFile = lastRunConfigPath_; } //access error? => user should be informed
@@ -246,7 +246,7 @@ void MainDialog::onConfigSave(wxCommandEvent& event)
     std::optional<Zstring> defaultFolderPath = getParentFolderPath(activeCfgFilePath);
 
     Zstring defaultFileName = !activeCfgFilePath.empty() ?
-                              afterLast(activeCfgFilePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all) :
+                              getItemName(activeCfgFilePath) :
                               Zstr("RealTime.ffs_real");
 
     //attention: activeConfigFile_ may be an imported *.ffs_batch file! We don't want to overwrite it with a RTS config!

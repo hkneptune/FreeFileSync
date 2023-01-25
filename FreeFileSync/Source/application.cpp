@@ -11,6 +11,7 @@
 #include <zen/shutdown.h>
 #include <zen/process_exec.h>
 #include <zen/resolve_path.h>
+#include <wx/clipbrd.h>
 #include <wx/tooltip.h>
 #include <wx/log.h>
 #include <wx+/app_main.h>
@@ -23,6 +24,7 @@
 #include "base/synchronization.h"
 #include "ui/batch_status_handler.h"
 #include "ui/main_dlg.h"
+#include "ui/small_dlgs.h"
 #include "base_tools.h"
 #include "ffs_paths.h"
 #include "return_codes.h"
@@ -41,8 +43,12 @@ namespace
 std::vector<Zstring> getCommandlineArgs(const wxApp& app)
 {
     std::vector<Zstring> args;
-    for (int i = 1; i < app.argc; ++i) //wxWidgets screws up once again making "argv implicitly convertible to a wxChar**" in 2.9.3,
-        args.push_back(utfTo<Zstring>(wxString(app.argv[i]))); //so we are forced to use this pitiful excuse for a range construction!!
+    for (const wxString& arg : app.argv.GetArguments())
+        args.push_back(utfTo<Zstring>(arg));
+    //remove first argument which is exe path by convention: https://devblogs.microsoft.com/oldnewthing/20060515-07/?p=31203
+    if (!args.empty())
+        args.erase(args.begin());
+
     return args;
 }
 
@@ -221,6 +227,8 @@ void Application::onEnterEventLoop(wxEvent& event)
 
 int Application::OnExit()
 {
+    [[maybe_unused]] const bool rv = wxClipboard::Get()->Flush(); //see wx+/context_menu.h
+    //assert(rv); -> fails if clipboard wasn't used
     localizationCleanup();
     imageResourcesCleanup();
 
@@ -364,7 +372,8 @@ void Application::launch(const std::vector<Zstring>& commandArgs)
                         globalConfigFile = filePath;
                     else
                         throw FileError(replaceCpy(_("Cannot open file %x."), L"%x", fmtPath(filePath)),
-                                        _("Unexpected file extension:") + L' ' + fmtPath(getFileExtension(filePath)));
+                                        _("Unexpected file extension:") + L' ' + fmtPath(getFileExtension(filePath)) + L'\n' +
+                                        _("Expected:") + L" ffs_gui, ffs_batch, xml");
                 }
         }
         //----------------------------------------------------------------------------------------------------
@@ -494,7 +503,7 @@ void Application::runBatchMode(const Zstring& globalConfigFilePath, const XmlBat
         try
         {
             bool cfgFileExists = true;
-            try { cfgFileExists  = !!itemStillExists(globalConfigFilePath); /*throw FileError*/ } //=> unclear which exception is more relevant/useless:
+            try { cfgFileExists  = itemExists(globalConfigFilePath); /*throw FileError*/ } //=> unclear which exception is more relevant/useless:
             catch (const FileError& e2) { throw FileError(replaceCpy(e.toString(), L"\n\n", L'\n'), replaceCpy(e2.toString(), L"\n\n", L'\n')); }
 
             if (cfgFileExists)
@@ -544,6 +553,21 @@ void Application::runBatchMode(const Zstring& globalConfigFilePath, const XmlBat
                                      batchCfg.batchExCfg.autoCloseSummary,
                                      batchCfg.batchExCfg.postSyncAction,
                                      batchCfg.batchExCfg.batchErrorHandling);
+
+    const bool allowUserInteraction = !batchCfg.batchExCfg.autoCloseSummary ||
+                                      (!batchCfg.mainCfg.ignoreErrors && batchCfg.batchExCfg.batchErrorHandling == BatchErrorHandling::showPopup);
+
+    AFS::RequestPasswordFun requestPassword; //throw AbortProcess
+    if (allowUserInteraction)
+        requestPassword = [&, password = Zstring()](const std::wstring& msg, const std::wstring& lastErrorMsg) mutable
+    {
+        assert(runningOnMainThread());
+        if (showPasswordPrompt(statusHandler.getWindowIfVisible(), msg, lastErrorMsg, password) != ConfirmationButton::accept)
+            statusHandler.abortProcessNow(AbortTrigger::user); //throw AbortProcess
+
+        return password;
+    };
+
     try
     {
         //inform about (important) non-default global settings
@@ -552,12 +576,10 @@ void Application::runBatchMode(const Zstring& globalConfigFilePath, const XmlBat
         //batch mode: place directory locks on directories during both comparison AND synchronization
         std::unique_ptr<LockHolder> dirLocks;
 
-        const bool allowUserInteraction = !batchCfg.mainCfg.ignoreErrors && batchCfg.batchExCfg.batchErrorHandling == BatchErrorHandling::showPopup;
-
         //COMPARE DIRECTORIES
         FolderComparison cmpResult = compare(globalCfg.warnDlgs,
                                              globalCfg.fileTimeTolerance,
-                                             allowUserInteraction,
+                                             requestPassword,
                                              globalCfg.runWithBackgroundPriority,
                                              globalCfg.createLockFile,
                                              dirLocks,

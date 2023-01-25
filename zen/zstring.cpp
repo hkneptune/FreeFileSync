@@ -22,11 +22,17 @@ Zstring getUnicodeNormalForm_NonAsciiValidUtf(const Zstring& str, UnicodeNormalF
 
     try
     {
-        gchar* outStr = ::g_utf8_normalize(str.c_str(), str.length(), form == UnicodeNormalForm::nfc ? G_NORMALIZE_NFC : G_NORMALIZE_NFD);
-        if (!outStr)
+        gchar* strNorm = ::g_utf8_normalize(str.c_str(), str.length(), form == UnicodeNormalForm::nfc ? G_NORMALIZE_NFC : G_NORMALIZE_NFD);
+        if (!strNorm)
             throw SysError(formatSystemError("g_utf8_normalize", L"", L"Conversion failed."));
-        ZEN_ON_SCOPE_EXIT(::g_free(outStr));
-        return outStr;
+        ZEN_ON_SCOPE_EXIT(::g_free(strNorm));
+
+        const std::string_view strNormView(strNorm, strLength(strNorm));
+
+        if (equalString(str, strNormView)) //avoid extra memory allocation
+            return str;
+
+        return Zstring(strNormView);
 
     }
     catch (const SysError& e)
@@ -37,7 +43,7 @@ Zstring getUnicodeNormalForm_NonAsciiValidUtf(const Zstring& str, UnicodeNormalF
 }
 
 
-Zstring getUnicodeNormalFormNonAscii(const Zstring& str, UnicodeNormalForm form)
+Zstring getValidUtf(const Zstring& str)
 {
     /*  1. do NOT fail on broken UTF encoding, instead normalize using REPLACEMENT_CHAR!
         2. NormalizeString() haateeez them Unicode non-characters: ERROR_NO_UNICODE_TRANSLATION! http://www.unicode.org/faq/private_use.html#nonchar1
@@ -68,10 +74,10 @@ Zstring getUnicodeNormalFormNonAscii(const Zstring& str, UnicodeNormalForm form)
 
             codePointToUtf<Zchar>(*cp, [&](Zchar ch) { validStr += ch; });
         }
-        return getUnicodeNormalForm_NonAsciiValidUtf(validStr, form);
+        return validStr;
     }
     else
-        return getUnicodeNormalForm_NonAsciiValidUtf(str, form);
+        return str;
 }
 
 
@@ -88,9 +94,11 @@ Zstring getUpperCaseAscii(const Zstring& str)
 
 Zstring getUpperCaseNonAscii(const Zstring& str)
 {
-    Zstring strNorm = getUnicodeNormalFormNonAscii(str, UnicodeNormalForm::native);
+    const Zstring& strValidUtf = getValidUtf(str);
     try
     {
+        const Zstring strNorm = getUnicodeNormalForm_NonAsciiValidUtf(strValidUtf, UnicodeNormalForm::native);
+
         Zstring output;
         output.reserve(strNorm.size());
 
@@ -118,7 +126,7 @@ Zstring getUnicodeNormalForm(const Zstring& str, UnicodeNormalForm form)
     if (isAsciiString(str)) //fast path: in the range of 3.5ns
         return str;
 
-    return getUnicodeNormalFormNonAscii(str, form); //slow path
+    return getUnicodeNormalForm_NonAsciiValidUtf(getValidUtf(str), form); //slow path
 }
 
 

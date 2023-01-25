@@ -75,6 +75,13 @@ std::optional<Zstring> zen::getParentFolderPath(const Zstring& itemPath)
 }
 
 
+Zstring zen::getFileExtension(const ZstringView filePath)
+{
+    const ZstringView fileName = afterLast(filePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
+    return Zstring(afterLast(fileName, Zstr('.'), IfNotFoundReturn::none));
+}
+
+
 Zstring zen::appendSeparator(Zstring path) //support rvalue references!
 {
     assert(!endsWith(path, FILE_NAME_SEPARATOR == Zstr('/') ? Zstr('\\' ) : Zstr('/' )));
@@ -113,25 +120,6 @@ Zstring zen::appendPath(const Zstring& basePath, const Zstring& relPath)
     Zstring output = basePath;
     output.reserve(basePath.size() + 1 + relPath.size());     //append all three strings using a single memory allocation
     return std::move(output) + FILE_NAME_SEPARATOR + relPath; //
-}
-
-
-Zstring zen::getFileExtension(const Zstring& filePath)
-{
-    //const Zstring fileName = afterLast(filePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all);
-    //return afterLast(fileName, Zstr('.'), IfNotFoundReturn::none);
-
-    auto it = zen::findLast(filePath.begin(), filePath.end(), FILE_NAME_SEPARATOR);
-    if (it == filePath.end())
-        it = filePath.begin();
-    else
-        ++it;
-
-    auto it2 = zen::findLast(it, filePath.end(), Zstr('.'));
-    if (it2 != filePath.end())
-        ++it2;
-
-    return Zstring(it2, filePath.end());
 }
 
 

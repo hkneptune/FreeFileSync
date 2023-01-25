@@ -8,6 +8,7 @@
 #define FILE_ACCESS_H_8017341345614857
 
 #include <functional>
+#include <variant>
 #include "file_path.h"
 #include "file_error.h"
 #include "serialize.h" //IoCallback
@@ -16,10 +17,6 @@
 namespace zen
 {
 //note: certain functions require COM initialization! (vista_file_op.h)
-
-//POSITIVE existence checks; if false: 1. item not existing 2. different type 3.device access error or similar
-bool fileAvailable(const Zstring& filePath); //noexcept
-bool dirAvailable (const Zstring& dirPath ); //
 
 //FAT/FAT32: "Why does the timestamp of a file *increase* by up to 2 seconds when I copy it to a USB thumb drive?"
 const int FAT_FILE_TIME_PRECISION_SEC = 2; //https://devblogs.microsoft.com/oldnewthing/?p=83
@@ -42,7 +39,9 @@ ItemType getItemType(const Zstring& itemPath); //throw FileError
 //execute potentially SLOW folder traversal but distinguish error/not existing:
 //  - all child item path parts must correspond to folder traversal
 //  => we can conclude whether an item is *not* existing anymore by doing a *case-sensitive* name search => potentially SLOW!
-std::optional<ItemType> itemStillExists(const Zstring& itemPath); //throw FileError
+std::variant<ItemType, Zstring /*last existing parent path*/> getItemTypeIfExists(const Zstring& itemPath); //throw FileError
+
+bool itemExists(const Zstring& itemPath); //throw FileError
 
 enum class ProcSymlink
 {

@@ -12,7 +12,7 @@
 #include <zen/crc.h>
 #include "algorithm.h"
 #include "db_file.h"
-#include "dir_exist_async.h"
+//#include "dir_exist_async.h"
 #include "status_handler_impl.h"
 #include "versioning.h"
 #include "binary.h"
@@ -478,7 +478,7 @@ std::weak_ordering comparePathNoCase(const PathRaceItem& lhs, const PathRaceItem
         cmp != std::weak_ordering::equivalent)
         return cmp;
 
-    return compareNoCase(itemPathL.afsPath.value,
+    return compareNoCase(itemPathL.afsPath.value, //no hashing: want natural sort order!
                          itemPathR.afsPath.value);
 }
 
@@ -571,7 +571,7 @@ private:
 
 
 template <SelectSide sideL, SelectSide sideR>
-std::weak_ordering compareHashedPath(const ChildPathRef& lhs, const ChildPathRef& rhs)
+std::weak_ordering compareHashedPathNoCase(const ChildPathRef& lhs, const ChildPathRef& rhs)
 {
     assert(lhs.fsObj->getAbstractPath<sideL>().afsDevice ==
            rhs.fsObj->getAbstractPath<sideR>().afsDevice);
@@ -590,7 +590,7 @@ void sortAndRemoveDuplicates(std::vector<ChildPathRef>& pathRefs)
 {
     std::sort(pathRefs.begin(), pathRefs.end(), [](const ChildPathRef& lhs, const ChildPathRef& rhs)
     {
-        if (const std::weak_ordering cmp = compareHashedPath<side, side>(lhs, rhs);
+        if (const std::weak_ordering cmp = compareHashedPathNoCase<side, side>(lhs, rhs);
             cmp != std::weak_ordering::equivalent)
             return cmp < 0;
 
@@ -600,7 +600,7 @@ void sortAndRemoveDuplicates(std::vector<ChildPathRef>& pathRefs)
     });
 
     pathRefs.erase(std::unique(pathRefs.begin(), pathRefs.end(),
-    [](const ChildPathRef& lhs, const ChildPathRef& rhs) { return compareHashedPath<side, side>(lhs, rhs) == std::weak_ordering::equivalent; }),
+    [](const ChildPathRef& lhs, const ChildPathRef& rhs) { return compareHashedPathNoCase<side, side>(lhs, rhs) == std::weak_ordering::equivalent; }),
     pathRefs.end());
 
     //let's not use removeDuplicates(): we rely too much on implementation details!
@@ -653,7 +653,7 @@ void checkPathRaceCondition(const BaseFolderPair& baseFolderP, const BaseFolderP
                 std::vector<ChildPathRef> pathRefsC = GetChildItemsHashed<sideC>::execute(baseFolderC);
 
                 //---------------------------------------------------------------------------------------------------
-                //use case-sensitive comparison because items were scanned by FFS (=> no messy user input)?
+                //case-sensitive comparison because items were scanned by FFS (=> no messy user input)?
                 //not good enough! E.g. not-yet-existing files are set to be created with different case!
                 // + (weird) a file and a folder are set to be created with same name
                 // => (throw hands in the air) fine, check path only and don't consider case
@@ -668,11 +668,11 @@ void checkPathRaceCondition(const BaseFolderPair& baseFolderP, const BaseFolderP
                     if (plannedWriteAccess<sideP>(*lhs.fsObj) ||
                         plannedWriteAccess<sideC>(*rhs.fsObj))
                     {
-                        pathRaceItems.emplace_back(lhs.fsObj, sideP);
-                        pathRaceItems.emplace_back(rhs.fsObj, sideC);
+                        pathRaceItems.push_back({lhs.fsObj, sideP});
+                        pathRaceItems.push_back({rhs.fsObj, sideC});
                     }
                 },
-                [](const ChildPathRef&) {} /*right only*/, compareHashedPath<sideP, sideC>);
+                [](const ChildPathRef&) {} /*right only*/, compareHashedPathNoCase<sideP, sideC>);
             }
         }
 }
@@ -731,8 +731,8 @@ AFS::ItemType getItemType(const AbstractPath& itemPath, std::mutex& singleThread
 { return parallelScope([itemPath] { return AFS::getItemType(itemPath); /*throw FileError*/ }, singleThread); }
 
 inline
-std::optional<AFS::ItemType> itemStillExists(const AbstractPath& itemPath, std::mutex& singleThread) //throw FileError
-{ return parallelScope([itemPath] { return AFS::itemStillExists(itemPath); /*throw FileError*/ }, singleThread); }
+bool itemExists(const AbstractPath& itemPath, std::mutex& singleThread) //throw FileError
+{ return parallelScope([itemPath] { return AFS::itemExists(itemPath); /*throw FileError*/ }, singleThread); }
 
 inline
 void removeFileIfExists(const AbstractPath& filePath, std::mutex& singleThread) //throw FileError
@@ -767,10 +767,14 @@ void removeFilePlain(const AbstractPath& filePath, std::mutex& singleThread) //t
 //--------------------------------------------------------------
 inline
 void removeFolderIfExistsRecursion(const AbstractPath& folderPath, //throw FileError
-                                   const std::function<void(const std::wstring& displayPath)>& onBeforeFileDeletion, //optional
-                                   const std::function<void(const std::wstring& displayPath)>& onBeforeFolderDeletion, //one call for each object!
+                                   const std::function<void(const std::wstring& displayPath)>& onBeforeFileDeletion    /*throw X*/, //
+                                   const std::function<void(const std::wstring& displayPath)>& onBeforeSymlinkDeletion /*throw X*/, //optional
+                                   const std::function<void(const std::wstring& displayPath)>& onBeforeFolderDeletion  /*throw X*/, //
                                    std::mutex& singleThread)
-{ parallelScope([folderPath, onBeforeFileDeletion, onBeforeFolderDeletion] { AFS::removeFolderIfExistsRecursion(folderPath, onBeforeFileDeletion, onBeforeFolderDeletion); /*throw FileError*/ }, singleThread); }
+{
+    parallelScope([folderPath, onBeforeFileDeletion, onBeforeSymlinkDeletion, onBeforeFolderDeletion]
+    { AFS::removeFolderIfExistsRecursion(folderPath, onBeforeFileDeletion, onBeforeSymlinkDeletion, onBeforeFolderDeletion); /*throw FileError*/ }, singleThread);
+}
 
 
 inline
@@ -983,7 +987,7 @@ void DeletionHandler::removeFileWithCallback(const FileDescriptor& fileDescr, co
                         statReporter.reportWarning(e.toString() + L"\n\n" + _("Ignore and delete permanently each time recycle bin is unavailable?"), warnRecyclerMissing_); //throw ThreadStopRequest
                     }
                     if (!beforeOverwrite) statReporter.logMessage(replaceCpy(txtDelFilePermanent_, L"%x", fmtPath(AFS::getDisplayPath(fileDescr.path))) +
-                                                                      L" [" + _("The recycle bin is not available") + L']', PhaseCallback::MsgType::warning); //throw ThreadStopRequest
+                                                                      L" [" + _("Recycle bin unavailable") + L']', PhaseCallback::MsgType::warning); //throw ThreadStopRequest
                     parallel::removeFileIfExists(fileDescr.path, singleThread); //throw FileError
                 }
                 break;
@@ -1041,7 +1045,7 @@ void DeletionHandler::removeLinkWithCallback(const AbstractPath& linkPath, const
                     statReporter.reportWarning(e.toString() + L"\n\n" + _("Ignore and delete permanently each time recycle bin is unavailable?"), warnRecyclerMissing_); //throw ThreadStopRequest
                 }
                 if (!beforeOverwrite) statReporter.logMessage(replaceCpy(txtDelSymlinkPermanent_, L"%x", fmtPath(AFS::getDisplayPath(linkPath))) +
-                                                                  L" [" + _("The recycle bin is not available") + L']', PhaseCallback::MsgType::warning); //throw ThreadStopRequest
+                                                                  L" [" + _("Recycle bin unavailable") + L']', PhaseCallback::MsgType::warning); //throw ThreadStopRequest
                 parallel::removeSymlinkIfExists(linkPath, singleThread); //throw FileError
             }
             break;
@@ -1064,16 +1068,17 @@ void DeletionHandler::removeDirWithCallback(const AbstractPath& folderPath, cons
     auto removeFolderPermanently = [&]
     {
         //callbacks run *outside* singleThread_ lock! => fine
-        auto notifyDeletion = [&statReporter](const std::wstring& statusText, const std::wstring& displayPath)
+        auto onBeforeDeletion = [&statReporter](const std::wstring& statusText, const std::wstring& displayPath)
         {
             statReporter.updateStatus(replaceCpy(statusText, L"%x", fmtPath(displayPath))); //throw ThreadStopRequest
             statReporter.reportDelta(1, 0); //it would be more correct to report *after* work was done!
         };
         static_assert(std::is_const_v<decltype(txtDelFilePermanent_)>, "callbacks better be thread-safe!");
 
-        auto onBeforeFileDeletion = [&](const std::wstring& displayPath) { notifyDeletion(txtDelFilePermanent_,   displayPath); };
-        auto onBeforeDirDeletion  = [&](const std::wstring& displayPath) { notifyDeletion(txtDelFolderPermanent_, displayPath); };
-        parallel::removeFolderIfExistsRecursion(folderPath, onBeforeFileDeletion, onBeforeDirDeletion, singleThread); //throw FileError
+        parallel::removeFolderIfExistsRecursion(folderPath,
+        [&](const std::wstring& displayPath) { onBeforeDeletion(txtDelFilePermanent_,    displayPath); },
+        [&](const std::wstring& displayPath) { onBeforeDeletion(txtDelSymlinkPermanent_, displayPath); },
+        [&](const std::wstring& displayPath) { onBeforeDeletion(txtDelFolderPermanent_,  displayPath); }, singleThread); //throw FileError, ThreadStopRequest
     };
 
     switch (deletionVariant_)
@@ -1100,7 +1105,7 @@ void DeletionHandler::removeDirWithCallback(const AbstractPath& folderPath, cons
                     statReporter.reportWarning(e.toString() + L"\n\n" + _("Ignore and delete permanently each time recycle bin is unavailable?"), warnRecyclerMissing_); //throw ThreadStopRequest
                 }
                 statReporter.logMessage(replaceCpy(txtDelFolderPermanent_, L"%x", fmtPath(AFS::getDisplayPath(folderPath))) +
-                                        L" [" + _("The recycle bin is not available") + L']', PhaseCallback::MsgType::warning); //throw ThreadStopRequest
+                                        L" [" + _("Recycle bin unavailable") + L']', PhaseCallback::MsgType::warning); //throw ThreadStopRequest
                 removeFolderPermanently(); //throw FileError, ThreadStopRequest
             }
             break;
@@ -1832,7 +1837,7 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
             catch (const FileError& e)
             {
                 bool sourceExists = true;
-                try { sourceExists = !!parallel::itemStillExists(file.getAbstractPath<sideSrc>(), singleThread_); /*throw FileError*/ }
+                try { sourceExists = parallel::itemExists(file.getAbstractPath<sideSrc>(), singleThread_); /*throw FileError*/ }
                 //abstract context => unclear which exception is more relevant/useless:
                 //e could be "item not found": doh; e2 devoid of any details after SFTP error: https://freefilesync.org/forum/viewtopic.php?t=7138#p24064
                 catch (const FileError& e2) { throw FileError(replaceCpy(e.toString(), L"\n\n", L'\n'), replaceCpy(e2.toString(), L"\n\n", L'\n')); }
@@ -1858,8 +1863,13 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
         {
             AsyncItemStatReporter statReporter(1, 0, acb_);
 
-            delHandlerTrg.removeFileWithCallback({file.getAbstractPath<sideTrg>(), file.getAttributes<sideTrg>()}, file.getRelativePath<sideTrg>(),
-                                                 false /*beforeOverwrite*/, statReporter, singleThread_); //throw FileError, ThreadStopRequest
+            if (file.isFollowedSymlink<sideTrg>())
+                delHandlerTrg.removeLinkWithCallback(file.getAbstractPath<sideTrg>(), file.getRelativePath<sideTrg>(),
+                                                     false /*beforeOverwrite*/, statReporter, singleThread_); //throw FileError, ThreadStopRequest
+            else
+                delHandlerTrg.removeFileWithCallback({file.getAbstractPath<sideTrg>(), file.getAttributes<sideTrg>()}, file.getRelativePath<sideTrg>(),
+                                                     false /*beforeOverwrite*/, statReporter, singleThread_); //throw FileError, ThreadStopRequest
+
             file.removeObject<sideTrg>(); //update FilePair
         }
         break;
@@ -1929,7 +1939,11 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
                 FileAttributes followedTargetAttr = file.getAttributes<sideTrg>();
                 followedTargetAttr.isFollowedSymlink = false;
 
-                delHandlerTrg.removeFileWithCallback({targetPathResolvedOld, followedTargetAttr}, file.getRelativePath<sideTrg>(),
+                if (file.isFollowedSymlink<sideTrg>())
+                    delHandlerTrg.removeLinkWithCallback(targetPathResolvedOld, file.getRelativePath<sideTrg>(),
+                                                         true /*beforeOverwrite*/, statReporter, singleThread_); //throw FileError, ThreadStopRequest
+                else
+                    delHandlerTrg.removeFileWithCallback({targetPathResolvedOld, followedTargetAttr}, file.getRelativePath<sideTrg>(),
                 true /*beforeOverwrite*/, statReporter, singleThread_); //throw FileError, ThreadStopRequest
 
                 //file.removeObject<sideTrg>(); -> doesn't make sense for isFollowedSymlink(); "file, sideTrg" evaluated below!
@@ -2054,7 +2068,7 @@ void FolderPairSyncer::synchronizeLinkInt(SymlinkPair& symlink, SyncOperation sy
             catch (const FileError& e)
             {
                 bool sourceExists = true;
-                try { sourceExists = !!parallel::itemStillExists(symlink.getAbstractPath<sideSrc>(), singleThread_); /*throw FileError*/ }
+                try { sourceExists = parallel::itemExists(symlink.getAbstractPath<sideSrc>(), singleThread_); /*throw FileError*/ }
                 //abstract context => unclear which exception is more relevant/useless:
                 catch (const FileError& e2) { throw FileError(replaceCpy(e.toString(), L"\n\n", L'\n'), replaceCpy(e2.toString(), L"\n\n", L'\n')); }
 
@@ -2186,7 +2200,7 @@ void FolderPairSyncer::synchronizeFolderInt(FolderPair& folder, SyncOperation sy
             reportItemInfo(txtCreatingFolder_, targetPath); //throw ThreadStopRequest
 
             //shallow-"copying" a folder might not fail if source is missing, so we need to check this first:
-            if (parallel::itemStillExists(folder.getAbstractPath<sideSrc>(), singleThread_)) //throw FileError
+            if (parallel::itemExists(folder.getAbstractPath<sideSrc>(), singleThread_)) //throw FileError
             {
                 AsyncItemStatReporter statReporter(1, 0, acb_);
                 try
@@ -2235,7 +2249,12 @@ void FolderPairSyncer::synchronizeFolderInt(FolderPair& folder, SyncOperation sy
             const SyncStatistics subStats(folder); //counts sub-objects only!
             AsyncItemStatReporter statReporter(1 + getCUD(subStats), subStats.getBytesToProcess(), acb_);
 
-            delHandlerTrg.removeDirWithCallback(folder.getAbstractPath<sideTrg>(), folder.getRelativePath<sideTrg>(), statReporter, singleThread_); //throw FileError, ThreadStopRequest
+            if (folder.isFollowedSymlink<sideTrg>())
+                delHandlerTrg.removeLinkWithCallback(folder.getAbstractPath<sideTrg>(), folder.getRelativePath<sideTrg>(),
+                                                     false /*beforeOverwrite*/, statReporter, singleThread_); //throw FileError, ThreadStopRequest
+            else
+                delHandlerTrg.removeDirWithCallback(folder.getAbstractPath<sideTrg>(), folder.getRelativePath<sideTrg>(),
+                                                    statReporter, singleThread_); //throw FileError, ThreadStopRequest
 
             //TODO: implement parallel folder deletion
 
@@ -2348,43 +2367,29 @@ bool checkBaseFolderStatus(BaseFolderPair& baseFolder, PhaseCallback& callback /
 {
     const AbstractPath folderPath = baseFolder.getAbstractPath<side>();
 
-    if (baseFolder.getFolderStatus<side>() == BaseFolderStatus::failure)
-    {
-        //e.g. TEMPORARY network drop! base directory not found during comparison
-        //=> sync-directions are based on false assumptions! Abort.
-        callback.reportFatalError(replaceCpy(_("Skipping folder pair because %x could not be accessed during comparison."),
-                                             L"%x", fmtPath(AFS::getDisplayPath(folderPath)))); //throw X
-        return false;
-    }
-
-    bool folderExisting = false;
-
-    const std::wstring errMsg = tryReportingError([&]
-    {
-        const FolderStatus status = getFolderStatusNonBlocking({folderPath},
-        false /*allowUserInteraction*/, callback);
-
-        static_assert(std::is_same_v<decltype(status.failedChecks.begin()->second), FileError>);
-        if (!status.failedChecks.empty())
-            throw status.failedChecks.begin()->second; //throw FileError
-
-        folderExisting = status.existing.contains(folderPath);
-    }, callback); //throw X
-    if (!errMsg.empty())
-        return false;
-
-
     switch (baseFolder.getFolderStatus<side>())
     {
         case BaseFolderStatus::existing:
-            if (!folderExisting)
+        {
+            const std::wstring errMsg = tryReportingError([&]
             {
-                callback.reportFatalError(replaceCpy(_("Cannot find folder %x."), L"%x", fmtPath(AFS::getDisplayPath(folderPath)))); //throw X
+                AFS::getItemType(folderPath); //throw FileError
+            }, callback); //throw X
+            if (!errMsg.empty())
                 return false;
-            }
-            break;
+        }
+        break;
 
         case BaseFolderStatus::notExisting:
+        {
+            bool folderExisting = false;
+
+            const std::wstring errMsg = tryReportingError([&]
+            {
+                folderExisting = AFS::itemExists(folderPath); //throw FileError
+            }, callback); //throw X
+            if (!errMsg.empty())
+                return false;
             if (folderExisting) //=> somebody else created it: problem?
             {
                 /* Is it possible we're catching a "false positive" here, could FFS have created the directory indirectly after comparison?
@@ -2392,15 +2397,19 @@ bool checkBaseFolderStatus(BaseFolderPair& baseFolder, PhaseCallback& callback /
                       2. deletion handling: versioning     -> "
                       3. log file creates containing folder -> no, log only created in batch mode, and only *before* comparison
                       4. yes, could be us! e.g. multiple folder pairs to non-yet-existing target folder => too obscure!?            */
-                callback.reportFatalError(replaceCpy(_("Base folder %x is already existing, but was not found earlier during comparison."),
+                callback.reportFatalError(replaceCpy(_("The folder %x is already existing, but was not found earlier during comparison."),
                                                      L"%x", fmtPath(AFS::getDisplayPath(folderPath)))); //throw X
                 return false;
             }
-            break;
+        }
+        break;
 
         case BaseFolderStatus::failure:
-            assert(false); //already handled above
-            break;
+            //e.g. TEMPORARY network drop! base directory not found during comparison
+            //=> sync-directions are based on false assumptions! Abort.
+            callback.reportFatalError(replaceCpy(_("Skipping folder pair because %x could not be accessed during comparison."),
+                                                 L"%x", fmtPath(AFS::getDisplayPath(folderPath)))); //throw X
+            return false;
     }
     return true;
 }
@@ -2625,8 +2634,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
         if (folderPairCfg.handleDeletion == DeletionVariant::versioning)
             if (AFS::isNullPath(versioningFolderPath))
             {
-                //should never arrive here: already checked in SyncCfgDialog
-                callback.reportFatalError(_("Please enter a target folder for versioning."));
+                callback.reportFatalError(_("Please enter a target folder.")); //user should never see this: already checked in SyncCfgDialog
                 skipFolderPair[folderIndex] = true;
                 continue;
             }
@@ -2781,8 +2789,8 @@ break2:
 
         if (!pathRaceItems.empty())
         {
-            std::wstring msg = _("Some files will be synchronized as part of multiple base folders.") + L'\n' +
-                               _("To avoid conflicts, set up exclude filters so that each updated file is included by only one base folder.") + L"\n\n";
+            std::wstring msg = _("Some files will be synchronized as part of multiple folder pairs.") + L'\n' +
+                               _("To avoid conflicts, set up exclude filters so that each updated file is included by only one folder pair.") + L"\n\n";
 
             auto prevItem = pathRaceItems[0];
             std::for_each(pathRaceItems.begin(), pathRaceItems.begin() + std::min(pathRaceItems.size(), CONFLICTS_PREVIEW_MAX), [&](const PathRaceItem& item)
@@ -2804,7 +2812,7 @@ break2:
         }
     }
 
-    //check if versioning path itself will be synchronized (and was not excluded via filter)
+    //check if versioning folder itself will be synchronized (and was not excluded via filter)
     {
         std::wstring msg;
         bool shouldExclude = false;
@@ -2819,7 +2827,7 @@ break2:
                         inserted)
                     {
                         msg += L"\n\n" +
-                               _("Base folder:")       + L" \t" + AFS::getDisplayPath(folderPath) + L'\n' +
+                               _("Selected folder:")   + L" \t" + AFS::getDisplayPath(folderPath) + L'\n' +
                                _("Versioning folder:") + L" \t" + AFS::getDisplayPath(versioningFolderPath);
                         if (pd->folderPathParent == folderPath) //else: probably fine? :>
                             if (!pd->relPath.empty())
@@ -2832,8 +2840,8 @@ break2:
                     }
         }
         if (!msg.empty())
-            callback.reportWarning(_("The versioning folder is contained in a base folder.") +
-                                   (shouldExclude ? L'\n' + _("The folder should be excluded from synchronization via filter.") : L"") +
+            callback.reportWarning(_("The versioning folder is part of the synchronization.") +
+                                   (shouldExclude ? L' ' + _("The folder should be excluded via filter.") : L"") +
                                    msg, warnings.warnVersioningFolderPartOfSync); //throw X
     }
 

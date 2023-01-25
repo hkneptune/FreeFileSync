@@ -481,7 +481,7 @@ std::vector<LogFileInfo> getLogFiles(const AbstractPath& logFolderPath) //throw 
 {
     std::vector<LogFileInfo> logfiles;
 
-    AFS::traverseFolderFlat(logFolderPath, [&](const AFS::FileInfo& fi) //throw FileError
+    AFS::traverseFolder(logFolderPath, [&](const AFS::FileInfo& fi) //throw FileError
     {
         //"Backup FreeFileSync 2013-09-15 015052.123.html"
         //"Jobname1 + Jobname2 2013-09-15 015052.123.log"

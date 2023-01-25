@@ -12,7 +12,7 @@
 using namespace zen;
 
 
-const int HTTP_ACCESS_TIME_OUT_SEC = 20;
+const int HTTP_ACCESS_TIMEOUT_SEC = 20;
 
 const size_t HTTP_BLOCK_SIZE_DOWNLOAD = 64 * 1024; //libcurl returns blocks of only 16 kB as returned by recv() even if we request larger blocks via CURLOPT_BUFFERSIZE
 //- InternetReadFile() is buffered + prefetching
@@ -62,12 +62,12 @@ public:
         //caveat: INTERNET_FLAG_RELOAD issues "Pragma: no-cache" instead if "request is going through a proxy"
 
 
-        auto promiseHeader = std::make_shared<std::promise<std::string>>();
-        std::future<std::string> futHeader = promiseHeader->get_future();
+        auto promHeader = std::make_shared<std::promise<std::string>>();
+        std::future<std::string> futHeader = promHeader->get_future();
 
         auto postBytesSent = std::make_shared<std::atomic<int64_t>>(0);
 
-        worker_ = InterruptibleThread([asyncStreamOut = this->asyncStreamIn_, promiseHeader, headers = std::move(headers), postBytesSent,
+        worker_ = InterruptibleThread([asyncStreamOut = this->asyncStreamIn_, promHeader, headers = std::move(headers), postBytesSent,
                                                       server, useTls, caCertFilePath, userAgent = utfTo<std::string>(userAgent),
                                                       postBuf = postBuf ? std::optional<std::string>(*postBuf) : std::nullopt, //[!] life-time!
                                                       serverRelPath = utfTo<std::string>(page)]
@@ -112,7 +112,7 @@ public:
                     if (headerLine == "\r\n")
                     {
                         headerReceived = true;
-                        promiseHeader->set_value(std::move(headerBuf));
+                        promHeader->set_value(std::move(headerBuf));
                     }
                 };
 
@@ -131,7 +131,7 @@ public:
                                     writeResponse /*throw ThreadStopRequest*/,
                                     readRequest,
                                     onHeaderData /*throw SysError*/,
-                                    HTTP_ACCESS_TIME_OUT_SEC); //throw SysError, ThreadStopRequest
+                                    HTTP_ACCESS_TIMEOUT_SEC); //throw SysError, ThreadStopRequest
 
                 if (!headerReceived)
                     throw SysError(L"HTTP response is missing header.");
@@ -141,7 +141,7 @@ public:
             catch (SysError&) //let ThreadStopRequest pass through!
             {
                 if (!headerReceived)
-                    promiseHeader->set_exception(std::current_exception());
+                    promHeader->set_exception(std::current_exception());
 
                 asyncStreamOut->setWriteError(std::current_exception());
             }

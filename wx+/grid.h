@@ -97,9 +97,6 @@ struct GridContextMenuEvent : public wxEvent
 };
 //------------------------------------------------------------------------------------------------------------
 
-class Grid;
-
-
 class GridData
 {
 public:
@@ -113,21 +110,21 @@ public:
     virtual void         renderCell        (wxDC& dc, const wxRect& rect, size_t row, ColumnType colType, bool enabled, bool selected, HoverArea rowHover);
     virtual int          getBestSize       (wxDC& dc, size_t row, ColumnType colType); //must correspond to renderCell()!
     virtual HoverArea    getMouseHover     (wxDC& dc, size_t row, ColumnType colType, int cellRelativePosX, int cellWidth) { return HoverArea::none; }
-    virtual std::wstring getToolTip        (size_t row, ColumnType colType, HoverArea rowHover) { return std::wstring(); }
+    virtual std::wstring getToolTip        (          size_t row, ColumnType colType, HoverArea rowHover) { return std::wstring(); }
 
     //label area:
     virtual std::wstring getColumnLabel(ColumnType colType) const = 0;
     virtual void renderColumnLabel(wxDC& dc, const wxRect& rect, ColumnType colType, bool enabled, bool highlighted); //default implementation
     virtual std::wstring getToolTip(ColumnType colType) const { return std::wstring(); }
 
+    //optional helper routines:
     static int getColumnGapLeft(); //for left-aligned text
     static wxColor getColorSelectionGradientFrom();
     static wxColor getColorSelectionGradientTo();
 
-    //optional helper routines:
     static void drawCellText(wxDC& dc, const wxRect& rect, const std::wstring& text,
-                             int alignment = wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, const wxSize* textExtentHint = nullptr); //returns text extent
-    static wxRect drawCellBorder    (wxDC& dc, const wxRect& rect); //returns inner rectangle
+                             int alignment = wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, const wxSize* textExtentHint = nullptr);
+    static wxRect drawCellBorder(wxDC& dc, const wxRect& rect); //returns inner rectangle
 
     static wxRect drawColumnLabelBackground(wxDC& dc, const wxRect& rect, bool highlighted); //returns inner rectangle
     static void   drawColumnLabelText      (wxDC& dc, const wxRect& rect, const std::wstring& text, bool enabled);
@@ -253,7 +250,7 @@ private:
     class Selection
     {
     public:
-        void init(size_t rowCount) { selected_.resize(rowCount); clear(); }
+        void resize(size_t rowCount) { selected_.resize(rowCount, false); }
 
         size_t gridSize() const { return selected_.size(); }
 
@@ -266,20 +263,30 @@ private:
             return result;
         }
 
-        void clear() { selectRange(0, selected_.size(), false); }
-
         bool isSelected(size_t row) const { return row < selected_.size() ? selected_[row] != 0 : false; }
+
+        bool matchesRange(size_t rowFirst, size_t rowLast, bool positive)
+        {
+            if (rowFirst <= rowLast && rowLast <= selected_.size())
+            {
+                const auto rangeEnd = selected_.begin() + rowLast;
+                return std::find(selected_.begin() + rowFirst, rangeEnd, static_cast<unsigned char>(!positive)) == rangeEnd;
+            }
+            else
+            {
+                assert(false);
+                return false;
+            }
+        }
+
+        void clear() { selectRange(0, selected_.size(), false); }
 
         void selectRange(size_t rowFirst, size_t rowLast, bool positive = true) //select [rowFirst, rowLast), trims if required!
         {
-            if (rowFirst <= rowLast)
-            {
-                rowFirst = std::clamp<size_t>(rowFirst, 0, selected_.size());
-                rowLast  = std::clamp<size_t>(rowLast,  0, selected_.size());
-
-                std::fill(selected_.begin() + rowFirst, selected_.begin() + rowLast, positive);
-            }
-            else assert(false);
+            assert(rowFirst <= rowLast && rowLast <= selected_.size());
+            if (rowFirst < rowLast)
+                std::fill(selected_.begin() + std::min(rowFirst, selected_.size()),
+                          selected_.begin() + std::min(rowLast,  selected_.size()), positive);
         }
 
     private:

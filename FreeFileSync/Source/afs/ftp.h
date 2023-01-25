@@ -20,21 +20,17 @@ void ftpTeardown();
 
 //-------------------------------------------------------
 
-//use all configuration data that *defines* an SFTP session as key when buffering sessions! This is what user expects, e.g. when changing settings in FTP login dialog
-struct FtpSessionId
-{
-    Zstring server;
-    int port = 0; // > 0 if set
-    Zstring username;
-    Zstring password;
-    bool useTls = false;
-};
 const int DEFAULT_PORT_FTP = 21; //TLS enabled? => same for explicit FTP, but *implicit* FTP uses port 990
 
-struct FtpLogin : FtpSessionId
+struct FtpLogin
 {
+    Zstring server;
+    int portCfg = 0; //use if > 0, DEFAULT_PORT_FTP otherwise
+    Zstring username;
+    std::optional<Zstring> password = Zstr(""); //none given => prompt during AFS::authenticateAccess()
+    bool useTls = false;
     //other settings not specific to FTP session:
-    int timeoutSec = 15;
+    int timeoutSec = 10;
 };
 AfsDevice condenseToFtpDevice(const FtpLogin& login); //noexcept; potentially messy user input
 FtpLogin extractFtpLogin(const AfsDevice& afsDevice); //noexcept

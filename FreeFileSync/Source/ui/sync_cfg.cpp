@@ -185,7 +185,7 @@ bool sanitizeFilter(FilterConfig& filterCfg, const std::vector<AbstractPath>& ba
             detailsMsg.pop_back();
 
             switch (showConfirmationDialog(parent, DialogInfoType::info, PopupDialogCfg().
-                                           setMainInstructions(_("Each filter item must be a path relative to the base folders. The following changes are suggested:")).
+                                           setMainInstructions(_("Each filter item must be a path relative to the selected folder pairs. The following changes are suggested:")).
                                            setDetailInstructions(detailsMsg), _("&Change")))
             {
                 case ConfirmationButton::accept: //change
@@ -913,7 +913,7 @@ void ConfigDialog::onFilterKeyEvent(wxKeyEvent& event)
         {
             case 'A': //CTRL + A
                 if (auto textCtrl = dynamic_cast<wxTextCtrl*>(event.GetEventObject()))
-                    textCtrl->SetSelection(-1, -1); //select all
+                    textCtrl->SelectAll();
                 return;
         }
 
@@ -1654,7 +1654,7 @@ bool ConfigDialog::unselectFolderPairConfig(bool validateParams)
             if (AFS::isNullPath(createAbstractPath(syncCfg->versioningFolderPhrase)))
             {
                 m_notebook->ChangeSelection(static_cast<size_t>(SyncConfigPanel::sync));
-                showNotificationDialog(this, DialogInfoType::info, PopupDialogCfg().setMainInstructions(_("Please enter a target folder for versioning.")));
+                showNotificationDialog(this, DialogInfoType::info, PopupDialogCfg().setMainInstructions(_("Please enter a target folder.")));
                 //don't show error icon to follow "Windows' encouraging tone"
                 m_versioningFolderPath->SetFocus();
                 return false;

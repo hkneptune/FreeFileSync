@@ -63,6 +63,8 @@ public:
                          const AbstractPath& logFolderPath, int logfilesMaxAgeDays, LogFileFormat logFormat, const std::set<AbstractPath>& logFilePathsToKeep,
                          const std::string& emailNotifyAddress, ResultsNotification emailNotifyCondition); //noexcept!!
 
+    wxWindow* getWindowIfVisible();
+
 private:
     const std::wstring jobName_;
     const std::chrono::system_clock::time_point startTime_;

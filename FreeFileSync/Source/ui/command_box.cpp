@@ -128,9 +128,8 @@ void CommandBox::setValueAndUpdateList(const wxString& value)
 
 void CommandBox::onSelection(wxCommandEvent& event)
 {
-    wxCommandEvent dummy(EVENT_VALIDATE_USER_SELECTION); //we cannot replace built-in commands at this position in call stack, so defer to a later time!
-    if (auto handler = GetEventHandler())
-        handler->AddPendingEvent(dummy);
+    //we cannot replace built-in commands at this position in call stack, so defer to a later time!
+    GetEventHandler()->AddPendingEvent(wxCommandEvent(EVENT_VALIDATE_USER_SELECTION));
 
     event.Skip();
 }

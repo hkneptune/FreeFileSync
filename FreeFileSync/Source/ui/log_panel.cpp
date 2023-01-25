@@ -508,15 +508,14 @@ void LogPanel::onLocalKeyEvent(wxKeyEvent& event) //process key events without e
                 case WXK_NUMPAD_END:
                     if (!isComponentOf(wxWindow::FindFocus(), m_gridMessages) && //don't propagate keyboard commands if grid is already in focus
                         m_gridMessages->IsEnabled())
-                        if (wxEvtHandler* evtHandler = m_gridMessages->getMainWin().GetEventHandler())
-                        {
-                            m_gridMessages->SetFocus();
+                    {
+                        m_gridMessages->SetFocus();
 
-                            event.SetEventType(wxEVT_KEY_DOWN); //the grid event handler doesn't expect wxEVT_CHAR_HOOK!
-                            evtHandler->ProcessEvent(event); //propagating event catched at wxTheApp to child leads to recursion, but we prevented it...
-                            event.Skip(false); //definitively handled now!
-                            return;
-                        }
+                        event.SetEventType(wxEVT_KEY_DOWN); //the grid event handler doesn't expect wxEVT_CHAR_HOOK!
+                        m_gridMessages->getMainWin().GetEventHandler()->ProcessEvent(event); //propagating event catched at wxTheApp to child leads to recursion, but we prevented it...
+                        event.Skip(false); //definitively handled now!
+                        return;
+                    }
                     break;
             }
     }

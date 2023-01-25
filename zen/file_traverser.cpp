@@ -17,11 +17,8 @@ using namespace zen;
 void zen::traverseFolder(const Zstring& dirPath,
                          const std::function<void(const FileInfo&    fi)>& onFile,
                          const std::function<void(const FolderInfo&  fi)>& onFolder,
-                         const std::function<void(const SymlinkInfo& si)>& onSymlink,
-                         const std::function<void(const std::wstring& errorMsg)>& onError)
+                         const std::function<void(const SymlinkInfo& si)>& onSymlink) //throw FileError
 {
-    try
-    {
         DIR* folder = ::opendir(dirPath.c_str()); //directory must NOT end with path separator, except "/"
         if (!folder)
             THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot open directory %x."), L"%x", fmtPath(dirPath)), "opendir");
@@ -54,17 +51,8 @@ void zen::traverseFolder(const Zstring& dirPath,
             const Zstring& itemPath = appendPath(dirPath, itemName);
 
             struct stat statData = {};
-            try
-            {
                 if (::lstat(itemPath.c_str(), &statData) != 0) //lstat() does not resolve symlinks
                     THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(itemPath)), "lstat");
-            }
-            catch (const FileError& e)
-            {
-                if (onError)
-                    onError(e.toString());
-                continue; //ignore error: skip file
-            }
 
             if (S_ISLNK(statData.st_mode)) //on Linux there is no distinction between file and directory symlinks!
             {
@@ -76,22 +64,15 @@ void zen::traverseFolder(const Zstring& dirPath,
                 if (onFolder)
                     onFolder({itemName, itemPath});
             }
-            else //a file or named pipe, etc.
+            else //a file or named pipe, etc. S_ISREG, S_ISCHR, S_ISBLK, S_ISFIFO, S_ISSOCK
             {
                 if (onFile)
                     onFile({itemName, itemPath, makeUnsigned(statData.st_size), statData.st_mtime});
-            }
-
             /* It may be a good idea to not check "S_ISREG(statData.st_mode)" explicitly and to not issue an error message on other types to support these scenarios:
                 - RTS setup watch (essentially wants to read directories only)
                 - removeDirectory (wants to delete everything; pipes can be deleted just like files via "unlink")
 
-                However an "open" on a pipe will block (https://sourceforge.net/p/freefilesync/bugs/221/), so the copy routines need to be smarter!!                      */
+                However an "open" on a pipe will block (https://sourceforge.net/p/freefilesync/bugs/221/), so the copy routines better be smart!          */
+            }            
         }
-    }
-    catch (const FileError& e)
-    {
-        if (onError)
-            onError(e.toString());
-    }
 }

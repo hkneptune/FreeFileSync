@@ -116,7 +116,6 @@ inline int libssh2_sftp_rename(LIBSSH2_SFTP* sftp, const std::string& pathFrom, 
 }
 
 
-
 namespace zen
 {
 namespace
@@ -183,33 +182,33 @@ std::wstring formatSshStatusCode(int sc)
 
 std::wstring formatSftpStatusCode(unsigned long sc)
 {
+    //libssh2 only defines LIBSSH2_FX_OK(0) to LIBSSH2_FX_LINK_LOOP(21)
+    //=> all SFTP codes: https://tools.ietf.org/html/draft-ietf-secsh-filexfer-13#section-9.1
     switch (sc)
     {
-		//*INDENT-OFF*
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_OK);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_EOF);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_NO_SUCH_FILE);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_PERMISSION_DENIED);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_FAILURE);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_BAD_MESSAGE);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_NO_CONNECTION);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_CONNECTION_LOST);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_OP_UNSUPPORTED);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_INVALID_HANDLE);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_NO_SUCH_PATH);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_FILE_ALREADY_EXISTS);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_WRITE_PROTECT);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_NO_MEDIA);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_NO_SPACE_ON_FILESYSTEM);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_QUOTA_EXCEEDED);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_UNKNOWN_PRINCIPAL);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_LOCK_CONFLICT);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_DIR_NOT_EMPTY);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_NOT_A_DIRECTORY);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_INVALID_FILENAME);
-        ZEN_CHECK_CASE_FOR_CONSTANT(LIBSSH2_FX_LINK_LOOP);
-
-        //SFTP error codes missing from libssh2: https://tools.ietf.org/html/draft-ietf-secsh-filexfer-13#section-9.1
+        //*INDENT-OFF*
+        case  0: return L"SSH_FX_OK";
+        case  1: return L"SSH_FX_EOF";
+        case  2: return L"SSH_FX_NO_SUCH_FILE";
+        case  3: return L"SSH_FX_PERMISSION_DENIED";
+        case  4: return L"SSH_FX_FAILURE";
+        case  5: return L"SSH_FX_BAD_MESSAGE";
+        case  6: return L"SSH_FX_NO_CONNECTION";
+        case  7: return L"SSH_FX_CONNECTION_LOST";
+        case  8: return L"SSH_FX_OP_UNSUPPORTED";
+        case  9: return L"SSH_FX_INVALID_HANDLE";
+        case 10: return L"SSH_FX_NO_SUCH_PATH";
+        case 11: return L"SSH_FX_FILE_ALREADY_EXISTS";
+        case 12: return L"SSH_FX_WRITE_PROTECT";
+        case 13: return L"SSH_FX_NO_MEDIA";
+        case 14: return L"SSH_FX_NO_SPACE_ON_FILESYSTEM";
+        case 15: return L"SSH_FX_QUOTA_EXCEEDED";
+        case 16: return L"SSH_FX_UNKNOWN_PRINCIPAL";
+        case 17: return L"SSH_FX_LOCK_CONFLICT";
+        case 18: return L"SSH_FX_DIR_NOT_EMPTY";
+        case 19: return L"SSH_FX_NOT_A_DIRECTORY";
+        case 20: return L"SSH_FX_INVALID_FILENAME";
+        case 21: return L"SSH_FX_LINK_LOOP";
         case 22: return L"SSH_FX_CANNOT_DELETE";
         case 23: return L"SSH_FX_INVALID_PARAMETER";
         case 24: return L"SSH_FX_FILE_IS_A_DIRECTORY";

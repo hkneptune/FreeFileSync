@@ -326,7 +326,7 @@ LogPanel::LogPanel(wxWindow* parent) : LogPanelGenerated(parent)
     });
 
     //support for CTRL + C
-    m_gridMessages->getMainWin().Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onGridButtonEvent(event); });
+    m_gridMessages->Bind(wxEVT_KEY_DOWN,          [this](wxKeyEvent& event) { onGridButtonEvent(event); });
 
     m_gridMessages->Bind(EVENT_GRID_CONTEXT_MENU, [this](GridContextMenuEvent& event) { onMsgGridContext(event); });
 

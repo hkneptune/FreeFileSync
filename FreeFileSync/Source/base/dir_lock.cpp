@@ -308,6 +308,8 @@ ProcessStatus getProcessStatus(const LockInformation& lockInfo) //throw FileErro
 DEFINE_NEW_FILE_ERROR(ErrorFileNotExisting)
 uint64_t getLockFileSize(const Zstring& filePath) //throw FileError, ErrorFileNotExisting
 {
+    //yes, checking error ERROR_FILE_NOT_FOUND, ENOENT is not 100% reliable (e.g. might indicate missing parent folder)
+    //but good enough for our lock file!
     struct stat fileInfo = {};
     if (::stat(filePath.c_str(), &fileInfo) == 0)
         return fileInfo.st_size;

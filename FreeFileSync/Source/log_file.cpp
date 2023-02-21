@@ -8,7 +8,7 @@
 #include <zen/file_io.h>
 #include <zen/http.h>
 #include <zen/sys_info.h>
-#include <wx/datetime.h>
+//#include <wx/datetime.h>
 #include "afs/concrete.h"
 
 using namespace zen;
@@ -66,7 +66,7 @@ std::string generateLogHeaderTxt(const ProcessSummary& s, const ErrorLog& log, i
                                                         L" (" + formatFilesizeShort(s.statsTotal.bytes - s.statsProcessed.bytes) + L')'));
 
     const int64_t totalTimeSec = std::chrono::duration_cast<std::chrono::seconds>(s.totalTime).count();
-    summary.push_back(tabSpace + utfTo<std::string>(_("Total time:")) + ' ' + utfTo<std::string>(wxTimeSpan::Seconds(totalTimeSec).Format()));
+    summary.push_back(tabSpace + utfTo<std::string>(_("Total time:")) + ' ' + utfTo<std::string>(formatTimeSpan(totalTimeSec)));
 
     size_t sepLineLen = 0; //calculate max width (considering Unicode!)
     for (const std::string& str : summary) sepLineLen = std::max(sepLineLen, unicodeLength(str));
@@ -293,7 +293,7 @@ std::string generateLogHeaderHtml(const ProcessSummary& s, const ErrorLog& log, 
             <tr>
                 <td>)" + htmlTxt(_("Total time:")) + R"(</td>
                 <td><img src="https://freefilesync.org/images/log/clock.png" width="24" height="24" alt=""></td>
-                <td><span style="font-weight: 600;">)" + htmlTxt(wxTimeSpan::Seconds(totalTimeSec).Format()) + R"(</span></td>
+                <td><span style="font-weight: 600;">)" + htmlTxt(formatTimeSpan(totalTimeSec)) + R"(</span></td>
             </tr>
         </table>
     </div>
@@ -350,7 +350,7 @@ std::string generateLogFooterHtml(const std::wstring& logFilePath /*optional*/, 
 
     output += R"(
     <div style="border-bottom:1px solid #AAA; margin:5px 0;"></div>
-    <div style="font-size:small;">
+    <div style="font-size:smaller;">
         <img src="https://freefilesync.org/images/log/)" + osImage + R"(" width="24" height="24" alt="" style="vertical-align:middle;">
         <span style="vertical-align:middle;">)" + htmlTxt(getOsDescription()) + /*throw FileError*/ + 
             " &ndash; " + htmlTxt(getUserDescription()) /*throw FileError*/ + 
@@ -360,7 +360,7 @@ std::string generateLogFooterHtml(const std::wstring& logFilePath /*optional*/, 
 
     if (!logFilePath.empty())
         output += R"(
-    <div style="font-size:small;">
+    <div style="font-size:smaller;">
         <img src="https://freefilesync.org/images/log/log.png" width="24" height="24" alt=")" + htmlTxt(_("Log file:")) + R"(" style="vertical-align:middle;">
         <span style="font-family: Consolas,'Courier New',Courier,monospace; vertical-align:middle;">)" + htmlTxt(logFilePath) + R"(</span>
     </div>)";

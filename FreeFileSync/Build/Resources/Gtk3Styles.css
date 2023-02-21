@@ -1,9 +1,8 @@
 /*  CSS format as required by CentOS (GTK 3.22.30)
-
-	https://developer.gnome.org/gtk3/stable/chap-css-properties.html
-	https://developer.gnome.org/gtk3/stable/gtk-migrating-GtkStyleContext-css.html
-	pkg-config --modversion gtk+-3.0                                                      */
-
+	pkg-config --modversion gtk+-3.0
+	
+	https://docs.gtk.org/gtk3/css-overview.html
+	https://docs.gtk.org/gtk3/css-properties.html                       */
 *
 {
 	/* see wx+/grid.cpp: spacing wouldn't hurt, but let's be consistent */
@@ -12,8 +11,24 @@
 
 button
 {
-	padding: 2px; /*remove excessive inner border from bitmap buttons*/
+	padding: 4px 5px; /*remove excessive inner border from bitmap buttons*/
 	min-width:  0;
 	min-height: 0;
 	/*border-radius: 5px;*/
+}
+
+entry
+{
+	padding: 2px 5px; /*default is too small for text input*/
+}
+
+combobox entry
+{
+	padding: 0 5px;
+}
+
+spinbutton entry
+{
+	padding: 0 5px;
+	/*margin-right: -50px; possible hack! but not needed right now */
 }

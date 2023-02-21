@@ -9,7 +9,7 @@
 #include <wx/filedlg.h>
 #include <wx+/app_main.h>
 #include <wx+/bitmap_button.h>
-#include <wx+/font_size.h>
+#include <wx+/window_layout.h>
 #include <wx+/popup_dlg.h>
 #include <wx+/image_resources.h>
 #include <zen/file_access.h>
@@ -81,7 +81,7 @@ MainDialog::MainDialog(const Zstring& cfgFilePath) :
     m_scrolledWinFolders->SetScrollRate(scrollDelta, scrollDelta);
 
     m_txtCtrlDirectoryMain->SetMinSize({fastFromDIP(300), -1});
-    m_spinCtrlDelay       ->SetMinSize({fastFromDIP( 70), -1}); //Hack: set size (why does wxWindow::Size() not work?)
+    setDefaultWidth(*m_spinCtrlDelay);
 
     m_bpButtonRemoveTopFolder->Hide();
     m_panelMainFolder->Layout();
@@ -101,7 +101,7 @@ MainDialog::MainDialog(const Zstring& cfgFilePath) :
     setGlobalWindow(this);
 
     //prepare drag & drop
-    firstFolderPanel_ = std::make_unique<FolderSelector2>(this, *m_panelMainFolder, *m_buttonSelectFolderMain, *m_txtCtrlDirectoryMain, folderLastSelected_, m_staticTextFinalPath);
+    firstFolderPanel_ = std::make_unique<FolderSelector2>(this, *m_panelMainFolder, *m_buttonSelectFolderMain, *m_txtCtrlDirectoryMain, folderLastSelected_, nullptr /*staticText*/);
 
     //--------------------------- load config values ------------------------------------
     XmlRealConfig newConfig;

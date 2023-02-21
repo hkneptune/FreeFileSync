@@ -361,7 +361,7 @@ StatusHandlerFloatingDialog::StatusHandlerFloatingDialog(wxFrame* parentDlg,
                                                          std::chrono::seconds autoRetryDelay,
                                                          const Zstring& soundFileSyncComplete,
                                                          const Zstring& soundFileAlertPending,
-                                                         const wxSize& progressDlgSize, bool dlgMaximize,
+                                                         const std::optional<wxSize>& progressDlgSize, bool dlgMaximize,
                                                          bool autoCloseDialog,
                                                          const ErrorLog* errorLogStart) :
     jobNames_(jobNames),
@@ -525,7 +525,7 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(c
                 wxSound::Play(utfTo<wxString>(soundFileSyncComplete_), wxSOUND_ASYNC);
             }
         //if (::GetForegroundWindow() != GetHWND())
-        //  RequestUserAttention(); -> probably too much since task bar is already colorized with Taskbar::STATUS_ERROR or STATUS_NORMAL
+        //    RequestUserAttention(); -> probably too much since task bar is already colorized with Taskbar::STATUS_ERROR or STATUS_NORMAL
     }
 
     //--------------------- save log file ----------------------

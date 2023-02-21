@@ -13,7 +13,7 @@
 #include <wx/dcbuffer.h> //for macro: wxALWAYS_NATIVE_DOUBLE_BUFFER
 #include <wx/dcscreen.h>
 #include <wx/bmpbndl.h>
-    #include <gtk/gtk.h>
+//    #include <gtk/gtk.h>
 
 
 namespace zen

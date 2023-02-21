@@ -6,7 +6,7 @@
 
 #include "zlib_wrap.h"
 //Windows:     use the SAME zlib version that wxWidgets is linking against! //C:\Data\Projects\wxWidgets\Source\src\zlib\zlib.h
-//Linux/macOS: use zlib system header for both wxWidgets and libcurl (zlib is required for HTTP, SFTP)
+//Linux/macOS: use zlib system header for wxWidgets, libcurl (HTTP), libssh2 (SFTP)
 //             => don't compile wxWidgets with: --with-zlib=builtin
 #include <zlib.h>
 #include "scope_guard.h"
@@ -178,7 +178,7 @@ public:
     size_t read(void* buffer, size_t bytesToRead) //throw SysError, X; return "bytesToRead" bytes unless end of stream!
     {
         if (bytesToRead == 0) //"read() with a count of 0 returns zero" => indistinguishable from end of file! => check!
-            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+            throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
 
         gzipStream_.next_out  = static_cast<Bytef*>(buffer);
         gzipStream_.avail_out = static_cast<uInt>(bytesToRead);

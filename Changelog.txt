@@ -1,4 +1,20 @@
-FreeFileSync 12.0 [2022-01-21]
+FreeFileSync 12.1 [2023-02-20]
+------------------------------
+First official build based on GTK3 (Linux)
+Allow cancel during folder path normalization (e.g. delay during HDD spin up)
+Fixed slow FTP comparison performance due to libcurl regression
+Open terminal with log messages on startup error (Linux)
+Preserve changed config during auto-update
+Save config during unexpected reboot (Linux)
+Preserve config upon SIGTERM (Linux, macOS)
+Fixed progress dialog z-order after switching windows (macOS)
+Removed packet size limit for SFTP directory reading
+Mouse hover effects for config and overview grid
+Always update existing shortcuts during installation (Windows, Linux)
+Fixed another "Some files will be synchronized as part of multiple base folders" false-negative
+
+
+FreeFileSync 12.0 [2023-01-21]
 ------------------------------
 Don't save password and show prompt instead for (S)FTP
 Fast path check failure on access errors

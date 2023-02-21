@@ -26,7 +26,7 @@ BatchStatusHandler::BatchStatusHandler(bool showProgress,
                                        std::chrono::seconds autoRetryDelay,
                                        const Zstring& soundFileSyncComplete,
                                        const Zstring& soundFileAlertPending,
-                                       wxSize progressDlgSize, bool dlgMaximize,
+                                       const std::optional<wxSize>& progressDlgSize, bool dlgMaximize,
                                        bool autoCloseDialog,
                                        PostSyncAction postSyncAction,
                                        BatchErrorHandling batchErrorHandling) :

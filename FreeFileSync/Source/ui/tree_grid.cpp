@@ -136,7 +136,7 @@ void TreeView::extractVisibleSubtree(ContainerObject& hierObj,  //in
 
 namespace
 {
-//generate nice percentage numbers which precisely add up to 100
+//generate "nice" percentage numbers which precisely add up to 100
 void calcPercentage(std::vector<std::pair<uint64_t, int*>>& workList)
 {
     uint64_t bytesTotal = 0;
@@ -693,7 +693,7 @@ public:
         rootIcon_(loadImage("root_folder", widthNodeIcon_)),
         grid_(grid)
     {
-        grid.getMainWin().Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onKeyDown(event); });
+        grid.Bind(wxEVT_KEY_DOWN,                   [this](wxKeyEvent& event) { onKeyDown(event); });
         grid.Bind(EVENT_GRID_MOUSE_LEFT_DOWN,       [this](GridClickEvent& event) { onMouseLeft      (event); });
         grid.Bind(EVENT_GRID_MOUSE_LEFT_DOUBLE,     [this](GridClickEvent& event) { onMouseLeftDouble(event); });
         grid.Bind(EVENT_GRID_COL_LABEL_MOUSE_RIGHT, [this](GridLabelClickEvent& event) { onGridLabelContext  (event); });
@@ -798,6 +798,7 @@ private:
     enum class HoverAreaTree
     {
         node,
+        item,
     };
 
     void renderCell(wxDC& dc, const wxRect& rect, size_t row, ColumnType colType, bool enabled, bool selected, HoverArea rowHover) override
@@ -819,13 +820,6 @@ private:
         {
             if (std::unique_ptr<TreeView::Node> node = getDataView().getLine(row))
             {
-                ////clear first section:
-                //clearArea(dc, wxRect(rect.GetTopLeft(), wxSize(
-                //                         node->level_ * widthLevelStep_ + gapSize_ + //width
-                //                         (showPercentBar ? percentageBarWidth_ + 2 * gapSize_ : 0) + //
-                //                         widthNodeStatus_ + gapSize_ + widthNodeIcon + gapSize_, //
-                //                         rect.height)), wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
-
                 auto drawIcon = [&](wxImage icon, const wxRect& rectIcon, bool drawActive)
                 {
                     if (!drawActive)
@@ -900,6 +894,9 @@ private:
 
                             drawIcon(nodeIcon, rectTmp, isActive);
 
+                            if (static_cast<HoverAreaTree>(rowHover) == HoverAreaTree::item)
+                                drawInsetRectangle(dc, rectTmp, fastFromDIP(1), *wxBLUE);
+
                             rectTmp.x     += widthNodeIcon_ + gapSize_;
                             rectTmp.width -= widthNodeIcon_ + gapSize_;
 
@@ -956,26 +953,18 @@ private:
 
     HoverArea getMouseHover(wxDC& dc, size_t row, ColumnType colType, int cellRelativePosX, int cellWidth) override
     {
-        switch (static_cast<ColumnTypeOverview>(colType))
-        {
-            case ColumnTypeOverview::folder:
-                if (std::unique_ptr<TreeView::Node> node = getDataView().getLine(row))
-                {
-                    const int tolerance = 2;
-                    const int nodeStatusXFirst = -tolerance + static_cast<int>(node->level_) * widthLevelStep_ + gapSize_ + (showPercentBar_ ? percentageBarWidth_ + 2 * gapSize_ : 0);
-                    const int nodeStatusXLast  = (nodeStatusXFirst + tolerance) + widthNodeStatus_ + tolerance;
-                    // -> synchronize renderCell() <-> getBestSize() <-> getMouseHover()
+        if (static_cast<ColumnTypeOverview>(colType) == ColumnTypeOverview::folder)
+            if (std::unique_ptr<TreeView::Node> node = getDataView().getLine(row))
+            {
+                const int nodeStatusXFirst = static_cast<int>(node->level_) * widthLevelStep_ + gapSize_ + (showPercentBar_ ? percentageBarWidth_ + 2 * gapSize_ : 0);
+                const int nodeStatusXLast  = nodeStatusXFirst + widthNodeStatus_;
+                // -> synchronize renderCell() <-> getBestSize() <-> getMouseHover()
 
-                    if (nodeStatusXFirst <= cellRelativePosX && cellRelativePosX < nodeStatusXLast)
-                        return static_cast<HoverArea>(HoverAreaTree::node);
-                }
-                break;
-
-            case ColumnTypeOverview::itemCount:
-            case ColumnTypeOverview::bytes:
-                break;
-        }
-        return HoverArea::none;
+                const int tolerance = fastFromDIP(5);
+                if (nodeStatusXFirst - tolerance <= cellRelativePosX && cellRelativePosX < nodeStatusXLast + tolerance)
+                    return static_cast<HoverArea>(HoverAreaTree::node);
+            }
+        return static_cast<HoverArea>(HoverAreaTree::item);
     }
 
     std::wstring getColumnLabel(ColumnType colType) const override
@@ -1006,6 +995,8 @@ private:
                     case TreeView::STATUS_EMPTY:
                         break;
                 }
+                break;
+            case HoverAreaTree::item:
                 break;
         }
         event.Skip();

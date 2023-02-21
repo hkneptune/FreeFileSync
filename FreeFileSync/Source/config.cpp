@@ -23,7 +23,7 @@ using namespace fff; //required for correct overload resolution!
 namespace
 {
 //-------------------------------------------------------------------------------------------------------------------------------
-const int XML_FORMAT_GLOBAL_CFG = 25; //2022-08-26
+const int XML_FORMAT_GLOBAL_CFG = 26; //2023-02-18
 const int XML_FORMAT_SYNC_CFG   = 17; //2020-10-14
 //-------------------------------------------------------------------------------------------------------------------------------
 }
@@ -1474,8 +1474,9 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     //TODO: remove old parameter after migration! 2021-03-06
     if (formatVer < 21)
     {
-        in2["ProgressDialog"].attribute("Width",     cfg.dpiLayouts[getDpiScalePercent()].progressDlg.dlgSize.x);
-        in2["ProgressDialog"].attribute("Height",    cfg.dpiLayouts[getDpiScalePercent()].progressDlg.dlgSize.y);
+        cfg.dpiLayouts[getDpiScalePercent()].progressDlg.size = wxSize();
+        in2["ProgressDialog"].attribute("Width",     cfg.dpiLayouts[getDpiScalePercent()].progressDlg.size->x);
+        in2["ProgressDialog"].attribute("Height",    cfg.dpiLayouts[getDpiScalePercent()].progressDlg.size->y);
         in2["ProgressDialog"].attribute("Maximized", cfg.dpiLayouts[getDpiScalePercent()].progressDlg.isMaximized);
     }
 
@@ -1565,10 +1566,12 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     //TODO: remove old parameter after migration! 2021-03-06
     if (formatVer < 21)
     {
-        inMainWin.attribute("Width",     cfg.dpiLayouts[getDpiScalePercent()].mainDlg.dlgSize.x);
-        inMainWin.attribute("Height",    cfg.dpiLayouts[getDpiScalePercent()].mainDlg.dlgSize.y);
-        inMainWin.attribute("PosX",      cfg.dpiLayouts[getDpiScalePercent()].mainDlg.dlgPos.x);
-        inMainWin.attribute("PosY",      cfg.dpiLayouts[getDpiScalePercent()].mainDlg.dlgPos.y);
+        cfg.dpiLayouts[getDpiScalePercent()].mainDlg.size = wxSize();
+        inMainWin.attribute("Width",     cfg.dpiLayouts[getDpiScalePercent()].mainDlg.size->x);
+        inMainWin.attribute("Height",    cfg.dpiLayouts[getDpiScalePercent()].mainDlg.size->y);
+        cfg.dpiLayouts[getDpiScalePercent()].mainDlg.pos  = wxPoint();
+        inMainWin.attribute("PosX",      cfg.dpiLayouts[getDpiScalePercent()].mainDlg.pos->x);
+        inMainWin.attribute("PosY",      cfg.dpiLayouts[getDpiScalePercent()].mainDlg.pos->y);
         inMainWin.attribute("Maximized", cfg.dpiLayouts[getDpiScalePercent()].mainDlg.isMaximized);
     }
 
@@ -1777,10 +1780,10 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
 
     //TODO: remove old parameter after migration! 2018-01-16
     if (formatVer < 7)
-        inMainWin["Perspective5"](cfg.dpiLayouts[getDpiScalePercent()].mainDlg.panelLayout);
+        inMainWin["Perspective5"](cfg.dpiLayouts[getDpiScalePercent()].panelLayout);
     //TODO: remove old parameter after migration! 2021-03-06
     else if (formatVer < 21)
-        inMainWin["Perspective"](cfg.dpiLayouts[getDpiScalePercent()].mainDlg.panelLayout);
+        inMainWin["Perspective"](cfg.dpiLayouts[getDpiScalePercent()].panelLayout);
 
     //TODO: remove after migration! 2019-11-30
     auto splitEditMerge = [](wxString& perspective, wchar_t delim, const std::function<void(wxString& item)>& editItem)
@@ -1801,7 +1804,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
 
     //TODO: remove after migration! 2018-07-27
     if (formatVer < 10)
-        splitEditMerge(cfg.dpiLayouts[getDpiScalePercent()].mainDlg.panelLayout, L'|', [&](wxString& paneCfg)
+        splitEditMerge(cfg.dpiLayouts[getDpiScalePercent()].panelLayout, L'|', [&](wxString& paneCfg)
     {
         if (contains(paneCfg, L"name=TopPanel"))
             replace(paneCfg, L";row=2;", L";row=3;");
@@ -1814,7 +1817,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
         std::optional<int> tpDir;
         std::optional<int> tpLayer;
         std::optional<int> tpRow;
-        splitEditMerge(cfg.dpiLayouts[getDpiScalePercent()].mainDlg.panelLayout, L'|', [&](wxString& paneCfg)
+        splitEditMerge(cfg.dpiLayouts[getDpiScalePercent()].panelLayout, L'|', [&](wxString& paneCfg)
         {
             if (contains(paneCfg, L"name=TopPanel"))
                 splitEditMerge(paneCfg, L';', [&](wxString& paneAttr)
@@ -1835,7 +1838,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
                                     numberTo<wxString>(*tpLayer) + L"," +
                                     numberTo<wxString>(*tpRow  ) + L")=";
 
-            splitEditMerge(cfg.dpiLayouts[getDpiScalePercent()].mainDlg.panelLayout, L'|', [&](wxString& paneCfg)
+            splitEditMerge(cfg.dpiLayouts[getDpiScalePercent()].panelLayout, L'|', [&](wxString& paneCfg)
             {
                 if (startsWith(paneCfg, tpSize))
                     paneCfg = tpSize + L"0";
@@ -1970,7 +1973,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
         in["LastOnlineVersion"](cfg.lastOnlineVersion);
     }
 
-    in["WelcomeShownVersion"](cfg.welcomeShownVersion);
+    in["WelcomeDialogVersion"](cfg.welcomeDialogLastVersion);
 
     //cfg.dpiLayouts.clear(); -> NO: honor migration code above!
 
@@ -1981,23 +1984,68 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
             const int scalePercent = stringTo<int>(beforeLast(scaleTxt, '%', IfNotFoundReturn::none));
             DpiLayout layout;
 
-            XmlIn inLayoutMain = inLayout["MainDialog"];
-            inLayoutMain.attribute("Width",     layout.mainDlg.dlgSize.x);
-            inLayoutMain.attribute("Height",    layout.mainDlg.dlgSize.y);
-            inLayoutMain.attribute("PosX",      layout.mainDlg.dlgPos.x);
-            inLayoutMain.attribute("PosY",      layout.mainDlg.dlgPos.y);
-            inLayoutMain.attribute("Maximized", layout.mainDlg.isMaximized);
+            //TODO: remove parameter migration after some time! 2023-02-18
+            if (formatVer < 26)
+            {
+                XmlIn inLayoutMain = inLayout["MainDialog"];
+                layout.mainDlg.size = wxSize();
+                inLayoutMain.attribute("Width",     layout.mainDlg.size->x);
+                inLayoutMain.attribute("Height",    layout.mainDlg.size->y);
 
-            inLayoutMain["PanelLayout"   ](layout.mainDlg.panelLayout);
-            inLayoutMain["ConfigPanel"   ](layout.configColumnAttribs);
-            inLayoutMain["OverviewPanel" ](layout.overviewColumnAttribs);
-            inLayoutMain["FilePanelLeft" ](layout.fileColumnAttribsLeft);
-            inLayoutMain["FilePanelRight"](layout.fileColumnAttribsRight);
+                layout.mainDlg.pos = wxPoint();
+                inLayoutMain.attribute("PosX",      layout.mainDlg.pos->x);
+                inLayoutMain.attribute("PosY",      layout.mainDlg.pos->y);
 
-            XmlIn inLayoutProgress = inLayout["ProgressDialog"];
-            inLayoutProgress.attribute("Width",     layout.progressDlg.dlgSize.x);
-            inLayoutProgress.attribute("Height",    layout.progressDlg.dlgSize.y);
-            inLayoutProgress.attribute("Maximized", layout.progressDlg.isMaximized);
+                inLayoutMain.attribute("Maximized", layout.mainDlg.isMaximized);
+
+                inLayoutMain["PanelLayout"   ](layout.panelLayout);
+                inLayoutMain["ConfigPanel"   ](layout.configColumnAttribs);
+                inLayoutMain["OverviewPanel" ](layout.overviewColumnAttribs);
+                inLayoutMain["FilePanelLeft" ](layout.fileColumnAttribsLeft);
+                inLayoutMain["FilePanelRight"](layout.fileColumnAttribsRight);
+
+                XmlIn inLayoutProgress = inLayout["ProgressDialog"];
+                layout.progressDlg.size = wxSize();
+                inLayoutProgress.attribute("Width",  layout.progressDlg.size->x);
+                inLayoutProgress.attribute("Height", layout.progressDlg.size->y);
+
+                inLayoutProgress.attribute("Maximized", layout.progressDlg.isMaximized);
+            }
+            else
+            {
+                XmlIn inLayoutMain = inLayout["MainWindow"];
+                if (inLayoutMain.hasAttribute("Width") &&
+                    inLayoutMain.hasAttribute("Height"))
+                {
+                    layout.mainDlg.size = wxSize();
+                    inLayoutMain.attribute("Width",  layout.mainDlg.size->x);
+                    inLayoutMain.attribute("Height", layout.mainDlg.size->y);
+                }
+                if (inLayoutMain.hasAttribute("PosX") &&
+                    inLayoutMain.hasAttribute("PosY"))
+                {
+                    layout.mainDlg.pos = wxPoint();
+                    inLayoutMain.attribute("PosX", layout.mainDlg.pos->x);
+                    inLayoutMain.attribute("PosY", layout.mainDlg.pos->y);
+                }
+                inLayoutMain.attribute("Maximized", layout.mainDlg.isMaximized);
+
+                XmlIn inLayoutProgress = inLayout["ProgressDialog"];
+                if (inLayoutProgress.hasAttribute("Width") &&
+                    inLayoutProgress.hasAttribute("Height"))
+                {
+                    layout.progressDlg.size = wxSize();
+                    inLayoutProgress.attribute("Width",  layout.progressDlg.size->x);
+                    inLayoutProgress.attribute("Height", layout.progressDlg.size->y);
+                }
+                inLayoutProgress.attribute("Maximized", layout.progressDlg.isMaximized);
+
+                inLayout["Panels"        ](layout.panelLayout);
+                inLayout["ConfigPanel"   ](layout.configColumnAttribs);
+                inLayout["OverviewPanel" ](layout.overviewColumnAttribs);
+                inLayout["FilePanelLeft" ](layout.fileColumnAttribsLeft);
+                inLayout["FilePanelRight"](layout.fileColumnAttribsRight);
+            }
 
             cfg.dpiLayouts.emplace(scalePercent, std::move(layout));
         }
@@ -2435,7 +2483,7 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
     out["LastOnlineCheck"  ](cfg.lastUpdateCheck);
     out["LastOnlineVersion"](cfg.lastOnlineVersion);
 
-    out["WelcomeShownVersion"](cfg.welcomeShownVersion);
+    out["WelcomeDialogVersion"](cfg.welcomeDialogLastVersion);
 
 
     for (const auto& [scalePercent, layout] : cfg.dpiLayouts)
@@ -2443,23 +2491,32 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
         XmlOut outLayout = out["DpiLayouts"].addChild("Layout");
         outLayout.attribute("Scale", numberTo<std::string>(scalePercent) + '%');
 
-        XmlOut outLayoutMain = outLayout["MainDialog"];
-        outLayoutMain.attribute("Width",     layout.mainDlg.dlgSize.x);
-        outLayoutMain.attribute("Height",    layout.mainDlg.dlgSize.y);
-        outLayoutMain.attribute("PosX",      layout.mainDlg.dlgPos.x);
-        outLayoutMain.attribute("PosY",      layout.mainDlg.dlgPos.y);
+        XmlOut outLayoutMain = outLayout["MainWindow"];
+        if (layout.mainDlg.size)
+        {
+            outLayoutMain.attribute("Width",  layout.mainDlg.size->x);
+            outLayoutMain.attribute("Height", layout.mainDlg.size->y);
+        }
+        if (layout.mainDlg.pos)
+        {
+            outLayoutMain.attribute("PosX", layout.mainDlg.pos->x);
+            outLayoutMain.attribute("PosY", layout.mainDlg.pos->y);
+        }
         outLayoutMain.attribute("Maximized", layout.mainDlg.isMaximized);
 
-        outLayoutMain["PanelLayout"   ](layout.mainDlg.panelLayout);
-        outLayoutMain["ConfigPanel"   ](layout.configColumnAttribs);
-        outLayoutMain["OverviewPanel" ](layout.overviewColumnAttribs);
-        outLayoutMain["FilePanelLeft" ](layout.fileColumnAttribsLeft);
-        outLayoutMain["FilePanelRight"](layout.fileColumnAttribsRight);
-
         XmlOut outLayoutProgress = outLayout["ProgressDialog"];
-        outLayoutProgress.attribute("Width",     layout.progressDlg.dlgSize.x);
-        outLayoutProgress.attribute("Height",    layout.progressDlg.dlgSize.y);
+        if (layout.progressDlg.size)
+        {
+            outLayoutProgress.attribute("Width",  layout.progressDlg.size->x);
+            outLayoutProgress.attribute("Height", layout.progressDlg.size->y);
+        }
         outLayoutProgress.attribute("Maximized", layout.progressDlg.isMaximized);
+
+        outLayout["Panels"        ](layout.panelLayout);
+        outLayout["ConfigPanel"   ](layout.configColumnAttribs);
+        outLayout["OverviewPanel" ](layout.overviewColumnAttribs);
+        outLayout["FilePanelLeft" ](layout.fileColumnAttribsLeft);
+        outLayout["FilePanelRight"](layout.fileColumnAttribsRight);
     }
 }
 

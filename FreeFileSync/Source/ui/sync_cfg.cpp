@@ -14,7 +14,7 @@
 #include <wx+/context_menu.h>
 #include <wx+/choice_enum.h>
 #include <wx+/image_tools.h>
-#include <wx+/font_size.h>
+#include <wx+/window_layout.h>
 #include <wx+/popup_dlg.h>
 #include <wx+/image_resources.h>
 #include <wx+/window_tools.h>
@@ -165,7 +165,7 @@ bool sanitizeFilter(FilterConfig& filterCfg, const std::vector<AbstractPath>& ba
                                         replacements.emplace_back(phrase, relPath);
                                         return; //... to next block
                                     }
-                            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+                            throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
                         }
                 }
             });
@@ -520,8 +520,8 @@ globalLogFolderPhrase_(globalLogFolderPhrase)
     const int scrollDelta = GetCharHeight();
     m_scrolledWindowPerf->SetScrollRate(scrollDelta, scrollDelta);
 
-    m_spinCtrlAutoRetryCount->SetMinSize({fastFromDIP(60), -1}); //Hack: set size (why does wxWindow::Size() not work?)
-    m_spinCtrlAutoRetryDelay->SetMinSize({fastFromDIP(60), -1}); //
+    setDefaultWidth(*m_spinCtrlAutoRetryCount);
+    setDefaultWidth(*m_spinCtrlAutoRetryDelay);
 
     //ignore invalid input for time shift control:
     wxTextValidator inputValidator(wxFILTER_DIGITS | wxFILTER_INCLUDE_CHAR_LIST);
@@ -535,6 +535,10 @@ globalLogFolderPhrase_(globalLogFolderPhrase)
 
     m_textCtrlInclude->Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onFilterKeyEvent(event); });
     m_textCtrlExclude->Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onFilterKeyEvent(event); });
+
+    setDefaultWidth(*m_spinCtrlMinSize);
+    setDefaultWidth(*m_spinCtrlMaxSize);
+    setDefaultWidth(*m_spinCtrlTimespan);
 
     m_staticTextFilterDescr->Wrap(fastFromDIP(450));
 
@@ -598,9 +602,9 @@ globalLogFolderPhrase_(globalLogFolderPhrase)
     add(VersioningStyle::timestampFolder, _("Time stamp") + L" [" + _("Folder") + L']', _("Move files into a time-stamped subfolder")).
     add(VersioningStyle::timestampFile,   _("Time stamp") + L" [" + _("File")   + L']', _("Append a time stamp to each file name"));
 
-    m_spinCtrlVersionMaxDays ->SetMinSize({fastFromDIP(60), -1}); //
-    m_spinCtrlVersionCountMin->SetMinSize({fastFromDIP(60), -1}); //Hack: set size (why does wxWindow::Size() not work?)
-    m_spinCtrlVersionCountMax->SetMinSize({fastFromDIP(60), -1}); //
+    setDefaultWidth(*m_spinCtrlVersionMaxDays );
+    setDefaultWidth(*m_spinCtrlVersionCountMin);
+    setDefaultWidth(*m_spinCtrlVersionCountMax);
 
     m_versioningFolderPath->setHistory(std::make_shared<HistoryList>(versioningFolderHistory, folderHistoryMax));
 
@@ -674,7 +678,10 @@ globalLogFolderPhrase_(globalLogFolderPhrase)
     selectFolderPairConfig(-1);
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
-    //=> works like a charm for GTK2 with window resizing problems and title bar corruption; e.g. Debian!!!
+#ifdef __WXGTK3__
+    Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
+    Hide(); //avoid old position flash when Center() moves window (asynchronously?)
+#endif
     Center(); //needs to be re-applied after a dialog size change!
 
     //keep stable sizer height: "two way" description is smaller than grid of sync directions
@@ -1421,7 +1428,7 @@ void ConfigDialog::setMiscSyncOptions(const MiscSyncConfig& miscCfg)
         for (int i = 0; i < rowsToCreate; ++i)
         {
             wxSpinCtrl* spinCtrlParallelOps = new wxSpinCtrl(m_scrolledWindowPerf, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 1, 2000'000'000, 1);
-            spinCtrlParallelOps->SetMinSize({fastFromDIP(60), -1}); //Hack: set size (why does wxWindow::Size() not work?)
+            setDefaultWidth(*spinCtrlParallelOps);
             spinCtrlParallelOps->Enable(enableExtraFeatures_);
             fgSizerPerf->Add(spinCtrlParallelOps, 0, wxALIGN_CENTER_VERTICAL);
 

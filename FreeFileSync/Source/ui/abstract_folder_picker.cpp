@@ -127,7 +127,10 @@ AbstractFolderPickerDlg::AbstractFolderPickerDlg(wxWindow* parent, AbstractPath&
 
     //----------------------------------------------------------------------
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
-    //=> works like a charm for GTK2 with window resizing problems and title bar corruption; e.g. Debian!!!
+#ifdef __WXGTK3__
+    Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
+    Hide(); //avoid old position flash when Center() moves window (asynchronously?)
+#endif
     Center(); //needs to be re-applied after a dialog size change!
 
     Bind(wxEVT_CHAR_HOOK,            [this](wxKeyEvent&  event) { onLocalKeyEvent(event); }); //dialog-specific local key events

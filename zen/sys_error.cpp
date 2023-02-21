@@ -248,13 +248,13 @@ std::wstring zen::formatGlibError(const std::string& functionName, GError* error
 
 std::wstring zen::getSystemErrorDescription(ErrorCode ec) //return empty string on error
 {
-    const ErrorCode currentError = getLastError(); //not necessarily == ec
-    ZEN_ON_SCOPE_EXIT(errno = currentError);
+    const ErrorCode ecCurrent = getLastError(); //not necessarily == ec
+    ZEN_ON_SCOPE_EXIT(errno = ecCurrent);
 
-    std::wstring errorMsg;
-    errorMsg = utfTo<std::wstring>(::g_strerror(ec)); //... vs strerror(): "marginally improves thread safety, and marginally improves consistency"
+    std::wstring errorMsg = utfTo<std::wstring>(::g_strerror(ec)); //... vs strerror(): "marginally improves thread safety, and marginally improves consistency"
 
-    return trimCpy(errorMsg); //Windows messages seem to end with a space...
+    trim(errorMsg); //Windows messages seem to end with a space...
+    return errorMsg;
 }
 
 

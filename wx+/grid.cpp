@@ -152,7 +152,7 @@ void GridData::drawCellText(wxDC& dc, const wxRect& rect, const std::wstring& te
         - wxDC::DrawText also calls wxDC::GetTextExtent()!!
         => wxDC::DrawLabel() boils down to 3(!) calls to wxDC::GetTextExtent()!!!
         - wxDC::DrawLabel results in GetTextExtent() call even for empty strings!!!
-        => skip the wxDC::DrawLabel() cruft and directly call wxDC::DrawText()!                   */
+        => NEVER EVER call wxDC::DrawLabel() cruft and directly call wxDC::DrawText()!                   */
     assert(!contains(text, L'\n'));
     if (rect.width <= 0 || rect.height <= 0 || text.empty())
         return;
@@ -284,7 +284,11 @@ public:
         Bind(wxEVT_MOUSEWHEEL,   [this](wxMouseEvent& event) { onMouseWheel     (event); });
         Bind(wxEVT_MOUSE_CAPTURE_LOST, [this](wxMouseCaptureLostEvent& event) { onMouseCaptureLost(event); });
 
-        Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onKeyDown(event); });
+        Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event)
+        {
+            if (!sendEventToParent(event)) //let parent collect all key events
+                event.Skip();
+        });
         //Bind(wxEVT_KEY_UP,   [this](wxKeyEvent& event) { onKeyUp  (event); }); -> superfluous?
 
         assert(GetClientAreaOrigin() == wxPoint()); //generally assumed when dealing with coordinates below
@@ -331,12 +335,6 @@ private:
     virtual void onMouseMovement  (wxMouseEvent& event) { event.Skip(); }
     virtual void onLeaveWindow    (wxMouseEvent& event) { event.Skip(); }
     virtual void onMouseCaptureLost(wxMouseCaptureLostEvent& event) { event.Skip(); }
-
-    void onKeyDown(wxKeyEvent& event)
-    {
-        if (!sendEventToParent(event)) //let parent collect all key events
-            event.Skip();
-    }
 
     void onMouseWheel(wxMouseEvent& event)
     {
@@ -816,13 +814,6 @@ private:
     void onMouseRightDown(wxMouseEvent& event) override
     {
         evalMouseMovement(event.GetPosition()); //update highlight in obscure cases (e.g. right-click while other context menu is open)
-        freezeMouseHighlight_ = true; //e.g. while showing context menu
-
-        ZEN_ON_SCOPE_EXIT(
-            freezeMouseHighlight_ = false;
-            //update mouse highlight (e.g. mouse position changed after showing context menu)
-            evalMouseMovement(ScreenToClient(wxGetMousePosition()));
-        );
 
         const wxPoint mousePos = GetPosition() + event.GetPosition();
 
@@ -836,6 +827,9 @@ private:
             //notify right click (on free space after last column)
             if (fillGapAfterColumns)
                 sendEventToParent(GridLabelClickEvent(EVENT_GRID_COL_LABEL_MOUSE_RIGHT, ColumnType::none, mousePos));
+
+        //update mouse highlight (e.g. mouse position changed after showing context menu) => needed on Linux/macOS
+        evalMouseMovement(ScreenToClient(wxGetMousePosition()));
 
         event.Skip();
     }
@@ -883,7 +877,7 @@ private:
                 if (action->wantResize)
                     SetCursor(wxCURSOR_SIZEWE); //window-local only! :)
                 else
-                    SetCursor(*wxSTANDARD_CURSOR);
+                    SetCursor(*wxSTANDARD_CURSOR); //NOOP when setting same cursor
             }
             else
             {
@@ -926,7 +920,7 @@ private:
 
     void setMouseHighlight(const std::optional<size_t>& hl)
     {
-        if (highlightCol_ != hl && !freezeMouseHighlight_)
+        if (highlightCol_ != hl)
         {
             highlightCol_ = hl;
             Refresh();
@@ -935,8 +929,7 @@ private:
 
     std::unique_ptr<ColumnResizing> activeResizing_;
     std::unique_ptr<ColumnMove>     activeClickOrMove_;
-    std::optional<size_t>           highlightCol_; //column during mouse-over
-    bool freezeMouseHighlight_ = false;
+    std::optional<size_t>           highlightCol_;
 
     int colLabelHeight_ = 0;
     const wxFont labelFont_;
@@ -966,9 +959,19 @@ public:
             {
                 wxMouseCaptureLostEvent evt;
                 GetEventHandler()->ProcessEvent(evt); //better integrate into event handling rather than calling onMouseCaptureLost() directly!?
+                return;
             }
-            else
-                event.Skip();
+
+            /* using keyboard: => clear distracting mouse highlights
+
+               wxEVT_KEY_DOWN evaluation order:
+                 1. this callback
+                 2. Grid::SubWindow ... sendEventToParent()
+                 3. clients binding to Grid wxEVT_KEY_DOWN
+                 4. Grid::onKeyDown()                           */
+            setMouseHighlight(std::nullopt);
+
+            event.Skip();
         });
     }
 
@@ -1050,8 +1053,11 @@ private:
             if (activeSelection_->getFirstClick().row_ == row)
                 return activeSelection_->getFirstClick().hoverArea_;
         }
-        else if (highlight_.row == row)
-            return highlight_.rowHover;
+        else if (highlight_)
+        {
+            if (makeSigned(highlight_->row) == row)
+                return highlight_->rowHover;
+        }
         return HoverArea::none;
     }
 
@@ -1110,13 +1116,6 @@ private:
         if (auto prov = refParent().getDataProvider())
         {
             evalMouseMovement(event.GetPosition()); //update highlight in obscure cases (e.g. right-click while other context menu is open)
-            freezeMouseHighlight_ = true; //e.g. while showing context menu
-
-            ZEN_ON_SCOPE_EXIT(
-                freezeMouseHighlight_ = false;
-                //update mouse highlight (e.g. mouse position changed after showing context menu)
-                evalMouseMovement(ScreenToClient(wxGetMousePosition()));
-            );
 
             const wxPoint   mousePos = GetPosition() + event.GetPosition();
             const ptrdiff_t rowCount = refParent().getRowCount();
@@ -1166,6 +1165,9 @@ private:
                     }
                 }
             }
+
+            //update mouse highlight (e.g. mouse position changed after showing context menu) => needed on Linux/macOS
+            evalMouseMovement(ScreenToClient(wxGetMousePosition()));
         }
         event.Skip(); //allow changing focus
     }
@@ -1272,7 +1274,7 @@ private:
             if (activeSelection_)
                 activeSelection_->evalMousePos(); //call on both mouse movement + timer event!
             else
-                setMouseHighlight({row, rowHover});
+                setMouseHighlight(rowHover != HoverArea::none ? std::make_optional<MouseHighlight>({static_cast<size_t>(row), rowHover}) : std::nullopt);
         }
     }
 
@@ -1286,14 +1288,14 @@ private:
             activeSelection_.reset();
             Refresh();
         }
-        setMouseHighlight({-1, HoverArea::none});
+        setMouseHighlight(std::nullopt);
         //event.Skip(); -> we DID handle it!
     }
 
     void onLeaveWindow(wxMouseEvent& event) override
     {
         if (!activeSelection_) //wxEVT_LEAVE_WINDOW does not respect mouse capture!
-            setMouseHighlight({-1, HoverArea::none});
+            setMouseHighlight(std::nullopt);
 
         //CAVEAT: we can get wxEVT_MOTION *after* wxEVT_LEAVE_WINDOW: see RowLabelWin::redirectMouseEvent()
         //        => therefore we also redirect wxEVT_LEAVE_WINDOW, but user will see a little flicker when moving between RowLabelWin and MainWin
@@ -1433,33 +1435,33 @@ private:
 
     struct MouseHighlight
     {
-        ptrdiff_t row = -1;
+        size_t row = 0;
         HoverArea rowHover = HoverArea::none;
 
         bool operator==(const MouseHighlight&) const = default;
     };
 
-    void setMouseHighlight(const MouseHighlight& hl)
+    void setMouseHighlight(const std::optional<MouseHighlight>& hl)
     {
-        if (highlight_ != hl && !freezeMouseHighlight_)
+        assert(!hl || hl->row < refParent().getRowCount() && hl->rowHover != HoverArea::none);
+        if (highlight_ != hl)
         {
-            const ptrdiff_t rowCount = refParent().getRowCount();
-            if (0 <= highlight_.row && highlight_.row < rowCount && highlight_.rowHover != HoverArea::none) //no highlight_? => NOP!
-                refreshRow(highlight_.row);
+            if (highlight_)
+                refreshRow(highlight_->row);
 
             highlight_ = hl;
 
-            if (0 <= highlight_.row && highlight_.row < rowCount && highlight_.rowHover != HoverArea::none) //no highlight_? => NOP!
-                refreshRow(highlight_.row);
+            if (highlight_)
+                refreshRow(highlight_->row);
         }
     }
+
 
     RowLabelWin& rowLabelWin_;
     ColLabelWin& colLabelWin_;
 
     std::unique_ptr<MouseSelection> activeSelection_; //bound while user is selecting with mouse
-    MouseHighlight highlight_; //current mouse highlight
-    bool freezeMouseHighlight_ = false;
+    std::optional<MouseHighlight> highlight_;
 
     size_t cursorRow_ = 0;
     size_t selectionAnchor_ = 0;
@@ -1736,10 +1738,7 @@ void Grid::onKeyDown(wxKeyEvent& event)
     auto moveCursorTo = [&](ptrdiff_t row)
     {
         if (rowCount > 0)
-        {
-            row = std::clamp<ptrdiff_t>(row, 0, rowCount - 1);
-            setGridCursor(row, GridEventPolicy::allow);
-        }
+            setGridCursor(std::clamp<ptrdiff_t>(row, 0, rowCount - 1), GridEventPolicy::allow);
     };
 
     auto selectWithCursorTo = [&](ptrdiff_t row)

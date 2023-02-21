@@ -8,7 +8,6 @@
 #include <zen/process_priority.h>
 #include <zen/perf.h>
 #include <zen/time.h>
-#include <wx/datetime.h>
 #include "algorithm.h"
 #include "parallel_scan.h"
 #include "dir_exist_async.h"
@@ -76,25 +75,55 @@ ResolvedBaseFolders initializeBaseFolders(const std::vector<FolderPairCfg>& fpCf
                                           WarningDialogs& warnings,
                                           PhaseCallback& callback /*throw X*/) //throw X
 {
+    std::vector<Zstring> pathPhrases;
+    for (const FolderPairCfg& fpCfg : fpCfgList)
+    {
+        pathPhrases.push_back(fpCfg.folderPathPhraseLeft_);
+        pathPhrases.push_back(fpCfg.folderPathPhraseRight_);
+    }
+
     ResolvedBaseFolders output;
     std::set<AbstractPath> allFolders;
 
     tryReportingError([&]
     {
+        //createAbstractPath() -> tryExpandVolumeName() hangs for idle HDD! => run async to make it cancellable
+        auto protCurrentPhrase = makeSharedRef<Protected<Zstring>>();
+
+        std::future<std::vector<AbstractPath>> futFolderPaths = runAsync([pathPhrases, currentPhraseWeak = std::weak_ptr(protCurrentPhrase.ptr())]
+        {
+            setCurrentThreadName(Zstr("Normalizing folder paths"));
+
+            std::vector<AbstractPath> folderPaths;
+            for (const Zstring& pathPhrase : pathPhrases)
+            {
+                if (auto protCurrentPhrase2 = currentPhraseWeak.lock()) //[!] not owned by worker thread!
+                    protCurrentPhrase2->access([&](Zstring& currentPathPhrase) { currentPathPhrase = pathPhrase; });
+                else
+                    throw std::runtime_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Caller context gone!");
+
+                folderPaths.push_back(createAbstractPath(pathPhrase));
+            }
+            return folderPaths;
+        });
+
+        while (futFolderPaths.wait_for(UI_UPDATE_INTERVAL / 2) == std::future_status::timeout)
+        {
+            const Zstring pathPhrase = protCurrentPhrase.ref().access([](const Zstring& currentPathPhrase) { return currentPathPhrase; });
+            callback.updateStatus(_("Normalizing folder paths...") + L' ' + utfTo<std::wstring>(pathPhrase)); //throw X
+        }
+
+        const std::vector<AbstractPath>& folderPaths = futFolderPaths.get(); //throw (std::runtime_error)
+
         //support "retry" for environment variable and variable driver letter resolution!
         allFolders.clear();
-        output.resolvedPairs.clear();
-        for (const FolderPairCfg& fpCfg : fpCfgList)
-        {
-            output.resolvedPairs.push_back(
-            {
-                createAbstractPath(fpCfg.folderPathPhraseLeft_),
-                createAbstractPath(fpCfg.folderPathPhraseRight_)});
+        allFolders.insert(folderPaths.begin(), folderPaths.end());
 
-            allFolders.insert(output.resolvedPairs.back().folderPathLeft);
-            allFolders.insert(output.resolvedPairs.back().folderPathRight);
-        }
+        output.resolvedPairs.clear();
+        for (size_t i = 0; i < folderPaths.size(); i += 2)
+            output.resolvedPairs.push_back({folderPaths[i], folderPaths[i + 1]});
         //---------------------------------------------------------------------------
+
         output.baseFolderStatus = getFolderStatusParallel(allFolders,
                                                           true /*authenticateAccess*/, requestPassword, callback); //throw X
         if (!output.baseFolderStatus.failedChecks.empty())
@@ -214,10 +243,9 @@ ComparisonBuffer::ComparisonBuffer(const std::set<DirectoryKey>& folderKeys,
     UI_UPDATE_INTERVAL / 2); //every ~50 ms
 
     const int64_t totalTimeSec = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - compareStartTime).count();
-
     callback.logMessage(_("Comparison finished:") + L' ' +
                         _P("1 item found", "%x items found", itemsReported) + SPACED_DASH +
-                        _("Time elapsed:") + L' ' + copyStringTo<std::wstring>(wxTimeSpan::Seconds(totalTimeSec).Format()),
+                        _("Time elapsed:") + L' ' + utfTo<std::wstring>(formatTimeSpan(totalTimeSec)),
                         PhaseCallback::MsgType::info); //throw X
     //------------------------------------------------------------------
 
@@ -739,19 +767,19 @@ void MergeSides::fillOneSide(const FolderContainer& folderCont, const Zstringc* 
 {
     forEachSorted(folderCont.files, [&](const Zstring& fileName, const FileAttributes& attrib)
     {
-        FilePair& newItem = output.addSubFile<side>(fileName, attrib);
+        FilePair& newItem = output.addFile<side>(fileName, attrib);
         checkFailedRead(newItem, errorMsg);
     });
 
     forEachSorted(folderCont.symlinks, [&](const Zstring& linkName, const LinkAttributes& attrib)
     {
-        SymlinkPair& newItem = output.addSubLink<side>(linkName, attrib);
+        SymlinkPair& newItem = output.addLink<side>(linkName, attrib);
         checkFailedRead(newItem, errorMsg);
     });
 
     forEachSorted(folderCont.folders, [&](const Zstring& folderName, const std::pair<FolderAttributes, FolderContainer>& attrib)
     {
-        FolderPair& newFolder = output.addSubFolder<side>(folderName, attrib.first);
+        FolderPair& newFolder = output.addFolder<side>(folderName, attrib.first);
         const Zstringc* errorMsgNew = checkFailedRead(newFolder, errorMsg);
 
         fillOneSide<side>(attrib.second, errorMsgNew, newFolder); //recurse
@@ -838,24 +866,24 @@ void MergeSides::mergeTwoSides(const FolderContainer& lhs, const FolderContainer
 
     matchFolders(lhs.files, rhs.files, [&](const FileData& fileLeft, const Zstringc* conflictMsg)
     {
-        FilePair& newItem = output.addSubFile<SelectSide::left >(fileLeft .first, fileLeft .second);
+        FilePair& newItem = output.addFile<SelectSide::left >(fileLeft .first, fileLeft .second);
         checkFailedRead(newItem, conflictMsg ? conflictMsg : errorMsg);
     },
     [&](const FileData& fileRight, const Zstringc* conflictMsg)
     {
-        FilePair& newItem = output.addSubFile<SelectSide::right>(fileRight.first, fileRight.second);
+        FilePair& newItem = output.addFile<SelectSide::right>(fileRight.first, fileRight.second);
         checkFailedRead(newItem, conflictMsg ? conflictMsg : errorMsg);
     },
     [&](const FileData& fileLeft, const FileData& fileRight)
     {
-        FilePair& newItem = output.addSubFile(fileLeft.first,
-                                              fileLeft.second,
-                                              FILE_CONFLICT, //dummy-value until categorization is finished later
-                                              fileRight.first,
-                                              fileRight.second);
+        FilePair& newItem = output.addFile(fileLeft.first,
+                                           fileLeft.second,
+                                           FILE_CONFLICT, //dummy-value until categorization is finished later
+                                           fileRight.first,
+                                           fileRight.second);
         if (!checkFailedRead(newItem, errorMsg))
             undefinedFiles_.push_back(&newItem);
-        static_assert(std::is_same_v<ContainerObject::FileList, std::list<FilePair>>); //ContainerObject::addSubFile() must NOT invalidate references used in "undefinedFiles"!
+        static_assert(std::is_same_v<ContainerObject::FileList, std::list<FilePair>>); //ContainerObject::addFile() must NOT invalidate references used in "undefinedFiles"!
     });
 
     //-----------------------------------------------------------------------------------------------
@@ -863,21 +891,21 @@ void MergeSides::mergeTwoSides(const FolderContainer& lhs, const FolderContainer
 
     matchFolders(lhs.symlinks, rhs.symlinks, [&](const SymlinkData& symlinkLeft, const Zstringc* conflictMsg)
     {
-        SymlinkPair& newItem = output.addSubLink<SelectSide::left >(symlinkLeft .first, symlinkLeft .second);
+        SymlinkPair& newItem = output.addLink<SelectSide::left >(symlinkLeft .first, symlinkLeft .second);
         checkFailedRead(newItem, conflictMsg ? conflictMsg : errorMsg);
     },
     [&](const SymlinkData& symlinkRight, const Zstringc* conflictMsg)
     {
-        SymlinkPair& newItem = output.addSubLink<SelectSide::right>(symlinkRight.first, symlinkRight.second);
+        SymlinkPair& newItem = output.addLink<SelectSide::right>(symlinkRight.first, symlinkRight.second);
         checkFailedRead(newItem, conflictMsg ? conflictMsg : errorMsg);
     },
     [&](const SymlinkData& symlinkLeft, const SymlinkData& symlinkRight) //both sides
     {
-        SymlinkPair& newItem = output.addSubLink(symlinkLeft.first,
-                                                 symlinkLeft.second,
-                                                 SYMLINK_CONFLICT, //dummy-value until categorization is finished later
-                                                 symlinkRight.first,
-                                                 symlinkRight.second);
+        SymlinkPair& newItem = output.addLink(symlinkLeft.first,
+                                              symlinkLeft.second,
+                                              SYMLINK_CONFLICT, //dummy-value until categorization is finished later
+                                              symlinkRight.first,
+                                              symlinkRight.second);
         if (!checkFailedRead(newItem, errorMsg))
             undefinedSymlinks_.push_back(&newItem);
     });
@@ -887,19 +915,19 @@ void MergeSides::mergeTwoSides(const FolderContainer& lhs, const FolderContainer
 
     matchFolders(lhs.folders, rhs.folders, [&](const FolderData& dirLeft, const Zstringc* conflictMsg)
     {
-        FolderPair& newFolder = output.addSubFolder<SelectSide::left>(dirLeft.first, dirLeft.second.first);
+        FolderPair& newFolder = output.addFolder<SelectSide::left>(dirLeft.first, dirLeft.second.first);
         const Zstringc* errorMsgNew = checkFailedRead(newFolder, conflictMsg ? conflictMsg : errorMsg);
         this->fillOneSide<SelectSide::left>(dirLeft.second.second, errorMsgNew, newFolder); //recurse
     },
     [&](const FolderData& dirRight, const Zstringc* conflictMsg)
     {
-        FolderPair& newFolder = output.addSubFolder<SelectSide::right>(dirRight.first, dirRight.second.first);
+        FolderPair& newFolder = output.addFolder<SelectSide::right>(dirRight.first, dirRight.second.first);
         const Zstringc* errorMsgNew = checkFailedRead(newFolder, conflictMsg ? conflictMsg : errorMsg);
         this->fillOneSide<SelectSide::right>(dirRight.second.second, errorMsgNew, newFolder); //recurse
     },
     [&](const FolderData& dirLeft, const FolderData& dirRight)
     {
-        FolderPair& newFolder = output.addSubFolder(dirLeft.first, dirLeft.second.first, DIR_EQUAL, dirRight.first, dirRight.second.first);
+        FolderPair& newFolder = output.addFolder(dirLeft.first, dirLeft.second.first, DIR_EQUAL, dirRight.first, dirRight.second.first);
         const Zstringc* errorMsgNew = checkFailedRead(newFolder, errorMsg);
 
         if (!errorMsgNew)
@@ -1067,7 +1095,7 @@ FolderComparison fff::compare(WarningDialogs& warnings,
                                                                requestPassword, warnings, callback); //throw X
     //directory existence only checked *once* to avoid race conditions!
     if (resInfo.resolvedPairs.size() != fpCfgList.size())
-        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+        throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
 
     std::vector<std::pair<ResolvedFolderPair, FolderPairCfg>> workLoad;
     for (size_t i = 0; i < fpCfgList.size(); ++i)

@@ -107,21 +107,21 @@ struct FolderContainer
     SymlinkList symlinks; //non-followed symlinks
     FolderList  folders;
 
-    void addSubFile(const Zstring& itemName, const FileAttributes& attr)
+    void addFile(const Zstring& itemName, const FileAttributes& attr)
     {
         const auto [it, inserted] = files.emplace(itemName, attr);
         if (!inserted) //update entry if already existing (e.g. during folder traverser "retry")
             it->second = attr;
     }
 
-    void addSubLink(const Zstring& itemName, const LinkAttributes& attr)
+    void addLink(const Zstring& itemName, const LinkAttributes& attr)
     {
         const auto [it, inserted] = symlinks.emplace(itemName, attr);
         if (!inserted)
             it->second = attr;
     }
 
-    FolderContainer& addSubFolder(const Zstring& itemName, const FolderAttributes& attr)
+    FolderContainer& addFolder(const Zstring& itemName, const FolderAttributes& attr)
     {
         auto& p = folders[itemName]; //value default-construction is okay here
         p.first = attr;
@@ -189,35 +189,35 @@ public:
     using SymlinkList = std::list<SymlinkPair>; //
     using FolderList  = std::list<FolderPair>;
 
-    FolderPair& addSubFolder(const Zstring&          itemNameL,
-                             const FolderAttributes& left,    //file exists on both sides
-                             CompareDirResult        defaultCmpResult,
-                             const Zstring&          itemNameR,
-                             const FolderAttributes& right);
+    FolderPair& addFolder(const Zstring&          itemNameL,
+                          const FolderAttributes& left,    //file exists on both sides
+                          CompareDirResult        defaultCmpResult,
+                          const Zstring&          itemNameR,
+                          const FolderAttributes& right);
 
     template <SelectSide side>
-    FolderPair& addSubFolder(const Zstring& itemName, //dir exists on one side only
-                             const FolderAttributes& attr);
+    FolderPair& addFolder(const Zstring& itemName, //dir exists on one side only
+                          const FolderAttributes& attr);
 
-    FilePair& addSubFile(const Zstring&        itemNameL,
-                         const FileAttributes& left,          //file exists on both sides
-                         CompareFileResult    defaultCmpResult,
+    FilePair& addFile(const Zstring&        itemNameL,
+                      const FileAttributes& left,          //file exists on both sides
+                      CompareFileResult    defaultCmpResult,
+                      const Zstring&        itemNameR,
+                      const FileAttributes& right);
+
+    template <SelectSide side>
+    FilePair& addFile(const Zstring&        itemName, //file exists on one side only
+                      const FileAttributes& attr);
+
+    SymlinkPair& addLink(const Zstring&        itemNameL,
+                         const LinkAttributes& left, //link exists on both sides
+                         CompareSymlinkResult  defaultCmpResult,
                          const Zstring&        itemNameR,
-                         const FileAttributes& right);
+                         const LinkAttributes& right);
 
     template <SelectSide side>
-    FilePair& addSubFile(const Zstring&        itemName, //file exists on one side only
-                         const FileAttributes& attr);
-
-    SymlinkPair& addSubLink(const Zstring&        itemNameL,
-                            const LinkAttributes& left, //link exists on both sides
-                            CompareSymlinkResult  defaultCmpResult,
-                            const Zstring&        itemNameR,
-                            const LinkAttributes& right);
-
-    template <SelectSide side>
-    SymlinkPair& addSubLink(const Zstring&        itemName, //link exists on one side only
-                            const LinkAttributes& attr);
+    SymlinkPair& addLink(const Zstring&        itemName, //link exists on one side only
+                         const LinkAttributes& attr);
 
     const FileList& refSubFiles() const { return subFiles_; }
     /**/  FileList& refSubFiles()       { return subFiles_; }
@@ -1009,11 +1009,11 @@ void ContainerObject::flip()
 
 
 inline
-FolderPair& ContainerObject::addSubFolder(const Zstring& itemNameL,
-                                          const FolderAttributes& left,
-                                          CompareDirResult defaultCmpResult,
-                                          const Zstring& itemNameR,
-                                          const FolderAttributes& right)
+FolderPair& ContainerObject::addFolder(const Zstring& itemNameL,
+                                       const FolderAttributes& left,
+                                       CompareDirResult defaultCmpResult,
+                                       const Zstring& itemNameR,
+                                       const FolderAttributes& right)
 {
     subFolders_.emplace_back(itemNameL, left, defaultCmpResult, itemNameR, right, *this);
     return subFolders_.back();
@@ -1021,7 +1021,7 @@ FolderPair& ContainerObject::addSubFolder(const Zstring& itemNameL,
 
 
 template <> inline
-FolderPair& ContainerObject::addSubFolder<SelectSide::left>(const Zstring& itemName, const FolderAttributes& attr)
+FolderPair& ContainerObject::addFolder<SelectSide::left>(const Zstring& itemName, const FolderAttributes& attr)
 {
     subFolders_.emplace_back(itemName, attr, DIR_LEFT_SIDE_ONLY, Zstring(), FolderAttributes(), *this);
     return subFolders_.back();
@@ -1029,7 +1029,7 @@ FolderPair& ContainerObject::addSubFolder<SelectSide::left>(const Zstring& itemN
 
 
 template <> inline
-FolderPair& ContainerObject::addSubFolder<SelectSide::right>(const Zstring& itemName, const FolderAttributes& attr)
+FolderPair& ContainerObject::addFolder<SelectSide::right>(const Zstring& itemName, const FolderAttributes& attr)
 {
     subFolders_.emplace_back(Zstring(), FolderAttributes(), DIR_RIGHT_SIDE_ONLY, itemName, attr, *this);
     return subFolders_.back();
@@ -1037,11 +1037,11 @@ FolderPair& ContainerObject::addSubFolder<SelectSide::right>(const Zstring& item
 
 
 inline
-FilePair& ContainerObject::addSubFile(const Zstring&        itemNameL,
-                                      const FileAttributes& left,          //file exists on both sides
-                                      CompareFileResult     defaultCmpResult,
-                                      const Zstring&        itemNameR,
-                                      const FileAttributes& right)
+FilePair& ContainerObject::addFile(const Zstring&        itemNameL,
+                                   const FileAttributes& left,          //file exists on both sides
+                                   CompareFileResult     defaultCmpResult,
+                                   const Zstring&        itemNameR,
+                                   const FileAttributes& right)
 {
     subFiles_.emplace_back(itemNameL, left, defaultCmpResult, itemNameR, right, *this);
     return subFiles_.back();
@@ -1049,7 +1049,7 @@ FilePair& ContainerObject::addSubFile(const Zstring&        itemNameL,
 
 
 template <> inline
-FilePair& ContainerObject::addSubFile<SelectSide::left>(const Zstring& itemName, const FileAttributes& attr)
+FilePair& ContainerObject::addFile<SelectSide::left>(const Zstring& itemName, const FileAttributes& attr)
 {
     subFiles_.emplace_back(itemName, attr, FILE_LEFT_SIDE_ONLY, Zstring(), FileAttributes(), *this);
     return subFiles_.back();
@@ -1057,7 +1057,7 @@ FilePair& ContainerObject::addSubFile<SelectSide::left>(const Zstring& itemName,
 
 
 template <> inline
-FilePair& ContainerObject::addSubFile<SelectSide::right>(const Zstring& itemName, const FileAttributes& attr)
+FilePair& ContainerObject::addFile<SelectSide::right>(const Zstring& itemName, const FileAttributes& attr)
 {
     subFiles_.emplace_back(Zstring(), FileAttributes(), FILE_RIGHT_SIDE_ONLY, itemName, attr, *this);
     return subFiles_.back();
@@ -1065,11 +1065,11 @@ FilePair& ContainerObject::addSubFile<SelectSide::right>(const Zstring& itemName
 
 
 inline
-SymlinkPair& ContainerObject::addSubLink(const Zstring&        itemNameL,
-                                         const LinkAttributes& left, //link exists on both sides
-                                         CompareSymlinkResult  defaultCmpResult,
-                                         const Zstring&        itemNameR,
-                                         const LinkAttributes& right)
+SymlinkPair& ContainerObject::addLink(const Zstring&        itemNameL,
+                                      const LinkAttributes& left, //link exists on both sides
+                                      CompareSymlinkResult  defaultCmpResult,
+                                      const Zstring&        itemNameR,
+                                      const LinkAttributes& right)
 {
     subLinks_.emplace_back(itemNameL, left, defaultCmpResult, itemNameR, right, *this);
     return subLinks_.back();
@@ -1077,7 +1077,7 @@ SymlinkPair& ContainerObject::addSubLink(const Zstring&        itemNameL,
 
 
 template <> inline
-SymlinkPair& ContainerObject::addSubLink<SelectSide::left>(const Zstring& itemName, const LinkAttributes& attr)
+SymlinkPair& ContainerObject::addLink<SelectSide::left>(const Zstring& itemName, const LinkAttributes& attr)
 {
     subLinks_.emplace_back(itemName, attr, SYMLINK_LEFT_SIDE_ONLY, Zstring(), LinkAttributes(), *this);
     return subLinks_.back();
@@ -1085,7 +1085,7 @@ SymlinkPair& ContainerObject::addSubLink<SelectSide::left>(const Zstring& itemNa
 
 
 template <> inline
-SymlinkPair& ContainerObject::addSubLink<SelectSide::right>(const Zstring& itemName, const LinkAttributes& attr)
+SymlinkPair& ContainerObject::addLink<SelectSide::right>(const Zstring& itemName, const LinkAttributes& attr)
 {
     subLinks_.emplace_back(Zstring(), LinkAttributes(), SYMLINK_RIGHT_SIDE_ONLY, itemName, attr, *this);
     return subLinks_.back();

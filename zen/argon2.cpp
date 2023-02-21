@@ -1,4 +1,12 @@
-/*  PuTTY is copyright 1997-2022 Simon Tatham.
+// *****************************************************************************
+// * This file is part of the FreeFileSync project. It is distributed under    *
+// * GNU General Public License: https://www.gnu.org/licenses/gpl-3.0          *
+// * Copyright (C) Zenju (zenju AT freefilesync DOT org) - All Rights Reserved *
+// *****************************************************************************
+
+/*  The code in this file, except for zen::zargon2(), is from PuTTY:
+
+    PuTTY is copyright 1997-2022 Simon Tatham.
 
     Portions copyright Robert de Bath, Joris van Rantwijk, Delian
     Delchev, Andreas Schultz, Jeroen Massar, Wez Furlong, Nicolas Barry,
@@ -964,7 +972,7 @@ std::string zen::zargon2(zen::Argon2Flavor flavour, uint32_t mem, uint32_t passe
     std::string output(taglen, '\0');
     argon2_internal(parallel, taglen, mem, passes, static_cast<uint32_t>(flavour),
     {.ptr = password.data(), .len = password.size()},
-    {.ptr = salt.data(), .len = salt.size()},
+    {.ptr = salt    .data(), .len = salt    .size()},
     {.ptr = "", .len = 0},
     {.ptr = "", .len = 0}, reinterpret_cast<uint8_t*>(output.data()));
     return output;

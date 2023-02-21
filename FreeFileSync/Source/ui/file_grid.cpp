@@ -464,21 +464,24 @@ private:
 
     std::wstring getValue(size_t row, ColumnType colType) const override
     {
-        std::wstring value;
         if (const FileSystemObject* fsObj = getFsObject(row))
             if (!fsObj->isEmpty<side>())
+            {
+                if (static_cast<ColumnTypeRim>(colType) == ColumnTypeRim::path)
+                    switch (itemPathFormat_)
+                    {
+                        case ItemPathFormat::name:
+                            return utfTo<std::wstring>(fsObj->getItemName<side>());
+                        case ItemPathFormat::relative:
+                            return utfTo<std::wstring>(fsObj->getRelativePath<side>());
+                        case ItemPathFormat::full:
+                            return AFS::getDisplayPath(fsObj->getAbstractPath<side>());
+                    }
+
+                std::wstring value; //dynamically allocates 16 byte memory! but why? shouldn't SSO make this superfluous?! or is it only in debug?
                 switch (static_cast<ColumnTypeRim>(colType))
                 {
                     case ColumnTypeRim::path:
-                        switch (itemPathFormat_)
-                        {
-                            case ItemPathFormat::name:
-                                return utfTo<std::wstring>(fsObj->getItemName<side>());
-                            case ItemPathFormat::relative:
-                                return utfTo<std::wstring>(fsObj->getRelativePath<side>());
-                            case ItemPathFormat::full:
-                                return AFS::getDisplayPath(fsObj->getAbstractPath<side>());
-                        }
                         assert(false);
                         break;
 
@@ -501,7 +504,9 @@ private:
                         [&](const SymlinkPair& symlink) { value = utfTo<std::wstring>(getFileExtension(symlink.getItemName<side>())); });
                         break;
                 }
-        return value;
+                return value;
+            }
+        return {};
     }
 
     void renderRowBackgound(wxDC& dc, const wxRect& rect, size_t row, bool enabled, bool selected, HoverArea rowHover) override
@@ -787,9 +792,12 @@ private:
                                     rectCud.x += rectCud.width;
                                     rectCud.width = gapSize_ + fastFromDIP(2);
 
+#if 0 //wxDC::GetPixel() is broken in GTK3! https://github.com/wxWidgets/wxWidgets/issues/14067
                                     wxColor backCol = wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW);
                                     dc.GetPixel(rectCud.GetTopRight(), &backCol);
-
+#else
+                                    const wxColor backCol = getDefaultBackgroundColorAlternating(pdi.groupIdx % 2 == 0);
+#endif
                                     dc.GradientFillLinear(rectCud, getBackGroundColorSyncAction(syncOp), backCol, wxEAST);
                                 }
                     };
@@ -806,9 +814,6 @@ private:
 
                             if (row == pdi.groupLastRow - 1 /*last group item*/) //preserve the group separation line!
                                 rectNav.height -= fastFromDIP(1);
-
-                            //wxColor backCol = wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW);
-                            //dc.GetPixel(rectNav.GetTopRight(), &backCol); //e.g. selected row!
 
                             dc.GradientFillLinear(rectNav, getColorSelectionGradientFrom(), getColorSelectionGradientTo(), wxEAST);
                             navMarkerDrawn = true;
@@ -1702,9 +1707,9 @@ public:
         gridL_.Bind(EVENT_GRID_COL_RESIZE, [this](GridColumnResizeEvent& event) { onResizeColumn(event, gridL_, gridR_); });
         gridR_.Bind(EVENT_GRID_COL_RESIZE, [this](GridColumnResizeEvent& event) { onResizeColumn(event, gridR_, gridL_); });
 
-        gridL_.getMainWin().Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onKeyDown(event, gridL_); });
-        gridC_.getMainWin().Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onKeyDown(event, gridC_); });
-        gridR_.getMainWin().Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onKeyDown(event, gridR_); });
+        gridL_.Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onKeyDown(event, gridL_); });
+        gridC_.Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onKeyDown(event, gridC_); });
+        gridR_.Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onKeyDown(event, gridR_); });
 
         gridC_.getMainWin().Bind(wxEVT_MOTION,       [this](wxMouseEvent& event) { onCenterMouseMovement(event); });
         gridC_.getMainWin().Bind(wxEVT_LEAVE_WINDOW, [this](wxMouseEvent& event) { onCenterMouseLeave   (event); });
@@ -1747,7 +1752,7 @@ public:
             //=> Next keyboard input on left does *not* emit focus change event, but still "scrollMaster" needs to change
             //=> hook keyboard input instead of focus event:
             grid.getMainWin().Bind(wxEVT_CHAR,     handler);
-            grid.getMainWin().Bind(wxEVT_KEY_DOWN, handler);
+            grid.Bind(wxEVT_KEY_DOWN, handler);
             //grid.getMainWin().Bind(wxEVT_KEY_UP, handler); -> superfluous?
 
             grid.getMainWin().Bind(wxEVT_LEFT_DOWN,   handler);

@@ -56,14 +56,15 @@ void fff::runCommandAndLogErrors(const Zstring& cmdLine, ErrorLog& errorLog)
 
 void fff::delayAndCountDown(std::chrono::steady_clock::time_point delayUntil, const std::function<void(const std::wstring& timeRemMsg)>& notifyStatus)
 {
-    for (auto now = std::chrono::steady_clock::now(); now < delayUntil; now = std::chrono::steady_clock::now())
-    {
-        if (notifyStatus)
+    assert(notifyStatus);
+    if (notifyStatus)
+        for (auto now = std::chrono::steady_clock::now(); now < delayUntil; now = std::chrono::steady_clock::now())
         {
             const auto timeRemMs = std::chrono::duration_cast<std::chrono::milliseconds>(delayUntil - now).count();
             notifyStatus(_P("1 sec", "%x sec", numeric::intDivCeil(timeRemMs, 1000)));
-        }
 
-        std::this_thread::sleep_for(UI_UPDATE_INTERVAL / 2);
-    }
+            std::this_thread::sleep_for(UI_UPDATE_INTERVAL / 2);
+        }
+    else
+        std::this_thread::sleep_until(delayUntil);
 }

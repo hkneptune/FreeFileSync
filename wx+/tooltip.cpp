@@ -13,7 +13,6 @@
 #include "image_tools.h"
 #include "bitmap_button.h"
 #include "dc.h"
-    #include <gtk/gtk.h>
 
 using namespace zen;
 
@@ -77,11 +76,12 @@ void Tooltip::show(const wxString& text, wxPoint mousePos, const wxImage* img)
     }
 
     if (imgChanged || txtChanged)
-    {
         //tipWindow_->Layout(); -> apparently not needed!?
         tipWindow_->GetSizer()->SetSizeHints(tipWindow_); //~=Fit() + SetMinSize()
-        //Linux: Fit() seems to be broken => call EVERY time inside show, not only if text or bmp change -> still true?!?
-    }
+#ifdef __WXGTK3__
+    //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
+    //=> call wxWindow::Show() to "execute"
+#endif
 
     const wxPoint newPos = wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft ?
                            mousePos - wxPoint(fastFromDIP(TIP_WINDOW_OFFSET_DIP) + tipWindow_->GetSize().GetWidth(), 0) :
@@ -101,16 +101,13 @@ void Tooltip::hide()
 {
     if (tipWindow_)
     {
-#if GTK_MAJOR_VERSION == 2 //the tooltip sometimes turns blank or is not shown again after it was hidden: e.g. drag-selection on middle grid
+#ifdef __WXGTK2__  //the tooltip sometimes turns blank or is not shown again after it was hidden: e.g. drag-selection on middle grid
+        //=> no such issues on GTK3!
         tipWindow_->Destroy(); //apply brute force:
         tipWindow_ = nullptr;  //
         lastUsedImg_ = wxNullImage;
-
-#elif GTK_MAJOR_VERSION == 3
-        tipWindow_->Hide();
 #else
-#error unknown GTK version!
+        tipWindow_->Hide();
 #endif
-
     }
 }

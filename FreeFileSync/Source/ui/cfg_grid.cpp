@@ -349,15 +349,14 @@ private:
         //else: clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW)); -> already the default
     }
 
-    enum class HoverAreaLog
+    enum class HoverAreaConfig
     {
+        name,
         link,
     };
 
     void renderCell(wxDC& dc, const wxRect& rect, size_t row, ColumnType colType, bool enabled, bool selected, HoverArea rowHover) override
     {
-        wxRect rectTmp = rect;
-
         wxDCTextColourChanger textColor(dc); //accessibility: always set both foreground AND background colors!
         if (selected)
             textColor.Set(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHTTEXT));
@@ -375,29 +374,32 @@ private:
 
                     if (backColor.IsOk())
                     {
-                        wxRect rectTmp2 = rectTmp;
+                        wxRect rectTmp = rect;
                         if (!selected || item->cfgItem.backColorPreview.IsOk())
                         {
-                            rectTmp2.width = rectTmp.width * 2 / 3;
-                            clearArea(dc, rectTmp2, backColor); //accessibility: always set both foreground AND background colors!
+                            rectTmp.width = rect.width * 2 / 3;
+                            clearArea(dc, rectTmp, backColor); //accessibility: always set both foreground AND background colors!
                             textColor.Set(*wxBLACK);            //
 
-                            rectTmp2.x += rectTmp2.width;
-                            rectTmp2.width = rectTmp.width - rectTmp2.width;
-                            dc.GradientFillLinear(rectTmp2, backColor, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW), wxEAST);
+                            rectTmp.x += rectTmp.width;
+                            rectTmp.width = rect.width - rectTmp.width;
+                            dc.GradientFillLinear(rectTmp, backColor, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW), wxEAST);
                         }
                         else //always show a glimpse of the background color
                         {
-                            rectTmp2.width = getColumnGapLeft() + getDefaultMenuIconSize();
-                            clearArea(dc, rectTmp2, backColor);
+                            rectTmp.width = getColumnGapLeft() + getDefaultMenuIconSize();
+                            clearArea(dc, rectTmp, backColor);
 
-                            rectTmp2.x += rectTmp2.width;
-                            rectTmp2.width = getColumnGapLeft();
-                            dc.GradientFillLinear(rectTmp2, backColor, wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT), wxEAST);
+                            rectTmp.x += rectTmp.width;
+                            rectTmp.width = getColumnGapLeft();
+                            dc.GradientFillLinear(rectTmp, backColor, wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT), wxEAST);
                         }
                     }
+                    if (!selected && static_cast<HoverAreaConfig>(rowHover) == HoverAreaConfig::name)
+                        drawInsetRectangle(dc, rect, fastFromDIP(1), wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT));
 
                     //-------------------------------------------------------------------------------------
+                    wxRect rectTmp = rect;
                     rectTmp.x     += getColumnGapLeft();
                     rectTmp.width -= getColumnGapLeft();
 
@@ -432,7 +434,7 @@ private:
                         if (getDaysPast(item->cfgItem.lastSyncTime) >= syncOverdueDays_)
                             textColor2.Set(*wxRED);
 
-                    drawCellText(dc, rectTmp, getValue(row, colType), wxALIGN_CENTER);
+                    drawCellText(dc, rect, getValue(row, colType), wxALIGN_CENTER);
                 }
                 break;
 
@@ -455,10 +457,10 @@ private:
                             assert(false);
                             return wxNullImage;
                         }();
-                        drawBitmapRtlNoMirror(dc, enabled ? statusIcon : statusIcon.ConvertToDisabled(), rectTmp, wxALIGN_CENTER);
+                        drawBitmapRtlNoMirror(dc, enabled ? statusIcon : statusIcon.ConvertToDisabled(), rect, wxALIGN_CENTER);
                     }
-                    if (static_cast<HoverAreaLog>(rowHover) == HoverAreaLog::link)
-                        drawBitmapRtlNoMirror(dc, loadImage("file_link_16"), rectTmp, wxALIGN_CENTER);
+                    if (static_cast<HoverAreaConfig>(rowHover) == HoverAreaConfig::link)
+                        drawBitmapRtlNoMirror(dc, loadImage("file_link_16"), rect, wxALIGN_CENTER);
                     break;
             }
     }
@@ -485,6 +487,7 @@ private:
     HoverArea getMouseHover(wxDC& dc, size_t row, ColumnType colType, int cellRelativePosX, int cellWidth) override
     {
         if (const ConfigView::Details* item = cfgView_.getItem(row))
+        {
             switch (static_cast<ColumnTypeCfg>(colType))
             {
                 case ColumnTypeCfg::name:
@@ -493,9 +496,11 @@ private:
                 case ColumnTypeCfg::lastLog:
 
                     if (!item->isLastRunCfg && !getNativeItemPath(item->cfgItem.logFilePath).empty())
-                        return static_cast<HoverArea>(HoverAreaLog::link);
+                        return static_cast<HoverArea>(HoverAreaConfig::link);
                     break;
             }
+            return static_cast<HoverArea>(HoverAreaConfig::name);
+        }
         return HoverArea::none;
     }
 
@@ -593,9 +598,11 @@ private:
     void onMouseLeft(GridClickEvent& event)
     {
         if (const ConfigView::Details* item = cfgView_.getItem(event.row_))
-            switch (static_cast<HoverAreaLog>(event.hoverArea_))
+            switch (static_cast<HoverAreaConfig>(event.hoverArea_))
             {
-                case HoverAreaLog::link:
+                case HoverAreaConfig::name:
+                    break;
+                case HoverAreaConfig::link:
                     try
                     {
                         if (const Zstring& nativePath = getNativeItemPath(item->cfgItem.logFilePath);
@@ -613,9 +620,11 @@ private:
 
     void onMouseLeftDouble(GridClickEvent& event)
     {
-        switch (static_cast<HoverAreaLog>(event.hoverArea_))
+        switch (static_cast<HoverAreaConfig>(event.hoverArea_))
         {
-            case HoverAreaLog::link:
+            case HoverAreaConfig::name:
+                break;
+            case HoverAreaConfig::link:
                 return; //swallow event here before MainDialog considers it as a request to start comparison
         }
         event.Skip();

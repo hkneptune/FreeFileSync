@@ -142,9 +142,9 @@ std::vector<std::pair<std::string, std::string>> geHttpPostParameters(wxWindow& 
     const char* osArch = cpuArchName;
     params.emplace_back("os_arch", osArch);
 
-#if GTK_MAJOR_VERSION == 2
+#ifdef __WXGTK2__
     //wxWindow::GetContentScaleFactor() requires GTK3 or later
-#elif GTK_MAJOR_VERSION == 3
+#elif defined __WXGTK3__
     params.emplace_back("dip_scale", numberTo<std::string>(parent.GetContentScaleFactor()));
 #else
 #error unknown GTK version!

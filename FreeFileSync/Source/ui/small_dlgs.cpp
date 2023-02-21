@@ -20,7 +20,7 @@
 #include <wx+/rtl.h>
 #include <wx+/no_flicker.h>
 #include <wx+/image_tools.h>
-#include <wx+/font_size.h>
+#include <wx+/window_layout.h>
 #include <wx+/popup_dlg.h>
 #include <wx+/async_task.h>
 #include <wx+/image_resources.h>
@@ -144,6 +144,10 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
     //--------------------------------------------------------------------------
     //have animal + text match *final* dialog width
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
+#ifdef __WXGTK3__
+    Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
+    Hide(); //avoid old position flash when Center() moves window (asynchronously?)
+#endif
 
     {
         const int imageWidth = (m_panelDonate->GetSize().GetWidth() - 5 - 5 - 5 /* grey border*/) / 2;
@@ -159,7 +163,10 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
     Bind(wxEVT_CHAR_HOOK, [this](wxKeyEvent& event) { onLocalKeyEvent(event); }); //enable dialog-specific key events
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
-    //=> works like a charm for GTK2 with window resizing problems and title bar corruption; e.g. Debian!!!
+#ifdef __WXGTK3__
+    Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
+    Hide(); //avoid old position flash when Center() moves window (asynchronously?)
+#endif
     Center(); //needs to be re-applied after a dialog size change!
 
     m_buttonClose->SetFocus(); //on GTK ESC is only associated with wxID_OK correctly if we set at least *any* focus at all!!!
@@ -278,10 +285,10 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, Zstrin
     m_textCtrlServer->SetHint(_("Example:") + L"    website.com    66.198.240.22");
     m_textCtrlServer->SetMinSize({fastFromDIP(260), -1});
 
-    m_textCtrlPort            ->SetMinSize({fastFromDIP(60), -1}); //
-    m_spinCtrlConnectionCount ->SetMinSize({fastFromDIP(70), -1}); //Hack: set size (why does wxWindow::Size() not work?)
-    m_spinCtrlChannelCountSftp->SetMinSize({fastFromDIP(70), -1}); //
-    m_spinCtrlTimeout         ->SetMinSize({fastFromDIP(70), -1}); //
+    m_textCtrlPort->SetMinSize({fastFromDIP(60), -1});
+    setDefaultWidth(*m_spinCtrlConnectionCount);
+    setDefaultWidth(*m_spinCtrlChannelCountSftp);
+    setDefaultWidth(*m_spinCtrlTimeout);
 
     setupFileDrop(*m_panelAuth);
     m_panelAuth->Bind(EVENT_DROP_FILE, [this](FileDropEvent& event) { onKeyFileDropped(event); });
@@ -393,7 +400,11 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, Zstrin
     m_checkBoxPasswordPrompt->Hide();
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
-    //=> works like a charm for GTK2 with window resizing problems and title bar corruption; e.g. Debian!!!
+    //=> works like a charm for GTK with window resizing problems and title bar corruption; e.g. Debian!!!
+#ifdef __WXGTK3__
+    Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
+    Hide(); //avoid old position flash when Center() moves window (asynchronously?)
+#endif
     Center(); //needs to be re-applied after a dialog size change!
 
     updateGui(); //*after* SetSizeHints when standard dialog height has been calculated
@@ -527,7 +538,7 @@ void CloudSetupDlg::onDetectServerChannelLimit(wxCommandEvent& event)
         m_spinCtrlChannelCountSftp->SetSelection(0, 0); //some visual feedback: clear selection
         m_spinCtrlChannelCountSftp->Refresh(); //both needed for wxGTK: meh!
         m_spinCtrlChannelCountSftp->Update();  //
-        
+
         AbstractPath folderPath = getFolderPath(); //noexcept
         //-------------------------------------------------------------------
         auto requestPassword = [&, password = Zstring()](const std::wstring& msg, const std::wstring& lastErrorMsg) mutable
@@ -546,7 +557,7 @@ void CloudSetupDlg::onDetectServerChannelLimit(wxCommandEvent& event)
         m_spinCtrlChannelCountSftp->SetFocus(); //[!] otherwise selection is lost
         m_spinCtrlChannelCountSftp->SetSelection(-1, -1); //some visual feedback: select all
     }
-        catch (AbortProcess&) { return; }
+    catch (AbortProcess&) { return; }
     catch (const FileError& e)
     {
         showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
@@ -823,7 +834,7 @@ void CloudSetupDlg::onBrowseCloudFolder(wxCommandEvent& event)
     AbstractPath folderPath = getFolderPath(); //noexcept
     try
     {
-                //-------------------------------------------------------------------
+        //-------------------------------------------------------------------
         auto requestPassword = [&, password = Zstring()](const std::wstring& msg, const std::wstring& lastErrorMsg) mutable
         {
             assert(runningOnMainThread());
@@ -834,7 +845,7 @@ void CloudSetupDlg::onBrowseCloudFolder(wxCommandEvent& event)
         AFS::authenticateAccess(folderPath.afsDevice, requestPassword); //throw FileError, AbortProcess
         //caveat: this could block *indefinitely* for Google Drive, but luckily already authenticated in this context
         //-------------------------------------------------------------------
-        //         
+        //
         //for (S)FTP it makes more sense to start with the home directory rather than root (which often denies access!)
         if (!AFS::getParentPath(folderPath))
         {
@@ -961,7 +972,10 @@ CopyToDialog::CopyToDialog(wxWindow* parent,
     Bind(wxEVT_CHAR_HOOK, [this](wxKeyEvent& event) { onLocalKeyEvent(event); }); //enable dialog-specific key events
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
-    //=> works like a charm for GTK2 with window resizing problems and title bar corruption; e.g. Debian!!!
+#ifdef __WXGTK3__
+    Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
+    Hide(); //avoid old position flash when Center() moves window (asynchronously?)
+#endif
     Center(); //needs to be re-applied after a dialog size change!
 
     m_buttonOK->SetFocus();
@@ -1076,7 +1090,10 @@ DeleteDialog::DeleteDialog(wxWindow* parent,
     Bind(wxEVT_CHAR_HOOK, [this](wxKeyEvent& event) { onLocalKeyEvent(event); }); //enable dialog-specific key events
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
-    //=> works like a charm for GTK2 with window resizing problems and title bar corruption; e.g. Debian!!!
+#ifdef __WXGTK3__
+    Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
+    Hide(); //avoid old position flash when Center() moves window (asynchronously?)
+#endif
     Center(); //needs to be re-applied after a dialog size change!
 
     m_buttonOK->SetFocus();
@@ -1216,7 +1233,10 @@ SyncConfirmationDlg::SyncConfirmationDlg(wxWindow* parent,
     setIntValue(*m_staticTextDeleteRight, st.deleteCount<SelectSide::right>(), *m_bitmapDeleteRight, "so_delete_right_sicon");
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
-    //=> works like a charm for GTK2 with window resizing problems and title bar corruption; e.g. Debian!!!
+#ifdef __WXGTK3__
+    Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
+    Hide(); //avoid old position flash when Center() moves window (asynchronously?)
+#endif
     Center(); //needs to be re-applied after a dialog size change!
 
     m_buttonStartSync->SetFocus();
@@ -1380,7 +1400,7 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalCfg) :
 
     logFolderSelector_.setPath(globalCfg.logFolderPhrase);
 
-    m_spinCtrlLogFilesMaxAge->SetMinSize({fastFromDIP(70), -1}); //Hack: set size (why does wxWindow::Size() not work?)
+    setDefaultWidth(*m_spinCtrlLogFilesMaxAge);
 
     setImage(*m_bitmapSettings,           loadImage("settings"));
     setImage(*m_bitmapWarnings,           loadImage("msg_warning", fastFromDIP(20)));
@@ -1480,7 +1500,10 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalCfg) :
     updateGui();
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
-    //=> works like a charm for GTK2 with window resizing problems and title bar corruption; e.g. Debian!!!
+#ifdef __WXGTK3__
+    Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
+    Hide(); //avoid old position flash when Center() moves window (asynchronously?)
+#endif
     Center(); //needs to be re-applied after a dialog size change!
 
     //restore actual value:
@@ -1800,7 +1823,10 @@ SelectTimespanDlg::SelectTimespanDlg(wxWindow* parent, time_t& timeFrom, time_t&
     Bind(wxEVT_CHAR_HOOK, [this](wxKeyEvent& event) { onLocalKeyEvent(event); }); //enable dialog-specific key events
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
-    //=> works like a charm for GTK2 with window resizing problems and title bar corruption; e.g. Debian!!!
+#ifdef __WXGTK3__
+    Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
+    Hide(); //avoid old position flash when Center() moves window (asynchronously?)
+#endif
     Center(); //needs to be re-applied after a dialog size change!
 
     m_buttonOkay->SetFocus();
@@ -1896,7 +1922,10 @@ PasswordPromptDlg::PasswordPromptDlg(wxWindow* parent, const std::wstring& msg, 
     m_textCtrlPasswordVisible->Hide();
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
-    //=> works like a charm for GTK2 with window resizing problems and title bar corruption; e.g. Debian!!!
+#ifdef __WXGTK3__
+    Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
+    Hide(); //avoid old position flash when Center() moves window (asynchronously?)
+#endif
     Center(); //needs to be re-applied after a dialog size change!
 
     updateGui(); //*after* SetSizeHints when standard dialog height has been calculated
@@ -1974,12 +2003,15 @@ CfgHighlightDlg::CfgHighlightDlg(wxWindow* parent, int& cfgHistSyncOverdueDays) 
 
     m_staticTextHighlight->Wrap(fastFromDIP(300));
 
-    m_spinCtrlOverdueDays->SetMinSize({fastFromDIP(70), -1}); //Hack: set size (why does wxWindow::Size() not work?)
+    setDefaultWidth(*m_spinCtrlOverdueDays);
 
     m_spinCtrlOverdueDays->SetValue(cfgHistSyncOverdueDays);
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
-    //=> works like a charm for GTK2 with window resizing problems and title bar corruption; e.g. Debian!!!
+#ifdef __WXGTK3__
+    Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
+    Hide(); //avoid old position flash when Center() moves window (asynchronously?)
+#endif
     Center(); //needs to be re-applied after a dialog size change!
 
     m_spinCtrlOverdueDays->SetFocus();
@@ -2045,7 +2077,10 @@ ActivationDlg::ActivationDlg(wxWindow* parent,
     m_textCtrlOfflineActivationKey->ChangeValue(manualActivationKey);
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
-    //=> works like a charm for GTK2 with window resizing problems and title bar corruption; e.g. Debian!!!
+#ifdef __WXGTK3__
+    Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
+    Hide(); //avoid old position flash when Center() moves window (asynchronously?)
+#endif
     Center(); //needs to be re-applied after a dialog size change!
 
     m_buttonActivateOnline->SetFocus();
@@ -2150,8 +2185,12 @@ DownloadProgressWindow::Impl::Impl(wxWindow* parent, int64_t fileSizeTotal) :
     updateGui();
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
-    //=> works like a charm for GTK2 with window resizing problems and title bar corruption; e.g. Debian!!!
+#ifdef __WXGTK3__
+    Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
+    Hide(); //avoid old position flash when Center() moves window (asynchronously?)
+#endif
     Center(); //needs to be re-applied after a dialog size change!
+
     Show();
 
     //clear gui flicker: window must be visible to make this work!

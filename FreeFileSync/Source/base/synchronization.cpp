@@ -12,7 +12,6 @@
 #include <zen/crc.h>
 #include "algorithm.h"
 #include "db_file.h"
-//#include "dir_exist_async.h"
 #include "status_handler_impl.h"
 #include "versioning.h"
 #include "binary.h"
@@ -447,12 +446,6 @@ bool plannedWriteAccess(const FileSystemObject& fsObj)
 }
 
 
-bool plannedReadOrWrite(const FileSystemObject& fsObj)
-{
-    return !!getTargetDirection(fsObj.getSyncOperation());
-}
-
-
 inline
 AbstractPath getAbstractPath(const FileSystemObject& fsObj, SelectSide side)
 {
@@ -485,17 +478,17 @@ std::weak_ordering comparePathNoCase(const PathRaceItem& lhs, const PathRaceItem
 
 std::wstring formatRaceItem(const PathRaceItem& item)
 {
-    const wchar_t arrowLeft [] = L" <- ";
-    const wchar_t arrowRight[] = L" -> ";
+    const std::optional<SelectSide> syncDir = getTargetDirection(item.fsObj->getSyncOperation());
 
-    const SelectSide dir = *getTargetDirection(item.fsObj->getSyncOperation()); //non-null! see plannedReadOrWrite()
-
-    return AFS::getDisplayPath(item.fsObj->base().getAbstractPath<SelectSide::left>()) +
-           (dir == SelectSide::left ? arrowLeft : arrowRight) +
-           AFS::getDisplayPath(item.fsObj->base().getAbstractPath<SelectSide::right>()) +
-           (dir == item.side ? L" 💾 "  : L" 👓 ") +
-           utfTo<std::wstring>(item.side == SelectSide::left ? item.fsObj->getRelativePath<SelectSide::left>() : item.fsObj->getRelativePath<SelectSide::right>());
-    //e.g. C:\Source -> D:\Target 💾 subfolder\file.txt
+    return AFS::getDisplayPath(item.side == SelectSide::left ?
+                               item.fsObj->base().getAbstractPath<SelectSide::left>() :
+                               item.fsObj->base().getAbstractPath<SelectSide::right>()) +
+           (syncDir && *syncDir == item.side ? L" 💾 " : L" 👓 ") +
+           utfTo<std::wstring>(item.side == SelectSide::left ?
+                               item.fsObj->getRelativePath<SelectSide::left>() :
+                               item.fsObj->getRelativePath<SelectSide::right>());
+    //e.g.  D:\folder 💾 subfolder\file.txt
+    //      D:\folder\subfolder 👓 file.txt
 }
 
 
@@ -530,20 +523,17 @@ private:
     void recurse(const ContainerObject& hierObj, uint64_t parentPathHash)
     {
         for (const FilePair& file : hierObj.refSubFiles())
-            if (plannedReadOrWrite(file))
-                childPathRefs_.push_back({&file, getPathHash(file, parentPathHash)});
-        //S1 -> T (update)   is not a conflict (anymore) if S1, S2 contain different files https://freefilesync.org/forum/viewtopic.php?t=9365#p36466
-        //S2 -> T (update)   => ignore all items that are not physically read/written (e.g. categories "equal", "do nothing")
+            childPathRefs_.push_back({&file, getPathHash(file, parentPathHash)});
+        //S1 -> T (update)   is not a conflict (anymore) if S1, S2 contain different files
+        //S2 -> T (update)   https://freefilesync.org/forum/viewtopic.php?t=9365#p36466
         for (const SymlinkPair& symlink : hierObj.refSubLinks())
-            if (plannedReadOrWrite(symlink))
-                childPathRefs_.push_back({&symlink, getPathHash(symlink, parentPathHash)});
+            childPathRefs_.push_back({&symlink, getPathHash(symlink, parentPathHash)});
 
         for (const FolderPair& subFolder : hierObj.refSubFolders())
         {
             const uint64_t folderPathHash = getPathHash(subFolder, parentPathHash);
 
-            if (plannedReadOrWrite(subFolder))
-                childPathRefs_.push_back({&subFolder, folderPathHash});
+            childPathRefs_.push_back({&subFolder, folderPathHash});
 
             recurse(subFolder, folderPathHash);
         }
@@ -2471,7 +2461,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
     //PERF_START;
 
     if (syncConfig.size() != folderCmp.size())
-        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+        throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
 
     //aggregate basic information
     std::vector<SyncStatistics> folderPairStats;

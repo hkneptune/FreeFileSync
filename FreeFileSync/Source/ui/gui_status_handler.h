@@ -73,7 +73,7 @@ public:
                                 std::chrono::seconds autoRetryDelay,
                                 const Zstring& soundFileSyncComplete,
                                 const Zstring& soundFileAlertPending,
-                                const wxSize& progressDlgSize, bool dlgMaximize,
+                                const std::optional<wxSize>& progressDlgSize, bool dlgMaximize,
                                 bool autoCloseDialog,
                                 const zen::ErrorLog* errorLogStart /*optional*/); //noexcept!
     ~StatusHandlerFloatingDialog();
@@ -99,7 +99,7 @@ public:
         zen::SharedRef<const zen::ErrorLog> errorLog;
         FinalRequest finalRequest;
         AbstractPath logFilePath;
-        wxSize dlgSize;
+        std::optional<wxSize> dlgSize;
         bool dlgIsMaximized;
         bool autoCloseDialog;
     };

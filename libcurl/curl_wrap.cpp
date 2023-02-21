@@ -223,11 +223,11 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
 
         //Contradicting options: CURLOPT_READFUNCTION, CURLOPT_POSTFIELDS:
         if (std::any_of(extraOptions.begin(), extraOptions.end(), [](const CurlOption& o) { return o.option == CURLOPT_POSTFIELDS; }))
-        /**/ throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+        /**/ throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
     }
 
     if (std::any_of(extraOptions.begin(), extraOptions.end(), [](const CurlOption& o) { return o.option == CURLOPT_WRITEFUNCTION || o.option == CURLOPT_READFUNCTION; }))
-    /**/ throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__)); //Option already used here!
+    /**/ throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!"); //Option already used here!
 
     //---------------------------------------------------
     curl_slist* headers = nullptr; //"libcurl will not copy the entire list so you must keep it!"

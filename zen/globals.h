@@ -9,6 +9,7 @@
 
 #include <atomic>
 #include <memory>
+#include <utility>
 #include "scope_guard.h"
 
 
@@ -16,7 +17,7 @@ namespace zen
 {
 /*  Solve static destruction order fiasco by providing shared ownership and serialized access to global variables
 
-    => there may be accesses to "Global<T>::get()" during process shutdown e.g. _("") used by message in debug_minidump.cpp or by some detached thread assembling an error message!
+    => e.g. accesses to "Global<T>::get()" during process shutdown: _("") used by message in debug_minidump.cpp or by some detached thread assembling an error message!
     => use trivially-destructible POD only!!!
 
     ATTENTION: function-static globals have the compiler generate "magic statics" == compiler-genenerated locking code which will crash or leak memory when accessed after global is "dead"
@@ -54,7 +55,13 @@ public:
     ~Global()
     {
         static_assert(std::is_trivially_destructible_v<Pod>, "this memory needs to live forever");
-        set(nullptr);
+
+        pod_.spinLock.lock();
+        std::shared_ptr<T>* oldInst = std::exchange(pod_.inst, nullptr);
+        pod_.destroyed = true;
+        pod_.spinLock.unlock();
+
+        delete oldInst;
     }
 
     std::shared_ptr<T> get() //=> return std::shared_ptr to let instance life time be handled by caller (MT usage!)
@@ -76,9 +83,20 @@ public:
             pod_.spinLock.lock();
             ZEN_ON_SCOPE_EXIT(pod_.spinLock.unlock());
 
-            std::swap(pod_.inst, tmpInst);
+            if (!pod_.destroyed)
+                std::swap(pod_.inst, tmpInst);
+            else
+                assert(false);
         }
         delete tmpInst;
+    }
+
+    bool wasDestroyed()
+    {
+        pod_.spinLock.lock();
+        ZEN_ON_SCOPE_EXIT(pod_.spinLock.unlock());
+
+        return pod_.destroyed;
     }
 
 private:
@@ -87,6 +105,7 @@ private:
         PodSpinMutex spinLock; //rely entirely on static zero-initialization! => avoid potential contention with worker thread during Global<> construction!
         //serialize access: can't use std::mutex: has non-trival destructor
         std::shared_ptr<T>* inst = nullptr;
+        bool destroyed = false;
     } pod_;
 };
 

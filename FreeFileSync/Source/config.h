@@ -118,22 +118,23 @@ struct DpiLayout
 {
     struct
     {
-        wxPoint dlgPos;
-        wxSize dlgSize;
+        std::optional<wxSize> size;
+        std::optional<wxPoint> pos;
         bool isMaximized = false;
-        wxString panelLayout; //for wxAuiManager::LoadPerspective
-    } mainDlg;
+    } mainDlg; //WindowLayout::getBeforeClose()
+
+    struct
+    {
+        std::optional<wxSize> size;
+        bool isMaximized = false;
+    } progressDlg;
+
+    wxString panelLayout; //for wxAuiManager::LoadPerspective
 
     std::vector<ColAttributesCfg> configColumnAttribs = getCfgGridDefaultColAttribs();
     std::vector<ColumnAttribOverview> overviewColumnAttribs = getOverviewDefaultColAttribs();
     std::vector<ColAttributesRim> fileColumnAttribsLeft  = getFileGridDefaultColAttribsLeft();
     std::vector<ColAttributesRim> fileColumnAttribsRight = getFileGridDefaultColAttribsRight();
-
-    struct
-    {
-        wxSize dlgSize;
-        bool isMaximized = false;
-    } progressDlg;
 };
 
 
@@ -246,7 +247,7 @@ struct XmlGlobalSettings
     time_t lastUpdateCheck = 0; //number of seconds since Jan 1, 1970 GMT
     std::string lastOnlineVersion;
 
-    std::string welcomeShownVersion; //last FFS version for which the welcome dialog was shown
+    std::string welcomeDialogLastVersion;
 
     std::unordered_map<int /*scale percent*/, DpiLayout> dpiLayouts;
 };

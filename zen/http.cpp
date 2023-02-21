@@ -499,7 +499,7 @@ bool zen::isValidEmail(const std::string_view& email)
         return false;
     //---------------------------------------------------------------------
 
-    //not going to parse and validate this!
+    //we're not going to parse and validate this!
     const bool quoted = (startsWith(local, '"') && endsWith(local, '"')) ||
                         contains(local, '\\'); //e.g. "t\@st@email.com"
     if (!quoted)

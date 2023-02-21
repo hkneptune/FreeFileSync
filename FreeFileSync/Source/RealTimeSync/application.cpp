@@ -28,14 +28,15 @@ using namespace zen;
 using namespace rts;
 
 
+#ifdef __WXGTK3__ //deprioritize Wayland: see FFS' application.cpp
+    GLOBAL_RUN_ONCE(::gdk_set_allowed_backends("x11,*")); //call *before* gtk_init()
+#endif
+
 IMPLEMENT_APP(Application)
 
 
 namespace
 {
-wxDEFINE_EVENT(EVENT_ENTER_EVENT_LOOP, wxCommandEvent);
-
-
 using fff::FfsExitCode;
 
 void notifyAppError(const std::wstring& msg, FfsExitCode rc)
@@ -144,7 +145,7 @@ bool Application::OnInit()
     catch (const FileError& e) { notifyAppError(e.toString(), FfsExitCode::warning); }
 
 
-    auto onSystemShutdown = []
+    auto onSystemShutdown = [](int /*unused*/ = 0)
     {
         onSystemShutdownRunTasks();
 
@@ -153,20 +154,24 @@ bool Application::OnInit()
     };
     Bind(wxEVT_QUERY_END_SESSION, [onSystemShutdown](wxCloseEvent& event) { onSystemShutdown(); }); //can veto
     Bind(wxEVT_END_SESSION,       [onSystemShutdown](wxCloseEvent& event) { onSystemShutdown(); }); //can *not* veto
+    try
+    {
+        if (auto /*sighandler_t n.a. on macOS*/ oldHandler = ::signal(SIGTERM, onSystemShutdown);//"graceful" exit requested, unlike SIGKILL
+            oldHandler == SIG_ERR)
+            THROW_LAST_SYS_ERROR("signal(SIGTERM)");
+        else assert(!oldHandler);
+    }
+    catch (const SysError& e) { notifyAppError(e.toString(), FfsExitCode::warning); }
 
     //Note: app start is deferred:  -> see FreeFileSync
-    Bind(EVENT_ENTER_EVENT_LOOP, &Application::onEnterEventLoop, this);
-    wxCommandEvent scrollEvent(EVENT_ENTER_EVENT_LOOP);
-    AddPendingEvent(scrollEvent);
+    CallAfter([&] { onEnterEventLoop(); });
+
     return true; //true: continue processing; false: exit immediately.
 }
 
 
-void Application::onEnterEventLoop(wxEvent& event)
+void Application::onEnterEventLoop()
 {
-    [[maybe_unused]] bool ubOk = Unbind(EVENT_ENTER_EVENT_LOOP, &Application::onEnterEventLoop, this);
-    assert(ubOk);
-
     //wxWidgets app exit handling is weird... we want to exit only if the logical main window is closed, not just *any* window!
     wxTheApp->SetExitOnFrameDelete(false); //prevent popup-windows from becoming temporary top windows leading to program exit after closure
     ZEN_ON_SCOPE_EXIT(if (!globalWindowWasSet()) wxTheApp->ExitMainLoop()); //quit application, if no main window was set (batch silent mode)

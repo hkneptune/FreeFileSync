@@ -25,7 +25,7 @@
 #include <wx+/toggle_button.h>
 #include <wx+/no_flicker.h>
 #include <wx+/rtl.h>
-#include <wx+/font_size.h>
+#include <wx+/window_layout.h>
 #include <wx+/popup_dlg.h>
 #include <wx+/window_tools.h>
 #include <wx+/image_resources.h>
@@ -64,14 +64,14 @@ const int TOP_BUTTON_OPTIMAL_WIDTH_DIP = 170;
 constexpr std::chrono::milliseconds LAST_USED_CFG_EXISTENCE_CHECK_TIME_MAX(500);
 constexpr std::chrono::milliseconds FILE_GRID_POST_UPDATE_DELAY(400);
 
-const Zchar macroNameItemPath   [] = Zstr("%item_path%");
-const Zchar macroNameItemPath2  [] = Zstr("%item_path2%");
-const Zchar macroNameLocalPath  [] = Zstr("%local_path%");
-const Zchar macroNameLocalPath2 [] = Zstr("%local_path2%");
-const Zchar macroNameItemName   [] = Zstr("%item_name%");
-const Zchar macroNameItemName2  [] = Zstr("%item_name2%");
-const Zchar macroNameParentPath [] = Zstr("%parent_path%");
-const Zchar macroNameParentPath2[] = Zstr("%parent_path2%");
+const ZstringView macroNameItemPath    = Zstr("%item_path%");
+const ZstringView macroNameItemPath2   = Zstr("%item_path2%");
+const ZstringView macroNameLocalPath   = Zstr("%local_path%");
+const ZstringView macroNameLocalPath2  = Zstr("%local_path2%");
+const ZstringView macroNameItemName    = Zstr("%item_name%");
+const ZstringView macroNameItemName2   = Zstr("%item_name2%");
+const ZstringView macroNameParentPath  = Zstr("%parent_path%");
+const ZstringView macroNameParentPath2 = Zstr("%parent_path2%");
 
 bool containsFileItemMacro(const Zstring& commandLinePhrase)
 {
@@ -436,10 +436,10 @@ void MainDialog::create(const Zstring& globalConfigFilePath,
     //construction complete! trigger special events:
     //------------------------------------------------------------------------------------------
 
-    //show welcome screen after FreeFileSync update => show *before* any other dialogs
-    if (mainDlg->globalCfg_.welcomeShownVersion != ffsVersion)
+    //show welcome dialog after FreeFileSync update => show *before* any other dialogs
+    if (mainDlg->globalCfg_.welcomeDialogLastVersion != ffsVersion)
     {
-        mainDlg->globalCfg_.welcomeShownVersion = ffsVersion;
+        mainDlg->globalCfg_.welcomeDialogLastVersion = ffsVersion;
         showAboutDialog(mainDlg);
     }
 
@@ -772,7 +772,7 @@ imgFileManagerSmall_([]
     m_gridOverview->Bind(EVENT_GRID_SELECT_RANGE, [this](GridSelectEvent&      event) { onTreeGridSelection(event); });
 
     //cfg grid:
-    m_gridCfgHistory->getMainWin().Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onCfgGridKeyEvent(event); });
+    m_gridCfgHistory->Bind(wxEVT_KEY_DOWN,                   [this](wxKeyEvent& event) { onCfgGridKeyEvent(event); });
     m_gridCfgHistory->Bind(EVENT_GRID_SELECT_RANGE,          [this](GridSelectEvent&      event) { onCfgGridSelection     (event); });
     m_gridCfgHistory->Bind(EVENT_GRID_MOUSE_LEFT_DOUBLE,     [this](GridClickEvent&       event) { onCfgGridDoubleClick   (event); });
     m_gridCfgHistory->Bind(EVENT_GRID_CONTEXT_MENU,          [this](GridContextMenuEvent& event) { onCfgGridContext       (event); });
@@ -896,11 +896,11 @@ imgFileManagerSmall_([]
     setConfig(guiCfg, referenceFiles); //expects auiMgr_.Update(): e.g. recalcMaxFolderPairsVisible()
 
     //support for CTRL + C and DEL on grids
-    m_gridMainL->getMainWin().Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onGridKeyEvent(event, *m_gridMainL,  true /*leftSide*/); });
-    m_gridMainC->getMainWin().Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onGridKeyEvent(event, *m_gridMainC,  true /*leftSide*/); });
-    m_gridMainR->getMainWin().Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onGridKeyEvent(event, *m_gridMainR, false /*leftSide*/); });
+    m_gridMainL->Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onGridKeyEvent(event, *m_gridMainL,  true /*leftSide*/); });
+    m_gridMainC->Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onGridKeyEvent(event, *m_gridMainC,  true /*leftSide*/); });
+    m_gridMainR->Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onGridKeyEvent(event, *m_gridMainR, false /*leftSide*/); });
 
-    m_gridOverview->getMainWin().Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onTreeKeyEvent(event); });
+    m_gridOverview->Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onTreeKeyEvent(event); });
 
     Bind(wxEVT_CHAR_HOOK, [this](wxKeyEvent& event) { onLocalKeyEvent(event); }); //enable dialog-specific key events
 
@@ -1045,11 +1045,7 @@ void MainDialog::setGlobalCfgOnInit(const XmlGlobalSettings& globalSettings)
     //caveat: set/get language asymmmetry! setLanguage(globalSettings.programLanguage); //throw FileError
     //we need to set language before creating this class!
 
-    setInitialWindowSize(*this,
-                         layout.mainDlg.dlgSize,
-                         layout.mainDlg.dlgPos,
-                         layout.mainDlg.isMaximized,
-                         wxSize{fastFromDIP(900), fastFromDIP(600)} /*defaultSize*/);
+    WindowLayout::setInitial(*this, {layout.mainDlg.size, layout.mainDlg.pos, layout.mainDlg.isMaximized}, {fastFromDIP(900), fastFromDIP(600)} /*defaultSize*/);
 
     //set column attributes
     m_gridMainL   ->setColumnConfig(convertColAttributes(layout.fileColumnAttribsLeft,  getFileGridDefaultColAttribsLeft()));
@@ -1110,7 +1106,7 @@ void MainDialog::setGlobalCfgOnInit(const XmlGlobalSettings& globalSettings)
     preserveConstraint(auiMgr_.GetPane(m_panelViewFilter));
     preserveConstraint(auiMgr_.GetPane(m_panelConfig));
 
-    auiMgr_.LoadPerspective(layout.mainDlg.panelLayout, false /*update: don't call wxAuiManager::Update() yet*/);
+    auiMgr_.LoadPerspective(layout.panelLayout, false /*update: don't call wxAuiManager::Update() yet*/);
 
     //restore original captions
     for (const auto& [paneInfo, caption] : paneCaptions)
@@ -1204,14 +1200,10 @@ XmlGlobalSettings MainDialog::getGlobalCfgBeforeExit()
     //else: logPane.best_size already contains non-maximized value
 
     //auiMgr_.Update(); //[!] not needed
-    globalSettings.dpiLayouts[getDpiScalePercent()].mainDlg.panelLayout = auiMgr_.SavePerspective(); //does not need wxAuiManager::Update()!
+    globalSettings.dpiLayouts[getDpiScalePercent()].panelLayout = auiMgr_.SavePerspective(); //does not need wxAuiManager::Update()!
 
-    const auto& [size, pos, isMaximized] = getWindowSizeBeforeClose(*this); //call *after* wxAuiManager::SavePerspective()!
-    if (size)
-        globalSettings.dpiLayouts[getDpiScalePercent()].mainDlg.dlgSize = *size;
-    if (pos)
-        globalSettings.dpiLayouts[getDpiScalePercent()].mainDlg.dlgPos = *pos;
-    globalSettings.dpiLayouts[getDpiScalePercent()].mainDlg.isMaximized = isMaximized;
+    const auto& [size, pos, isMaximized] = WindowLayout::getBeforeClose(*this); //call *after* wxAuiManager::SavePerspective()!
+    globalSettings.dpiLayouts[getDpiScalePercent()].mainDlg = {size, pos, isMaximized};
 
     return globalSettings;
 }
@@ -4494,7 +4486,7 @@ void MainDialog::onStartSync(wxCommandEvent& event)
                                                   guiCfg.mainCfg.autoRetryDelay,
                                                   globalCfg_.soundFileSyncFinished,
                                                   globalCfg_.soundFileAlertPending,
-                                                  globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.dlgSize,
+                                                  globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.size,
                                                   globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.isMaximized,
                                                   globalCfg_.progressDlgAutoClose,
                                                   errorLogStart.get());
@@ -4555,7 +4547,7 @@ void MainDialog::onStartSync(wxCommandEvent& event)
         setLastOperationLog(r.summary, r.errorLog.ptr());
 
         globalCfg_.progressDlgAutoClose = r.autoCloseDialog;
-        globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.dlgSize     = r.dlgSize;
+        globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.size        = r.dlgSize;
         globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.isMaximized = r.dlgIsMaximized;
 
         //update last sync stats for the selected cfg files
@@ -4814,9 +4806,8 @@ void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::s
     }
 
     const int64_t totalTimeSec = std::chrono::duration_cast<std::chrono::seconds>(summary.totalTime).count();
-
-    m_staticTextTimeElapsed->SetLabelText(wxTimeSpan::Seconds(totalTimeSec).Format(L"%H:%M:%S"));
-    //totalTimeSec < 3600 ? wxTimeSpan::Seconds(totalTimeSec).Format(L"%M:%S") -> let's use full precision for max. clarity: https://freefilesync.org/forum/viewtopic.php?t=6308
+    m_staticTextTimeElapsed->SetLabelText(utfTo<wxString>(formatTimeSpan(totalTimeSec)));
+    //hourOptional? -> let's use full precision for max. clarity: https://freefilesync.org/forum/viewtopic.php?t=6308
 
     logPanel_->setLog(errorLog);
 

@@ -35,6 +35,16 @@ using namespace zen;
 using namespace fff;
 
 
+#ifdef __WXGTK3__
+    /* Wayland backend used by GTK3 does not allow to move windows! (no such issue on GTK2)
+
+    "I'd really like to know if there is some deep technical reason for it or
+    if this is really as bloody stupid as it seems?" - vadz  https://github.com/wxWidgets/wxWidgets/issues/18733#issuecomment-1011235902
+
+    => workaround: https://docs.gtk.org/gdk3/func.set_allowed_backends.html           */
+    GLOBAL_RUN_ONCE(::gdk_set_allowed_backends("x11,*")); //call *before* gtk_init()
+#endif
+
 IMPLEMENT_APP(Application)
 
 
@@ -51,8 +61,6 @@ std::vector<Zstring> getCommandlineArgs(const wxApp& app)
 
     return args;
 }
-
-wxDEFINE_EVENT(EVENT_ENTER_EVENT_LOOP, wxCommandEvent);
 
 
 void showSyntaxHelp()
@@ -197,7 +205,7 @@ bool Application::OnInit()
 
 
 
-    auto onSystemShutdown = []
+    auto onSystemShutdown = [](int /*unused*/ = 0)
     {
         onSystemShutdownRunTasks();
 
@@ -208,20 +216,24 @@ bool Application::OnInit()
     };
     Bind(wxEVT_QUERY_END_SESSION, [onSystemShutdown](wxCloseEvent& event) { onSystemShutdown(); }); //can veto
     Bind(wxEVT_END_SESSION,       [onSystemShutdown](wxCloseEvent& event) { onSystemShutdown(); }); //can *not* veto
+    //- log off: Windows/macOS generates wxEVT_QUERY_END_SESSION/wxEVT_END_SESSION
+    //           Linux/macOS generates SIGTERM, which we handle below
+    //- Windows sends WM_QUERYENDSESSION, WM_ENDSESSION during log off, *not* WM_CLOSE https://devblogs.microsoft.com/oldnewthing/20080421-00/?p=22663
+    //   => taskkill sending WM_CLOSE (without /f) is a misguided app simulating a button-click on X
+    //      -> should send WM_QUERYENDSESSION instead!
+    try
+    {
+        if (auto /*sighandler_t n.a. on macOS*/ oldHandler = ::signal(SIGTERM, onSystemShutdown);//"graceful" exit requested, unlike SIGKILL
+            oldHandler == SIG_ERR)
+            THROW_LAST_SYS_ERROR("signal(SIGTERM)");
+        else assert(!oldHandler);
+    }
+    catch (const SysError& e) { notifyAppError(e.toString(), FfsExitCode::warning); }
 
     //Note: app start is deferred: batch mode requires the wxApp eventhandler to be established for UI update events. This is not the case at the time of OnInit()!
-    Bind(EVENT_ENTER_EVENT_LOOP, &Application::onEnterEventLoop, this);
-    AddPendingEvent(wxCommandEvent(EVENT_ENTER_EVENT_LOOP));
+    CallAfter([&] { onEnterEventLoop(); });
+
     return true; //true: continue processing; false: exit immediately.
-}
-
-
-void Application::onEnterEventLoop(wxEvent& event)
-{
-    [[maybe_unused]] const bool ubOk = Unbind(EVENT_ENTER_EVENT_LOOP, &Application::onEnterEventLoop, this);
-    assert(ubOk);
-
-    launch(getCommandlineArgs(*this)); //determine FFS mode of operation
 }
 
 
@@ -267,8 +279,10 @@ void Application::OnUnhandledException() //handles both wxApp::OnInit() + wxApp:
 
 
 
-void Application::launch(const std::vector<Zstring>& commandArgs)
+void Application::onEnterEventLoop()
 {
+    const std::vector<Zstring>& commandArgs = getCommandlineArgs(*this);
+
     //wxWidgets app exit handling is weird... we want to exit only if the logical main window is closed, not just *any* window!
     wxTheApp->SetExitOnFrameDelete(false); //prevent popup-windows from becoming temporary top windows leading to program exit after closure
     ZEN_ON_SCOPE_EXIT(if (!globalWindowWasSet()) wxTheApp->ExitMainLoop()); //quit application, if no main window was set (batch silent mode)
@@ -548,7 +562,7 @@ void Application::runBatchMode(const Zstring& globalConfigFilePath, const XmlBat
                                      batchCfg.mainCfg.autoRetryDelay,
                                      globalCfg.soundFileSyncFinished,
                                      globalCfg.soundFileAlertPending,
-                                     globalCfg.dpiLayouts[getDpiScalePercent()].progressDlg.dlgSize,
+                                     globalCfg.dpiLayouts[getDpiScalePercent()].progressDlg.size,
                                      globalCfg.dpiLayouts[getDpiScalePercent()].progressDlg.isMaximized,
                                      batchCfg.batchExCfg.autoCloseSummary,
                                      batchCfg.batchExCfg.postSyncAction,
@@ -621,7 +635,7 @@ void Application::runBatchMode(const Zstring& globalConfigFilePath, const XmlBat
         //*INDENT-ON*
     }
 
-    globalCfg.dpiLayouts[getDpiScalePercent()].progressDlg.dlgSize     = r.dlgSize;
+    globalCfg.dpiLayouts[getDpiScalePercent()].progressDlg.size        = r.dlgSize;
     globalCfg.dpiLayouts[getDpiScalePercent()].progressDlg.isMaximized = r.dlgIsMaximized;
 
     //email sending, or saving log file failed? at the very least this should affect the exit code:

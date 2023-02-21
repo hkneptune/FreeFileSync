@@ -13,10 +13,9 @@
 #include "app_main.h"
 #include "bitmap_button.h"
 #include "no_flicker.h"
-#include "font_size.h"
+#include "window_layout.h"
 #include "image_resources.h"
 #include "popup_dlg_generated.h"
-#include "std_button_layout.h"
 #include "taskbar.h"
 #include "window_tools.h"
 
@@ -273,11 +272,16 @@ public:
         //set std order after button visibility was set
         setStandardButtonLayout(*bSizerStdButtons, stdBtns);
 
-
         updateGui();
 
+
         GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
+#ifdef __WXGTK3__
+    Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
+    Hide(); //avoid old position flash when Center() moves window (asynchronously?)
+#endif
         Center(); //needs to be re-applied after a dialog size change!
+
 
         Raise(); //[!] popup may be triggered by ffs_batch job running in the background!
 

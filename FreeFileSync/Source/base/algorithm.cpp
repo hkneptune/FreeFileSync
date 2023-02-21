@@ -698,7 +698,7 @@ std::vector<std::pair<BaseFolderPair*, SyncDirectionConfig>> fff::extractDirecti
                     mainCfg.additionalPairs.end());
 
     if (folderCmp.size() != allPairs.size())
-        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+        throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
 
     std::vector<std::pair<BaseFolderPair*, SyncDirectionConfig>> output;
 
@@ -998,7 +998,7 @@ void fff::applyFiltering(FolderComparison& folderCmp, const MainConfiguration& m
     if (folderCmp.empty())
         return;
     else if (folderCmp.size() != mainCfg.additionalPairs.size() + 1)
-        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+        throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
 
     //merge first and additional pairs
     std::vector<LocalPairConfig> allPairs;

@@ -75,7 +75,7 @@ DirectionSet fff::extractDirections(const SyncDirectionConfig& cfg)
     switch (cfg.var)
     {
         case SyncVariant::twoWay:
-            throw std::logic_error("there are no predefined directions for automatic mode! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+            throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] there are no predefined directions for automatic mode!");
 
         case SyncVariant::mirror:
             output.exLeftSideOnly  = SyncDirection::right;
@@ -206,7 +206,7 @@ std::wstring fff::getSymbol(SyncOperation op)
         case SO_COPY_METADATA_TO_RIGHT: return L"update ->";
         case SO_DO_NOTHING:             return L" -";
         case SO_EQUAL:                  return L"'=="; //added quotation mark to avoid error in Excel cell when exporting to *.cvs
-        case SO_UNRESOLVED_CONFLICT:    return L"conflict";
+        case SO_UNRESOLVED_CONFLICT:    return L"conflict"; //portable Unicode symbol: ⚡
         //*INDENT-ON*
     };
     assert(false);

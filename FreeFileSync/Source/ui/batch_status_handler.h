@@ -29,7 +29,7 @@ public:
                        std::chrono::seconds autoRetryDelay,
                        const Zstring& soundFileSyncComplete,
                        const Zstring& soundFileAlertPending,
-                       wxSize progressDlgSize, bool dlgMaximize,
+                       const std::optional<wxSize>& progressDlgSize, bool dlgMaximize,
                        bool autoCloseDialog,
                        PostSyncAction postSyncAction,
                        BatchErrorHandling batchErrorHandling); //noexcept!!
@@ -56,7 +56,7 @@ public:
         zen::ErrorLogStats logStats;
         FinalRequest finalRequest;
         AbstractPath logFilePath;
-        wxSize dlgSize;
+        std::optional<wxSize> dlgSize;
         bool dlgIsMaximized;
     };
     Result reportResults(const Zstring& postSyncCommand, PostSyncCondition postSyncCondition,

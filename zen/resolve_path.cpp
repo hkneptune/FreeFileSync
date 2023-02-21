@@ -10,48 +10,15 @@
 #include "file_access.h"
 
     #include <zen/sys_info.h>
-    //    #include <stdlib.h> //getenv()
-    #include <unistd.h> //getuid()
-    #include <pwd.h>    //getpwuid_r()
+    #include <unistd.h> //getcwd()
 
 using namespace zen;
 
 
 namespace
 {
-std::optional<Zstring> getEnvironmentVar(const Zchar* name)
-{
-    assert(runningOnMainThread()); //getenv() is not thread-safe!
-
-    const char* buffer = ::getenv(name); //no ownership transfer + no extended error reporting
-    if (!buffer)
-        return {};
-    Zstring value(buffer);
-
-    //some postprocessing:
-    trim(value); //remove leading, trailing blanks
-
-    //remove leading, trailing double-quotes
-    if (startsWith(value, Zstr('"')) &&
-        endsWith  (value, Zstr('"')) &&
-        value.length() >= 2)
-        value = Zstring(value.c_str() + 1, value.length() - 2);
-
-    return value;
-}
-
-
 Zstring resolveRelativePath(const Zstring& relativePath)
 {
-    assert(runningOnMainThread());
-    /* MSDN: "Multithreaded applications and shared library code should not use the GetFullPathName function
-              and should avoid using relative path names. The current directory state written by the
-              SetCurrentDirectory function is stored as a global variable in each process,
-              therefore multithreaded applications cannot reliably use this value without possible data corruption from other threads, [...]"
-
-      => Just plain wrong, there is no data corruption. What MSDN really means: GetFullPathName() is *perfectly* thread-safe, but depends
-         on the current directory, which is a process-scope global: https://devblogs.microsoft.com/oldnewthing/20210816-00/?p=105562            */
-
     if (relativePath.empty())
         return relativePath;
 
@@ -99,7 +66,7 @@ Zstring resolveRelativePath(const Zstring& relativePath)
 
 
 //returns value if resolved
-std::optional<Zstring> tryResolveMacro(const Zstring& macro) //macro without %-characters
+std::optional<Zstring> tryResolveMacro(const ZstringView macro) //macro without %-characters
 {
     Zstring timeStr;
     auto resolveTimePhrase = [&](const Zchar* phrase, const Zchar* format) -> bool
@@ -142,7 +109,7 @@ std::optional<Zstring> tryResolveMacro(const Zstring& macro) //macro without %-c
     }
 
     //try to resolve as environment variables
-    if (std::optional<Zstring> value = getEnvironmentVar(macro.c_str()))
+    if (std::optional<Zstring> value = getEnvironmentVar(macro))
         return *value;
 
     return {};
@@ -201,14 +168,14 @@ std::vector<Zstring> zen::getPathPhraseAliases(const Zstring& itemPath)
     {
 
         //environment variables: C:\Users\<user> -> %UserProfile%
-        auto substByMacro = [&](const Zchar* macroName, const Zstring& macroPath)
+        auto substByMacro = [&](const ZstringView macroName, const Zstring& macroPath)
         {
             //should use a replaceCpy() that considers "local path" case-sensitivity (if only we had one...)
             if (contains(itemPath, macroPath))
                 pathAliases.push_back(makePathPhrase(replaceCpyAsciiNoCase(itemPath, macroPath, Zstring() + MACRO_SEP + macroName + MACRO_SEP)));
         };
 
-        for (const Zchar* envName :
+        for (const ZstringView envName :
              {
                  "HOME", //Linux: /home/<user>  Mac: /Users/<user>
                  //"USER",  -> any benefit?

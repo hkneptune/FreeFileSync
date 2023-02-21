@@ -10,7 +10,7 @@
 namespace fff
 {
 //intermediate locks created by DirLock use this extension, too:
-const Zchar LOCK_FILE_ENDING[] = Zstr(".ffs_lock"); //don't use Zstring as global constant: avoid static initialization order problem in global namespace!
+const ZstringView LOCK_FILE_ENDING = Zstr(".ffs_lock"); //don't use Zstring as global constant: avoid static initialization order problem in global namespace!
 
 //Attention: 1. call after having checked directory existence!
 //           2. perf: remove folder aliases (e.g. case differences) *before* calling this function!!!

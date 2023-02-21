@@ -42,7 +42,7 @@ public:
 private:
     void onKeyEvent(wxKeyEvent& event);
     void onSelection(wxCommandEvent& event);
-    void onValidateSelection(wxCommandEvent& event);
+    void onValidateSelection();
     void onUpdateList(wxEvent& event);
 
     void setValueAndUpdateList(const wxString& value);

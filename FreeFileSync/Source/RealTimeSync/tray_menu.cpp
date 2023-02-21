@@ -251,6 +251,7 @@ rts::AbortReason rts::runFolderMonitor(const XmlRealConfig& config, const wxStri
 
     auto executeExternalCommand = [&](const Zstring& changedItemPath, const std::wstring& actionName) //throw FileError
     {
+        warn_static("maybe not a good idea!? job for execve? https://rachelbythebay.com/w/2017/01/30/env/")
         ::wxSetEnv(L"change_path", utfTo<wxString>(changedItemPath)); //crude way to report changed file
         ::wxSetEnv(L"change_action", actionName);                     //
         auto cmdLineExp = expandMacros(cmdLine);

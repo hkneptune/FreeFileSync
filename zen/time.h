@@ -41,7 +41,7 @@ TimeComp getCompileTime(); //returns TimeComp() on error
             formatTime(Zstr("%Y|%m|%d")); -> "2011|10|29"
             formatTime(formatDateTag);    -> "2011-10-29"
             formatTime(formatTimeTag);    -> "17:55:34"                       */
-Zstring formatTime(const Zchar* format, const TimeComp& tc = getLocalTime()); //format as specified by "std::strftime", returns empty string on failure
+Zstring formatTime(const Zchar* format, const TimeComp& tc = getLocalTime()); //format as specified by "std::strftime", returns empty string on error
 
 //the "format" parameter of formatTime() is partially specialized with the following type tags:
 const Zchar* const formatDateTag     = Zstr("%x"); //locale-dependent date representation: e.g. 8/23/2001
@@ -59,7 +59,8 @@ template <class String, class String2>
 TimeComp parseTime(const String& format, const String2& str); //similar to ::strptime()
 //----------------------------------------------------------------------------------------------------------------------------------
 
-
+//format: [-][[d.]HH:]MM:SS    e.g. -1.23:45:67
+Zstring formatTimeSpan(int64_t timeInSec, bool hourOptional = false);
 
 
 
@@ -384,6 +385,36 @@ TimeComp parseTime(const String& format, const String2& str)
         return TimeComp();
 
     return output;
+}
+
+
+inline
+Zstring formatTimeSpan(int64_t timeInSec, bool hourOptional)
+{
+    Zstring timespanStr; 
+
+    if (timeInSec < 0)
+    {
+        timeInSec = -timeInSec; //need to fix LLONG_MIN?
+        timespanStr = Zstr('-');
+    }
+
+    //check *before* subtracting days!
+    const Zchar* timeSpanFmt = hourOptional && timeInSec < 3600 ? Zstr("%M:%S") : formatIsoTimeTag;
+
+    const int secsPerDay = 24 * 3600;
+    const int64_t days = numeric::intDivFloor(timeInSec, secsPerDay);
+    if (days > 0)
+    {
+        timeInSec -= days * secsPerDay;
+        timespanStr += numberTo<Zstring>(days) + Zstr("."); //don't need zen::formatNumber(), do we?
+    }
+    
+    //format time span as if absolute UTC time
+    const TimeComp& tc = getUtcTime(timeInSec); //returns TimeComp() on error
+    timespanStr += formatTime(timeSpanFmt, tc); //returns empty string on error
+
+    return timespanStr;
 }
 }
 

@@ -195,7 +195,7 @@ private:
     std::wstring currentFile_;
     std::map<int /*threadIdx*/, size_t /*parallelOps*/> activeThreadIdxs_;
 
-    std::atomic<int> notifyingThreadIdx_ {0}; //CAVEAT: do NOT use boost::thread::id: https://svn.boost.org/trac/boost/ticket/5754
+    std::atomic<int> notifyingThreadIdx_{0}; //CAVEAT: do NOT use boost::thread::id: https://svn.boost.org/trac/boost/ticket/5754
     const std::chrono::milliseconds cbInterval_;
 
     //---- status updates II (lock-free) ----
@@ -263,7 +263,7 @@ public:
         output.failedItemReads,
         acb,
         threadIdx,
-        lastReportTime
+        lastReportTime,
     }
     {
         if (acb.mayReportCurrentFile(threadIdx, lastReportTime))
@@ -291,7 +291,7 @@ void DirCallback::onFile(const AFS::FileInfo& fi) //throw ThreadStopRequest
         return;
     //note: sync.ffs_db database and lock files are excluded via path filter!
 
-    output_.addSubFile(fi.itemName, FileAttributes(fi.modTime, fi.fileSize, fi.filePrint, fi.isFollowedSymlink));
+    output_.addFile(fi.itemName, FileAttributes(fi.modTime, fi.fileSize, fi.filePrint, fi.isFollowedSymlink));
 
     cfg_.acb.incItemsScanned(); //add 1 element to the progress indicator
 }
@@ -315,13 +315,13 @@ std::shared_ptr<AFS::TraverserCallback> DirCallback::onFolder(const AFS::FolderI
         return nullptr; //do NOT traverse subdirs
     //else: ensure directory filtering is applied later to exclude actually filtered directories!!!
 
-    FolderContainer& subFolder = output_.addSubFolder(fi.itemName, FolderAttributes(fi.isFollowedSymlink));
+    FolderContainer& subFolder = output_.addFolder(fi.itemName, FolderAttributes(fi.isFollowedSymlink));
     if (passFilter)
         cfg_.acb.incItemsScanned(); //add 1 element to the progress indicator
 
     //------------------------------------------------------------------------------------
     if (level_ > FOLDER_TRAVERSAL_LEVEL_MAX) //Win32 traverser: stack overflow approximately at level 1000
-        //check after FolderContainer::addSubFolder()
+        //check after FolderContainer::addFolder()
         for (size_t retryNumber = 0;; ++retryNumber)
             switch (reportItemError({replaceCpy(_("Cannot read directory %x."), L"%x", AFS::getDisplayPath(AFS::appendRelPath(cfg_.baseFolderPath, relPath))) +
                                      L"\n\n" L"Endless recursion.", std::chrono::steady_clock::now(), retryNumber}, fi.itemName)) //throw ThreadStopRequest
@@ -354,7 +354,7 @@ DirCallback::HandleLink DirCallback::onSymlink(const AFS::SymlinkInfo& si) //thr
         case SymLinkHandling::asLink:
             if (cfg_.filter.ref().passFileFilter(relPath)) //always use file filter: Link type may not be "stable" on Linux!
             {
-                output_.addSubLink(si.itemName, LinkAttributes(si.modTime));
+                output_.addLink(si.itemName, LinkAttributes(si.modTime));
                 cfg_.acb.incItemsScanned(); //add 1 element to the progress indicator
             }
             return HandleLink::skip;

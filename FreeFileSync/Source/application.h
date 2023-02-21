@@ -26,8 +26,7 @@ private:
     void OnUnhandledException () override;
     void notifyAppError(const std::wstring& msg, FfsExitCode rc);
     wxLayoutDirection GetLayoutDirection() const override;
-    void onEnterEventLoop(wxEvent& event);
-    void launch(const std::vector<Zstring>& commandArgs);
+    void onEnterEventLoop();
 
     void runGuiMode  (const Zstring& globalConfigFile);
     void runGuiMode  (const Zstring& globalConfigFile, const XmlGuiConfig& guiCfg, const std::vector<Zstring>& cfgFilePaths, bool startComparison);

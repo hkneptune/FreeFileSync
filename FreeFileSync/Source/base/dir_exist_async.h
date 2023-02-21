@@ -128,7 +128,7 @@ FolderStatus getFolderStatusParallel(const std::set<AbstractPath>& folderPaths,
             if (protPromptsPending)
                 protPromptsPending->access([&](RingBuffer<AsyncPrompt>& promptsPending)
             {
-                //do work while holding Protected<> lock!? device authentication threads blocking doesn't matter because prompts are serialized to GUI anyway
+                //call back while holding Protected<> lock!? device authentication threads blocking doesn't matter because prompts are serialized to GUI anyway
                 if (!promptsPending.empty())
                 {
                     assert(requestPassword); //... in this context

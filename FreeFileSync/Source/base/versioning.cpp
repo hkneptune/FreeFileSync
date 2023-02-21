@@ -458,9 +458,8 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
     };
 
     const std::map<DirectoryKey, DirectoryValue> folderBuf = parallelDeviceTraversal(foldersToRead,
-    [&](const PhaseCallback::ErrorInfo& errorInfo) { return callback.reportError(errorInfo); }, //throw X
-    onStatusUpdate, //throw X
-    UI_UPDATE_INTERVAL / 2); //every ~50 ms
+    [&](const PhaseCallback::ErrorInfo& errorInfo) { return callback.reportError(errorInfo); } /*throw X*/,
+    onStatusUpdate /*throw X*/, UI_UPDATE_INTERVAL / 2); //every ~50 ms
 
     //--------- group versions per (original) relative path ---------
     std::map<AbstractPath, VersionInfoMap> versionDetails; //versioningFolderPath => <version details>

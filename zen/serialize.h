@@ -256,7 +256,7 @@ BinContainer unbufferedLoad(Function tryRead /*(void* buffer, size_t bytesToRead
 {
     static_assert(sizeof(typename BinContainer::value_type) == 1); //expect: bytes
     if (blockSize == 0)
-        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+        throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
 
     BinContainer buf;
     for (;;)
@@ -285,7 +285,7 @@ void unbufferedSave(const BinContainer& cont,
 {
     static_assert(sizeof(typename BinContainer::value_type) == 1); //expect: bytes
     if (blockSize == 0)
-        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+        throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
 
     const size_t bufPosEnd = cont.size();
     size_t bufPos = 0;
@@ -311,7 +311,7 @@ void unbufferedStreamCopy(Function1 tryRead /*(void* buffer, size_t bytesToRead)
     blockSizeOut = std::bit_ceil(blockSizeOut);
 #endif
     if (blockSizeIn == 0 || blockSizeOut == 0)
-        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+        throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
 
     const size_t bufCapacity = blockSizeOut - 1 + blockSizeIn;
     const size_t alignment = ::sysconf(_SC_PAGESIZE); //-1 on error => posix_memalign() will fail

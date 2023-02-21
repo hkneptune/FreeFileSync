@@ -157,11 +157,15 @@ int64_t zen::getFreeDiskSpace(const Zstring& folderPath) //throw FileError
 
 uint64_t zen::getFileSize(const Zstring& filePath) //throw FileError
 {
-    struct stat fileInfo = {};
-    if (::stat(filePath.c_str(), &fileInfo) != 0)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(filePath)), "stat");
+    try
+    {
+        struct stat fileInfo = {};
+        if (::stat(filePath.c_str(), &fileInfo) != 0)
+            THROW_LAST_SYS_ERROR("stat");
 
-    return fileInfo.st_size;
+        return fileInfo.st_size;
+    }
+    catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(filePath)), e.toString()); }
 }
 
 
@@ -169,8 +173,8 @@ uint64_t zen::getFileSize(const Zstring& filePath) //throw FileError
 
 Zstring zen::getTempFolderPath() //throw FileError
 {
-    if (const char* tempPath = ::getenv("TMPDIR")) //no extended error reporting
-        return tempPath;
+    if (const std::optional<Zstring> tempDirPath = getEnvironmentVar("TMPDIR"))
+        return *tempDirPath;
     //TMPDIR not set on CentOS 7, WTF!
     return P_tmpdir; //usually resolves to "/tmp"
 }
@@ -268,20 +272,7 @@ namespace
 //wrapper for file system rename function:
 void moveAndRenameFileSub(const Zstring& pathFrom, const Zstring& pathTo, bool replaceExisting) //throw FileError, ErrorMoveUnsupported, ErrorTargetExisting
 {
-    auto throwException = [&](int ec)
-    {
-        const std::wstring errorMsg = replaceCpy(replaceCpy(_("Cannot move file %x to %y."), L"%x", L'\n' + fmtPath(pathFrom)), L"%y", L'\n' + fmtPath(pathTo));
-        const std::wstring errorDescr = formatSystemError("rename", ec);
-
-        if (ec == EXDEV)
-            throw ErrorMoveUnsupported(errorMsg, errorDescr);
-
-        assert(!replaceExisting || ec != EEXIST);
-        if (!replaceExisting && ec == EEXIST)
-            throw ErrorTargetExisting(errorMsg, errorDescr);
-
-        throw FileError(errorMsg, errorDescr);
-    };
+    auto getErrorMsg = [&] { return replaceCpy(replaceCpy(_("Cannot move file %x to %y."), L"%x", L'\n' + fmtPath(pathFrom)), L"%y", L'\n' + fmtPath(pathTo)); };
 
     //rename() will never fail with EEXIST, but always (atomically) overwrite!
     //=> equivalent to SetFileInformationByHandle() + FILE_RENAME_INFO::ReplaceIfExists or ::MoveFileEx() + MOVEFILE_REPLACE_EXISTING
@@ -291,22 +282,31 @@ void moveAndRenameFileSub(const Zstring& pathFrom, const Zstring& pathTo, bool r
     {
         struct stat sourceInfo = {};
         if (::lstat(pathFrom.c_str(), &sourceInfo) != 0)
-            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(pathFrom)), "stat");
+            throw FileError(getErrorMsg(), formatSystemError("lstat(source)", errno));
 
         struct stat targetInfo = {};
-        if (::lstat(pathTo.c_str(), &targetInfo) == 0)
+        if (::lstat(pathTo.c_str(), &targetInfo) != 0)
+        {
+            if (errno != ENOENT)
+                throw FileError(getErrorMsg(), formatSystemError("lstat(target)", errno));
+        }
+        else
         {
             if (sourceInfo.st_dev != targetInfo.st_dev ||
                 sourceInfo.st_ino != targetInfo.st_ino)
-                throwException(EEXIST); //that's what we're really here for
+                throw ErrorTargetExisting(getErrorMsg(), replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(getItemName(pathTo))));
             //else: continue with a rename in case
             //caveat: if we have a hardlink referenced by two different paths, the source one will be unlinked => fine, but not exactly a "rename"...
         }
-        //else: not existing or access error (hopefully ::rename will also fail!)
     }
 
     if (::rename(pathFrom.c_str(), pathTo.c_str()) != 0)
-        throwException(errno);
+    {
+        if (errno == EXDEV)
+            throw ErrorMoveUnsupported(getErrorMsg(), formatSystemError("rename", errno));
+
+        throw FileError(getErrorMsg(), formatSystemError("rename", errno));
+    }
 }
 
 
@@ -661,7 +661,7 @@ FileCopyResult zen::copyNewFile(const Zstring& sourceFile, const Zstring& target
     //close output file handle before setting file time; also good place to catch errors when closing stream!
     fileOut.close(); //throw FileError
     //==========================================================================================================
-    //take over fileOut ownership => from this point on, WE are responsible for calling removeFilePlain() on failure!!
+    //take over fileOut ownership => from this point on, WE are responsible for calling removeFilePlain() on error!!
     // not needed *currently*! see below: ZEN_ON_SCOPE_FAIL(try { removeFilePlain(targetFile); } catch (FileError&) {});
     //===========================================================================================================
     std::optional<FileError> errorModTime;

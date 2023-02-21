@@ -1,9 +1,8 @@
 /*  CSS format as required by Debian (GTK 3.14.5)
+	pkg-config --modversion gtk+-3.0
 	
-	https://developer.gnome.org/gtk3/stable/chap-css-properties.html
-	https://developer.gnome.org/gtk3/stable/gtk-migrating-GtkStyleContext-css.html
-	pkg-config --modversion gtk+-3.0                                                   */
-
+	https://docs.gtk.org/gtk3/css-overview.html
+	https://docs.gtk.org/gtk3/css-properties.html               */
 *
 {
 	/* see wx+/grid.cpp: spacing wouldn't hurt, but let's be consistent */
@@ -12,7 +11,33 @@
 
 GtkButton
 {
-	padding: 2px; /*remove excessive inner border from bitmap buttons*/
+	padding: 4px 5px; /*remove excessive inner border*/
 	/*	min-width:  0;  => Debian: Error code 3: Gtk3Styles.css:13:10'min-width' is not a valid property name [gtk_css_provider_load_from_path]
 		min-height: 0;      */
+}
+
+GtkPaned 
+{
+	border: 10px solid #d0d0d0; /*hack wxAUI panel splitter: not sure why "color" and "background-color" are not working*/
+}
+
+GtkEntry
+{
+	padding: 2px 5px; /*fix excessive padding for text input fields*/
+}
+
+GtkComboBox GtkEntry
+{
+	padding: 4px 5px;
+}
+
+GtkSpinButton /*GtkEntry*/
+{
+	padding: 4px 5px;
+}
+
+.tooltip /* why not GtkTooltip!? */
+{
+	color: white;
+	background-color: #343434; /*fix "Adwaita" theme glitch (Debian): background is *light grey*, while text color is white!*/
 }

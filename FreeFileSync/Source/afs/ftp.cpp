@@ -35,7 +35,7 @@ const size_t FTP_BLOCK_SIZE_UPLOAD   = 64 * 1024; //libcurl requests blocks of 6
 const size_t FTP_STREAM_BUFFER_SIZE = 1024 * 1024; //unit: [byte]
 //stream buffer should be big enough to facilitate prefetching during alternating read/write operations => e.g. see serialize.h::unbufferedStreamCopy()
 
-const Zchar ftpPrefix[] = Zstr("ftp:");
+const ZstringView ftpPrefix = Zstr("ftp:");
 
 
 enum class ServerEncoding
@@ -2038,7 +2038,7 @@ struct OutputStreamFtp : public AFS::OutputStreamImpl
     AFS::FinalizeResult finalize(const IoCallback& notifyUnbufferedIO /*throw X*/) override //throw FileError, X
     {
         if (!asyncStreamOut_)
-            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+            throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
 
         asyncStreamOut_->closeStream();
 
@@ -2050,7 +2050,7 @@ struct OutputStreamFtp : public AFS::OutputStreamImpl
         futUploadDone_.get(); //throw FileError
 
         //asyncStreamOut_->checkReadErrors(); //throw FileError -> not needed after *successful* upload
-        asyncStreamOut_.reset(); //do NOT reset on failure, so that ~OutputStreamFtp() will request worker thread to stop
+        asyncStreamOut_.reset(); //do NOT reset on error, so that ~OutputStreamFtp() will request worker thread to stop
         //--------------------------------------------------------------------
 
         AFS::FinalizeResult result;
@@ -2080,7 +2080,7 @@ private:
         if (modTime_)
             try
             {
-                const std::string isoTime = utfTo<std::string>(formatTime(Zstr("%Y%m%d%H%M%S"), getUtcTime(*modTime_))); //returns empty string on failure
+                const std::string isoTime = utfTo<std::string>(formatTime(Zstr("%Y%m%d%H%M%S"), getUtcTime(*modTime_))); //returns empty string on error
                 if (isoTime.empty())
                     throw SysError(L"Invalid modification time (time_t: " + numberTo<std::wstring>(*modTime_) + L')');
 
@@ -2449,7 +2449,7 @@ private:
                 //caveat: connection phase only, so disable CURLOPT_SERVER_RESPONSE_TIMEOUT, or next access may fail with CURLE_OPERATION_TIMEDOUT!
             }); //throw SysError, SysErrorPassword, SysErrorFtpProtocol
         };
-         
+
         try
         {
             const std::shared_ptr<FtpSessionManager> mgr = globalFtpSessionManager.get();
@@ -2465,16 +2465,17 @@ private:
                     connectServer(); //throw SysError, SysErrorPassword
                     return; //got new FtpSession (connected in constructor) or already connected session from cache
                 }
-                catch (SysErrorPassword&) {}
-
-                if (!requestPassword)
-                    throw SysError(_("Password prompt not permitted by current settings."));
+                catch (const SysErrorPassword& e)
+                {
+                    if (!requestPassword)
+                        throw SysError(e.toString() + L'\n' + _("Password prompt not permitted by current settings."));
+                }
 
                 std::wstring lastErrorMsg;
                 for (;;)
                 {
                     //2. request (new) password
-                    std::wstring msg = replaceCpy(_("Please enter your password to connect to %x"), L"%x", fmtPath(getDisplayPath(AfsPath())));
+                    std::wstring msg = replaceCpy(_("Please enter your password to connect to %x."), L"%x", fmtPath(getDisplayPath(AfsPath())));
                     if (lastErrorMsg.empty())
                         msg += L"\n" + _("The password will only be remembered until FreeFileSync is closed.");
 
@@ -2650,16 +2651,17 @@ AbstractPath fff::createItemPathFtp(const Zstring& itemPathPhrase) //noexcept
     const ZstringView port =          afterLast(serverPort, Zstr(':'), IfNotFoundReturn::none);
     login.portCfg = stringTo<int>(port); //0 if empty
 
-    split(options, Zstr('|'), [&](const ZstringView optPhrase)
+    split(options, Zstr('|'), [&](ZstringView optPhrase)
     {
+        optPhrase = trimCpy(optPhrase);
         if (!optPhrase.empty())
         {
             if (startsWith(optPhrase, Zstr("timeout=")))
-                login.timeoutSec = stringTo<int>(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
+                login.timeoutSec = stringTo<int>(afterFirst(optPhrase, Zstr('='), IfNotFoundReturn::none));
             else if (optPhrase == Zstr("ssl"))
                 login.useTls = true;
             else if (startsWith(optPhrase, Zstr("pass64=")))
-                login.password = decodePasswordBase64(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
+                login.password = decodePasswordBase64(afterFirst(optPhrase, Zstr('='), IfNotFoundReturn::none));
             else if (optPhrase == Zstr("pwprompt"))
                 login.password = std::nullopt;
             else

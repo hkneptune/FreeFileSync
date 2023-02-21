@@ -19,7 +19,7 @@ struct PathComponents
     Zstring rootPath; //itemPath = rootPath + (FILE_NAME_SEPARATOR?) + relPath
     Zstring relPath;  //
 };
-std::optional<PathComponents> parsePathComponents(const Zstring& itemPath); //no value on failure
+std::optional<PathComponents> parsePathComponents(const Zstring& itemPath); //no value on error
 
 std::optional<Zstring> getParentFolderPath(const Zstring& itemPath);
 inline Zstring getItemName(const Zstring& itemPath) { return afterLast(itemPath, FILE_NAME_SEPARATOR, IfNotFoundReturn::all); }
@@ -43,6 +43,8 @@ inline bool equalNativePath(const Zstring& lhs, const Zstring& rhs) { return com
 
 struct LessNativePath { bool operator()(const Zstring& lhs, const Zstring& rhs) const { return compareNativePath(lhs, rhs) < 0; } };
 //------------------------------------------------------------------------------------------
+
+std::optional<Zstring> getEnvironmentVar(const ZstringView name);
 
 
 }

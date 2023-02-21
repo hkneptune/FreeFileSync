@@ -71,7 +71,7 @@ void FileBase::close() //throw FileError
             throw SysError(L"Contract error: close() called more than once.");
         if (::close(hFile_) != 0)
             THROW_LAST_SYS_ERROR("close");
-        hFile_ = invalidFileHandle; //do NOT set on failure! => ~FileOutputPlain() still wants to (try to) delete the file!
+        hFile_ = invalidFileHandle; //do NOT set on error! => ~FileOutputPlain() still wants to (try to) delete the file!
     }
     catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getFilePath())), e.toString()); }
 }
@@ -153,7 +153,7 @@ FileInputPlain::FileInputPlain(FileHandle handle, const Zstring& filePath) :
 size_t FileInputPlain::tryRead(void* buffer, size_t bytesToRead) //throw FileError, ErrorFileLocked
 {
     if (bytesToRead == 0) //"read() with a count of 0 returns zero" => indistinguishable from end of file! => check!
-        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+        throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
     assert(bytesToRead % getBlockSize() == 0);
     try
     {
@@ -263,7 +263,7 @@ void FileOutputPlain::reserveSpace(uint64_t expectedSize) //throw FileError
 size_t FileOutputPlain::tryWrite(const void* buffer, size_t bytesToWrite) //throw FileError
 {
     if (bytesToWrite == 0)
-        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+        throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
     assert(bytesToWrite % getBlockSize() == 0 || bytesToWrite < getBlockSize());
     try
     {
@@ -306,7 +306,7 @@ std::string zen::getFileContent(const Zstring& filePath, const IoCallback& notif
 }
 
 
-void zen::setFileContent(const Zstring& filePath, const std::string& byteStream, const IoCallback& notifyUnbufferedIO /*throw X*/) //throw FileError, X
+void zen::setFileContent(const Zstring& filePath, const std::string_view byteStream, const IoCallback& notifyUnbufferedIO /*throw X*/) //throw FileError, X
 {
     const Zstring tmpFilePath = getPathWithTempName(filePath);
 

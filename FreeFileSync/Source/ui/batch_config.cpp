@@ -7,7 +7,7 @@
 #include "batch_config.h"
 #include <wx/wupdlock.h>
 //#include <wx+/std_button_layout.h>
-#include <wx+/font_size.h>
+#include <wx+/window_layout.h>
 #include <wx+/image_resources.h>
 #include <wx+/image_tools.h>
 #include <wx+/choice_enum.h>
@@ -82,7 +82,10 @@ BatchDialog::BatchDialog(wxWindow* parent, BatchDialogConfig& dlgCfg) :
     Bind(wxEVT_CHAR_HOOK, [this](wxKeyEvent& event) { onLocalKeyEvent(event); }); //enable dialog-specific key events
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
-    //=> works like a charm for GTK2 with window resizing problems and title bar corruption; e.g. Debian!!!
+#ifdef __WXGTK3__
+    Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
+    Hide(); //avoid old position flash when Center() moves window (asynchronously?)
+#endif
     Center(); //needs to be re-applied after a dialog size change!
 
     m_buttonSaveAs->SetFocus();

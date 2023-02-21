@@ -663,7 +663,20 @@ void Zbase<Char, SP>::pop_back()
 template <class Char, template <class> class SP>
 struct std::hash<zen::Zbase<Char, SP>>
 {
-    size_t operator()(const zen::Zbase<Char, SP>& str) const { return zen::hashString<size_t>(str); }
+    using is_transparent = int; //allow heterogenous lookup!
+
+    template <class String>
+    size_t operator()(const String& str) const { return zen::hashString<size_t>(str); }
+};
+
+
+template <class Char, template <class> class SP>
+struct std::equal_to<zen::Zbase<Char, SP>>
+{
+    using is_transparent = int; //enable heterogenous lookup!
+
+    template <class String1, class String2>
+    bool operator()(const String1& lhs, const String2& rhs) const { return zen::equalString(lhs, rhs); }
 };
 
 #endif //STRING_BASE_H_083217454562342526

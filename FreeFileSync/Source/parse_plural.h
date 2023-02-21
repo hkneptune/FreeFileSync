@@ -27,7 +27,7 @@ class ParsingError {};
 class PluralForm
 {
 public:
-    PluralForm(const std::string& stream); //throw ParsingError
+    explicit PluralForm(const std::string& stream); //throw ParsingError
     size_t getForm(int64_t n) const { n_ = std::abs(n) ; return static_cast<size_t>(expr_->eval()); }
 
 private:

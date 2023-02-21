@@ -20,8 +20,6 @@ namespace
 {
 inline
 wxString getSeparationLine() { return std::wstring(50, EM_DASH); } //no space between dashes!
-
-wxDEFINE_EVENT(EVENT_VALIDATE_USER_SELECTION, wxCommandEvent);
 }
 
 
@@ -45,8 +43,6 @@ CommandBox::CommandBox(wxWindow* parent,
     Bind(wxEVT_LEFT_DOWN,                 [this](wxMouseEvent&   event) { onUpdateList(event); });
     Bind(wxEVT_COMMAND_COMBOBOX_SELECTED, [this](wxCommandEvent& event) { onSelection (event); });
     Bind(wxEVT_MOUSEWHEEL,                []    (wxMouseEvent&   event) {}); //swallow! this gives confusing UI feedback anyway
-
-    Bind(EVENT_VALIDATE_USER_SELECTION, [this](wxCommandEvent& event) { onValidateSelection(event); });
 }
 
 
@@ -129,13 +125,13 @@ void CommandBox::setValueAndUpdateList(const wxString& value)
 void CommandBox::onSelection(wxCommandEvent& event)
 {
     //we cannot replace built-in commands at this position in call stack, so defer to a later time!
-    GetEventHandler()->AddPendingEvent(wxCommandEvent(EVENT_VALIDATE_USER_SELECTION));
+    CallAfter([&] { onValidateSelection(); });
 
     event.Skip();
 }
 
 
-void CommandBox::onValidateSelection(wxCommandEvent& event)
+void CommandBox::onValidateSelection()
 {
     const wxString value = GetValue();
 

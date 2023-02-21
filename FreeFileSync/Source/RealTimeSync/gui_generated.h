@@ -22,9 +22,9 @@ namespace zen { class BitmapTextButton; }
 #include <wx/colour.h>
 #include <wx/settings.h>
 #include <wx/stattext.h>
-#include <wx/sizer.h>
 #include <wx/statbmp.h>
 #include <wx/hyperlink.h>
+#include <wx/sizer.h>
 #include <wx/statline.h>
 #include <wx/bmpbuttn.h>
 #include <wx/button.h>
@@ -52,14 +52,6 @@ protected:
     wxMenu* m_menuHelp;
     wxMenuItem* m_menuItemAbout;
     wxBoxSizer* bSizerMain;
-    wxStaticText* m_staticText9;
-    wxFlexGridSizer* ffgSizer111;
-    wxStaticText* m_staticText16;
-    wxStaticText* m_staticText3;
-    wxStaticText* m_staticText17;
-    wxStaticText* m_staticText4;
-    wxStaticText* m_staticText18;
-    wxStaticText* m_staticText5;
     wxStaticText* m_staticText811;
     wxStaticText* m_staticText10;
     wxStaticBitmap* m_bitmapBatch;
@@ -70,7 +62,6 @@ protected:
     wxStaticBitmap* m_bitmapFolders;
     wxStaticText* m_staticText7;
     wxPanel* m_panelMainFolder;
-    wxStaticText* m_staticTextFinalPath;
     wxBitmapButton* m_bpButtonAddFolder;
     wxBitmapButton* m_bpButtonRemoveTopFolder;
     wxTextCtrl* m_txtCtrlDirectoryMain;
@@ -78,12 +69,12 @@ protected:
     wxScrolledWindow* m_scrolledWinFolders;
     wxBoxSizer* bSizerFolders;
     wxStaticLine* m_staticline212;
-    wxStaticText* m_staticText8;
-    wxSpinCtrl* m_spinCtrlDelay;
-    wxStaticLine* m_staticline211;
     wxStaticBitmap* m_bitmapConsole;
     wxStaticText* m_staticText6;
     wxTextCtrl* m_textCtrlCommand;
+    wxStaticLine* m_staticline211;
+    wxStaticText* m_staticText8;
+    wxSpinCtrl* m_spinCtrlDelay;
     wxStaticLine* m_staticline5;
     zen::BitmapTextButton* m_buttonStart;
 

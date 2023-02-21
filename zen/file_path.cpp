@@ -36,13 +36,13 @@ std::optional<PathComponents> zen::parsePathComponents(const Zstring& itemPath)
         pc = doParse(3 /*sepCountVolumeRoot*/, false /*rootWithSep*/);
 
     if (!pc && startsWith(itemPath, "/media/")) //Ubuntu: e.g. /media/zenju/DEVICE_NAME
-        if (const char* username = ::getenv("USER")) //no ownership transfer + no extended error reporting
-            if (startsWith(itemPath, std::string("/media/") + username + "/"))
+        if (const std::optional<Zstring> username = getEnvironmentVar("USER"))
+            if (startsWith(itemPath, std::string("/media/") + *username + "/"))
                 pc = doParse(4 /*sepCountVolumeRoot*/, false /*rootWithSep*/);
 
     if (!pc && startsWith(itemPath, "/run/media/")) //CentOS, Suse: e.g. /run/media/zenju/DEVICE_NAME
-        if (const char* username = ::getenv("USER"))
-            if (startsWith(itemPath, std::string("/run/media/") + username + "/"))
+        if (const std::optional<Zstring> username = getEnvironmentVar("USER"))
+            if (startsWith(itemPath, std::string("/run/media/") + *username + "/"))
                 pc = doParse(5 /*sepCountVolumeRoot*/, false /*rootWithSep*/);
 
     if (!pc && startsWith(itemPath, "/run/user/")) //Ubuntu, e.g.: /run/user/1000/gvfs/smb-share:server=192.168.62.145,share=folder
@@ -151,6 +151,76 @@ std::weak_ordering zen::compareNativePath(const Zstring& lhs, const Zstring& rhs
 
     return lhs <=> rhs;
 
+}
+
+
+namespace
+{
+std::unordered_map<Zstring, Zstring> getAllEnvVars()
+{
+    assert(runningOnMainThread());
+
+    std::unordered_map<Zstring, Zstring> envVars;
+    if (char** line = environ)
+        for (; *line; ++line)
+        {
+            const std::string_view l(*line);
+            envVars.emplace(beforeFirst(l, '=', IfNotFoundReturn::all),
+                            afterFirst(l, '=', IfNotFoundReturn::none));
+        }
+    return envVars;
+}
+
+constinit Global<std::unordered_map<Zstring, Zstring>> globalEnvVars;
+GLOBAL_RUN_ONCE(
+    //*INDENT-OFF*
+    //mitigate static initialization order fiasco: (whatever comes first)
+    if (!globalEnvVars.get())
+        globalEnvVars.set(std::make_unique<std::unordered_map<Zstring, Zstring>>(getAllEnvVars()))
+    //*INDENT-ON*
+);
+}
+
+
+std::optional<Zstring> zen::getEnvironmentVar(const ZstringView name)
+{
+    /*  const char* buffer = ::getenv(name); => NO! *not* thread-safe: returns pointer to internal memory!
+                                                might change after setenv(), allegedly possible even after another getenv()!
+
+        getenv_s() to the rescue!? not implemented on GCC, apparently *still* not threadsafe!!!
+
+        => *eff* this: make a global copy during start up! */
+    std::shared_ptr<std::unordered_map<Zstring, Zstring>> envVars = globalEnvVars.get();
+    if (!envVars) //access during static init or shutdown?
+    {
+        if (globalEnvVars.wasDestroyed())
+        {
+            assert(false);
+            return {}; //SOL!
+        }
+        //mitigate static initialization order fiasco: (whatever comes first)
+        globalEnvVars.set(std::make_unique<std::unordered_map<Zstring, Zstring>>(getAllEnvVars()));
+        envVars = globalEnvVars.get();
+    }
+
+    auto it = envVars->find(name);
+    if (it == envVars->end())
+        return {};
+
+    Zstring value = it->second;
+
+    //some postprocessing (good idea!? Is this even needed!?
+    warn_static("let's find out!")
+#if 0
+    trim(value); //remove leading, trailing blanks
+
+    //remove leading, trailing double-quotes
+    if (startsWith(value, Zstr('"')) &&
+        endsWith  (value, Zstr('"')) &&
+        value.length() >= 2)
+        value = Zstring(value.c_str() + 1, value.length() - 2);
+#endif
+    return value;
 }
 
 

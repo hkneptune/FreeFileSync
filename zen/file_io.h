@@ -175,7 +175,7 @@ Zstring getPathWithTempName(const Zstring& filePath) //generate (hopefully) uniq
 [[nodiscard]] std::string getFileContent(const Zstring& filePath, const IoCallback& notifyUnbufferedIO /*throw X*/); //throw FileError, X
 
 //overwrites if existing + transactional! :)
-void setFileContent(const Zstring& filePath, const std::string& bytes, const IoCallback& notifyUnbufferedIO /*throw X*/); //throw FileError, X
+void setFileContent(const Zstring& filePath, const std::string_view bytes, const IoCallback& notifyUnbufferedIO /*throw X*/); //throw FileError, X
 }
 
 #endif //FILE_IO_H_89578342758342572345

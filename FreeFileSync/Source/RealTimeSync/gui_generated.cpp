@@ -56,49 +56,6 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
     wxBoxSizer* bSizer161;
     bSizer161 = new wxBoxSizer( wxVERTICAL );
 
-    wxBoxSizer* bSizer16;
-    bSizer16 = new wxBoxSizer( wxHORIZONTAL );
-
-    m_staticText9 = new wxStaticText( this, wxID_ANY, _("Usage:"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticText9->Wrap( -1 );
-    m_staticText9->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL, false, wxEmptyString ) );
-
-    bSizer16->Add( m_staticText9, 0, wxALL, 5 );
-
-    ffgSizer111 = new wxFlexGridSizer( 0, 2, 5, 5 );
-    ffgSizer111->SetFlexibleDirection( wxBOTH );
-    ffgSizer111->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
-
-    m_staticText16 = new wxStaticText( this, wxID_ANY, _("1."), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticText16->Wrap( -1 );
-    ffgSizer111->Add( m_staticText16, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
-
-    m_staticText3 = new wxStaticText( this, wxID_ANY, _("Select folders to watch."), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticText3->Wrap( -1 );
-    ffgSizer111->Add( m_staticText3, 0, wxALIGN_CENTER_VERTICAL, 5 );
-
-    m_staticText17 = new wxStaticText( this, wxID_ANY, _("2."), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticText17->Wrap( -1 );
-    ffgSizer111->Add( m_staticText17, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
-
-    m_staticText4 = new wxStaticText( this, wxID_ANY, _("Enter a command line."), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticText4->Wrap( -1 );
-    ffgSizer111->Add( m_staticText4, 0, wxALIGN_CENTER_VERTICAL, 5 );
-
-    m_staticText18 = new wxStaticText( this, wxID_ANY, _("3."), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticText18->Wrap( -1 );
-    ffgSizer111->Add( m_staticText18, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_CENTER_HORIZONTAL, 5 );
-
-    m_staticText5 = new wxStaticText( this, wxID_ANY, _("Press 'Start'."), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticText5->Wrap( -1 );
-    ffgSizer111->Add( m_staticText5, 0, wxALIGN_CENTER_VERTICAL, 5 );
-
-
-    bSizer16->Add( ffgSizer111, 0, wxALL, 5 );
-
-
-    bSizer161->Add( bSizer16, 0, 0, 5 );
-
     wxBoxSizer* bSizer152;
     bSizer152 = new wxBoxSizer( wxHORIZONTAL );
 
@@ -152,7 +109,7 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
     m_bitmapFolders = new wxStaticBitmap( m_panelMain, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
     bSizer142->Add( m_bitmapFolders, 0, wxTOP|wxBOTTOM|wxLEFT, 5 );
 
-    m_staticText7 = new wxStaticText( m_panelMain, wxID_ANY, _("Folders to watch:"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticText7 = new wxStaticText( m_panelMain, wxID_ANY, _("Folders to watch for changes:"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticText7->Wrap( -1 );
     bSizer142->Add( m_staticText7, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5 );
 
@@ -162,53 +119,31 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
     m_panelMainFolder = new wxPanel( m_panelMain, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
     m_panelMainFolder->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
 
-    wxFlexGridSizer* fgSizer1;
-    fgSizer1 = new wxFlexGridSizer( 0, 2, 0, 0 );
-    fgSizer1->AddGrowableCol( 1 );
-    fgSizer1->SetFlexibleDirection( wxBOTH );
-    fgSizer1->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_ALL );
-
-
-    fgSizer1->Add( 0, 0, 1, wxEXPAND, 5 );
-
-    m_staticTextFinalPath = new wxStaticText( m_panelMainFolder, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticTextFinalPath->Wrap( -1 );
-    fgSizer1->Add( m_staticTextFinalPath, 0, wxALIGN_CENTER_VERTICAL|wxALL, 2 );
-
-    wxBoxSizer* bSizer20;
-    bSizer20 = new wxBoxSizer( wxHORIZONTAL );
+    wxBoxSizer* bSizer143;
+    bSizer143 = new wxBoxSizer( wxHORIZONTAL );
 
     m_bpButtonAddFolder = new wxBitmapButton( m_panelMainFolder, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW|0 );
     m_bpButtonAddFolder->SetToolTip( _("Add folder") );
 
-    bSizer20->Add( m_bpButtonAddFolder, 0, wxEXPAND, 5 );
+    bSizer143->Add( m_bpButtonAddFolder, 0, wxEXPAND, 5 );
 
     m_bpButtonRemoveTopFolder = new wxBitmapButton( m_panelMainFolder, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), wxBU_AUTODRAW|0 );
     m_bpButtonRemoveTopFolder->SetToolTip( _("Remove folder") );
 
-    bSizer20->Add( m_bpButtonRemoveTopFolder, 0, wxEXPAND, 5 );
-
-
-    fgSizer1->Add( bSizer20, 0, wxEXPAND, 5 );
-
-    wxBoxSizer* bSizer19;
-    bSizer19 = new wxBoxSizer( wxHORIZONTAL );
+    bSizer143->Add( m_bpButtonRemoveTopFolder, 0, wxEXPAND, 5 );
 
     m_txtCtrlDirectoryMain = new wxTextCtrl( m_panelMainFolder, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize( -1, -1 ), 0 );
-    bSizer19->Add( m_txtCtrlDirectoryMain, 1, wxALIGN_CENTER_VERTICAL, 5 );
+    bSizer143->Add( m_txtCtrlDirectoryMain, 1, wxALIGN_CENTER_VERTICAL, 5 );
 
     m_buttonSelectFolderMain = new wxButton( m_panelMainFolder, wxID_ANY, _("Browse"), wxDefaultPosition, wxDefaultSize, 0 );
     m_buttonSelectFolderMain->SetToolTip( _("Select a folder") );
 
-    bSizer19->Add( m_buttonSelectFolderMain, 0, wxEXPAND, 5 );
+    bSizer143->Add( m_buttonSelectFolderMain, 0, wxEXPAND, 5 );
 
 
-    fgSizer1->Add( bSizer19, 0, wxEXPAND, 5 );
-
-
-    m_panelMainFolder->SetSizer( fgSizer1 );
+    m_panelMainFolder->SetSizer( bSizer143 );
     m_panelMainFolder->Layout();
-    fgSizer1->Fit( m_panelMainFolder );
+    bSizer143->Fit( m_panelMainFolder );
     bSizer151->Add( m_panelMainFolder, 0, wxRIGHT|wxLEFT|wxEXPAND, 5 );
 
     m_scrolledWinFolders = new wxScrolledWindow( m_panelMain, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxHSCROLL|wxVSCROLL );
@@ -224,28 +159,10 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
     bSizer151->Add( m_scrolledWinFolders, 1, wxEXPAND|wxBOTTOM|wxRIGHT|wxLEFT, 5 );
 
 
-    bSizer1->Add( bSizer151, 1, wxALL|wxEXPAND, 5 );
+    bSizer1->Add( bSizer151, 1, wxALL|wxEXPAND, 10 );
 
     m_staticline212 = new wxStaticLine( m_panelMain, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
     bSizer1->Add( m_staticline212, 0, wxEXPAND, 5 );
-
-    wxBoxSizer* bSizer14;
-    bSizer14 = new wxBoxSizer( wxHORIZONTAL );
-
-    m_staticText8 = new wxStaticText( m_panelMain, wxID_ANY, _("Minimum idle time (in seconds):"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticText8->Wrap( -1 );
-    bSizer14->Add( m_staticText8, 0, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxLEFT, 5 );
-
-    m_spinCtrlDelay = new wxSpinCtrl( m_panelMain, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 2000000000, 0 );
-    m_spinCtrlDelay->SetToolTip( _("Idle time between last detected change and execution of command") );
-
-    bSizer14->Add( m_spinCtrlDelay, 0, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL|wxALL, 5 );
-
-
-    bSizer1->Add( bSizer14, 0, wxALL|wxEXPAND, 5 );
-
-    m_staticline211 = new wxStaticLine( m_panelMain, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
-    bSizer1->Add( m_staticline211, 0, wxEXPAND, 5 );
 
     wxBoxSizer* bSizer141;
     bSizer141 = new wxBoxSizer( wxVERTICAL );
@@ -256,7 +173,7 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
     m_bitmapConsole = new wxStaticBitmap( m_panelMain, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
     bSizer13->Add( m_bitmapConsole, 0, wxTOP|wxBOTTOM|wxLEFT|wxALIGN_CENTER_VERTICAL, 5 );
 
-    m_staticText6 = new wxStaticText( m_panelMain, wxID_ANY, _("Command line:"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticText6 = new wxStaticText( m_panelMain, wxID_ANY, _("Command line to run when changes are detected:"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticText6->Wrap( -1 );
     bSizer13->Add( m_staticText6, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5 );
 
@@ -269,7 +186,25 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
     bSizer141->Add( m_textCtrlCommand, 0, wxEXPAND|wxBOTTOM|wxRIGHT|wxLEFT, 5 );
 
 
-    bSizer1->Add( bSizer141, 0, wxALL|wxEXPAND, 5 );
+    bSizer1->Add( bSizer141, 0, wxALL|wxEXPAND, 10 );
+
+    m_staticline211 = new wxStaticLine( m_panelMain, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
+    bSizer1->Add( m_staticline211, 0, wxEXPAND, 5 );
+
+    wxBoxSizer* bSizer14;
+    bSizer14 = new wxBoxSizer( wxHORIZONTAL );
+
+    m_staticText8 = new wxStaticText( m_panelMain, wxID_ANY, _("Minimum idle time (in seconds) before running command:"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticText8->Wrap( -1 );
+    bSizer14->Add( m_staticText8, 0, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxLEFT, 5 );
+
+    m_spinCtrlDelay = new wxSpinCtrl( m_panelMain, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 2000000000, 0 );
+    m_spinCtrlDelay->SetToolTip( _("Idle time between last detected change and execution of command") );
+
+    bSizer14->Add( m_spinCtrlDelay, 0, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL|wxALL, 5 );
+
+
+    bSizer1->Add( bSizer14, 0, wxALL|wxEXPAND, 10 );
 
 
     m_panelMain->SetSizer( bSizer1 );

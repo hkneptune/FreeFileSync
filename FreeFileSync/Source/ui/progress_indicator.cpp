@@ -15,7 +15,7 @@
 #include <wx+/image_tools.h>
 #include <wx+/graph.h>
 #include <wx+/no_flicker.h>
-#include <wx+/font_size.h>
+#include <wx+/window_layout.h>
 #include <zen/file_access.h>
 #include <zen/thread.h>
 #include <zen/perf.h>
@@ -218,7 +218,10 @@ CompareProgressPanel::Impl::Impl(wxFrame& parentWindow) :
     m_panelTimeStats->Layout();
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
-    //=> works like a charm for GTK2 with window resizing problems and title bar corruption; e.g. Debian!!!
+#ifdef __WXGTK3__
+    Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
+    Hide(); //avoid old position flash when Center() moves window (asynchronously?)
+#endif
 }
 
 
@@ -362,9 +365,7 @@ void CompareProgressPanel::Impl::updateProgressGui()
     //current time elapsed
     const int64_t timeElapSec = std::chrono::duration_cast<std::chrono::seconds>(timeElapsed).count();
 
-    setText(*m_staticTextTimeElapsed, timeElapSec < 3600 ?
-            wxTimeSpan::Seconds(timeElapSec).Format(   L"%M:%S") :
-            wxTimeSpan::Seconds(timeElapSec).Format(L"%H:%M:%S"), &layoutChanged);
+    setText(*m_staticTextTimeElapsed, utfTo<wxString>(formatTimeSpan(timeElapSec, true /*hourOptional*/)), &layoutChanged);
 
     if (haveTotalStats) //remaining time and speed: only visible during binary comparison
         if (numeric::dist(timeLastSpeedEstimate_, timeElapsed) >= SPEED_ESTIMATE_UPDATE_INTERVAL)
@@ -618,12 +619,10 @@ struct LabelFormatterTimeElapsed : public LabelFormatter
     wxString formatText(double timeElapsed, double optimalBlockSize) const override
     {
         const int64_t timeElapsedSec = std::round(timeElapsed);
+        if (timeElapsedSec < 60)
+            return _P("1 sec", "%x sec", timeElapsedSec);
 
-        return timeElapsedSec < 60 ?
-               wxString(_P("1 sec", "%x sec", timeElapsedSec)) :
-               timeElapsedSec < 3600 ?
-               wxTimeSpan::Seconds(timeElapsedSec).Format(   L"%M:%S") :
-               wxTimeSpan::Seconds(timeElapsedSec).Format(L"%H:%M:%S");
+        return utfTo<wxString>(formatTimeSpan(timeElapsedSec, true /*hourOptional*/));
     }
 };
 }
@@ -638,7 +637,7 @@ class SyncProgressDialogImpl : public TopLevelDialog, public SyncProgressDialog
 {
 public:
     SyncProgressDialogImpl(long style, //wxFrame/wxDialog style
-                           wxSize dlgSize, bool dlgMaximize,
+                           const std::optional<wxSize>& dlgSize, bool dlgMaximize,
                            const std::function<void()>& userRequestAbort,
                            const Statistics& syncStat,
                            wxFrame* parentFrame,
@@ -738,14 +737,12 @@ private:
 
     bool ignoreErrors_ = false;
     EnumDescrList<PostSyncAction2> enumPostSyncAction_;
-
-    wxSize dlgSizeBuf_;
 };
 
 
 template <class TopLevelDialog>
 SyncProgressDialogImpl<TopLevelDialog>::SyncProgressDialogImpl(long style, //wxFrame/wxDialog style
-                                                               wxSize dlgSize, bool dlgMaximize,
+                                                               const std::optional<wxSize>& dlgSize, bool dlgMaximize,
                                                                const std::function<void()>& userRequestAbort,
                                                                const Statistics& syncStat,
                                                                wxFrame* parentFrame,
@@ -773,8 +770,7 @@ SyncProgressDialogImpl<TopLevelDialog>::SyncProgressDialogImpl(long style, //wxF
 ()),
 parentFrame_(parentFrame),
 userRequestAbort_(userRequestAbort),
-syncStat_(&syncStat),
-dlgSizeBuf_(dlgSize)
+syncStat_(&syncStat)
 {
     static_assert(std::is_same_v<TopLevelDialog, wxFrame > ||
                   std::is_same_v<TopLevelDialog, wxDialog>);
@@ -903,10 +899,14 @@ dlgSizeBuf_(dlgSize)
     //make sure that standard height matches ProcessPhase::comparingContent statistics layout (== largest)
 
     this->GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
+#ifdef __WXGTK3__
+    this->Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
+    this->Hide(); //avoid old position flash when Center() moves window (asynchronously?)
+#endif
     pnl_.Layout();
     this->Center(); //call *after* dialog layout update and *before* wxWindow::Show()!
 
-    setInitialWindowSize(*this, dlgSizeBuf_, std::nullopt/*pos*/, dlgMaximize, this->GetSize() /*defaultSize*/);
+    WindowLayout::setInitial(*this, {dlgSize, std::nullopt/*pos*/, dlgMaximize}, this->GetSize() /*defaultSize*/);
 
     if (showProgress)
     {
@@ -1141,9 +1141,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
     //current time elapsed
     const int64_t timeElapSec = std::chrono::duration_cast<std::chrono::seconds>(timeElapsed).count();
 
-    setText(*pnl_.m_staticTextTimeElapsed, timeElapSec < 3600 ?
-            wxTimeSpan::Seconds(timeElapSec).Format(   L"%M:%S") :
-            wxTimeSpan::Seconds(timeElapSec).Format(L"%H:%M:%S"), &layoutChanged);
+    setText(*pnl_.m_staticTextTimeElapsed, utfTo<wxString>(formatTimeSpan(timeElapSec, true /*hourOptional*/)), &layoutChanged);
 
     //remaining time and speed
     if (numeric::dist(timeLastSpeedEstimate_, timeElapsed) >= SPEED_ESTIMATE_UPDATE_INTERVAL)
@@ -1340,8 +1338,9 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult syncResult, 
     pnl_.m_staticTextTimeRemaining->Hide();
 
     const int64_t totalTimeSec = std::chrono::duration_cast<std::chrono::seconds>(stopWatch_.elapsed()).count();
-    setText(*pnl_.m_staticTextTimeElapsed, wxTimeSpan::Seconds(totalTimeSec).Format(L"%H:%M:%S"));
-    //totalTimeSec < 3600 ? wxTimeSpan::Seconds(totalTimeSec).Format(L"%M:%S") -> let's use full precision for max. clarity: https://freefilesync.org/forum/viewtopic.php?t=6308
+    pnl_.m_staticTextTimeElapsed->SetLabelText(utfTo<wxString>(formatTimeSpan(totalTimeSec)));
+    //hourOptional? -> let's use full precision for max. clarity: https://freefilesync.org/forum/viewtopic.php?t=6308
+
 
     resumeFromSystray(false /*userRequested*/); //if in tray mode...
 
@@ -1519,13 +1518,11 @@ auto SyncProgressDialogImpl<TopLevelDialog>::destroy(bool autoClose, bool restor
     //------------------------------------------------------------------------
     const bool autoCloseDialog = getOptionAutoCloseDialog();
 
-    const auto& [size, pos, isMaximized] = getWindowSizeBeforeClose(*this);
-    if (size)
-        dlgSizeBuf_ = *size;
+    const auto& [dlgSize, pos, isMaximized] = WindowLayout::getBeforeClose(*this);
 
     this->Destroy(); //wxWidgets macOS: simple "delete"!!!!!!!
 
-    return {autoCloseDialog, dlgSizeBuf_, isMaximized};
+    return {autoCloseDialog, dlgSize, isMaximized};
 }
 
 
@@ -1646,7 +1643,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::resumeFromSystray(bool userRequeste
 
 //########################################################################################
 
-SyncProgressDialog* SyncProgressDialog::create(wxSize dlgSize, bool dlgMaximize,
+SyncProgressDialog* SyncProgressDialog::create(const std::optional<wxSize>& dlgSize, bool dlgMaximize,
                                                const std::function<void()>& userRequestAbort,
                                                const Statistics& syncStat,
                                                wxFrame* parentWindow, //may be nullptr
@@ -1658,21 +1655,15 @@ SyncProgressDialog* SyncProgressDialog::create(wxSize dlgSize, bool dlgMaximize,
                                                size_t autoRetryCount,
                                                PostSyncAction2 postSyncAction)
 {
-    if (parentWindow) //sync from GUI
-    {
-#if 0 //macOS; update 08-2021: Bug seems to be fixed!?
-        //due to usual "wxBugs", wxDialog on OS X does not float on its parent; wxFrame OTOH does => hack! https://groups.google.com/forum/#!topic/wx-users/J5SjjLaBOQE
-        return new SyncProgressDialogImpl<wxFrame>(wxDEFAULT_FRAME_STYLE | wxFRAME_FLOAT_ON_PARENT,
-                                                   dlgSize, dlgMaximize, userRequestAbort, syncStat, parentWindow, showProgress, autoCloseDialog, jobNames, syncStartTime, ignoreErrors, autoRetryCount, postSyncAction);
-#else //GNOME bug: wxDialog seems to ignore wxMAXIMIZE_BOX | wxMINIMIZE_BOX! :( wxFrame OTOH has them, but adds an extra taskbar entry
+    if (parentWindow) //FFS GUI sync
         return new SyncProgressDialogImpl<wxDialog>(wxDEFAULT_DIALOG_STYLE | wxMAXIMIZE_BOX | wxMINIMIZE_BOX | wxRESIZE_BORDER,
-                                                    dlgSize, dlgMaximize, userRequestAbort, syncStat, parentWindow, showProgress, autoCloseDialog, jobNames, syncStartTime, ignoreErrors, autoRetryCount, postSyncAction);
-#endif
-    }
+                                                    dlgSize, dlgMaximize, userRequestAbort, syncStat, parentWindow, showProgress,
+                                                    autoCloseDialog, jobNames, syncStartTime, ignoreErrors, autoRetryCount, postSyncAction);
     else //FFS batch job
     {
         auto dlg = new SyncProgressDialogImpl<wxFrame>(wxDEFAULT_FRAME_STYLE,
-                                                       dlgSize, dlgMaximize, userRequestAbort, syncStat, parentWindow, showProgress, autoCloseDialog, jobNames, syncStartTime, ignoreErrors, autoRetryCount, postSyncAction);
+                                                       dlgSize, dlgMaximize, userRequestAbort, syncStat, parentWindow, showProgress,
+                                                       autoCloseDialog, jobNames, syncStartTime, ignoreErrors, autoRetryCount, postSyncAction);
         dlg->SetIcon(getFfsIcon()); //only top level windows should have an icon
         return dlg;
     }

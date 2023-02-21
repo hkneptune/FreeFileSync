@@ -55,7 +55,7 @@ enum class PostSyncAction2
 
 struct SyncProgressDialog
 {
-    static SyncProgressDialog* create(wxSize dlgSize, bool dlgMaximize,
+    static SyncProgressDialog* create(const std::optional<wxSize>& dlgSize, bool dlgMaximize,
                                       const std::function<void()>& userRequestAbort,
                                       const Statistics& syncStat,
                                       wxFrame* parentWindow, //may be nullptr
@@ -69,7 +69,7 @@ struct SyncProgressDialog
     struct Result
     {
         bool autoCloseDialog;
-        wxSize dlgSize;
+        std::optional<wxSize> dlgSize;
         bool dlgIsMaximized;
     };
     virtual Result destroy(bool autoClose, bool restoreParentFrame, SyncResult syncResult, const zen::SharedRef<const zen::ErrorLog>& log) = 0;

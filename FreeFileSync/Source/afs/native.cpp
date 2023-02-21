@@ -711,7 +711,7 @@ void RecycleSessionNative::moveToRecycleBin(const AbstractPath& itemPath, const 
 {
     const Zstring& itemPathNative = getNativeItemPath(itemPath);
     if (itemPathNative.empty())
-        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+        throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
 
     zen::moveToRecycleBin(itemPathNative); //throw FileError, RecycleBinUnavailable
 }

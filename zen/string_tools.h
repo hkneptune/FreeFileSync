@@ -624,13 +624,13 @@ namespace impl
 template <class Num> inline
 int saferPrintf(char* buffer, size_t bufferSize, const char* format, const Num& number) //there is no such thing as a "safe" printf ;)
 {
-    return std::snprintf(buffer, bufferSize, format, number); //C99: returns number of chars written if successful, < 0 or >= bufferSize on failure
+    return std::snprintf(buffer, bufferSize, format, number); //C99: returns number of chars written if successful, < 0 or >= bufferSize on error
 }
 
 template <class Num> inline
 int saferPrintf(wchar_t* buffer, size_t bufferSize, const wchar_t* format, const Num& number)
 {
-    return std::swprintf(buffer, bufferSize, format, number); //C99: returns number of chars written if successful, < 0 on failure (including buffer too small)
+    return std::swprintf(buffer, bufferSize, format, number); //C99: returns number of chars written if successful, < 0 on error (including buffer too small)
 }
 }
 

@@ -248,11 +248,11 @@ public:
         //https://www.gnu.org/software/gettext/manual/html_node/MO-Files.html
         transMapping[""] = L"Content-Type: text/plain; charset=UTF-8\n";
 
-        const int headerSize = 28;
+        const int headerSize = 7 * sizeof(uint32_t);
         writeNumber<uint32_t>(moBuf_, 0x950412de); //magic number
         writeNumber<uint32_t>(moBuf_, 0); //format version
         writeNumber<uint32_t>(moBuf_, transMapping.size()); //string count
-        writeNumber<uint32_t>(moBuf_, headerSize);                           //string references offset: original
+        writeNumber<uint32_t>(moBuf_, headerSize); //string references offset: original
         writeNumber<uint32_t>(moBuf_, headerSize + (2 * sizeof(uint32_t)) * transMapping.size()); //string references offset: translation
         writeNumber<uint32_t>(moBuf_, 0); //size of hashing table
         writeNumber<uint32_t>(moBuf_, 0); //offset of hashing table

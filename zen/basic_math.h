@@ -29,8 +29,8 @@ template <class N, class D> auto intDivFloor(N numerator, D denominator);
 template <size_t N, class T>
 T power(T value);
 
-double radToDeg(double rad);    //convert unit [rad] into [°]
-double degToRad(double degree); //convert unit [°] into [rad]
+double radToDeg(double rad);    //convert unit [rad] into [Â°]
+double degToRad(double degree); //convert unit [Â°] into [rad]
 
 template <class InputIterator>
 double arithmeticMean(InputIterator first, InputIterator last);
@@ -84,13 +84,13 @@ std::pair<InputIterator, InputIterator> minMaxElement(InputIterator first, Input
 {
     //by factor 1.5 to 3 faster than boost::minmax_element (=two-step algorithm) for built-in types!
 
-    InputIterator lowest  = first;
-    InputIterator largest = first;
+    InputIterator itMin = first;
+    InputIterator itMax = first;
 
     if (first != last)
     {
-        auto minVal = *lowest;  //nice speedup on 64 bit!
-        auto maxVal = *largest; //
+        auto minVal = *itMin; //nice speedup on 64 bit!
+        auto maxVal = *itMax; //
         for (;;)
         {
             ++first;
@@ -100,17 +100,17 @@ std::pair<InputIterator, InputIterator> minMaxElement(InputIterator first, Input
 
             if (compLess(maxVal, val))
             {
-                largest = first;
+                itMax = first;
                 maxVal  = val;
             }
             else if (compLess(val, minVal))
             {
-                lowest = first;
+                itMin = first;
                 minVal = val;
             }
         }
     }
-    return {lowest, largest};
+    return {itMin, itMax};
 }
 
 
@@ -143,7 +143,7 @@ auto roundToGrid(T val, InputIterator first, InputIterator last)
 template <class T> inline
 bool isNull(T value)
 {
-    return abs(value) <= std::numeric_limits<T>::epsilon(); //epsilon is 0 für integral types => less-equal
+    return abs(value) <= std::numeric_limits<T>::epsilon(); //epsilon is 0 fÃ¼r integral types => less-equal
 }
 
 

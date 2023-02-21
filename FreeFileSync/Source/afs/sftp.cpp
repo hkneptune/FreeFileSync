@@ -47,7 +47,7 @@ OpenSSL supports the same ciphers like WinCNG plus the following:
     cast128-cbc
     blowfish-cbc                    */
 
-const Zchar sftpPrefix[] = Zstr("sftp:");
+const ZstringView sftpPrefix = Zstr("sftp:");
 
 constexpr std::chrono::seconds SFTP_SESSION_MAX_IDLE_TIME           (20);
 constexpr std::chrono::seconds SFTP_SESSION_CLEANUP_INTERVAL         (4); //facilitate default of 5-seconds delay for error retry
@@ -1050,8 +1050,8 @@ private:
     struct SshSessionCache
     {
         //invariant: all cached sessions correspond to activeCfg at any time!
-        std::vector<std::unique_ptr<SshSession>>                   idleSshSessions; //extract *temporarily* from this list during use
-        std::map<std::thread::id, std::weak_ptr<SshSessionShared>> sshSessionsWithThreadAffinity; //Win32 thread IDs may be REUSED! still, shouldn't be a problem...
+        std::vector<std::unique_ptr<SshSession>>                             idleSshSessions; //extract *temporarily* from this list during use
+        std::unordered_map<std::thread::id, std::weak_ptr<SshSessionShared>> sshSessionsWithThreadAffinity; //Win32 thread IDs may be REUSED! still, shouldn't be a problem...
 
         std::optional<SshSessionCfg> activeCfg;
 
@@ -1351,7 +1351,7 @@ struct InputStreamSftp : public AFS::InputStream
     {
         //libssh2_sftp_read has same semantics as Posix read:
         if (bytesToRead == 0) //"read() with a count of 0 returns zero" => indistinguishable from end of file! => check!
-            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+            throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
         assert(bytesToRead % getBlockSize() == 0);
 
         ssize_t bytesRead = 0;
@@ -1433,7 +1433,7 @@ struct OutputStreamSftp : public AFS::OutputStreamImpl
     size_t tryWrite(const void* buffer, size_t bytesToWrite, const IoCallback& notifyUnbufferedIO /*throw X*/) override //throw FileError, X; may return short! CONTRACT: bytesToWrite > 0
     {
         if (bytesToWrite == 0)
-            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+            throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
         assert(bytesToWrite % getBlockSize() == 0 || bytesToWrite < getBlockSize());
 
         ssize_t bytesWritten = 0;
@@ -1484,10 +1484,10 @@ private:
     void close() //throw FileError
     {
         if (!fileHandle_)
-            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+            throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
         try
         {
-            ZEN_ON_SCOPE_EXIT(fileHandle_ = nullptr);  //reset on failure, too! there's no point in, calling libssh2_sftp_close() a second time in ~OutputStreamSftp()
+            ZEN_ON_SCOPE_EXIT(fileHandle_ = nullptr);  //reset on error, too! there's no point in, calling libssh2_sftp_close() a second time in ~OutputStreamSftp()
 
             session_->executeBlocking("libssh2_sftp_close", //throw SysError, SysErrorSftpProtocol
             [&](const SshSession::Details& sd) { return ::libssh2_sftp_close(fileHandle_); }); //noexcept!
@@ -1889,17 +1889,18 @@ private:
                     {
                         /*auto session =*/ mgr->getSharedSession(login_); //throw SysError, SysErrorPassword
                         return; //got new SshSession (connected in constructor) or already connected session from cache
-                    } 
-                    catch (SysErrorPassword&) {}
-
-                    if (!requestPassword)
-                        throw SysError(_("Password prompt not permitted by current settings."));
+                    }
+                    catch (const SysErrorPassword& e)
+                    {
+                        if (!requestPassword)
+                            throw SysError(e.toString() + L'\n' + _("Password prompt not permitted by current settings."));
+                    }
 
                     std::wstring lastErrorMsg;
                     for (;;)
                     {
                         //2. request (new) password
-                        std::wstring msg = replaceCpy(_("Please enter your password to connect to %x"), L"%x", fmtPath(getDisplayPath(AfsPath())));
+                        std::wstring msg = replaceCpy(_("Please enter your password to connect to %x."), L"%x", fmtPath(getDisplayPath(AfsPath())));
                         if (lastErrorMsg.empty())
                             msg += L"\n" + _("The password will only be remembered until FreeFileSync is closed.");
 
@@ -2146,23 +2147,24 @@ AbstractPath fff::createItemPathSftp(const Zstring& itemPathPhrase) //noexcept
 
     assert(login.allowZlib == false);
 
-    split(options, Zstr('|'), [&](const ZstringView optPhrase)
+    split(options, Zstr('|'), [&](ZstringView optPhrase)
     {
+        optPhrase = trimCpy(optPhrase);
         if (!optPhrase.empty())
         {
             if (startsWith(optPhrase, Zstr("timeout=")))
-                login.timeoutSec = stringTo<int>(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
+                login.timeoutSec = stringTo<int>(afterFirst(optPhrase, Zstr('='), IfNotFoundReturn::none));
             else if (startsWith(optPhrase, Zstr("chan=")))
-                login.traverserChannelsPerConnection = stringTo<int>(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
+                login.traverserChannelsPerConnection = stringTo<int>(afterFirst(optPhrase, Zstr('='), IfNotFoundReturn::none));
             else if (startsWith(optPhrase, Zstr("keyfile=")))
             {
                 login.authType = SftpAuthType::keyFile;
-                login.privateKeyFilePath = getResolvedFilePath(Zstring(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none)));
+                login.privateKeyFilePath = getResolvedFilePath(Zstring(afterFirst(optPhrase, Zstr('='), IfNotFoundReturn::none)));
             }
             else if (optPhrase == Zstr("agent"))
                 login.authType = SftpAuthType::agent;
             else if (startsWith(optPhrase, Zstr("pass64=")))
-                login.password = decodePasswordBase64(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
+                login.password = decodePasswordBase64(afterFirst(optPhrase, Zstr('='), IfNotFoundReturn::none));
             else if (optPhrase == Zstr("pwprompt"))
                 login.password = std::nullopt;
             else if (optPhrase == Zstr("zlib"))

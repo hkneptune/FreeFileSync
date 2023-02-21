@@ -103,7 +103,7 @@ struct HttpSessionId
     Zstring server;
 };
 
-inline 
+inline
 bool operator==(const HttpSessionId& lhs, const HttpSessionId& rhs) { return equalAsciiNoCase(lhs.server, rhs.server); }
 }
 
@@ -1392,7 +1392,7 @@ std::string /*fileId*/ gdriveCopyFile(const std::string& fileId, const std::stri
     //more Google Drive peculiarities: changing the file name changes modifiedTime!!! => workaround:
 
     //RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
-    const std::string modTimeRfc = utfTo<std::string>(formatTime(Zstr("%Y-%m-%dT%H:%M:%S.000Z"), getUtcTime(newModTime))); //returns empty string on failure
+    const std::string modTimeRfc = utfTo<std::string>(formatTime(Zstr("%Y-%m-%dT%H:%M:%S.000Z"), getUtcTime(newModTime))); //returns empty string on error
     if (modTimeRfc.empty())
         throw SysError(L"Invalid modification time (time_t: " + numberTo<std::wstring>(newModTime) + L')');
 
@@ -1442,7 +1442,7 @@ void gdriveMoveAndRenameItem(const std::string& itemId, const std::string& paren
     //more Google Drive peculiarities: changing the file name changes modifiedTime!!! => workaround:
 
     //RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
-    const std::string modTimeRfc = utfTo<std::string>(formatTime(Zstr("%Y-%m-%dT%H:%M:%S.000Z"), getUtcTime(newModTime))); //returns empty string on failure
+    const std::string modTimeRfc = utfTo<std::string>(formatTime(Zstr("%Y-%m-%dT%H:%M:%S.000Z"), getUtcTime(newModTime))); //returns empty string on error
     if (modTimeRfc.empty())
         throw SysError(L"Invalid modification time (time_t: " + numberTo<std::wstring>(newModTime) + L')');
 
@@ -1478,7 +1478,7 @@ void setModTime(const std::string& itemId, time_t modTime, const GdriveAccess& a
 {
     //https://developers.google.com/drive/api/v3/reference/files/update
     //RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
-    const std::string& modTimeRfc = formatTime<std::string>("%Y-%m-%dT%H:%M:%S.000Z", getUtcTime2(modTime)); //returns empty string on failure
+    const std::string& modTimeRfc = formatTime<std::string>("%Y-%m-%dT%H:%M:%S.000Z", getUtcTime2(modTime)); //returns empty string on error
     if (modTimeRfc.empty())
         throw SysError(L"Invalid modification time (time_t: " + numberTo<std::wstring>(modTime) + L')');
 
@@ -1600,7 +1600,7 @@ std::string /*itemId*/ gdriveUploadSmallFile(const Zstring& fileName, const std:
     postParams.objectVal.emplace("parents", std::vector<JsonValue> {JsonValue(parentId)});
     if (modTime) //convert to RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
     {
-        const std::string& modTimeRfc = utfTo<std::string>(formatTime(Zstr("%Y-%m-%dT%H:%M:%S.000Z"), getUtcTime2(*modTime))); //returns empty string on failure
+        const std::string& modTimeRfc = utfTo<std::string>(formatTime(Zstr("%Y-%m-%dT%H:%M:%S.000Z"), getUtcTime2(*modTime))); //returns empty string on error
         if (modTimeRfc.empty())
             throw SysError(L"Invalid modification time (time_t: " + numberTo<std::wstring>(*modTime) + L')');
 
@@ -1711,7 +1711,7 @@ std::string /*itemId*/ gdriveUploadFile(const Zstring& fileName, const std::stri
         postParams.objectVal.emplace("parents", std::vector<JsonValue> {JsonValue(parentId)});
         if (modTime) //convert to RFC 3339 date-time: e.g. "2018-09-29T08:39:12.053Z"
         {
-            const std::string& modTimeRfc = utfTo<std::string>(formatTime(Zstr("%Y-%m-%dT%H:%M:%S.000Z"), getUtcTime(*modTime))); //returns empty string on failure
+            const std::string& modTimeRfc = utfTo<std::string>(formatTime(Zstr("%Y-%m-%dT%H:%M:%S.000Z"), getUtcTime(*modTime))); //returns empty string on error
             if (modTimeRfc.empty())
                 throw SysError(L"Invalid modification time (time_t: " + numberTo<std::wstring>(*modTime) + L')');
 
@@ -1825,7 +1825,7 @@ public:
     void update(const GdriveAccessInfo& accessInfo)
     {
         if (!equalAsciiNoCase(accessInfo.userInfo.email, accessInfo_.userInfo.email))
-            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+            throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
         accessInfo_ = accessInfo;
     }
 
@@ -1908,7 +1908,7 @@ public:
 
         for (const auto& [folderId, content] : folderContents_)
             if (folderId.empty())
-                throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+                throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
             else if (content.isKnownFolder)
                 writeContainer(stream, folderId);
         writeContainer(stream, std::string()); //sentinel
@@ -1936,13 +1936,13 @@ public:
                 {
                     const auto& [itemId, details] = *itItem;
                     if (itemId.empty())
-                        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+                        throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
                     serializeItem(itemId, details);
 
                     if (details.type == GdriveItemType::shortcut)
                     {
                         if (details.targetId.empty())
-                            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+                            throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
 
                         if (auto it = itemDetails_.find(details.targetId);
                             it != itemDetails_.end())
@@ -2002,7 +2002,7 @@ public:
             return *it;
 
         //itemId was already found! => (must either be a location root) or buffered in itemDetails_
-        throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+        throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
     }
 
     std::optional<GdriveItemDetails> tryGetBufferedItemDetails(const std::string& itemId) const
@@ -2190,7 +2190,7 @@ private:
             itKnown = folderContents_.find(folderId);
             assert(itKnown != folderContents_.end());
             if (!itKnown->second.isKnownFolder)
-                throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+                throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
         }
 
         auto itFound = itemDetails_.cend();
@@ -2255,7 +2255,7 @@ private:
                     }
                     break;
             }
-            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+            throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
         }
     }
 
@@ -2284,7 +2284,7 @@ private:
             if (it != itemDetails_.end()) //update
             {
                 if (it->second.type != details->type)
-                    throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__)); //WTF!?
+                    throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!"); //WTF!?
 
                 std::vector<std::string> parentIdsNew     = details->parentIds;
                 std::vector<std::string> parentIdsRemoved = it->second.parentIds;
@@ -3274,7 +3274,7 @@ struct OutputStreamGdrive : public AFS::OutputStreamImpl
     AFS::FinalizeResult finalize(const IoCallback& notifyUnbufferedIO /*throw X*/) override //throw FileError, X
     {
         if (!asyncStreamOut_)
-            throw std::logic_error("Contract violation! " + std::string(__FILE__) + ':' + numberTo<std::string>(__LINE__));
+            throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
 
         asyncStreamOut_->closeStream();
 
@@ -3287,7 +3287,7 @@ struct OutputStreamGdrive : public AFS::OutputStreamImpl
         result.filePrint = futFilePrint_.get(); //throw FileError
 
         //asyncStreamOut_->checkReadErrors(); //throw FileError -> not needed after *successful* upload
-        asyncStreamOut_.reset(); //do NOT reset on failure, so that ~OutputStreamGdrive() will request worker thread to stop
+        asyncStreamOut_.reset(); //do NOT reset on error, so that ~OutputStreamGdrive() will request worker thread to stop
         //--------------------------------------------------------------------
 
         //result.errorModTime -> already (successfully) set during file creation
@@ -4081,12 +4081,13 @@ AbstractPath fff::createItemPathGdrive(const Zstring& itemPathPhrase) //noexcept
         .locationName =            Zstring(afterFirst (emailAndDrive, Zstr(':'), IfNotFoundReturn::none)),
     };
 
-    split(options, Zstr('|'), [&](const ZstringView optPhrase)
+    split(options, Zstr('|'), [&](ZstringView optPhrase)
     {
+        optPhrase = trimCpy(optPhrase);
         if (!optPhrase.empty())
         {
             if (startsWith(optPhrase, Zstr("timeout=")))
-                login.timeoutSec = stringTo<int>(afterFirst(optPhrase, Zstr("="), IfNotFoundReturn::none));
+                login.timeoutSec = stringTo<int>(afterFirst(optPhrase, Zstr('='), IfNotFoundReturn::none));
             else
                 assert(false);
         }

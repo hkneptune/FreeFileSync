@@ -21,7 +21,7 @@ using TranslationMap = std::unordered_map<std::string, std::string>; //orig |-> 
 
 //plural forms
 using SingularPluralPair   = std::pair<std::string, std::string>; //1 house | %x houses
-using PluralForms          = std::vector<std::string>; //1 dom | 2 domy | %x domów
+using PluralForms          = std::vector<std::string>; //1 dom | 2 domy | %x domÃ³w
 using TranslationPluralMap = std::unordered_map<SingularPluralPair, PluralForms>; //(sing/plu) |-> pluralforms
 
 struct TransHeader
@@ -216,7 +216,7 @@ public:
 private:
     const TokenMap tokens_ =
     {
-        //header information
+        //header details
         {TokenType::headerBegin,      "<header>"},
         {TokenType::headerEnd,        "</header>"},
         {TokenType::langNameBegin,    "<language>"},
@@ -493,15 +493,15 @@ private:
             if (endsWithSingleAmp(original) || endsWithSingleAmp(translation))
                 throw ParsingError({L"The & character to mark a menu item access key must not occur at the end of a string", scn_.posRow(), scn_.posCol()});
 
-            //if source ends with colon, so must translation (note: character seems to be universally used, even for asian and arabic languages)
-            if (endsWith(original, ':') && !endsWithColon(translation))
+            //if source ends with colon, so must translation
+            if (endsWithColon(original) && !endsWithColon(translation))
                 throw ParsingError({L"Source text ends with a colon character \":\", but translation does not", scn_.posRow(), scn_.posCol()});
 
-            //if source ends with a period, so must translation (note: character seems to be universally used, even for asian and arabic languages)
+            //if source ends with period, so must translation
             if (endsWithSingleDot(original) && !endsWithSingleDot(translation))
                 throw ParsingError({L"Source text ends with a punctuation mark character \".\", but translation does not", scn_.posRow(), scn_.posCol()});
 
-            //if source ends with an ellipsis, so must translation (note: character seems to be universally used, even for asian and arabic languages)
+            //if source ends with ellipsis, so must translation
             if (endsWithEllipsis(original) && !endsWithEllipsis(translation))
                 throw ParsingError({L"Source text ends with an ellipsis \"...\", but translation does not", scn_.posRow(), scn_.posCol()});
 
@@ -511,7 +511,7 @@ private:
                     throw ParsingError({replaceCpy<std::wstring>(L"Misspelled \"%x\" in translation", L"%x", utfTo<std::wstring>(fixedStr)), scn_.posRow(), scn_.posCol()});
 
             //some languages (French!) put a space before punctuation mark => must be a no-brake space!
-            for (const char punctChar : std::string(".!?:;$#"))
+            for (const char punctChar : std::string_view(".!?:;$#"))
                 if (contains(original,    std::string(" ") + punctChar) ||
                     contains(translation, std::string(" ") + punctChar))
                     throw ParsingError({replaceCpy<std::wstring>(L"Text contains a space before the \"%x\" character. Are line-breaks really allowed here?"
@@ -644,7 +644,6 @@ private:
         }
     }
 
-    //helper
     static size_t ampersandTokenCount(const std::string& str)
     {
         using namespace zen;
@@ -749,34 +748,14 @@ std::string generateLng(const TranslationUnorderedList& in, const TransHeader& h
     //header
     out += tokens.text(TokenType::headerBegin) + '\n';
 
-    out += '\t' + tokens.text(TokenType::langNameBegin);
-    out += header.languageName;
-    out += tokens.text(TokenType::langNameEnd) + '\n';
+    out += '\t' + tokens.text(TokenType::langNameBegin)  + header.languageName      + tokens.text(TokenType::langNameEnd) + '\n';
+    out += '\t' + tokens.text(TokenType::transNameBegin) + header.translatorName    + tokens.text(TokenType::transNameEnd) + '\n';
+    out += '\t' + tokens.text(TokenType::localeBegin)    + header.locale            + tokens.text(TokenType::localeEnd) + '\n';
+    out += '\t' + tokens.text(TokenType::flagFileBegin)  + header.flagFile          + tokens.text(TokenType::flagFileEnd) + '\n';
+    out += '\t' + tokens.text(TokenType::pluralCountBegin) + zen::numberTo<std::string>(header.pluralCount) + tokens.text(TokenType::pluralCountEnd) + '\n';
+    out += '\t' + tokens.text(TokenType::pluralDefBegin) + header.pluralDefinition + tokens.text(TokenType::pluralDefEnd) + '\n';
 
-    out += '\t' + tokens.text(TokenType::transNameBegin);
-    out += header.translatorName;
-    out += tokens.text(TokenType::transNameEnd) + '\n';
-
-    out += '\t' + tokens.text(TokenType::localeBegin);
-    out += header.locale;
-    out += tokens.text(TokenType::localeEnd) + '\n';
-
-    out += '\t' + tokens.text(TokenType::flagFileBegin);
-    out += header.flagFile;
-    out += tokens.text(TokenType::flagFileEnd) + '\n';
-
-    out += '\t' + tokens.text(TokenType::pluralCountBegin);
-    out += zen::numberTo<std::string>(header.pluralCount);
-    out += tokens.text(TokenType::pluralCountEnd) + '\n';
-
-    out += '\t' + tokens.text(TokenType::pluralDefBegin);
-    out += header.pluralDefinition;
-    out += tokens.text(TokenType::pluralDefEnd) + '\n';
-
-    out += tokens.text(TokenType::headerEnd) + '\n';
-
-    out += '\n';
-
+    out += tokens.text(TokenType::headerEnd) + "\n\n";
 
     in.visitItems([&](const TranslationMap::value_type& trans)
     {
@@ -786,13 +765,8 @@ std::string generateLng(const TranslationUnorderedList& in, const TransHeader& h
         formatMultiLineText(original);
         formatMultiLineText(translation);
 
-        out += tokens.text(TokenType::srcBegin);
-        out += original;
-        out += tokens.text(TokenType::srcEnd) + '\n';
-
-        out += tokens.text(TokenType::trgBegin);
-        out += translation;
-        out += tokens.text(TokenType::trgEnd) + '\n' + '\n';
+        out += tokens.text(TokenType::srcBegin) + original    + tokens.text(TokenType::srcEnd) + '\n';
+        out += tokens.text(TokenType::trgBegin) + translation + tokens.text(TokenType::trgEnd) + "\n\n";
     },
     [&](const TranslationPluralMap::value_type& transPlural)
     {
@@ -804,12 +778,8 @@ std::string generateLng(const TranslationUnorderedList& in, const TransHeader& h
         formatMultiLineText(engPlural);
 
         out += tokens.text(TokenType::srcBegin) + '\n';
-        out += tokens.text(TokenType::pluralBegin);
-        out += engSingular;
-        out += tokens.text(TokenType::pluralEnd) + '\n';
-        out += tokens.text(TokenType::pluralBegin);
-        out += engPlural;
-        out += tokens.text(TokenType::pluralEnd) + '\n';
+        out += '\t' + tokens.text(TokenType::pluralBegin) + engSingular + tokens.text(TokenType::pluralEnd) + '\n';
+        out += '\t' + tokens.text(TokenType::pluralBegin) + engPlural   + tokens.text(TokenType::pluralEnd) + '\n';
         out += tokens.text(TokenType::srcEnd) + '\n';
 
         out += tokens.text(TokenType::trgBegin);
@@ -818,12 +788,9 @@ std::string generateLng(const TranslationUnorderedList& in, const TransHeader& h
         for (std::string plForm : forms)
         {
             formatMultiLineText(plForm);
-
-            out += tokens.text(TokenType::pluralBegin);
-            out += plForm;
-            out += tokens.text(TokenType::pluralEnd) + '\n';
+            out += '\t' + tokens.text(TokenType::pluralBegin) + plForm + tokens.text(TokenType::pluralEnd) + '\n';
         }
-        out += tokens.text(TokenType::trgEnd) + '\n' + '\n';
+        out += tokens.text(TokenType::trgEnd) + "\n\n";
     });
 
     assert(!zen::contains(out, "\r\n") && !zen::contains(out, "\r"));

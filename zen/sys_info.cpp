@@ -26,12 +26,12 @@ using namespace zen;
 
 Zstring zen::getLoginUser() //throw FileError
 {
-    auto tryGetNonRootUser = [](const char* varName) -> const char*
+    auto tryGetNonRootUser = [](const char* varName) -> std::optional<Zstring>
     {
-        if (const char* buf = ::getenv(varName)) //no ownership transfer + no extended error reporting
-            if (strLength(buf) > 0 && !equalString(buf, "root"))
-                return buf;
-        return nullptr;
+        if (const std::optional<Zstring> username = getEnvironmentVar(varName))
+            if (!username->empty() && *username != "root")
+                return *username;
+        return {};
     };
 
     if (const uid_t userIdNo = ::getuid(); //never fails
@@ -65,9 +65,9 @@ Zstring zen::getLoginUser() //throw FileError
     //BUT: getlogin() can fail with ENOENT on Linux Mint: https://freefilesync.org/forum/viewtopic.php?t=8181
 
     //getting a little desperate: variables used by installer.sh
-    if (const char* username = tryGetNonRootUser("USER"))      return username;
-    if (const char* username = tryGetNonRootUser("SUDO_USER")) return username;
-    if (const char* username = tryGetNonRootUser("LOGNAME"))   return username;
+    if (const std::optional<Zstring> username = tryGetNonRootUser("USER"))      return *username;
+    if (const std::optional<Zstring> username = tryGetNonRootUser("SUDO_USER")) return *username;
+    if (const std::optional<Zstring> username = tryGetNonRootUser("LOGNAME"))   return *username;
 
 
     //apparently the current user really IS root: https://freefilesync.org/forum/viewtopic.php?t=8405
@@ -221,8 +221,8 @@ Zstring zen::getUserHome() //throw FileError
         /*   https://linux.die.net/man/3/getpwuid: An application that wants to determine its user's home directory
            should inspect the value of HOME (rather than the value getpwuid(getuid())->pw_dir) since this allows
            the user to modify their notion of "the home directory" during a login session.                       */
-        if (const char* homePath = ::getenv("HOME")) //no ownership transfer + no extended error reporting
-            return homePath;
+        if (const std::optional<Zstring> homeDirPath = getEnvironmentVar("HOME"))
+            return *homeDirPath;
 
     //root(0) => consider as request for elevation, NOT impersonation!
     //=> "HOME=/root" :(
@@ -234,10 +234,10 @@ Zstring zen::getUserHome() //throw FileError
     passwd buf2 = {};
     passwd* pwEntry = nullptr;
     if (const int rv = ::getpwnam_r(loginUser.c_str(), //const char *name
-                                    &buf2,      //struct passwd* pwd
-                                    buf.data(), //char* buf
-                                    buf.size(), //size_t buflen
-                                    &pwEntry);  //struct passwd** result
+                                    &buf2,             //struct passwd* pwd
+                                    buf.data(),        //char* buf
+                                    buf.size(),        //size_t buflen
+                                    &pwEntry);         //struct passwd** result
         rv != 0 || !pwEntry)
     {
         //"If an error occurs, errno is set appropriately" => why the fuck, then also return errno as return value!?
@@ -252,9 +252,9 @@ Zstring zen::getUserHome() //throw FileError
 Zstring zen::getUserDataPath() //throw FileError
 {
     if (::getuid() != 0) //nofail; non-root
-        if (const char* xdgCfgPath = ::getenv("XDG_CONFIG_HOME"); //no ownership transfer + no extended error reporting
-            xdgCfgPath && xdgCfgPath[0] != 0)
-            return xdgCfgPath;
+        if (const std::optional<Zstring> xdgCfgPath = getEnvironmentVar("XDG_CONFIG_HOME");
+            xdgCfgPath&& !xdgCfgPath->empty())
+            return *xdgCfgPath;
     //root(0) => consider as request for elevation, NOT impersonation
 
     return appendPath(getUserHome(), ".config"); //throw FileError

@@ -1650,7 +1650,7 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     m_panelCompSettingsTab->SetSizer( bSizer275 );
     m_panelCompSettingsTab->Layout();
     bSizer275->Fit( m_panelCompSettingsTab );
-    m_notebook->AddPage( m_panelCompSettingsTab, _("dummy"), true );
+    m_notebook->AddPage( m_panelCompSettingsTab, _("dummy"), false );
     m_panelFilterSettingsTab = new wxPanel( m_notebook, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
     m_panelFilterSettingsTab->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
 
@@ -1781,7 +1781,10 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     bSizer162->Add( m_choiceUnitMinSize, 0, wxEXPAND, 5 );
 
 
-    bSizer158->Add( bSizer162, 0, wxBOTTOM|wxEXPAND, 5 );
+    bSizer158->Add( bSizer162, 0, wxEXPAND, 5 );
+
+
+    bSizer158->Add( 0, 10, 0, 0, 5 );
 
     wxBoxSizer* bSizer163;
     bSizer163 = new wxBoxSizer( wxVERTICAL );
@@ -1877,7 +1880,7 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     m_panelFilterSettingsTab->SetSizer( bSizer278 );
     m_panelFilterSettingsTab->Layout();
     bSizer278->Fit( m_panelFilterSettingsTab );
-    m_notebook->AddPage( m_panelFilterSettingsTab, _("dummy"), false );
+    m_notebook->AddPage( m_panelFilterSettingsTab, _("dummy"), true );
     m_panelSyncSettingsTab = new wxPanel( m_notebook, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
     m_panelSyncSettingsTab->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
 

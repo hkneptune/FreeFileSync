@@ -22,7 +22,7 @@ private:
     void OnUnhandledException () override;
     wxLayoutDirection GetLayoutDirection() const override;
 
-    void onEnterEventLoop(wxEvent& event);
+    void onEnterEventLoop();
 };
 }
 

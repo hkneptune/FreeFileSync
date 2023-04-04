@@ -149,7 +149,7 @@ namespace
 Zstring tryExpandVolumeName(Zstring pathPhrase)  // [volname]:\folder    [volname]\folder    [volname]folder    -> C:\folder
 {
     //we only expect the [.*] pattern at the beginning => do not touch dir names like "C:\somedir\[stuff]"
-    trim(pathPhrase, true, false);
+    trim(pathPhrase, TrimSide::left);
 
     if (startsWith(pathPhrase, Zstr('[')))
     {

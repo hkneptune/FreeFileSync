@@ -127,73 +127,76 @@ bool sanitizeFilter(FilterConfig& filterCfg, const std::vector<AbstractPath>& ba
         removeDuplicates(folderPathsPf);
     }
 
-    if (!folderPathsPf.empty())
+
+    std::vector<std::pair<Zstring /*from*/, Zstring /*to*/>> replacements;
+
+    auto replaceFullPaths = [&](Zstring& filterPhrase)
     {
-        std::vector<std::pair<Zstring /*from*/, Zstring /*to*/>> replacements;
+        Zstring filterPhraseNew;
+        const Zchar* itFilterOrig = filterPhrase.begin();
 
-        auto replaceFullPaths = [&](Zstring& filterPhrase)
+        split2(filterPhrase, [](Zchar c) { return c == FILTER_ITEM_SEPARATOR || c == Zstr('\n'); }, //delimiters
+        [&](const ZstringView phrase)
         {
-            Zstring filterPhraseNew;
-            const Zchar* itFilterOrig = filterPhrase.begin();
-
-            split2(filterPhrase, [](Zchar c) { return c == FILTER_ITEM_SEPARATOR || c == Zstr('\n'); }, //delimiters
-            [&](ZstringView phrase)
+            const ZstringView phraseTrm = trimCpy(phrase);
+            if (!phraseTrm.empty())
             {
-                phrase = trimCpy(phrase);
-                if (!phrase.empty())
-                {
-                    const Zstring phraseNorm = normalizeForSearch(Zstring{phrase});
+                const Zstring phraseNorm = normalizeForSearch(Zstring{phraseTrm});
 
-                    for (const Zstring& pathNormPf : folderPathsPf)
-                        if (startsWith(phraseNorm, pathNormPf))
-                        {
-                            //emulate a "normalized afterFirst()":
-                            ptrdiff_t sepCount = std::count(pathNormPf.begin(), pathNormPf.end(), FILE_NAME_SEPARATOR);
-                            assert(sepCount > 0);
+                for (const Zstring& pathNormPf : folderPathsPf)
+                    if (startsWith(phraseNorm, pathNormPf))
+                    {
+                        //emulate a "normalized afterFirst()":
+                        ptrdiff_t sepCount = std::count(pathNormPf.begin(), pathNormPf.end(), FILE_NAME_SEPARATOR);
+                        assert(sepCount > 0);
 
-                            for (auto it = phrase.begin(); it != phrase.end(); ++it)
-                                if (*it == Zstr('/') ||
-                                    *it == Zstr('\\'))
-                                    if (--sepCount == 0)
-                                    {
-                                        const Zstring relPath(it, phrase.end()); //include first path separator
+                        for (auto it = phraseTrm.begin(); it != phraseTrm.end(); ++it)
+                            if (*it == Zstr('/') ||
+                                *it == Zstr('\\'))
+                                if (--sepCount == 0)
+                                {
+                                    const Zstring relPath(it, phraseTrm.end()); //include first path separator
 
-                                        filterPhraseNew.append(itFilterOrig, phrase.data());
-                                        filterPhraseNew += relPath;
-                                        itFilterOrig = phrase.data() + phrase.size();
+                                    filterPhraseNew.append(itFilterOrig, phraseTrm.data());
+                                    filterPhraseNew += relPath;
+                                    itFilterOrig = phraseTrm.data() + phraseTrm.size();
 
-                                        replacements.emplace_back(phrase, relPath);
-                                        return; //... to next block
-                                    }
-                            throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
-                        }
-                }
-            });
-            filterPhraseNew.append(itFilterOrig, filterPhrase.cend());
-
-            filterPhrase = filterPhraseNew;
-        };
-        replaceFullPaths(filterCfg.includeFilter);
-        replaceFullPaths(filterCfg.excludeFilter);
-
-        assert(!replacements.empty());
-        if (!replacements.empty())
-        {
-            std::wstring detailsMsg;
-            for (const auto& [from, to] : replacements)
-                detailsMsg += utfTo<std::wstring>(from) + L' ' + arrowRight + L' ' + utfTo<std::wstring>(to) + L'\n';
-            detailsMsg.pop_back();
-
-            switch (showConfirmationDialog(parent, DialogInfoType::info, PopupDialogCfg().
-                                           setMainInstructions(_("Each filter item must be a path relative to the selected folder pairs. The following changes are suggested:")).
-                                           setDetailInstructions(detailsMsg), _("&Change")))
-            {
-                case ConfirmationButton::accept: //change
-                    break;
-
-                case ConfirmationButton::cancel:
-                    return false;
+                                    replacements.emplace_back(phraseTrm, relPath);
+                                    return; //... to next block
+                                }
+                        throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
+                    }
             }
+        });
+
+        if (itFilterOrig != filterPhrase.begin()) //perf!?
+        {
+            filterPhraseNew.append(itFilterOrig, filterPhrase.cend());
+            filterPhrase = std::move(filterPhraseNew);
+        }
+    };
+    replaceFullPaths(filterCfg.includeFilter);
+    replaceFullPaths(filterCfg.excludeFilter);
+
+    if (!replacements.empty())
+    {
+        std::wstring detailsMsg;
+        for (const auto& [from, to] : replacements)
+            if (to.empty())
+                detailsMsg += _("Remove:") + L' ' + utfTo<std::wstring>(from) + L'\n';
+            else
+                detailsMsg += utfTo<std::wstring>(from) + L' ' + arrowRight + L' ' + utfTo<std::wstring>(to) + L'\n';
+        detailsMsg.pop_back();
+
+        switch (showConfirmationDialog(parent, DialogInfoType::info, PopupDialogCfg().
+                                       setMainInstructions(_("Each filter item must be a path relative to the selected folder pairs. The following changes are suggested:")).
+                                       setDetailInstructions(detailsMsg), _("&Change")))
+        {
+            case ConfirmationButton::accept: //change
+                break;
+
+            case ConfirmationButton::cancel:
+                return false;
         }
     }
     return true;

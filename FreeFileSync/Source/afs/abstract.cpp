@@ -8,6 +8,7 @@
 #include <zen/serialize.h>
 #include <zen/guid.h>
 #include <zen/crc.h>
+#include <zen/ring_buffer.h>
 #include <typeindex>
 
 using namespace zen;
@@ -19,7 +20,7 @@ AfsPath fff::sanitizeDeviceRelativePath(Zstring relPath)
 {
     if constexpr (FILE_NAME_SEPARATOR != Zstr('/' )) replace(relPath, Zstr('/'),  FILE_NAME_SEPARATOR);
     if constexpr (FILE_NAME_SEPARATOR != Zstr('\\')) replace(relPath, Zstr('\\'), FILE_NAME_SEPARATOR);
-    trim(relPath, true, true, [](Zchar c) { return c == FILE_NAME_SEPARATOR; });
+    trim(relPath, TrimSide::both, [](Zchar c) { return c == FILE_NAME_SEPARATOR; });
     return AfsPath(relPath);
 }
 
@@ -248,59 +249,67 @@ AFS::FileCopyResult AFS::copyFileTransactional(const AbstractPath& sourcePath, c
 
 void AFS::createFolderIfMissingRecursion(const AbstractPath& folderPath) //throw FileError
 {
-    //expect that path already exists (see: versioning, base folder, log file path) => check first
-    const std::variant<ItemType, AfsPath /*last existing parent path*/> typeOrPath = getItemTypeIfExists(folderPath); //throw FileError
+    auto getItemType2 = [&](const AbstractPath& itemPath) //throw FileError
+    {
+        try
+        { return getItemType(itemPath); } //throw FileError
+        catch (const FileError& e) //need to add context!
+        {
+            throw FileError(replaceCpy(_("Cannot create directory %x."), L"%x", fmtPath(getDisplayPath(folderPath))),
+                            replaceCpy(e.toString(), L"\n\n", L'\n'));
+        }
+    };
 
     try
     {
-        if (const ItemType* type = std::get_if<ItemType>(&typeOrPath))
-        {
-            if (*type == ItemType::file /*obscure, but possible*/)
-                throw SysError(replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(getItemName(folderPath))));
-        }
-        else
-        {
-            const AfsPath existingFolderPath = std::get<AfsPath>(typeOrPath);
-            assert(startsWith(folderPath.afsPath.value, existingFolderPath.value));
+        //- path most likely already exists (see: versioning, base folder, log file path) => check first
+        //- do NOT use getItemTypeIfExists()! race condition when multiple threads are calling createDirectoryIfMissingRecursion(): https://freefilesync.org/forum/viewtopic.php?t=10137#p38062
+        //- find first existing + accessible parent folder (backwards iteration):
+        AbstractPath folderPathEx = folderPath;
+        RingBuffer<Zstring> folderNames; //caveat: 1. might have been created in the meantime 2. getItemType2() may have failed with access error
+        for (;;)
+            try
+            {
+                if (getItemType2(folderPathEx) == ItemType::file /*obscure, but possible*/) //throw FileError
+                    throw SysError(replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(getItemName(folderPathEx))));
+                break;
+            }
+            catch (FileError&) //not yet existing or access error
+            {
+                const std::optional<AbstractPath> parentPath = getParentPath(folderPathEx);
+                if (!parentPath)//device root => quick access test
+                    throw;
+                folderNames.push_front(getItemName(folderPathEx));
+                folderPathEx = *parentPath;
+            }
+        //-----------------------------------------------------------
 
-            const ZstringView relPathTmp = makeStringView(folderPath.afsPath.value.begin() + existingFolderPath.value.size(), folderPath.afsPath.value.end());
-            const std::vector<ZstringView> relPathComp = splitCpy(relPathTmp, FILE_NAME_SEPARATOR, SplitOnEmpty::skip); //sanitize! relPathTmp starts with FILE_NAME_SEPARATOR unless existingFolderPath.empty()
-            assert(!relPathComp.empty());
+        AbstractPath folderPathNew = folderPathEx;
+        for (const Zstring& folderName : folderNames)
+            try
+            {
+                folderPathNew = appendRelPath(folderPathNew, folderName);
 
-            AbstractPath folderPathNew{folderPath.afsDevice, existingFolderPath};
-            for (const ZstringView folderName : relPathComp)
+                createFolderPlain(folderPathNew); //throw FileError
+            }
+            catch (FileError&)
+            {
                 try
                 {
-                    folderPathNew = appendRelPath(folderPathNew, Zstring(folderName));
-
-                    createFolderPlain(folderPathNew); //throw FileError
+                    if (getItemType2(folderPathNew) == ItemType::file /*obscure, but possible*/) //throw FileError
+                        throw SysError(replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(getItemName(folderPathNew))));
+                    else
+                        continue; //already existing => possible, if createDirectoryIfMissingRecursion() is run in parallel
                 }
-                catch (FileError&)
-                {
-                    try
-                    {
-                        if (getItemType(folderPathNew) == ItemType::file /*obscure, but possible*/) //throw FileError
-                            throw SysError(replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(getItemName(folderPathNew))));
-                        else
-                            continue; //already existing => possible, if createFolderIfMissingRecursion() is run in parallel
-                    }
-                    catch (FileError&) {} //not yet existing or access error
+                catch (FileError&) {} //not yet existing or access error
 
-                    throw;
-                }
-        }
+                throw;
+            }
     }
     catch (const SysError& e)
     {
         throw FileError(replaceCpy(_("Cannot create directory %x."), L"%x", fmtPath(getDisplayPath(folderPath))), e.toString());
     }
-}
-
-
-bool AFS::itemExists(const AfsPath& itemPath) const //throw FileError
-{
-    const std::variant<ItemType, AfsPath /*last existing parent path*/> typeOrPath = getItemTypeIfExists(itemPath); //throw FileError
-    return std::get_if<ItemType>(&typeOrPath);
 }
 
 
@@ -317,11 +326,18 @@ void AFS::removeFolderIfExistsRecursion(const AfsPath& folderPath, //throw FileE
         {
             std::vector<Zstring> fileNames;
             std::vector<Zstring> symlinkNames;
-
-            traverseFolder(folderPath2, //throw FileError
-            [&](const    FileInfo& fi) {    fileNames.push_back(fi.itemName); },
-            [&](const  FolderInfo& fi) {  folderNames.push_back(fi.itemName); },
-            [&](const SymlinkInfo& si) { symlinkNames.push_back(si.itemName); });
+            try
+            {
+                traverseFolder(folderPath2, //throw FileError
+                [&](const    FileInfo& fi) {    fileNames.push_back(fi.itemName); },
+                [&](const  FolderInfo& fi) {  folderNames.push_back(fi.itemName); },
+                [&](const SymlinkInfo& si) { symlinkNames.push_back(si.itemName); });
+            }
+            catch (const FileError& e) //add context
+            {
+                throw FileError(replaceCpy(_("Cannot delete directory %x."), L"%x", fmtPath(getDisplayPath(folderPath2))),
+                                replaceCpy(e.toString(), L"\n\n", L'\n'));
+            }
 
             for (const Zstring& fileName : fileNames)
             {
@@ -352,9 +368,20 @@ void AFS::removeFolderIfExistsRecursion(const AfsPath& folderPath, //throw FileE
     };
     //--------------------------------------------------------------------------------------------------------------
 
-    //no error situation if directory is not existing! manual deletion relies on it!
-    const std::variant<ItemType, AfsPath /*last existing parent path*/> typeOrPath = getItemTypeIfExists(folderPath); //throw FileError
-    if (const ItemType* type = std::get_if<ItemType>(&typeOrPath))
+    const std::optional<ItemType> type = [&]
+    {
+        try
+        {
+            return getItemTypeIfExists(folderPath); //throw FileError
+        }
+        catch (const FileError& e) //add context
+        {
+            throw FileError(replaceCpy(_("Cannot delete directory %x."), L"%x", fmtPath(getDisplayPath(folderPath))),
+                            replaceCpy(e.toString(), L"\n\n", L'\n'));
+        }
+    }();
+
+    if (type)
     {
         assert(*type != ItemType::symlink);
 
@@ -368,7 +395,7 @@ void AFS::removeFolderIfExistsRecursion(const AfsPath& folderPath, //throw FileE
         else
             removeFolderRecursionImpl(folderPath); //throw FileError
     }
-    else //even if the folder does not exist anymore, significant I/O work was done => report
+    else //no error situation if directory is not existing! manual deletion relies on it! significant I/O work was done => report:
         if (onBeforeFolderDeletion) onBeforeFolderDeletion(getDisplayPath(folderPath)); //throw X
 }
 

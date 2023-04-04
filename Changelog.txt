@@ -1,3 +1,15 @@
+FreeFileSync 12.2 [2023-04-02]
+------------------------------
+Fixed temporary access error when creating multiple folders in parallel
+Log failure to copy folder attributes as warning only
+Enable UTF-8, even if FTP server does not advertize in FEAT (vsftpd)
+Fixed drag and drop for non-ASCII folders (macOS)
+Explicitly detect MTP path without existence check
+Fixed crash when parsing SFTP package from stream
+Revert back to GTK2 build due to GTK3 hangs on KDE (Linux)
+Fixed missing COM initialization for MTP path parsing
+
+
 FreeFileSync 12.1 [2023-02-20]
 ------------------------------
 First official build based on GTK3 (Linux)

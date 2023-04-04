@@ -620,11 +620,11 @@ MainDialogGenerated::MainDialogGenerated( wxWindow* parent, wxWindowID id, const
 
     m_staticTextProcessed = new wxStaticText( m_panelLog, wxID_ANY, _("Processed:"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticTextProcessed->Wrap( -1 );
-    ffgSizer11->Add( m_staticTextProcessed, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_RIGHT|wxRIGHT, 5 );
+    ffgSizer11->Add( m_staticTextProcessed, 0, wxALIGN_RIGHT|wxRIGHT|wxALIGN_CENTER_VERTICAL, 5 );
 
     m_staticTextRemaining = new wxStaticText( m_panelLog, wxID_ANY, _("Remaining:"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticTextRemaining->Wrap( -1 );
-    ffgSizer11->Add( m_staticTextRemaining, 0, wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
+    ffgSizer11->Add( m_staticTextRemaining, 0, wxALIGN_RIGHT|wxRIGHT|wxALIGN_CENTER_VERTICAL, 5 );
 
 
     bSizer42->Add( ffgSizer11, 0, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM, 10 );
@@ -643,7 +643,7 @@ MainDialogGenerated::MainDialogGenerated( wxWindow* parent, wxWindowID id, const
     bSizer293 = new wxBoxSizer( wxHORIZONTAL );
 
     m_bitmapItemStat = new wxStaticBitmap( m_panelItemStats, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
-    bSizer293->Add( m_bitmapItemStat, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
+    bSizer293->Add( m_bitmapItemStat, 0, wxRIGHT|wxALIGN_CENTER_VERTICAL, 5 );
 
 
     bSizer293->Add( 0, 0, 1, 0, 5 );
@@ -652,24 +652,24 @@ MainDialogGenerated::MainDialogGenerated( wxWindow* parent, wxWindowID id, const
     m_staticTextItemsProcessed->Wrap( -1 );
     m_staticTextItemsProcessed->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
 
-    bSizer293->Add( m_staticTextItemsProcessed, 0, wxALIGN_CENTER_VERTICAL, 5 );
+    bSizer293->Add( m_staticTextItemsProcessed, 0, wxALIGN_BOTTOM, 5 );
 
 
     ffgSizer111->Add( bSizer293, 0, wxALIGN_CENTER_VERTICAL|wxEXPAND, 5 );
 
     m_staticTextBytesProcessed = new wxStaticText( m_panelItemStats, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticTextBytesProcessed->Wrap( -1 );
-    ffgSizer111->Add( m_staticTextBytesProcessed, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_RIGHT, 5 );
+    ffgSizer111->Add( m_staticTextBytesProcessed, 0, wxALIGN_RIGHT|wxALIGN_BOTTOM, 5 );
 
     m_staticTextItemsRemaining = new wxStaticText( m_panelItemStats, wxID_ANY, _("dummy"), wxDefaultPosition, wxSize( -1, -1 ), 0 );
     m_staticTextItemsRemaining->Wrap( -1 );
     m_staticTextItemsRemaining->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
 
-    ffgSizer111->Add( m_staticTextItemsRemaining, 0, wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL, 5 );
+    ffgSizer111->Add( m_staticTextItemsRemaining, 0, wxALIGN_RIGHT|wxALIGN_BOTTOM, 5 );
 
     m_staticTextBytesRemaining = new wxStaticText( m_panelItemStats, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticTextBytesRemaining->Wrap( -1 );
-    ffgSizer111->Add( m_staticTextBytesRemaining, 0, wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL, 5 );
+    ffgSizer111->Add( m_staticTextBytesRemaining, 0, wxALIGN_RIGHT|wxALIGN_BOTTOM, 5 );
 
 
     bSizer291->Add( ffgSizer111, 0, wxALL, 5 );
@@ -703,7 +703,7 @@ MainDialogGenerated::MainDialogGenerated( wxWindow* parent, wxWindowID id, const
     m_staticTextTimeElapsed->Wrap( -1 );
     m_staticTextTimeElapsed->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
 
-    bSizer294->Add( m_staticTextTimeElapsed, 0, wxALIGN_CENTER_VERTICAL, 5 );
+    bSizer294->Add( m_staticTextTimeElapsed, 0, wxALIGN_BOTTOM, 5 );
 
 
     ffgSizer112->Add( bSizer294, 0, wxALIGN_CENTER_VERTICAL|wxEXPAND, 5 );
@@ -3474,24 +3474,24 @@ CompareProgressDlgGenerated::CompareProgressDlgGenerated( wxWindow* parent, wxWi
     m_staticTextItemsProcessed->Wrap( -1 );
     m_staticTextItemsProcessed->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
 
-    bSizer293->Add( m_staticTextItemsProcessed, 0, wxALIGN_CENTER_VERTICAL, 5 );
+    bSizer293->Add( m_staticTextItemsProcessed, 0, wxALIGN_BOTTOM, 5 );
 
 
     ffgSizer111->Add( bSizer293, 0, wxALIGN_CENTER_VERTICAL|wxEXPAND, 5 );
 
     m_staticTextBytesProcessed = new wxStaticText( m_panelItemStats, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticTextBytesProcessed->Wrap( -1 );
-    ffgSizer111->Add( m_staticTextBytesProcessed, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_RIGHT, 5 );
+    ffgSizer111->Add( m_staticTextBytesProcessed, 0, wxALIGN_RIGHT|wxALIGN_BOTTOM, 5 );
 
     m_staticTextItemsRemaining = new wxStaticText( m_panelItemStats, wxID_ANY, _("dummy"), wxDefaultPosition, wxSize( -1, -1 ), 0 );
     m_staticTextItemsRemaining->Wrap( -1 );
     m_staticTextItemsRemaining->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
 
-    ffgSizer111->Add( m_staticTextItemsRemaining, 0, wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL, 5 );
+    ffgSizer111->Add( m_staticTextItemsRemaining, 0, wxALIGN_RIGHT|wxALIGN_BOTTOM, 5 );
 
     m_staticTextBytesRemaining = new wxStaticText( m_panelItemStats, wxID_ANY, _("dummy"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticTextBytesRemaining->Wrap( -1 );
-    ffgSizer111->Add( m_staticTextBytesRemaining, 0, wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL, 5 );
+    ffgSizer111->Add( m_staticTextBytesRemaining, 0, wxALIGN_RIGHT|wxALIGN_BOTTOM, 5 );
 
 
     bSizer291->Add( ffgSizer111, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5 );
@@ -3525,7 +3525,7 @@ CompareProgressDlgGenerated::CompareProgressDlgGenerated( wxWindow* parent, wxWi
     m_staticTextTimeElapsed->Wrap( -1 );
     m_staticTextTimeElapsed->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
 
-    bSizer294->Add( m_staticTextTimeElapsed, 0, wxALIGN_CENTER_VERTICAL, 5 );
+    bSizer294->Add( m_staticTextTimeElapsed, 0, wxALIGN_BOTTOM, 5 );
 
 
     ffgSizer112->Add( bSizer294, 0, wxALIGN_CENTER_VERTICAL|wxEXPAND, 5 );
@@ -3534,7 +3534,7 @@ CompareProgressDlgGenerated::CompareProgressDlgGenerated( wxWindow* parent, wxWi
     m_staticTextTimeRemaining->Wrap( -1 );
     m_staticTextTimeRemaining->SetFont( wxFont( wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD, false, wxEmptyString ) );
 
-    ffgSizer112->Add( m_staticTextTimeRemaining, 0, wxALIGN_CENTER_VERTICAL|wxALIGN_RIGHT, 5 );
+    ffgSizer112->Add( m_staticTextTimeRemaining, 0, wxALIGN_RIGHT|wxALIGN_BOTTOM, 5 );
 
 
     bSizer292->Add( ffgSizer112, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5 );

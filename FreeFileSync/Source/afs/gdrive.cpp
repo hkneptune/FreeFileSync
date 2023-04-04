@@ -475,7 +475,7 @@ GdriveAccessInfo gdriveAuthorizeAccess(const std::string& gdriveLoginHint, const
                                     &hints,     //_In_opt_ const ADDRINFOA* pHints
                                     &servinfo); //_Outptr_ PADDRINFOA*      ppResult
     if (rcGai != 0)
-        throw SysError(formatSystemError("getaddrinfo", replaceCpy(_("Error code %x"), L"%x", numberTo<std::wstring>(rcGai)), utfTo<std::wstring>(::gai_strerror(rcGai))));
+        THROW_LAST_SYS_ERROR_GAI(rcGai);
     if (!servinfo)
         throw SysError(L"getaddrinfo: empty server info");
 
@@ -3332,11 +3332,10 @@ public:
 
             if (ps.existingType != GdriveItemType::folder)
                 throw SysError(replaceCpy<std::wstring>(L"%x is not a folder.", L"%x", fmtPath(getItemName(folderPath))));
-            warn_static("weird in combination with 'file attributes'")
 
             return Zstr("https://drive.google.com/drive/folders/") + utfTo<Zstring>(ps.existingItemId);
         }
-        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getDisplayPath(folderPath))), e.toString()); }
+        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(getDisplayPath(folderPath))), e.toString()); }
     }
 
 private:
@@ -3401,7 +3400,7 @@ private:
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getDisplayPath(itemPath))), e.toString()); }
     }
 
-    std::variant<ItemType, AfsPath /*last existing parent path*/> getItemTypeIfExists(const AfsPath& itemPath) const override //throw FileError
+    std::optional<ItemType> getItemTypeIfExists(const AfsPath& itemPath) const override //throw FileError
     {
         try
         {
@@ -3419,7 +3418,7 @@ private:
                     case GdriveItemType::shortcut: return ItemType::symlink;
                     //*INDENT-ON*
                 }
-            return ps.existingPath;
+            return std::nullopt;
         }
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getDisplayPath(itemPath))), e.toString()); }
     }
@@ -3707,13 +3706,19 @@ private:
 
     //symlink handling: follow
     //already existing: fail
-    void copyNewFolderForSameAfsType(const AfsPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions) const override //throw FileError
+    FolderCopyResult copyNewFolderForSameAfsType(const AfsPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions) const override //throw FileError
     {
-        if (copyFilePermissions)
-            throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(targetPath))), _("Operation not supported by device."));
-
         //already existing: 1. fails or 2. creates duplicate (unlikely)
         AFS::createFolderPlain(targetPath); //throw FileError
+
+        FolderCopyResult result;
+        try
+        {
+            if (copyFilePermissions)
+                throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(targetPath))), _("Operation not supported by device."));
+        }
+        catch (const FileError& e) { result.errorAttribs = e; }
+        return result;
     }
 
     //already existing: fail
@@ -4066,7 +4071,7 @@ AbstractPath fff::createItemPathGdrive(const Zstring& itemPathPhrase) //noexcept
 
     if (startsWithAsciiNoCase(pathPhrase, gdrivePrefix))
         pathPhrase = pathPhrase.c_str() + strLength(gdrivePrefix);
-    trim(pathPhrase, true, false, [](Zchar c) { return c == Zstr('/') || c == Zstr('\\'); });
+    trim(pathPhrase, TrimSide::left, [](Zchar c) { return c == Zstr('/') || c == Zstr('\\'); });
 
     const ZstringView fullPath = beforeFirst<ZstringView>(pathPhrase, Zstr('|'), IfNotFoundReturn::all);
     const ZstringView options  =  afterFirst<ZstringView>(pathPhrase, Zstr('|'), IfNotFoundReturn::none);

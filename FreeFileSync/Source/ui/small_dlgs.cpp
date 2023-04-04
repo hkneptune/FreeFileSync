@@ -58,7 +58,7 @@ private:
     void onOkay  (wxCommandEvent& event) override { EndModal(static_cast<int>(ConfirmationButton::accept)); }
     void onClose (wxCloseEvent&   event) override { EndModal(static_cast<int>(ConfirmationButton::cancel)); }
     void onOpenForum(wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://freefilesync.org/forum"); }
-    void onSendEmail(wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"mailto:zenju@" L"freefilesync.org"); }
+    void onSendEmail(wxCommandEvent& event) override { wxLaunchDefaultBrowser(wxString() + L"mailto:zenju@" + /*don't leave full email in either source or binary*/ L"freefilesync.org"); }
     void onDonate   (wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://freefilesync.org/donate"); }
 
     void onLocalKeyEvent(wxKeyEvent& event);
@@ -75,8 +75,8 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
     setImage(*m_bitmapLogoLeft, loadImage("logo-left"));
 
     setBitmapTextLabel(*m_bpButtonForum, loadImage("ffs_forum"), L"FreeFileSync Forum");
-    setBitmapTextLabel(*m_bpButtonEmail, loadImage("ffs_email"), L"zenju@" L"freefilesync.org");
-    m_bpButtonEmail->SetToolTip(L"mailto:zenju@" L"freefilesync.org");
+    setBitmapTextLabel(*m_bpButtonEmail, loadImage("ffs_email"), wxString() + L"zenju@" + /*don't leave full email in either source or binary*/ L"freefilesync.org");
+    m_bpButtonEmail->SetToolTip(                          wxString() + L"mailto:zenju@" + /*don't leave full email in either source or binary*/ L"freefilesync.org");
 
 
     wxString build = utfTo<wxString>(ffsVersion);

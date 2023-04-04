@@ -10,7 +10,8 @@
 #include <zen/file_io.h>
 #include <zen/time.h>
 #include <zen/process_exec.h>
-#include <wx/intl.h>
+//#include <wx/intl.h>
+#include <wx/uilocale.h>
 #include "ffs_paths.h"
 #include "base_tools.h"
 #include "afs/native.h"
@@ -101,18 +102,18 @@ void writeText(const wxLanguage& value, std::string& output)
     //use description as unique wxLanguage identifier, see localization.cpp
     //=> handle changes to wxLanguage enum between wxWidgets versions
 
-    const wxString& canonicalName = wxLocale::GetLanguageCanonicalName(value);
+    const wxString& canonicalName = wxUILocale::GetLanguageCanonicalName(value);
     assert(!canonicalName.empty());
     if (!canonicalName.empty())
         output = utfTo<std::string>(canonicalName);
     else
-        output = utfTo<std::string>(wxLocale::GetLanguageCanonicalName(wxLANGUAGE_ENGLISH_US));
+        output = utfTo<std::string>(wxUILocale::GetLanguageCanonicalName(wxLANGUAGE_ENGLISH_US));
 }
 
 template <> inline
 bool readText(const std::string& input, wxLanguage& value)
 {
-    if (const wxLanguageInfo* lngInfo = wxLocale::FindLanguageInfo(utfTo<wxString>(input)))
+    if (const wxLanguageInfo* lngInfo = wxUILocale::FindLanguageInfo(utfTo<wxString>(input)))
     {
         value = static_cast<wxLanguage>(lngInfo->Language);
         return true;
@@ -1455,7 +1456,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
             cfg.programLanguage = wxLANGUAGE_NORWEGIAN;
         else if (lngName == "Portuguese (Brazilian)")
             cfg.programLanguage = wxLANGUAGE_PORTUGUESE_BRAZILIAN;
-        else if (const wxLanguageInfo* lngInfo = wxLocale::FindLanguageInfo(utfTo<wxString>(lngName)))
+        else if (const wxLanguageInfo* lngInfo = wxUILocale::FindLanguageInfo(utfTo<wxString>(lngName)))
             cfg.programLanguage = static_cast<wxLanguage>(lngInfo->Language);
     }
     else

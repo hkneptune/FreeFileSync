@@ -38,7 +38,7 @@ Zstring getSymlinkResolvedPath(const Zstring& linkPath); //throw FileError
 namespace
 {
 //retrieve raw target data of symlink or junction
-zen::SymlinkRawContent getSymlinkRawContent_impl(const Zstring& linkPath) //throw FileError
+zen::SymlinkRawContent getSymlinkRawContent_impl(const Zstring& linkPath) //throw SysError
 {
     using namespace zen;
     const size_t bufSize = 10000;
@@ -46,26 +46,22 @@ zen::SymlinkRawContent getSymlinkRawContent_impl(const Zstring& linkPath) //thro
 
     const ssize_t bytesWritten = ::readlink(linkPath.c_str(), buf.data(), bufSize);
     if (bytesWritten < 0)
-        THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(linkPath)), "readlink");
+        THROW_LAST_SYS_ERROR("readlink");
     if (makeUnsigned(bytesWritten) >= bufSize) //detect truncation; not an error for readlink!
-        throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(linkPath)), formatSystemError("readlink", L"", L"Buffer truncated."));
+        throw SysError(formatSystemError("readlink", L"", L"Buffer truncated."));
 
     return {.targetPath = Zstring(buf.data(), bytesWritten)}; //readlink does not append 0-termination!
 }
 
 
-Zstring getResolvedSymlinkPath_impl(const Zstring& linkPath) //throw FileError
+Zstring getResolvedSymlinkPath_impl(const Zstring& linkPath) //throw SysError
 {
     using namespace zen;
-    try
-    {
-        char* targetPath = ::realpath(linkPath.c_str(), nullptr);
-        if (!targetPath)
-            THROW_LAST_SYS_ERROR("realpath");
-        ZEN_ON_SCOPE_EXIT(::free(targetPath));
-        return targetPath;
-    }
-    catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtPath(linkPath)), e.toString()); }
+    char* targetPath = ::realpath(linkPath.c_str(), nullptr);
+    if (!targetPath)
+        THROW_LAST_SYS_ERROR("realpath");
+    ZEN_ON_SCOPE_EXIT(::free(targetPath));
+    return targetPath;
 }
 }
 
@@ -73,11 +69,25 @@ Zstring getResolvedSymlinkPath_impl(const Zstring& linkPath) //throw FileError
 namespace zen
 {
 inline
-SymlinkRawContent getSymlinkRawContent(const Zstring& linkPath) { return getSymlinkRawContent_impl(linkPath); } //throw FileError
+SymlinkRawContent getSymlinkRawContent(const Zstring& linkPath)
+{
+    try
+    {
+        return getSymlinkRawContent_impl(linkPath); //throw SysError
+    }
+    catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(linkPath)), e.toString()); }
+}
 
 
 inline
-Zstring getSymlinkResolvedPath(const Zstring& linkPath) { return getResolvedSymlinkPath_impl(linkPath); } //throw FileError
+Zstring getSymlinkResolvedPath(const Zstring& linkPath)
+{
+    try
+    {
+        return getResolvedSymlinkPath_impl(linkPath); //throw SysError
+    }
+    catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtPath(linkPath)), e.toString()); }
+}
 
 }
 

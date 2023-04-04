@@ -387,7 +387,7 @@ void zen::verifySignature(const std::string_view message, const std::string_view
 
 bool zen::isPuttyKeyStream(const std::string_view keyStream)
 {
-    return startsWith(trimCpy(keyStream, true, false), "PuTTY-User-Key-File-");
+    return startsWith(trimCpy(keyStream, TrimSide::left), "PuTTY-User-Key-File-");
 }
 
 

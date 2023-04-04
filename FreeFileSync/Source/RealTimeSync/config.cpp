@@ -8,7 +8,8 @@
 #include <zen/file_access.h>
 #include <zen/process_exec.h>
 #include <zenxml/xml.h>
-#include <wx/intl.h>
+//#include <wx/intl.h>
+#include <wx/uilocale.h>
 #include "../ffs_paths.h"
 #include "../localization.h"
 
@@ -25,7 +26,7 @@ namespace zen
 template <> inline
 bool readText(const std::string& input, wxLanguage& value)
 {
-    if (const wxLanguageInfo* lngInfo = wxLocale::FindLanguageInfo(utfTo<wxString>(input)))
+    if (const wxLanguageInfo* lngInfo = wxUILocale::FindLanguageInfo(utfTo<wxString>(input)))
     {
         value = static_cast<wxLanguage>(lngInfo->Language);
         return true;

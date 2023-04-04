@@ -23,7 +23,7 @@ std::optional<PathComponents> zen::parsePathComponents(const Zstring& itemPath)
                     Zstring rootPath(itemPathPf.begin(), rootWithSep ? it + 1 : it);
 
                     Zstring relPath(it + 1, itemPathPf.end());
-                    trim(relPath, true, true, [](Zchar c) { return c == FILE_NAME_SEPARATOR; });
+                    trim(relPath, TrimSide::both, [](Zchar c) { return c == FILE_NAME_SEPARATOR; });
 
                     return PathComponents{std::move(rootPath), std::move(relPath)};
                 }
@@ -203,24 +203,11 @@ std::optional<Zstring> zen::getEnvironmentVar(const ZstringView name)
         envVars = globalEnvVars.get();
     }
 
-    auto it = envVars->find(name);
+    const auto it = envVars->find(name);
     if (it == envVars->end())
         return {};
 
-    Zstring value = it->second;
-
-    //some postprocessing (good idea!? Is this even needed!?
-    warn_static("let's find out!")
-#if 0
-    trim(value); //remove leading, trailing blanks
-
-    //remove leading, trailing double-quotes
-    if (startsWith(value, Zstr('"')) &&
-        endsWith  (value, Zstr('"')) &&
-        value.length() >= 2)
-        value = Zstring(value.c_str() + 1, value.length() - 2);
-#endif
-    return value;
+    return it->second;
 }
 
 

@@ -254,6 +254,7 @@ rts::AbortReason rts::runFolderMonitor(const XmlRealConfig& config, const wxStri
         warn_static("maybe not a good idea!? job for execve? https://rachelbythebay.com/w/2017/01/30/env/")
         ::wxSetEnv(L"change_path", utfTo<wxString>(changedItemPath)); //crude way to report changed file
         ::wxSetEnv(L"change_action", actionName);                     //
+        warn_static("caveat: %change_path% is not subsituted 'thanks' to our *static* env variables! luckily there's a workaround") //https://freefilesync.org/forum/viewtopic.php?t=10160
         auto cmdLineExp = expandMacros(cmdLine);
 
         try

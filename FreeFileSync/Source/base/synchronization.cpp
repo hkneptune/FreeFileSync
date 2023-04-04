@@ -745,8 +745,8 @@ void copySymlink(const AbstractPath& sourcePath, const AbstractPath& targetPath,
 { parallelScope([sourcePath, targetPath, copyFilePermissions] { AFS::copySymlink(sourcePath, targetPath, copyFilePermissions); /*throw FileError*/ }, singleThread); }
 
 inline
-void copyNewFolder(const AbstractPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions, std::mutex& singleThread) //throw FileError
-{ parallelScope([sourcePath, targetPath, copyFilePermissions] { AFS::copyNewFolder(sourcePath, targetPath, copyFilePermissions); /*throw FileError*/ }, singleThread); }
+AFS::FolderCopyResult copyNewFolder(const AbstractPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions, std::mutex& singleThread) //throw FileError
+{ return parallelScope([sourcePath, targetPath, copyFilePermissions] { return AFS::copyNewFolder(sourcePath, targetPath, copyFilePermissions); /*throw FileError*/ }, singleThread); }
 
 inline
 void removeFilePlain(const AbstractPath& filePath, std::mutex& singleThread) //throw FileError
@@ -834,11 +834,11 @@ private:
     DeletionHandler           (const DeletionHandler&) = delete;
     DeletionHandler& operator=(const DeletionHandler&) = delete;
 
-    //might not be needed => create lazily:
-    AFS::RecycleSession& getOrCreateRecyclerSession() //throw FileError, RecycleBinUnavailable
+    void moveToRecycleBinIfExists(const AbstractPath& itemPath, const Zstring& relPath, std::mutex& singleThread) //throw FileError, RecycleBinUnavailable
     {
         assert(deletionVariant_ == DeletionVariant::recycler);
 
+        //might not be needed => create lazily:
         if (!recyclerSession_ && !recyclerUnavailableExcept_)
             try
             {
@@ -848,10 +848,16 @@ private:
             }
             catch (const RecycleBinUnavailable& e) { recyclerUnavailableExcept_ = e; }
 
-        if (recyclerUnavailableExcept_)
-            throw* recyclerUnavailableExcept_; //throw RecycleBinUnavailable
-        else
-            return *recyclerSession_;
+        if (recyclerUnavailableExcept_) //add context, or user might think we're removing baseFolderPath_!
+            throw RecycleBinUnavailable(replaceCpy(_("Unable to move %x to the recycle bin."), L"%x", fmtPath(AFS::getDisplayPath(itemPath))),
+                                        replaceCpy(recyclerUnavailableExcept_->toString(), L"\n\n", L'\n'));
+        /*  "Unable to move "Z:\folder\file.txt" to the recycle bin.
+
+             The recycle bin is not available for "Z:\".
+
+             Ignore and delete permanently each time recycle bin is unavailable?"                */
+
+        parallel::moveToRecycleBinIfExists(*recyclerSession_, itemPath, relPath, singleThread); //throw FileError, RecycleBinUnavailable
     }
 
     //might not be needed => create lazily:
@@ -967,7 +973,7 @@ void DeletionHandler::removeFileWithCallback(const FileDescriptor& fileDescr, co
                 if (!beforeOverwrite) reportInfo(replaceCpy(txtDelFileRecycler_, L"%x", fmtPath(AFS::getDisplayPath(fileDescr.path))), statReporter); //throw ThreadStopRequest
                 try
                 {
-                    parallel::moveToRecycleBinIfExists(getOrCreateRecyclerSession(), fileDescr.path, relPath, singleThread); //throw FileError, RecycleBinUnavailable
+                    moveToRecycleBinIfExists(fileDescr.path, relPath, singleThread); //throw FileError, RecycleBinUnavailable
                 }
                 catch (const RecycleBinUnavailable& e)
                 {
@@ -1025,7 +1031,7 @@ void DeletionHandler::removeLinkWithCallback(const AbstractPath& linkPath, const
             if (!beforeOverwrite) reportInfo(replaceCpy(txtDelSymlinkRecycler_, L"%x", fmtPath(AFS::getDisplayPath(linkPath))), statReporter); //throw ThreadStopRequest
             try
             {
-                parallel::moveToRecycleBinIfExists(getOrCreateRecyclerSession(), linkPath, relPath, singleThread); //throw FileError, RecycleBinUnavailable
+                moveToRecycleBinIfExists(linkPath, relPath, singleThread); //throw FileError, RecycleBinUnavailable
             }
             catch (const RecycleBinUnavailable& e)
             {
@@ -1084,7 +1090,7 @@ void DeletionHandler::removeDirWithCallback(const AbstractPath& folderPath, cons
             reportInfo(replaceCpy(txtDelFolderRecycler_, L"%x", fmtPath(AFS::getDisplayPath(folderPath))), statReporter); //throw ThreadStopRequest
             try
             {
-                parallel::moveToRecycleBinIfExists(getOrCreateRecyclerSession(), folderPath, relPath, singleThread); //throw FileError, RecycleBinUnavailable
+                moveToRecycleBinIfExists(folderPath, relPath, singleThread); //throw FileError, RecycleBinUnavailable
                 statReporter.reportDelta(1, 0); //moving to recycler is ONE logical operation, irrespective of the number of child elements!
             }
             catch (const RecycleBinUnavailable& e)
@@ -2196,7 +2202,10 @@ void FolderPairSyncer::synchronizeFolderInt(FolderPair& folder, SyncOperation sy
                 try
                 {
                     //already existing: fail
-                    parallel::copyNewFolder(folder.getAbstractPath<sideSrc>(), targetPath, copyFilePermissions_, singleThread_); //throw FileError
+                    AFS::FolderCopyResult result = parallel::copyNewFolder(folder.getAbstractPath<sideSrc>(), targetPath, copyFilePermissions_, singleThread_); //throw FileError
+
+                    if (result.errorAttribs) //log only; no popup
+                        acb_.logMessage(result.errorAttribs->toString(), PhaseCallback::MsgType::warning); //throw ThreadStopRequest
                 }
                 catch (FileError&)
                 {
@@ -2426,7 +2435,10 @@ bool createBaseFolder(BaseFolderPair& baseFolder, bool copyFilePermissions, Phas
                     if (const std::optional<AbstractPath> parentPath = AFS::getParentPath(folderPath))
                         AFS::createFolderIfMissingRecursion(*parentPath); //throw FileError
 
-                    AFS::copyNewFolder(baseFolder.getAbstractPath<sideSrc>(), folderPath, copyFilePermissions); //throw FileError
+                    AFS::FolderCopyResult result = AFS::copyNewFolder(baseFolder.getAbstractPath<sideSrc>(), folderPath, copyFilePermissions); //throw FileError
+
+                    if (result.errorAttribs) //log only; no popup
+                        callback.logMessage(result.errorAttribs->toString(), PhaseCallback::MsgType::warning); //throw X
                 }
                 else
                     AFS::createFolderIfMissingRecursion(folderPath); //throw FileError

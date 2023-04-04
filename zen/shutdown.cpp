@@ -55,7 +55,7 @@ void zen::terminateProcess(int exitCode)
 
 
     for (;;) //why still here?? => crash deliberately!
-        *reinterpret_cast<volatile int*>(0) = 0; //crude but at least we'll get crash dumps if it ever happens
+        *reinterpret_cast<volatile int*>(0) = 0; //crude but at least we'll get crash dumps *if* it ever happens
 }
 
 

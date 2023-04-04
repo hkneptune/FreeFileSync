@@ -59,7 +59,7 @@
 
 
 /* ----------------------------------------------------------------------
-/*
+ *
  * A sort of 'abstract base class' or 'interface' or 'trait' which is
  * the common feature of all types that want to accept data formatted
  * using the SSH binary conventions of uint32, string, mpint etc.

@@ -8,7 +8,6 @@
 #define FILE_ACCESS_H_8017341345614857
 
 #include <functional>
-#include <variant>
 #include "file_path.h"
 #include "file_error.h"
 #include "serialize.h" //IoCallback
@@ -39,9 +38,9 @@ ItemType getItemType(const Zstring& itemPath); //throw FileError
 //execute potentially SLOW folder traversal but distinguish error/not existing:
 //  - all child item path parts must correspond to folder traversal
 //  => we can conclude whether an item is *not* existing anymore by doing a *case-sensitive* name search => potentially SLOW!
-std::variant<ItemType, Zstring /*last existing parent path*/> getItemTypeIfExists(const Zstring& itemPath); //throw FileError
+std::optional<ItemType> getItemTypeIfExists(const Zstring& itemPath); //throw FileError
 
-bool itemExists(const Zstring& itemPath); //throw FileError
+inline bool itemExists(const Zstring& itemPath) { return static_cast<bool>(getItemTypeIfExists(itemPath)); } //throw FileError
 
 enum class ProcSymlink
 {
@@ -80,8 +79,7 @@ void createDirectoryIfMissingRecursion(const Zstring& dirPath); //throw FileErro
 
 //symlink handling: follow
 //expects existing source/target directories
-//reports "note-worthy" errors only
-void tryCopyDirectoryAttributes(const Zstring& sourcePath, const Zstring& targetPath); //throw FileError
+void copyDirectoryAttributes(const Zstring& sourcePath, const Zstring& targetPath); //throw FileError
 
 void copySymlink(const Zstring& sourcePath, const Zstring& targetPath); //throw FileError
 

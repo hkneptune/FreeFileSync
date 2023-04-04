@@ -1602,7 +1602,7 @@ private:
         }
     }
 
-    std::variant<ItemType, AfsPath /*last existing parent path*/> getItemTypeIfExists(const AfsPath& itemPath) const override //throw FileError
+    std::optional<ItemType> getItemTypeIfExists(const AfsPath& itemPath) const override //throw FileError
     {
         try
         {
@@ -1621,9 +1621,7 @@ private:
                 if (e.sftpErrorCode == LIBSSH2_FX_NO_SUCH_FILE ||
                     e.sftpErrorCode == LIBSSH2_FX_NO_SUCH_PATH) //-> not seen yet, but sounds reasonable
                 {
-                    const std::variant<ItemType, AfsPath /*last existing parent path*/> parentTypeOrPath = getItemTypeIfExists(*parentPath); //throw FileError
-
-                    if (const ItemType* parentType = std::get_if<ItemType>(&parentTypeOrPath))
+                    if (const std::optional<ItemType> parentType = getItemTypeIfExists(*parentPath)) //throw FileError
                     {
                         if (*parentType == ItemType::file /*obscure, but possible*/)
                             throw SysError(replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(getItemName(*parentPath))));
@@ -1637,11 +1635,8 @@ private:
                         [&](const SymlinkInfo& si) { if (si.itemName == itemName) throw SysError(_("Temporary access error:") + L' ' + e.toString()); });
                         //- case-sensitive comparison! itemPath must be normalized!
                         //- finding the item after getItemType() previously failed is exceptional
-
-                        return *parentPath;
                     }
-                    else
-                        return parentTypeOrPath;
+                    return std::nullopt;
                 }
                 else
                     throw;
@@ -1810,13 +1805,19 @@ private:
 
     //symlink handling: follow
     //already existing: fail
-    void copyNewFolderForSameAfsType(const AfsPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions) const override //throw FileError
+    FolderCopyResult copyNewFolderForSameAfsType(const AfsPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions) const override //throw FileError
     {
-        if (copyFilePermissions)
-            throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(targetPath))), _("Operation not supported by device."));
-
         //already existing: fail
         AFS::createFolderPlain(targetPath); //throw FileError
+
+        FolderCopyResult result;
+        try
+        {
+            if (copyFilePermissions)
+                throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(targetPath))), _("Operation not supported by device."));
+        }
+        catch (const FileError& e) { result.errorAttribs = e; }
+        return result;
     }
 
     //already existing: fail
@@ -1950,14 +1951,12 @@ private:
 
     std::unique_ptr<RecycleSession> createRecyclerSession(const AfsPath& folderPath) const override //throw FileError, RecycleBinUnavailable
     {
-        throw RecycleBinUnavailable(replaceCpy(_("The recycle bin is not available for %x."), L"%x", fmtPath(getDisplayPath(folderPath))),
-                                    _("Operation not supported by device."));
+        throw RecycleBinUnavailable(replaceCpy(_("The recycle bin is not available for %x."), L"%x", fmtPath(getDisplayPath(folderPath))));
     }
 
     void moveToRecycleBin(const AfsPath& itemPath) const override //throw FileError, RecycleBinUnavailable
     {
-        throw RecycleBinUnavailable(replaceCpy(_("The recycle bin is not available for %x."), L"%x", fmtPath(getDisplayPath(itemPath))),
-                                    _("Operation not supported by device."));
+        throw RecycleBinUnavailable(replaceCpy(_("The recycle bin is not available for %x."), L"%x", fmtPath(getDisplayPath(itemPath))));
     }
 
     const SftpLogin login_;
@@ -2059,7 +2058,7 @@ AfsDevice fff::condenseToSftpDevice(const SftpLogin& login) //noexcept
         startsWithAsciiNoCase(loginTmp.server, "ftps:" ) ||
         startsWithAsciiNoCase(loginTmp.server, "sftp:" ))
         loginTmp.server = afterFirst(loginTmp.server, Zstr(':'), IfNotFoundReturn::none);
-    trim(loginTmp.server, true, true, [](Zchar c) { return c == Zstr('/') || c == Zstr('\\'); });
+    trim(loginTmp.server, TrimSide::both, [](Zchar c) { return c == Zstr('/') || c == Zstr('\\'); });
 
     return makeSharedRef<SftpFileSystem>(loginTmp);
 }
@@ -2125,7 +2124,7 @@ AbstractPath fff::createItemPathSftp(const Zstring& itemPathPhrase) //noexcept
 
     if (startsWithAsciiNoCase(pathPhrase, sftpPrefix))
         pathPhrase = pathPhrase.c_str() + strLength(sftpPrefix);
-    trim(pathPhrase, true, false, [](Zchar c) { return c == Zstr('/') || c == Zstr('\\'); });
+    trim(pathPhrase, TrimSide::left, [](Zchar c) { return c == Zstr('/') || c == Zstr('\\'); });
 
     const ZstringView credentials = beforeFirst<ZstringView>(pathPhrase, Zstr('@'), IfNotFoundReturn::none);
     const ZstringView fullPathOpt =  afterFirst<ZstringView>(pathPhrase, Zstr('@'), IfNotFoundReturn::all);

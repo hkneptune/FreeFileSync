@@ -2628,14 +2628,14 @@ void MainDialog::addFilterPhrase(const Zstring& phrase, bool include, bool requi
 
     if (requireNewLine)
     {
-        trim(filterString, false, true, [](Zchar c) { return c == FILTER_ITEM_SEPARATOR || c == Zstr('\n') || c == Zstr(' '); });
+        trim(filterString, TrimSide::right, [](Zchar c) { return c == FILTER_ITEM_SEPARATOR || c == Zstr('\n') || c == Zstr(' '); });
         if (!filterString.empty())
             filterString += Zstr('\n');
         filterString += phrase;
     }
     else
     {
-        trim(filterString, false, true, [](Zchar c) { return c == Zstr('\n') || c == Zstr(' '); });
+        trim(filterString, TrimSide::right, [](Zchar c) { return c == Zstr('\n') || c == Zstr(' '); });
 
         if (contains(afterLast(filterString, Zstr('\n'), IfNotFoundReturn::all), FILTER_ITEM_SEPARATOR))
         {
@@ -4295,9 +4295,8 @@ void MainDialog::onCompare(wxCommandEvent& event)
 
     //mark selected cfg files as "in sync" when there is nothing to do: https://freefilesync.org/forum/viewtopic.php?t=4991
     if (r.summary.syncResult == SyncResult::finishedSuccess)
-    {
-        const SyncStatistics st(folderCmp_);
-        if (st.createCount() +
+        if (const SyncStatistics st(folderCmp_);
+            st.createCount() +
             st.updateCount() +
             st.deleteCount() == 0)
         {
@@ -4306,7 +4305,6 @@ void MainDialog::onCompare(wxCommandEvent& event)
 
             updateConfigLastRunStats(std::chrono::system_clock::to_time_t(r.summary.startTime), r.summary.syncResult, getNullPath() /*logFilePath*/);
         }
-    }
 
     //reset icon cache (IconBuffer) after *each* comparison!
     filegrid::setupIcons(*m_gridMainL, *m_gridMainC, *m_gridMainR, globalCfg_.mainDlg.showIcons, convert(globalCfg_.mainDlg.iconSize));
@@ -4780,6 +4778,8 @@ void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::s
                 return loadImage("msg_error", getDefaultMenuIconSize());
             if (logCount.warning > 0)
                 return loadImage("msg_warning", getDefaultMenuIconSize());
+
+            //return loadImage("msg_success", getDefaultMenuIconSize()); -> too noisy?
         }
         return wxNullImage;
     }();

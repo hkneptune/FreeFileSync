@@ -9,7 +9,7 @@
 
 #include <functional>
 #include <chrono>
-#include <variant>
+//#include <variant>
 #include <zen/file_error.h>
 #include <zen/file_path.h>
 #include <zen/serialize.h> //InputStream/OutputStream support buffered stream concept
@@ -97,10 +97,10 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     //         - all child item path parts must correspond to folder traversal
     //           => conclude whether an item is *not* existing anymore by doing a *case-sensitive* name search => potentially SLOW!
     //         - root path? => do access test
-    static std::variant<ItemType, AfsPath /*last existing parent path*/> getItemTypeIfExists(const AbstractPath& itemPath)
+    static std::optional<ItemType> getItemTypeIfExists(const AbstractPath& itemPath)
     { return itemPath.afsDevice.ref().getItemTypeIfExists(itemPath.afsPath); } //throw FileError
 
-    static bool itemExists(const AbstractPath& itemPath) { return itemPath.afsDevice.ref().itemExists(itemPath.afsPath); } //throw FileError
+    static bool itemExists(const AbstractPath& itemPath) { return static_cast<bool>(getItemTypeIfExists(itemPath)); } //throw FileError
     //----------------------------------------------------------------------------------------------------------------
 
     //already existing: fail
@@ -288,9 +288,13 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
                                                 //accummulated delta != file size! consider ADS, sparse, compressed files
                                                 const zen::IoCallback& notifyUnbufferedIO /*throw X*/);
 
+    struct FolderCopyResult
+    {
+        std::optional<zen::FileError> errorAttribs;
+    };
     //already existing: fail
     //symlink handling: follow
-    static void copyNewFolder(const AbstractPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions); //throw FileError
+    static FolderCopyResult copyNewFolder(const AbstractPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions); //throw FileError
 
     //already existing: fail
     static void copySymlink(const AbstractPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions); //throw FileError
@@ -332,8 +336,6 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
 
 
 protected:
-    bool itemExists(const AfsPath& itemPath) const; //throw FileError
-
     //default implementation: folder traversal
     virtual void removeFolderIfExistsRecursion(const AfsPath& folderPath, //throw FileError
                                                const std::function<void(const std::wstring& displayPath)>& onBeforeFileDeletion,
@@ -365,7 +367,7 @@ private:
     //----------------------------------------------------------------------------------------------------------------
     virtual ItemType getItemType(const AfsPath& itemPath) const = 0; //throw FileError
 
-    virtual std::variant<ItemType, AfsPath /*last existing parent path*/> getItemTypeIfExists(const AfsPath& itemPath) const = 0; //throw FileError
+    virtual std::optional<ItemType> getItemTypeIfExists(const AfsPath& itemPath) const = 0; //throw FileError
 
     //already existing: fail
     virtual void createFolderPlain(const AfsPath& folderPath) const = 0; //throw FileError
@@ -406,7 +408,7 @@ private:
 
     //symlink handling: follow
     //already existing: fail
-    virtual void copyNewFolderForSameAfsType(const AfsPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions) const = 0; //throw FileError
+    virtual FolderCopyResult copyNewFolderForSameAfsType(const AfsPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions) const = 0; //throw FileError
 
     //already existing: fail
     virtual void copySymlinkForSameAfsType(const AfsPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions) const = 0; //throw FileError
@@ -541,22 +543,24 @@ void AbstractFileSystem::moveAndRenameItem(const AbstractPath& pathFrom, const A
 
 
 inline
-void AbstractFileSystem::copyNewFolder(const AbstractPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions) //throw FileError
+AbstractFileSystem::FolderCopyResult AbstractFileSystem::copyNewFolder(const AbstractPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions) //throw FileError
 {
     using namespace zen;
 
-    if (typeid(sourcePath.afsDevice.ref()) != typeid(targetPath.afsDevice.ref()))
+    if (typeid(sourcePath.afsDevice.ref()) != typeid(targetPath.afsDevice.ref())) //fall back:
     {
-        //fall back:
-        if (copyFilePermissions)
-            throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(getDisplayPath(targetPath))),
-                            _("Operation not supported between different devices."));
-
         //already existing: fail
         createFolderPlain(targetPath); //throw FileError
+
+        FolderCopyResult result;
+        if (copyFilePermissions)
+            result.errorAttribs = FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(getDisplayPath(targetPath))),
+                                            _("Operation not supported between different devices."));
+
+        return result;
     }
     else
-        sourcePath.afsDevice.ref().copyNewFolderForSameAfsType(sourcePath.afsPath, targetPath, copyFilePermissions); //throw FileError
+        return sourcePath.afsDevice.ref().copyNewFolderForSameAfsType(sourcePath.afsPath, targetPath, copyFilePermissions); //throw FileError
 }
 
 

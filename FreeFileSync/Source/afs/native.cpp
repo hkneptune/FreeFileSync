@@ -448,18 +448,12 @@ private:
         return zenToAfsItemType(zen::getItemType(getNativePath(itemPath))); //throw FileError
     }
 
-    std::variant<ItemType, AfsPath /*last existing parent path*/> getItemTypeIfExists(const AfsPath& itemPath) const override //throw FileError
+    std::optional<ItemType> getItemTypeIfExists(const AfsPath& itemPath) const override //throw FileError
     {
         initComForThread(); //throw FileError
-        std::variant<zen::ItemType, Zstring /*last existing parent path*/> typeOrPath = zen::getItemTypeIfExists(getNativePath(itemPath)); //throw FileError
-
-        if (const zen::ItemType* type = std::get_if<zen::ItemType>(&typeOrPath))
+        if (const std::optional<zen::ItemType> type = zen::getItemTypeIfExists(getNativePath(itemPath))) //throw FileError
             return zenToAfsItemType(*type);
-
-        const Zstring existingFolderPath = std::get<Zstring>(typeOrPath);
-
-        assert(startsWith(existingFolderPath, rootPath_)); //"reverse" getNativePath() => safer than parsePathComponents()->relPath!?
-        return sanitizeDeviceRelativePath({existingFolderPath.begin() + rootPath_.size(), existingFolderPath.end()});
+        return std::nullopt;
     }
 
     //----------------------------------------------------------------------------------------------------------------
@@ -590,7 +584,7 @@ private:
 
     //symlink handling: follow
     //already existing: fail
-    void copyNewFolderForSameAfsType(const AfsPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions) const override //throw FileError
+    FolderCopyResult copyNewFolderForSameAfsType(const AfsPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions) const override //throw FileError
     {
         initComForThread(); //throw FileError
 
@@ -599,15 +593,16 @@ private:
 
         zen::createDirectory(targetPathNative); //throw FileError, ErrorTargetExisting
 
-        ZEN_ON_SCOPE_FAIL(try { removeDirectoryPlain(targetPathNative); }
-        catch (FileError&) {});
-        warn_static("log it!")
+        FolderCopyResult result;
+        try
+        {
+            copyDirectoryAttributes(sourcePathNative, targetPathNative); //throw FileError
 
-        warn_static("implement properly + FileError should lead to a warning only:")
-        tryCopyDirectoryAttributes(sourcePathNative, targetPathNative); //throw FileError
-
-        if (copyFilePermissions)
-            copyItemPermissions(sourcePathNative, targetPathNative, ProcSymlink::follow); //throw FileError
+            if (copyFilePermissions)
+                copyItemPermissions(sourcePathNative, targetPathNative, ProcSymlink::follow); //throw FileError
+        }
+        catch (const FileError& e) { result.errorAttribs = e; }
+        return result;
     }
 
     //already existing: fail

@@ -183,8 +183,7 @@ void moveExistingItemToVersioning(const AbstractPath& sourcePath, const Abstract
 
 void FileVersioner::revisionFile(const FileDescriptor& fileDescr, const Zstring& relativePath, const IoCallback& notifyUnbufferedIO /*throw X*/) const //throw FileError, X
 {
-    const std::variant<AFS::ItemType, AfsPath /*last existing parent path*/> typeOrPath = AFS::getItemTypeIfExists(fileDescr.path); //throw FileError
-    if (const AFS::ItemType* type = std::get_if<AFS::ItemType>(&typeOrPath))
+    if (const std::optional<AFS::ItemType> type = AFS::getItemTypeIfExists(fileDescr.path)) //throw FileError
     {
         assert(*type != AFS::ItemType::symlink);
 
@@ -250,8 +249,7 @@ void FileVersioner::revisionFolder(const AbstractPath& folderPath, const Zstring
                                    const IoCallback& notifyUnbufferedIO /*throw X*/) const
 {
     //no error situation if directory is not existing! manual deletion relies on it!
-    const std::variant<AFS::ItemType, AfsPath /*last existing parent path*/> typeOrPath = AFS::getItemTypeIfExists(folderPath); //throw FileError
-    if (const AFS::ItemType* type = std::get_if<AFS::ItemType>(&typeOrPath))
+    if (const std::optional<AFS::ItemType> type = AFS::getItemTypeIfExists(folderPath)) //throw FileError
     {
         assert(*type != AFS::ItemType::symlink);
 

@@ -26,6 +26,8 @@
 #include "../version/version.h"
 #include "small_dlgs.h"
 
+    #include <gtk/gtk.h>
+    #include <wx/uilocale.h>
     #include <zen/symlink_target.h>
 
 
@@ -91,8 +93,8 @@ std::wstring getIso639Language()
 {
     assert(runningOnMainThread()); //this function is not thread-safe: consider wxWidgets usage
 
-    std::wstring localeName(wxLocale::GetLanguageCanonicalName(wxLocale::GetSystemLanguage()));
-    localeName = beforeFirst(localeName, L'@', IfNotFoundReturn::all); //the locale may contain an @, e.g. "sr_RS@latin"; see wxLocale::InitLanguagesDB()
+    std::wstring localeName(wxUILocale::GetLanguageCanonicalName(wxUILocale::GetSystemLanguage()));
+    localeName = beforeFirst(localeName, L'@', IfNotFoundReturn::all); //the locale may contain an @, e.g. "sr_RS@latin"; see wxUILocale::InitLanguagesDB()
 
     if (!localeName.empty())
     {
@@ -111,8 +113,8 @@ std::wstring getIso3166Country()
 {
     assert(runningOnMainThread()); //this function is not thread-safe, consider wxWidgets usage
 
-    std::wstring localeName(wxLocale::GetLanguageCanonicalName(wxLocale::GetSystemLanguage()));
-    localeName = beforeFirst(localeName, L'@', IfNotFoundReturn::all); //the locale may contain an @, e.g. "sr_RS@latin"; see wxLocale::InitLanguagesDB()
+    std::wstring localeName(wxUILocale::GetLanguageCanonicalName(wxUILocale::GetSystemLanguage()));
+    localeName = beforeFirst(localeName, L'@', IfNotFoundReturn::all); //the locale may contain an @, e.g. "sr_RS@latin"; see wxUILocale::InitLanguagesDB()
 
     if (contains(localeName, L'_'))
     {
@@ -142,9 +144,9 @@ std::vector<std::pair<std::string, std::string>> geHttpPostParameters(wxWindow& 
     const char* osArch = cpuArchName;
     params.emplace_back("os_arch", osArch);
 
-#ifdef __WXGTK2__
+#if GTK_MAJOR_VERSION == 2
     //wxWindow::GetContentScaleFactor() requires GTK3 or later
-#elif defined __WXGTK3__
+#elif GTK_MAJOR_VERSION == 3
     params.emplace_back("dip_scale", numberTo<std::string>(parent.GetContentScaleFactor()));
 #else
 #error unknown GTK version!

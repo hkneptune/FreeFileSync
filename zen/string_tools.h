@@ -73,9 +73,15 @@ template <class S, class Char, class Function> void split(const S& str, Char del
 template <class S, class Function1, class Function2> void split2(const S& str, Function1 isDelimiter, Function2 onStringPart);
 template <class S, class Char> [[nodiscard]] std::vector<S> splitCpy(const S& str, Char delimiter, SplitOnEmpty soe);
 
-template <class S> [[nodiscard]] S trimCpy(const S& str, bool fromLeft = true, bool fromRight = true);
-template <class S>                 void trim   (S& str, bool fromLeft = true, bool fromRight = true);
-template <class S, class Function> void trim(S& str, bool fromLeft, bool fromRight, Function trimThisChar);
+enum class TrimSide
+{
+    both,
+    left,
+    right,
+};
+template <class S> [[nodiscard]] S trimCpy(const S& str, TrimSide side = TrimSide::both);
+template <class S>                     void trim(S& str, TrimSide side = TrimSide::both);
+template <class S, class Function>     void trim(S& str, TrimSide side, Function trimThisChar);
 
 
 template <class S, class T, class U> [[nodiscard]] S replaceCpy(S  str, const T& oldTerm, const U& newTerm);
@@ -540,15 +546,13 @@ S replaceCpyAsciiNoCase(S str, const T& oldTerm, const U& newTerm)
 
 template <class Char, class Function>
 [[nodiscard]] inline
-std::pair<Char*, Char*> trimCpy2(Char* first, Char* last, bool fromLeft, bool fromRight, Function trimThisChar)
+std::pair<Char*, Char*> trimCpy2(Char* first, Char* last, TrimSide side, Function trimThisChar)
 {
-    assert(fromLeft || fromRight);
-
-    if (fromRight)
+    if (side == TrimSide::right || side == TrimSide::both)
         while (first != last && trimThisChar(last[-1]))
             --last;
 
-    if (fromLeft)
+    if (side == TrimSide::left || side == TrimSide::both)
         while (first != last && trimThisChar(*first))
             ++first;
 
@@ -557,12 +561,10 @@ std::pair<Char*, Char*> trimCpy2(Char* first, Char* last, bool fromLeft, bool fr
 
 
 template <class S, class Function> inline
-void trim(S& str, bool fromLeft, bool fromRight, Function trimThisChar)
+void trim(S& str, TrimSide side, Function trimThisChar)
 {
-    assert(fromLeft || fromRight);
-
     const auto* const oldBegin = strBegin(str);
-    const auto& [newBegin, newEnd] = trimCpy2(oldBegin, oldBegin + strLength(str), fromLeft, fromRight, trimThisChar);
+    const auto [newBegin, newEnd] = trimCpy2(oldBegin, oldBegin + strLength(str), side, trimThisChar);
 
     if (newBegin != oldBegin)
         str = S(newBegin, newEnd); //minor inefficiency: in case "str" is not shared, we could save an allocation and do a memory move only
@@ -572,21 +574,21 @@ void trim(S& str, bool fromLeft, bool fromRight, Function trimThisChar)
 
 
 template <class S> inline
-void trim(S& str, bool fromLeft, bool fromRight)
+void trim(S& str, TrimSide side)
 {
     using CharType = GetCharTypeT<S>;
-    trim(str, fromLeft, fromRight, [](CharType c) { return isWhiteSpace(c); });
+    trim(str, side, [](CharType c) { return isWhiteSpace(c); });
 }
 
 
 template <class S> inline
-S trimCpy(const S& str, bool fromLeft, bool fromRight)
+S trimCpy(const S& str, TrimSide side)
 {
     using CharType = GetCharTypeT<S>;
     const auto* const oldBegin = strBegin(str);
     const auto* const oldEnd = oldBegin + strLength(str);
 
-    const auto& [newBegin, newEnd] = trimCpy2(oldBegin, oldEnd, fromLeft, fromRight, [](CharType c) { return isWhiteSpace(c); });
+    const auto [newBegin, newEnd] = trimCpy2(oldBegin, oldEnd, side, [](CharType c) { return isWhiteSpace(c); });
 
     if (newBegin == oldBegin && newEnd == oldEnd)
         return str;

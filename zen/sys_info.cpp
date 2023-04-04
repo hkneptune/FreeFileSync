@@ -131,8 +131,8 @@ ComputerModel zen::getComputerModel() //throw FileError
         cm.model  = beforeFirst(cm.model,  L'\u00ff', IfNotFoundReturn::all); //fix broken BIOS entries:
         cm.vendor = beforeFirst(cm.vendor, L'\u00ff', IfNotFoundReturn::all); //0xff can be considered 0
 
-        trim(cm.model,  false, true, [](wchar_t c) { return c == L'_'; }); //e.g. "CBX3___" or just "_"
-        trim(cm.vendor, false, true, [](wchar_t c) { return c == L'_'; }); //e.g. "DELL__"  or just "_"
+        trim(cm.model,  TrimSide::right, [](wchar_t c) { return c == L'_'; }); //e.g. "CBX3___" or just "_"
+        trim(cm.vendor, TrimSide::right, [](wchar_t c) { return c == L'_'; }); //e.g. "DELL__"  or just "_"
 
         for (const char* dummyModel :
              {
@@ -209,9 +209,13 @@ std::wstring zen::getOsDescription() //throw FileError
 
 Zstring zen::getRealProcessPath() //throw FileError
 {
-    return getSymlinkRawContent("/proc/self/exe").targetPath; //throw FileError
-    //path does not contain symlinks => no need for ::realpath()
+    try
+    {
+        return getSymlinkRawContent_impl("/proc/self/exe").targetPath; //throw SysError
+        //path does not contain symlinks => no need for ::realpath()
 
+    }
+    catch (const SysError& e) { throw FileError(_("Cannot get process information."), e.toString()); }
 }
 
 

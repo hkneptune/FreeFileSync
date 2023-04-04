@@ -13,6 +13,7 @@
 #include "image_tools.h"
 #include "bitmap_button.h"
 #include "dc.h"
+#include <gtk/gtk.h>
 
 using namespace zen;
 
@@ -27,7 +28,8 @@ class Tooltip::TooltipDlgGenerated : public wxDialog
 {
 public:
     TooltipDlgGenerated(wxWindow* parent) : //Suse Linux/X11: needs parent window, else there are z-order issues
-        wxDialog(parent, wxID_ANY, L"" /*title*/, wxDefaultPosition, wxDefaultSize, 0 /*style*/)
+        wxDialog(parent, wxID_ANY, L"" /*title*/, wxDefaultPosition, wxDefaultSize, wxSIMPLE_BORDER /*style*/)
+        //wxSIMPLE_BORDER side effect: removes title bar on KDE
     {
         SetSizeHints(wxDefaultSize, wxDefaultSize);
         SetExtraStyle(this->GetExtraStyle() | wxWS_EX_TRANSIENT);
@@ -101,13 +103,16 @@ void Tooltip::hide()
 {
     if (tipWindow_)
     {
-#ifdef __WXGTK2__  //the tooltip sometimes turns blank or is not shown again after it was hidden: e.g. drag-selection on middle grid
+#if GTK_MAJOR_VERSION == 2 //the tooltip sometimes turns blank or is not shown again after it was hidden: e.g. drag-selection on middle grid
         //=> no such issues on GTK3!
         tipWindow_->Destroy(); //apply brute force:
         tipWindow_ = nullptr;  //
         lastUsedImg_ = wxNullImage;
-#else
+
+#elif GTK_MAJOR_VERSION == 3
         tipWindow_->Hide();
+#else
+#error unknown GTK version!
 #endif
     }
 }

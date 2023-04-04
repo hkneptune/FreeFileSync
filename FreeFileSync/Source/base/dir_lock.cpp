@@ -415,15 +415,7 @@ void waitOnDirLock(const Zstring& lockFilePath, const DirLockCallback& notifySta
 }
 
 
-void releaseLock(const Zstring& lockFilePath) //noexcept
-{
-    try
-    {
-        removeFilePlain(lockFilePath); //throw FileError
-    }
-    catch (FileError&) {}
-    warn_static("log!!! at the very least") //https://freefilesync.org/forum/viewtopic.php?t=7655
-}
+void releaseLock(const Zstring& lockFilePath) { removeFilePlain(lockFilePath); } //throw FileError
 
 
 bool tryLock(const Zstring& lockFilePath) //throw FileError
@@ -484,7 +476,12 @@ public:
         lifeSignthread_.requestStop(); //thread lifetime is subset of this instances's life
         lifeSignthread_.join();
 
-        ::releaseLock(lockFilePath_); //noexcept
+        try
+        {
+            ::releaseLock(lockFilePath_); //throw FileError
+        }
+        catch (FileError&) {}
+        warn_static("log!!! at the very least") //https://freefilesync.org/forum/viewtopic.php?t=7655
     }
 
 private:

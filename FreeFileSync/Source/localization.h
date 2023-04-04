@@ -9,7 +9,7 @@
 
 #include <vector>
 #include <zen/file_error.h>
-#include <wx/intl.h>
+#include <wx/intl.h> //wxLayoutDirection
 #include <wx/language.h>
 
 

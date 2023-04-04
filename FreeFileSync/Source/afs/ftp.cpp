@@ -317,10 +317,10 @@ public:
 
     //returns server response (header data)
     std::string perform(const AfsPath& itemPath, bool isDir, curl_ftpmethod pathMethod,
-                        const std::vector<CurlOption>& extraOptions, bool requiresUtf8) //throw SysError, SysErrorPassword, SysErrorFtpProtocol
+                        const std::vector<CurlOption>& extraOptions, bool requestUtf8) //throw SysError, SysErrorPassword, SysErrorFtpProtocol
     {
-        if (requiresUtf8) //avoid endless recursion
-            requestUtf8(); //throw SysError, SysErrorFtpProtocol
+        if (requestUtf8) //avoid endless recursion
+            initUtf8(); //throw SysError, SysErrorFtpProtocol
 
         if (!easyHandle_)
         {
@@ -509,8 +509,8 @@ public:
 
         //=======================================================================================================
         const CURLcode rcPerf = ::curl_easy_perform(easyHandle_);
-        //WTF: curl_easy_perform() considers FTP response codes 4XX, 5XX as failure, but for HTTP response codes 4XX are considered success!! CONSISTENCY, people!!!
-        //note: CURLOPT_FAILONERROR(default:off) is only available for HTTP => BUT at least we can prefix FTP commands with * for same effect
+        //WTF: curl_easy_perform() considers FTP response codes >= 400 as failure, but for HTTP response codes 4XX are considered success!! CONSISTENCY, people!!!
+        //note: CURLOPT_FAILONERROR(default:off) is only available for HTTP => BUT at least we can prefix FTP commands with * for same effect: https://curl.se/libcurl/c/CURLOPT_QUOTE.html
 
         if (socketException)
             throw* socketException; //throw SysError
@@ -536,9 +536,11 @@ public:
             if (rcPerf == CURLE_LOGIN_DENIED)
                 throw SysErrorPassword(formatSystemError("curl_easy_perform", formatCurlStatusCode(rcPerf), errorMsg));
 
-            long ftpStatusCode = CURLE_OK; //optional
+            long ftpStatusCode = 0; //optional
             /*const CURLcode rc =*/ ::curl_easy_getinfo(easyHandle_, CURLINFO_RESPONSE_CODE, &ftpStatusCode);
-            if (ftpStatusCode != CURLE_OK)
+            //https://en.wikipedia.org/wiki/List_of_FTP_server_return_codes
+            assert(ftpStatusCode == 0 || 400 <= ftpStatusCode && ftpStatusCode < 600);
+            if (ftpStatusCode != 0)
                 throw SysErrorFtpProtocol(formatSystemError("curl_easy_perform", formatCurlStatusCode(rcPerf), errorMsg), ftpStatusCode);
 
             throw SysError(formatSystemError("curl_easy_perform", formatCurlStatusCode(rcPerf), errorMsg));
@@ -549,7 +551,7 @@ public:
     }
 
     //returns server response (header data)
-    std::string runSingleFtpCommand(const std::string& ftpCmd, bool requiresUtf8) //throw SysError, SysErrorFtpProtocol
+    std::string runSingleFtpCommand(const std::string& ftpCmd, bool requestUtf8) //throw SysError, SysErrorFtpProtocol
     {
         curl_slist* quote = nullptr;
         ZEN_ON_SCOPE_EXIT(::curl_slist_free_all(quote));
@@ -559,7 +561,7 @@ public:
         {
             {CURLOPT_NOBODY, 1L},
             {CURLOPT_QUOTE, quote},
-        }, requiresUtf8); //throw SysError, SysErrorPassword, SysErrorFtpProtocol
+        }, requestUtf8); //throw SysError, SysErrorPassword, SysErrorFtpProtocol
     }
 
     void testConnection() //throw SysError
@@ -574,11 +576,10 @@ public:
             ... and it tells! FUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU https://freefilesync.org/forum/viewtopic.php?t=8041             */
 
         //=> '*' to the rescue: as long as we get an FTP response - *any* FTP response (including 550) - the connection itself is fine!
-        const std::string& featBuf = runSingleFtpCommand("*FEAT", false /*requiresUtf8*/); //throw SysError, SysErrorFtpProtocol
+        const std::string& featBuf = runSingleFtpCommand("*FEAT", false /*requestUtf8*/); //throw SysError, SysErrorFtpProtocol
 
         for (const std::string_view& line : splitFtpResponse(featBuf))
-            if (startsWith(line, "211-") ||
-                startsWith(line, "211 ") ||
+            if (startsWith(line, "211 ") ||
                 startsWith(line, "500 ") ||
                 startsWith(line, "550 "))
                 return;
@@ -608,7 +609,7 @@ public:
                 easyHandle_ = nullptr;
             }
 
-            const std::string& pwdBuf = runSingleFtpCommand("PWD", true /*requiresUtf8*/); //throw SysError, SysErrorFtpProtocol
+            const std::string& pwdBuf = runSingleFtpCommand("PWD", true /*requestUtf8*/); //throw SysError, SysErrorFtpProtocol
 
             for (const std::string_view& line : splitFtpResponse(pwdBuf))
                 if (startsWith(line, "257 "))
@@ -644,7 +645,7 @@ public:
             if (*currentSocket == binaryEnabledSocket_)
                 return;
 
-        runSingleFtpCommand("TYPE I", false /*requiresUtf8*/); //throw SysError, SysErrorFtpProtocol
+        runSingleFtpCommand("TYPE I", false /*requestUtf8*/); //throw SysError, SysErrorFtpProtocol
 
         //make sure our binary-enabled session is still there (== libcurl behaves as we expect)
         std::optional<curl_socket_t> currentSocket = getActiveSocket(); //throw SysError
@@ -661,7 +662,14 @@ public:
     bool supportsMlsd() { return getFeatureSupport(&Features::mlsd); } //
     bool supportsMfmt() { return getFeatureSupport(&Features::mfmt); } //throw SysError
     bool supportsClnt() { return getFeatureSupport(&Features::clnt); } //
-    bool supportsUtf8() { return getFeatureSupport(&Features::utf8); } //
+    bool supportsUtf8()
+    {
+        if (getFeatureSupport(&Features::utf8))
+            return true;
+
+        initUtf8(); //vsFTPd (ftp.sunet.se): supports UTF8 via "OPTS UTF8 ON", even if "UTF8" is missing from "FEAT"
+        return socketUsesUtf8_;
+    }
 
     bool isHealthy() const
     {
@@ -697,7 +705,7 @@ public:
 
             case ServerEncoding::utf8:
                 if (!isValidUtf(str))
-                    throw SysError(_("Invalid character encoding:") + L" [UTF-8] " + utfTo<std::wstring>(str));
+                    throw SysError(_("Invalid character encoding:") + L' ' + utfTo<std::wstring>(str) + L' ' + _("Expected:") + L" [UTF-8]");
 
                 return utfTo<Zstring>(str);
 
@@ -724,7 +732,7 @@ public:
             case ServerEncoding::utf8:
                 //validate! we consider REPLACEMENT_CHAR as indication for server using ANSI encoding in serverToUtfEncoding()
                 if (!isValidUtf(str))
-                    throw SysError(_("Invalid character encoding:") + (sizeof(str[0]) == 1 ? L" [UTF-8] " : L" [UTF-16] ") + utfTo<std::wstring>(str));
+                    throw SysError(_("Invalid character encoding:") + L' ' + utfTo<std::wstring>(str) + L' ' + _("Expected:") + (sizeof(str[0]) == 1 ? L" [UTF-8]" : L" [UTF-16]"));
                 static_assert(sizeof(str[0]) == 1 || sizeof(str[0]) == 2);
 
                 return utfTo<std::string>(str);
@@ -775,29 +783,42 @@ private:
         return path;
     }
 
-    void requestUtf8() //throw SysError, SysErrorFtpProtocol
+    void initUtf8() //throw SysError, SysErrorFtpProtocol
     {
-        //Some RFC-2640-non-compliant servers require UTF8 to be explicitly enabled: https://wiki.filezilla-project.org/Character_Encoding#Conflicting_specification
-        //e.g. this one (Microsoft FTP Service): https://freefilesync.org/forum/viewtopic.php?t=4303
+        /*  1. Some RFC-2640-non-compliant servers require UTF8 to be explicitly enabled: https://wiki.filezilla-project.org/Character_Encoding#Conflicting_specification
+               - e.g. Microsoft FTP Service: https://freefilesync.org/forum/viewtopic.php?t=4303
 
-        //check supportsUtf8()? no, let's *always* request UTF8, even if server does not set UTF8 in FEAT response! e.g. like https://freefilesync.org/forum/viewtopic.php?t=9564
-        //=> should not hurt + we rely on auto-encoding detection anyway; see serverToUtfEncoding()
+            2. Others do not advertize "UTF8" in "FEAT", but *still* allow enabling it via "OPTS UTF8 ON":
+               -  https://freefilesync.org/forum/viewtopic.php?t=9564
+               - vsFTPd: ftp.sunet.se https://security.appspot.com/vsftpd.html#download
 
-        //"OPTS UTF8 ON" needs to be activated each time libcurl internally creates a new session
-        //hopyfully libcurl will offer a better solution: https://github.com/curl/curl/issues/1457
+            "OPTS UTF8 ON" needs to be activated each time libcurl internally creates a new session
+            hopyfully libcurl will offer a better solution: https://github.com/curl/curl/issues/1457       */
 
         if (std::optional<curl_socket_t> currentSocket = getActiveSocket()) //throw SysError
             if (*currentSocket == utf8RequestedSocket_) //caveat: a non-UTF8-enabled session might already exist, e.g. from a previous call to supportsMlsd()
                 return;
 
-        //some servers even require "CLNT" before accepting "OPTS UTF8 ON": https://social.msdn.microsoft.com/Forums/en-US/d602574f-8a69-4d69-b337-52b6081902cf/problem-with-ftpwebrequestopts-utf8-on-501-please-clnt-first
+        //some (broken!?) servers require "CLNT" before accepting "OPTS UTF8 ON": https://social.msdn.microsoft.com/Forums/en-US/d602574f-8a69-4d69-b337-52b6081902cf/problem-with-ftpwebrequestopts-utf8-on-501-please-clnt-first
         if (supportsClnt()) //throw SysError
-            runSingleFtpCommand("CLNT FreeFileSync", false /*requiresUtf8*/); //throw SysError, SysErrorFtpProtocol
+            runSingleFtpCommand("CLNT FreeFileSync", false /*requestUtf8*/); //throw SysError, SysErrorFtpProtocol
 
         //"prefix the command with an asterisk to make libcurl continue even if the command fails"
-        //-> ignore if server does not know this legacy command (but report all *other* issues; else getActiveSocket() below won't return value and hide real error!)
-        //"If an RFC 2640 compliant client sends OPTS UTF-8 ON, it has to use UTF-8 regardless whether OPTS UTF-8 ON succeeds or not. "
-        runSingleFtpCommand("*OPTS UTF8 ON", false /*requiresUtf8*/); //throw SysError, (SysErrorFtpProtocol)
+        //-> ignore if server does not know this legacy command (but report all *other* issues; else getActiveSocket() below won't have a socket and we've hidden the real error!)
+        const std::string& optsBuf = runSingleFtpCommand("*OPTS UTF8 ON", false /*requestUtf8*/); //throw SysError, (SysErrorFtpProtocol)
+
+        //get *last* FTP status code (can there be more than one!?)
+        int ftpStatusCode = 0;
+        for (const std::string_view& line : splitFtpResponse(optsBuf))
+            if (line.size() >= 4 &&
+                isDigit(line[0]) &&
+                isDigit(line[1]) &&
+                isDigit(line[2]) &&
+                line[3] == ' ')
+                ftpStatusCode = stringTo<int>(line);
+
+        socketUsesUtf8_ = ftpStatusCode == 200 || //"200 Always in UTF8 mode."  "200 UTF8 set to on"
+                          ftpStatusCode == 202;   //"202 UTF8 mode is always enabled."
 
         //make sure our Unicode-enabled session is still there (== libcurl behaves as we expect)
         std::optional<curl_socket_t> currentSocket = getActiveSocket(); //throw SysError
@@ -852,8 +873,8 @@ private:
             if (!featureCache_)
             {
                 //*: ignore error if server does not support/allow FEAT
-                featureCache_ = parseFeatResponse(runSingleFtpCommand("*FEAT", false /*requiresUtf8*/)); //throw SysError, (SysErrorFtpProtocol)
-                //used by requestUtf8()! => requiresUtf8 = false!!!
+                featureCache_ = parseFeatResponse(runSingleFtpCommand("*FEAT", false /*requestUtf8*/)); //throw SysError, (SysErrorFtpProtocol)
+                //used by initUtf8()! => requestUtf8 = false!!!
 
                 sf->access([&](FeatureList& feat) { feat.emplace(sessionCfg_.deviceId.server, *featureCache_); });
             }
@@ -884,7 +905,7 @@ private:
                 //https://tools.ietf.org/html/rfc3659#section-7.8
                 //"a server-FTP process that supports MLST, and MLSD [...] MUST indicate that this support exists"
                 //"there is no distinct FEAT output for MLSD. The presence of the MLST feature indicates that both MLST and MLSD are supported"
-                if (equalAsciiNoCase     (line, " MLST") ||
+                if (equalAsciiNoCase     (line, " MLST")  ||
                     startsWithAsciiNoCase(line, " MLST ") || //SP "MLST" [SP factlist] CRLF
                     //so much the theory. In practice FTP server implementers can't read (specs): https://freefilesync.org/forum/viewtopic.php?t=6752
                     equalAsciiNoCase(line, " MLSD"))
@@ -912,6 +933,8 @@ private:
 
     curl_socket_t utf8RequestedSocket_ = 0;
     curl_socket_t binaryEnabledSocket_ = 0;
+
+    bool socketUsesUtf8_ = false;
 
     ServerEncoding encoding_ = ServerEncoding::unknown;
 
@@ -1143,7 +1166,7 @@ FtpItem getFtpSymlinkInfo(const FtpLogin& login, const AfsPath& linkPath) //thro
             session.ensureBinaryMode(); //throw SysError
             //...or some server return ASCII size or fail with '550 SIZE not allowed in ASCII mode: https://freefilesync.org/forum/viewtopic.php?t=7669&start=30#p27742
             const std::string sizeBuf = session.runSingleFtpCommand("*SIZE " + session.getServerPathInternal(linkPath),
-                                                                    true /*requiresUtf8*/); //throw SysError, SysErrorFtpProtocol
+                                                                    true /*requestUtf8*/); //throw SysError, SysErrorFtpProtocol
             //alternative: use libcurl + CURLINFO_CONTENT_LENGTH_DOWNLOAD_T? => nah, suprise (motherfucker)! libcurl adds needless "REST 0" command!
             for (const std::string_view& line : splitFtpResponse(sizeBuf))
                 if (startsWith(line, "213 ")) // 213<space>[rubbish]<file size>        according to libcurl
@@ -1154,7 +1177,7 @@ FtpItem getFtpSymlinkInfo(const FtpLogin& login, const AfsPath& linkPath) //thro
                         output.fileSize = stringTo<uint64_t>(makeStringView(it.base(), line.end()));
 
                         mdtmBuf = session.runSingleFtpCommand("MDTM " + session.getServerPathInternal(linkPath),
-                                                              true /*requiresUtf8*/); //throw SysError, SysErrorFtpProtocol
+                                                              true /*requestUtf8*/); //throw SysError, SysErrorFtpProtocol
                         return;
                     }
                     break;
@@ -1245,7 +1268,7 @@ public:
             //else: use "LIST" + CURLFTPMETHOD_SINGLECWD
             //caveat: let's better not use LIST parameters: https://cr.yp.to/ftp/list.html
 
-            session.perform(dirPath, true /*isDir*/, pathMethod, options, true /*requiresUtf8*/); //throw SysError, SysErrorPassword, SysErrorFtpProtocol
+            session.perform(dirPath, true /*isDir*/, pathMethod, options, true /*requestUtf8*/); //throw SysError, SysErrorPassword, SysErrorFtpProtocol
 
             if (session.supportsMlsd()) //throw SysError
                 output = parseMlsd(rawListing, session); //throw SysError
@@ -1837,7 +1860,7 @@ void ftpFileDownload(const FtpLogin& login, const AfsPath& afsFilePath, //throw 
 
                 //{CURLOPT_BUFFERSIZE, 256 * 1024} -> defaults is 16 kB which seems to correspond to SSL packet size
                 //=> setting larget buffers size does nothing (recv still returns only 16 kB)
-            }, true /*requiresUtf8*/); //throw SysError, SysErrorPassword, SysErrorFtpProtocol
+            }, true /*requestUtf8*/); //throw SysError, SysErrorPassword, SysErrorFtpProtocol
         });
     }
     catch (const SysError& e)
@@ -1908,7 +1931,7 @@ void ftpFileUpload(const FtpLogin& login, const AfsPath& afsFilePath,
 
                 //{CURLOPT_PREQUOTE,  quote},
                 //{CURLOPT_POSTQUOTE, quote},
-            }, true /*requiresUtf8*/); //throw SysError, SysErrorPassword, SysErrorFtpProtocol
+            }, true /*requestUtf8*/); //throw SysError, SysErrorPassword, SysErrorFtpProtocol
         });
     }
     catch (const SysError& e)
@@ -2090,7 +2113,7 @@ private:
                         throw SysError(L"Server does not support the MFMT command.");
 
                     session.runSingleFtpCommand("MFMT " + isoTime + ' ' + session.getServerPathInternal(filePath_),
-                                                true /*requiresUtf8*/); //throw SysError, SysErrorFtpProtocol
+                                                true /*requestUtf8*/); //throw SysError, SysErrorFtpProtocol
                     //not relevant for OutputStreamFtp, but: does MFMT follow symlinks? for Linux FTP server (using utime) it does
                 });
             }
@@ -2159,7 +2182,7 @@ private:
                     return FtpDirectoryReader::execute(login_, *parentPath); //throw SysError, SysErrorFtpProtocol
                 }
                 catch (const SysError& e) //add context: error might be folder-specific
-                { throw SysError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(getItemName(*parentPath))) + L'\n' + e.toString()); }
+                { throw SysError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(parentPath->value.empty() ? Zstr("/") : getItemName(*parentPath))) + L'\n' + e.toString()); }
             }();
 
             const Zstring itemName = getItemName(itemPath);
@@ -2178,7 +2201,7 @@ private:
         }
     }
 
-    std::variant<ItemType, AfsPath /*last existing parent path*/> getItemTypeIfExistsImpl(const AfsPath& itemPath) const //throw SysError
+    std::optional<ItemType> getItemTypeIfExistsImpl(const AfsPath& itemPath) const //throw SysError
     {
         const std::optional<AfsPath> parentPath = getParentPath(itemPath);
         if (!parentPath) //device root => quick access test
@@ -2201,7 +2224,7 @@ private:
                     if (item.itemName == itemName) //case-sensitive comparison! itemPath must be normalized!
                         return item.type;
 
-                return *parentPath;
+                return std::nullopt;
             }
             catch (const SysErrorFtpProtocol& e)
             {
@@ -2216,12 +2239,10 @@ private:
             }
         }
         catch (const SysError& e) //add context: error might be folder-specific
-        { throw SysError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(getItemName(*parentPath))) + L'\n' + e.toString()); }
+        { throw SysError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(parentPath->value.empty() ? Zstr("/") : getItemName(*parentPath))) + L'\n' + e.toString()); }
 
         //----------------------------------------------------------------
-        const std::variant<ItemType, AfsPath /*last existing parent path*/> parentTypeOrPath = getItemTypeIfExistsImpl(*parentPath); //throw SysError
-
-        if (const ItemType* parentType = std::get_if<ItemType>(&parentTypeOrPath))
+        if (const std::optional<ItemType> parentType = getItemTypeIfExistsImpl(*parentPath)) //throw SysError
         {
             if (*parentType == ItemType::file /*obscure, but possible*/)
                 throw SysError(replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(getItemName(*parentPath))));
@@ -2229,10 +2250,10 @@ private:
             throw* lastFtpError; //throw SysError; parent path existing, so traversal should not have failed!
         }
         else
-            return parentTypeOrPath;
+            return std::nullopt;
     }
 
-    std::variant<ItemType, AfsPath /*last existing parent path*/> getItemTypeIfExists(const AfsPath& itemPath) const override //throw FileError
+    std::optional<ItemType> getItemTypeIfExists(const AfsPath& itemPath) const override //throw FileError
     {
         try
         {
@@ -2256,7 +2277,7 @@ private:
         {
             accessFtpSession(login_, [&](FtpSession& session) //throw SysError
             {
-                session.runSingleFtpCommand("MKD " + session.getServerPathInternal(folderPath), true /*requiresUtf8*/); //throw SysError, SysErrorFtpProtocol
+                session.runSingleFtpCommand("MKD " + session.getServerPathInternal(folderPath), true /*requestUtf8*/); //throw SysError, SysErrorFtpProtocol
             });
         }
         catch (const SysError& e)
@@ -2271,7 +2292,7 @@ private:
         {
             accessFtpSession(login_, [&](FtpSession& session) //throw SysError
             {
-                session.runSingleFtpCommand("DELE " + session.getServerPathInternal(filePath), true /*requiresUtf8*/); //throw SysError, SysErrorFtpProtocol
+                session.runSingleFtpCommand("DELE " + session.getServerPathInternal(filePath), true /*requestUtf8*/); //throw SysError, SysErrorFtpProtocol
             });
         }
         catch (const SysError& e)
@@ -2288,7 +2309,7 @@ private:
             {
                 //works fine for Linux hosts, but what about Windows-hosted FTP??? Distinguish DELE/RMD?
                 //Windows test, FileZilla Server and Windows IIS FTP: all symlinks are reported as regular folders
-                session.runSingleFtpCommand("DELE " + session.getServerPathInternal(linkPath), true /*requiresUtf8*/); //throw SysError, SysErrorFtpProtocol
+                session.runSingleFtpCommand("DELE " + session.getServerPathInternal(linkPath), true /*requestUtf8*/); //throw SysError, SysErrorFtpProtocol
             });
         }
         catch (const SysError& e)
@@ -2305,7 +2326,7 @@ private:
             {
                 //Windows server: FileZilla Server and Windows IIS FTP: all symlinks are reported as regular folders
                 //Linux server (freefilesync.org): RMD will fail for symlinks!
-                session.runSingleFtpCommand("RMD " + session.getServerPathInternal(folderPath), true /*requiresUtf8*/); //throw SysError, SysErrorFtpProtocol
+                session.runSingleFtpCommand("RMD " + session.getServerPathInternal(folderPath), true /*requestUtf8*/); //throw SysError, SysErrorFtpProtocol
             });
         }
         catch (const SysError& e)
@@ -2377,13 +2398,19 @@ private:
 
     //symlink handling: follow
     //already existing: fail
-    void copyNewFolderForSameAfsType(const AfsPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions) const override //throw FileError
+    FolderCopyResult copyNewFolderForSameAfsType(const AfsPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions) const override //throw FileError
     {
-        if (copyFilePermissions)
-            throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(targetPath))), _("Operation not supported by device."));
-
         //already existing: fail
         AFS::createFolderPlain(targetPath); //throw FileError
+
+        FolderCopyResult result;
+        try
+        {
+            if (copyFilePermissions)
+                throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(targetPath))), _("Operation not supported by device."));
+        }
+        catch (const FileError& e) { result.errorAttribs = e; }
+        return result;
     }
 
     //already existing: fail
@@ -2422,7 +2449,7 @@ private:
                 {
                     {CURLOPT_NOBODY, 1L},
                     {CURLOPT_QUOTE, quote},
-                }, true /*requiresUtf8*/); //throw SysError, SysErrorPassword, SysErrorFtpProtocol
+                }, true /*requestUtf8*/); //throw SysError, SysErrorPassword, SysErrorFtpProtocol
             });
         }
         catch (const SysError& e)
@@ -2445,7 +2472,7 @@ private:
             accessFtpSession(login_, [](FtpSession& session) //connect with FTP server, *unless* already connected (in which case *nothing* is sent)
             {
                 session.perform(AfsPath(), true /*isDir*/, CURLFTPMETHOD_NOCWD,
-                {{CURLOPT_NOBODY, 1L}, {CURLOPT_SERVER_RESPONSE_TIMEOUT, 0}}, false /*requiresUtf8*/);
+                {{CURLOPT_NOBODY, 1L}, {CURLOPT_SERVER_RESPONSE_TIMEOUT, 0}}, false /*requestUtf8*/);
                 //caveat: connection phase only, so disable CURLOPT_SERVER_RESPONSE_TIMEOUT, or next access may fail with CURLE_OPERATION_TIMEDOUT!
             }); //throw SysError, SysErrorPassword, SysErrorFtpProtocol
         };
@@ -2501,14 +2528,12 @@ private:
 
     std::unique_ptr<RecycleSession> createRecyclerSession(const AfsPath& folderPath) const override //throw FileError, RecycleBinUnavailable
     {
-        throw RecycleBinUnavailable(replaceCpy(_("The recycle bin is not available for %x."), L"%x", fmtPath(getDisplayPath(folderPath))),
-                                    _("Operation not supported by device."));
+        throw RecycleBinUnavailable(replaceCpy(_("The recycle bin is not available for %x."), L"%x", fmtPath(getDisplayPath(folderPath))));
     }
 
     void moveToRecycleBin(const AfsPath& itemPath) const override //throw FileError, RecycleBinUnavailable
     {
-        throw RecycleBinUnavailable(replaceCpy(_("The recycle bin is not available for %x."), L"%x", fmtPath(getDisplayPath(itemPath))),
-                                    _("Operation not supported by device."));
+        throw RecycleBinUnavailable(replaceCpy(_("The recycle bin is not available for %x."), L"%x", fmtPath(getDisplayPath(itemPath))));
     }
 
     const FtpLogin login_;
@@ -2596,7 +2621,7 @@ AfsDevice fff::condenseToFtpDevice(const FtpLogin& login) //noexcept
         startsWithAsciiNoCase(loginTmp.server, "ftps:" ) ||
         startsWithAsciiNoCase(loginTmp.server, "sftp:" ))
         loginTmp.server = afterFirst(loginTmp.server, Zstr(':'), IfNotFoundReturn::none);
-    trim(loginTmp.server, true, true, [](Zchar c) { return c == Zstr('/') || c == Zstr('\\'); });
+    trim(loginTmp.server, TrimSide::both, [](Zchar c) { return c == Zstr('/') || c == Zstr('\\'); });
 
     return makeSharedRef<FtpFileSystem>(loginTmp);
 }
@@ -2631,7 +2656,7 @@ AbstractPath fff::createItemPathFtp(const Zstring& itemPathPhrase) //noexcept
 
     if (startsWithAsciiNoCase(pathPhrase, ftpPrefix))
         pathPhrase = pathPhrase.c_str() + strLength(ftpPrefix);
-    trim(pathPhrase, true, false, [](Zchar c) { return c == Zstr('/') || c == Zstr('\\'); });
+    trim(pathPhrase, TrimSide::left, [](Zchar c) { return c == Zstr('/') || c == Zstr('\\'); });
 
     const ZstringView credentials = beforeFirst<ZstringView>(pathPhrase, Zstr('@'), IfNotFoundReturn::none);
     const ZstringView fullPathOpt =  afterFirst<ZstringView>(pathPhrase, Zstr('@'), IfNotFoundReturn::all);

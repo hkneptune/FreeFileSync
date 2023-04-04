@@ -8,12 +8,14 @@
 #include <map>
 #include <algorithm>
 #include <chrono>
+#include <variant>
 #include "file_traverser.h"
 #include "scope_guard.h"
 #include "symlink_target.h"
 #include "file_io.h"
 #include "crc.h"
 #include "guid.h"
+#include "ring_buffer.h"
 
     #include <sys/vfs.h> //statfs
     #ifdef HAVE_SELINUX
@@ -51,6 +53,52 @@ ItemType getItemTypeImpl(const Zstring& itemPath) //throw SysErrorCode
         return ItemType::folder;
     return ItemType::file; //S_ISREG || S_ISCHR || S_ISBLK || S_ISFIFO || S_ISSOCK
 }
+
+
+std::variant<ItemType, Zstring /*last existing parent path*/> getItemTypeIfExistsImpl(const Zstring& itemPath) //throw SysError
+{
+    try
+    {
+        //fast check: 1. perf 2. expected by getFolderStatusNonBlocking()
+        return getItemTypeImpl(itemPath); //throw SysErrorCode
+    }
+    catch (const SysErrorCode& e) //let's dig deeper, but *only* if error code sounds like "not existing"
+    {
+        const std::optional<Zstring> parentPath = getParentFolderPath(itemPath);
+        if (!parentPath) //device root => quick access test
+            throw;
+        if (e.errorCode == ENOENT)
+        {
+            const std::variant<ItemType, Zstring /*last existing parent path*/> parentTypeOrPath = getItemTypeIfExistsImpl(*parentPath); //throw SysError
+
+            if (const ItemType* parentType = std::get_if<ItemType>(&parentTypeOrPath))
+            {
+                if (*parentType == ItemType::file /*obscure, but possible*/)
+                    throw SysError(replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(getItemName(*parentPath))));
+
+                const Zstring itemName = getItemName(itemPath);
+                assert(!itemName.empty());
+
+                try
+                {
+                    traverseFolder(*parentPath, //throw FileError
+                    [&](const    FileInfo& fi) { if (fi.itemName == itemName) throw SysError(_("Temporary access error:") + L' ' + e.toString()); },
+                    [&](const  FolderInfo& fi) { if (fi.itemName == itemName) throw SysError(_("Temporary access error:") + L' ' + e.toString()); },
+                    [&](const SymlinkInfo& si) { if (si.itemName == itemName) throw SysError(_("Temporary access error:") + L' ' + e.toString()); });
+                    //- case-sensitive comparison! itemPath must be normalized!
+                    //- finding the item after getItemType() previously failed is exceptional
+                }
+                catch (const FileError& e) { throw SysError(replaceCpy(e.toString(), L"\n\n", L'\n')); }
+
+                return *parentPath;
+            }
+            else
+                return parentTypeOrPath;
+        }
+        else
+            throw;
+    }
+}
 }
 
 
@@ -64,59 +112,20 @@ ItemType zen::getItemType(const Zstring& itemPath) //throw FileError
 }
 
 
-std::variant<ItemType, Zstring /*last existing parent path*/> zen::getItemTypeIfExists(const Zstring& itemPath) //throw FileError
+std::optional<ItemType> zen::getItemTypeIfExists(const Zstring& itemPath) //throw FileError
 {
     try
     {
-        try
-        {
-            //fast check: 1. perf 2. expected by getFolderStatusNonBlocking()
-            return getItemTypeImpl(itemPath); //throw SysErrorCode
-        }
-        catch (const SysErrorCode& e) //let's dig deeper, but *only* if error code sounds like "not existing"
-        {
-            const std::optional<Zstring> parentPath = getParentFolderPath(itemPath);
-            if (!parentPath) //device root => quick access test
-                throw;
-            if (e.errorCode == ENOENT)
-            {
-                const std::variant<ItemType, Zstring /*last existing parent path*/> parentTypeOrPath = getItemTypeIfExists(*parentPath); //throw FileError
-
-                if (const ItemType* parentType = std::get_if<ItemType>(&parentTypeOrPath))
-                {
-                    if (*parentType == ItemType::file /*obscure, but possible*/)
-                        throw SysError(replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(getItemName(*parentPath))));
-
-                    const Zstring itemName = getItemName(itemPath);
-                    assert(!itemName.empty());
-
-                    traverseFolder(*parentPath, //throw FileError
-                    [&](const    FileInfo& fi) { if (fi.itemName == itemName) throw SysError(_("Temporary access error:") + L' ' + e.toString()); },
-                    [&](const  FolderInfo& fi) { if (fi.itemName == itemName) throw SysError(_("Temporary access error:") + L' ' + e.toString()); },
-                    [&](const SymlinkInfo& si) { if (si.itemName == itemName) throw SysError(_("Temporary access error:") + L' ' + e.toString()); });
-                    //- case-sensitive comparison! itemPath must be normalized!
-                    //- finding the item after getItemType() previously failed is exceptional
-
-                    return *parentPath;
-                }
-                else
-                    return parentTypeOrPath;
-            }
-            else
-                throw;
-        }
+        const std::variant<ItemType, Zstring /*last existing parent path*/> typeOrPath = getItemTypeIfExistsImpl(itemPath); //throw SysError
+        if (const ItemType* type = std::get_if<ItemType>(&typeOrPath))
+            return *type;
+        else
+            return std::nullopt;
     }
     catch (const SysError& e)
     {
         throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(itemPath)), e.toString());
     }
-}
-
-
-bool zen::itemExists(const Zstring& itemPath) //throw FileError
-{
-    const std::variant<ItemType, Zstring /*last existing parent path*/> typeOrPath = getItemTypeIfExists(itemPath); //throw FileError
-    return std::get_if<ItemType>(&typeOrPath);
 }
 
 
@@ -130,16 +139,16 @@ namespace
 //- folderPath does not need to exist (yet)
 int64_t zen::getFreeDiskSpace(const Zstring& folderPath) //throw FileError
 {
-    const Zstring existingPath = [&]
-    {
-        const std::variant<ItemType, Zstring /*last existing parent path*/> typeOrPath = getItemTypeIfExists(folderPath); //throw FileError
-        if (std::get_if<ItemType>(&typeOrPath))
-            return folderPath;
-        else
-            return std::get<Zstring>(typeOrPath);
-    }();
     try
     {
+        const Zstring existingPath = [&]
+        {
+            const std::variant<ItemType, Zstring /*last existing parent path*/> typeOrPath = getItemTypeIfExistsImpl(folderPath); //throw SysError
+            if (std::get_if<ItemType>(&typeOrPath))
+                return folderPath;
+            else
+                return std::get<Zstring>(typeOrPath);
+        }();
         struct statfs info = {};
         if (::statfs(existingPath.c_str(), &info) != 0) //follows symlinks!
             THROW_LAST_SYS_ERROR("statfs");
@@ -253,10 +262,14 @@ void removeDirectoryImpl(const Zstring& folderPath) //throw FileError
 
 void zen::removeDirectoryPlainRecursion(const Zstring& dirPath) //throw FileError
 {
-    if (getItemType(dirPath) == ItemType::symlink) //throw FileError
-        removeSymlinkPlain(dirPath); //throw FileError
-    else
-        removeDirectoryImpl(dirPath); //throw FileError
+    try
+    {
+        if (getItemTypeImpl(dirPath) == ItemType::symlink) //throw SysErrorCode
+            removeSymlinkPlain(dirPath); //throw FileError
+        else
+            removeDirectoryImpl(dirPath); //throw FileError
+    }
+    catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot delete directory %x."), L"%x", fmtPath(dirPath)), e.toString()); }
 }
 
 
@@ -354,16 +367,15 @@ void setWriteTimeNative(const Zstring& itemPath, const timespec& modTime, ProcSy
     //https://freefilesync.org/forum/viewtopic.php?t=2803 => utimensat() works (but not for gvfs SFTP)
     if (::utimensat(AT_FDCWD, itemPath.c_str(), newTimes, procSl == ProcSymlink::asLink ? AT_SYMLINK_NOFOLLOW : 0) == 0)
         return;
+    const ErrorCode ecUtimensat = errno;
     try
     {
         if (procSl == ProcSymlink::asLink)
-            try
-            {
-                if (getItemType(itemPath) == ItemType::symlink) //throw FileError
-                    THROW_LAST_SYS_ERROR("utimensat(AT_SYMLINK_NOFOLLOW)"); //use lutimes()? just a wrapper around utimensat()!
-                //else: fall back
-            }
-            catch (const FileError& e) { throw SysError(e.toString()); }
+        {
+            if (getItemTypeImpl(itemPath) == ItemType::symlink) //throw SysErrorCode
+                throw SysError(formatSystemError("utimensat(AT_SYMLINK_NOFOLLOW)", ecUtimensat)); //use lutimes()? just a wrapper around utimensat()!
+            //else: fall back
+        }
 
         //in other cases utimensat() returns EINVAL for CIFS/NTFS drives, but open+futimens works: https://freefilesync.org/forum/viewtopic.php?t=387
         //2017-07-04: O_WRONLY | O_APPEND seems to avoid EOPNOTSUPP on gvfs SFTP!
@@ -475,10 +487,14 @@ void zen::copyItemPermissions(const Zstring& sourcePath, const Zstring& targetPa
         if (::lchown(targetPath.c_str(), fileInfo.st_uid, fileInfo.st_gid) != 0) // may require admin rights!
             THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(targetPath)), "lchown");
 
-        const bool isSymlinkTarget = getItemType(targetPath) == ItemType::symlink; //throw FileError
-        if (!isSymlinkTarget && //setting access permissions doesn't make sense for symlinks on Linux: there is no lchmod()
-            ::chmod(targetPath.c_str(), fileInfo.st_mode) != 0)
-            THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(targetPath)), "chmod");
+        try
+        {
+            if (getItemTypeImpl(targetPath) != ItemType::symlink && //throw SysErrorCode
+                //setting access permissions doesn't make sense for symlinks on Linux: there is no lchmod()
+                ::chmod(targetPath.c_str(), fileInfo.st_mode) != 0)
+                THROW_LAST_SYS_ERROR("chmod");
+        }
+        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(targetPath)), e.toString()); }
     }
 
 }
@@ -517,29 +533,47 @@ void zen::createDirectory(const Zstring& dirPath) //throw FileError, ErrorTarget
 
 void zen::createDirectoryIfMissingRecursion(const Zstring& dirPath) //throw FileError
 {
-    //expect that path already exists (see: versioning, base folder, log file path) => check first
-    const std::variant<ItemType, Zstring /*last existing parent path*/> typeOrPath = getItemTypeIfExists(dirPath); //throw FileError
-
-    if (const ItemType* type = std::get_if<ItemType>(&typeOrPath))
+    auto getItemType2 = [&](const Zstring& itemPath) //throw FileError
     {
-        if (*type == ItemType::file /*obscure, but possible*/)
+        try
+        { return getItemTypeImpl(itemPath); } //throw SysErrorCode
+        catch (const SysErrorCode& e) //need to add context!
+        {
             throw FileError(replaceCpy(_("Cannot create directory %x."), L"%x", fmtPath(dirPath)),
-                            replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(getItemName(dirPath))));
-    }
-    else
+                            replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(getParentFolderPath(itemPath) ? getItemName(itemPath) : itemPath)) + L'\n' +
+                            e.toString());
+        }
+    };
+
+    try
     {
-        const Zstring existingDirPath = std::get<Zstring>(typeOrPath);
-        assert(startsWith(dirPath, existingDirPath));
-
-        const ZstringView relPath = makeStringView(dirPath.begin() + existingDirPath.size(), dirPath.end());
-        const std::vector<ZstringView> namesMissing = splitCpy(relPath, FILE_NAME_SEPARATOR, SplitOnEmpty::skip);
-        assert(!namesMissing.empty());
-
-        Zstring dirPathNew = existingDirPath;
-        for (const ZstringView folderName : namesMissing)
+        //- path most likely already exists (see: versioning, base folder, log file path) => check first
+        //- do NOT use getItemTypeIfExists()! race condition when multiple threads are calling createDirectoryIfMissingRecursion(): https://freefilesync.org/forum/viewtopic.php?t=10137#p38062
+        //- find first existing + accessible parent folder (backwards iteration):
+        Zstring dirPathEx = dirPath;
+        RingBuffer<Zstring> dirNames; //caveat: 1. might have been created in the meantime 2. getItemType2() may have failed with access error
+        for (;;)
             try
             {
-                dirPathNew = appendPath(dirPathNew, Zstring(folderName));
+                if (getItemType2(dirPathEx) == ItemType::file /*obscure, but possible*/) //throw FileError
+                    throw SysError(replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(getItemName(dirPathEx))));
+                break;
+            }
+            catch (FileError&) //not yet existing or access error
+            {
+                const std::optional<Zstring> parentPath = getParentFolderPath(dirPathEx);
+                if (!parentPath)//device root => quick access test
+                    throw;
+                dirNames.push_front(getItemName(dirPathEx));
+                dirPathEx = *parentPath;
+            }
+        //-----------------------------------------------------------
+
+        Zstring dirPathNew = dirPathEx;
+        for (const Zstring& dirName : dirNames)
+            try
+            {
+                dirPathNew = appendPath(dirPathNew, dirName);
 
                 createDirectory(dirPathNew); //throw FileError
             }
@@ -547,18 +581,24 @@ void zen::createDirectoryIfMissingRecursion(const Zstring& dirPath) //throw File
             {
                 try
                 {
-                    if (getItemType(dirPathNew) != ItemType::file /*obscure, but possible*/) //throw FileError
-                        continue; //already existing => possible, if createFolderIfMissingRecursion() is run in parallel
+                    if (getItemType2(dirPathNew) == ItemType::file /*obscure, but possible*/) //throw FileError
+                        throw SysError(replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(getItemName(dirPathNew))));
+                    else
+                        continue; //already existing => possible, if createDirectoryIfMissingRecursion() is run in parallel
                 }
                 catch (FileError&) {} //not yet existing or access error
 
                 throw;
             }
     }
+    catch (const SysError& e)
+    {
+        throw FileError(replaceCpy(_("Cannot create directory %x."), L"%x", fmtPath(dirPath)), e.toString());
+    }
 }
 
 
-void zen::tryCopyDirectoryAttributes(const Zstring& sourcePath, const Zstring& targetPath) //throw FileError
+void zen::copyDirectoryAttributes(const Zstring& sourcePath, const Zstring& targetPath) //throw FileError
 {
     //do NOT copy attributes for volume root paths which return as: FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM | FILE_ATTRIBUTE_DIRECTORY
     //https://freefilesync.org/forum/viewtopic.php?t=5550
@@ -570,10 +610,11 @@ void zen::tryCopyDirectoryAttributes(const Zstring& sourcePath, const Zstring& t
 
 void zen::copySymlink(const Zstring& sourcePath, const Zstring& targetPath) //throw FileError
 {
-    const SymlinkRawContent linkContent = getSymlinkRawContent(sourcePath); //throw FileError; accept broken symlinks
-
+    SymlinkRawContent linkContent{};
     try //harmonize with NativeFileSystem::equalSymlinkContentForSameAfsType()
     {
+        linkContent = getSymlinkRawContent_impl(sourcePath); //throw SysError; accept broken symlinks
+
         if (::symlink(linkContent.targetPath.c_str(), targetPath.c_str()) != 0)
             THROW_LAST_SYS_ERROR("symlink");
     }

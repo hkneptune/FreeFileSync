@@ -19,6 +19,42 @@ namespace zen
     do { const ErrorCode ecInternal = getLastError(); throw SysError(formatSystemError(functionName, ecInternal)); } while (false)
 
 
+#define THROW_LAST_SYS_ERROR_GAI(rcGai)                        \
+    do {                                                       \
+        if (rcGai == EAI_SYSTEM) /*"check errno for details"*/ \
+            THROW_LAST_SYS_ERROR("getaddrinfo");               \
+        \
+        throw SysError(formatSystemError("getaddrinfo", formatGaiErrorCode(rcGai), utfTo<std::wstring>(::gai_strerror(rcGai)))); \
+    } while (false)
+
+inline
+std::wstring formatGaiErrorCode(int ec)
+{
+    switch (ec) //codes used on both Linux and macOS
+    {
+            ZEN_CHECK_CASE_FOR_CONSTANT(EAI_ADDRFAMILY);
+            ZEN_CHECK_CASE_FOR_CONSTANT(EAI_AGAIN);
+            ZEN_CHECK_CASE_FOR_CONSTANT(EAI_BADFLAGS);
+            ZEN_CHECK_CASE_FOR_CONSTANT(EAI_FAIL);
+            ZEN_CHECK_CASE_FOR_CONSTANT(EAI_FAMILY);
+            ZEN_CHECK_CASE_FOR_CONSTANT(EAI_MEMORY);
+            ZEN_CHECK_CASE_FOR_CONSTANT(EAI_NODATA);
+            ZEN_CHECK_CASE_FOR_CONSTANT(EAI_NONAME);
+            ZEN_CHECK_CASE_FOR_CONSTANT(EAI_SERVICE);
+            ZEN_CHECK_CASE_FOR_CONSTANT(EAI_SOCKTYPE);
+            ZEN_CHECK_CASE_FOR_CONSTANT(EAI_SYSTEM);
+            ZEN_CHECK_CASE_FOR_CONSTANT(EAI_OVERFLOW);
+            ZEN_CHECK_CASE_FOR_CONSTANT(EAI_INPROGRESS);
+            ZEN_CHECK_CASE_FOR_CONSTANT(EAI_CANCELED);
+            ZEN_CHECK_CASE_FOR_CONSTANT(EAI_NOTCANCELED);
+            ZEN_CHECK_CASE_FOR_CONSTANT(EAI_ALLDONE);
+            ZEN_CHECK_CASE_FOR_CONSTANT(EAI_INTR);
+            ZEN_CHECK_CASE_FOR_CONSTANT(EAI_IDN_ENCODE);
+        default:
+            return replaceCpy(_("Error code %x"), L"%x", numberTo<std::wstring>(ec));
+    }
+}
+
 //patch up socket portability:
 using SocketType = int;
 const SocketType invalidSocket = -1;
@@ -53,7 +89,7 @@ public:
 
         const int rcGai = ::getaddrinfo(server.c_str(), serviceName.c_str(), &hints, &servinfo);
         if (rcGai != 0)
-            throw SysError(formatSystemError("getaddrinfo", replaceCpy(_("Error code %x"), L"%x", numberTo<std::wstring>(rcGai)), utfTo<std::wstring>(::gai_strerror(rcGai))));
+            THROW_LAST_SYS_ERROR_GAI(rcGai);
         if (!servinfo)
             throw SysError(formatSystemError("getaddrinfo", L"", L"Empty server info."));
 

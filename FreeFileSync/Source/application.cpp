@@ -41,6 +41,8 @@ using namespace fff;
     "I'd really like to know if there is some deep technical reason for it or
     if this is really as bloody stupid as it seems?" - vadz  https://github.com/wxWidgets/wxWidgets/issues/18733#issuecomment-1011235902
 
+    Show all available GTK backends: run FreeFileSync with env variable:    GDK_BACKEND=help
+
     => workaround: https://docs.gtk.org/gdk3/func.set_allowed_backends.html           */
     GLOBAL_RUN_ONCE(::gdk_set_allowed_backends("x11,*")); //call *before* gtk_init()
 #endif

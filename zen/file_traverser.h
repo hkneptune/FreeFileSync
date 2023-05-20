@@ -36,8 +36,8 @@ struct SymlinkInfo
 
 //- non-recursive
 void traverseFolder(const Zstring& dirPath,
-                    const std::function<void(const FileInfo&    fi)>& onFile,  /*optional*/  
-                    const std::function<void(const FolderInfo&  fi)>& onFolder,/*optional*/  
+                    const std::function<void(const FileInfo&    fi)>& onFile,  /*optional*/
+                    const std::function<void(const FolderInfo&  fi)>& onFolder,/*optional*/
                     const std::function<void(const SymlinkInfo& si)>& onSymlink/*optional*/); //throw FileError
 }
 

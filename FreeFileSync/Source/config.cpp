@@ -24,8 +24,8 @@ using namespace fff; //required for correct overload resolution!
 namespace
 {
 //-------------------------------------------------------------------------------------------------------------------------------
-const int XML_FORMAT_GLOBAL_CFG = 26; //2023-02-18
-const int XML_FORMAT_SYNC_CFG   = 17; //2020-10-14
+const int XML_FORMAT_GLOBAL_CFG = 27; //2023-05-13
+const int XML_FORMAT_SYNC_CFG   = 18; //2023-05-15
 //-------------------------------------------------------------------------------------------------------------------------------
 }
 
@@ -933,7 +933,8 @@ template <> inline
 bool readStruc(const XmlElement& input, ConfigFileItem& value)
 {
     bool success = true;
-    success = input.getAttribute("Result",  value.logResult) && success;
+    success = input.getAttribute("LastSync",  value.lastRunStats.syncTime) && success;
+    success = input.getAttribute("Result",    value.lastRunStats.syncResult) && success;
 
     if (input.hasAttribute("CfgPath")) //TODO: remove after migration! 2020-02-09
         success = input.getAttribute("CfgPath", value.cfgFilePath) && success; //
@@ -943,31 +944,64 @@ bool readStruc(const XmlElement& input, ConfigFileItem& value)
     //FFS portable: use special syntax for config file paths: e.g. "%ffs_drive%\SyncJob.ffs_gui"
     value.cfgFilePath = resolvePortablePath(value.cfgFilePath);
 
-    success = input.getAttribute("LastSync", value.lastSyncTime) && success;
-
     Zstring logFilePhrase;
     if (input.hasAttribute("LogPath")) //TODO: remove after migration! 2020-02-09
         success = input.getAttribute("LogPath", logFilePhrase) && success; //
     else
         success = input.getAttribute("Log", logFilePhrase) && success;
 
-    value.logFilePath = createAbstractPath(resolvePortablePath(logFilePhrase));
+    value.lastRunStats.logFilePath = createAbstractPath(resolvePortablePath(logFilePhrase));
+
+    if (!input.hasAttribute("Items")) //TODO: remove after migration! 2023-05-13
+        ;
+    else
+        success = input.getAttribute("Items", value.lastRunStats.itemsProcessed) && success;
+
+    if (!input.hasAttribute("Bytes")) //TODO: remove after migration! 2023-05-13
+        ;
+    else
+        success = input.getAttribute("Bytes", value.lastRunStats.bytesProcessed) && success;
+
+    if (!input.hasAttribute("TotalTime")) //TODO: remove after migration! 2023-05-13
+        ;
+    else
+        success = input.getAttribute("TotalTime", value.lastRunStats.totalTime) && success;
+
+    if (!input.hasAttribute("Errors")) //TODO: remove after migration! 2023-05-13
+        ;
+    else
+        success = input.getAttribute("Errors", value.lastRunStats.errors) && success;
+
+    if (!input.hasAttribute("Warnings")) //TODO: remove after migration! 2023-05-13
+        ;
+    else
+        success = input.getAttribute("Warnings", value.lastRunStats.warnings) && success;
 
     std::string hexColor; //optional XML attribute!
     if (input.getAttribute("Color", hexColor) && hexColor.size() == 6)
         value.backColor.Set(unhexify(hexColor[0], hexColor[1]),
                             unhexify(hexColor[2], hexColor[3]),
                             unhexify(hexColor[4], hexColor[5]));
+
     return success; //[!] avoid short-circuit evaluation
 }
 
 template <> inline
 void writeStruc(const ConfigFileItem& value, XmlElement& output)
 {
-    output.setAttribute("Result", value.logResult);
+    output.setAttribute("LastSync",  value.lastRunStats.syncTime);
+    output.setAttribute("Result",    value.lastRunStats.syncResult);
+
     output.setAttribute("Config", makePortablePath(value.cfgFilePath));
-    output.setAttribute("LastSync", value.lastSyncTime);
-    output.setAttribute("Log", makePortablePath(AFS::getInitPathPhrase(value.logFilePath)));
+    output.setAttribute("Log", makePortablePath(AFS::getInitPathPhrase(value.lastRunStats.logFilePath)));
+
+    output.setAttribute("Items",     value.lastRunStats.itemsProcessed);
+    output.setAttribute("Bytes",     value.lastRunStats.bytesProcessed);
+
+    output.setAttribute("TotalTime", value.lastRunStats.totalTime);
+
+        output.setAttribute("Errors", value.lastRunStats.errors);
+        output.setAttribute("Warnings", value.lastRunStats.warnings);
 
     if (value.backColor.IsOk())
     {
@@ -977,22 +1011,6 @@ void writeStruc(const ConfigFileItem& value, XmlElement& output)
         const auto& [bh, bl] = hexify(value.backColor.Blue ());
         output.setAttribute("Color", std::string({rh, rl, gh, gl, bh, bl}));
     }
-}
-
-//TODO: remove after migration! 2018-07-27
-struct ConfigFileItemV9
-{
-    Zstring filePath;
-    time_t lastSyncTime = 0;
-};
-template <> inline
-bool readStruc(const XmlElement& input, ConfigFileItemV9& value)
-{
-    const bool rv1 = input.getValue(value.filePath);
-    if (rv1) value.filePath = resolvePortablePath(value.filePath);
-
-    const bool rv2 = input.getAttribute("LastSync", value.lastSyncTime);
-    return rv1 && rv2;
 }
 }
 
@@ -1038,64 +1056,26 @@ void readConfig(const XmlIn& in, SyncConfig& syncCfg, std::map<AfsDevice, size_t
     in["DeletionPolicy"  ](syncCfg.deletionVariant);
     in["VersioningFolder"](syncCfg.versioningFolderPhrase);
 
-    if (formatVer < 12) //TODO: remove if parameter migration after some time! 2018-06-21
+    XmlIn verFolder = in["VersioningFolder"];
+
+    size_t parallelOps = 1;
+    if (verFolder.hasAttribute("Threads")) //*no error* if not available
+        verFolder.attribute("Threads", parallelOps); //try to get attribute
+
+    const size_t parallelOpsPrev = getDeviceParallelOps(deviceParallelOps, syncCfg.versioningFolderPhrase);
+    /**/                           setDeviceParallelOps(deviceParallelOps, syncCfg.versioningFolderPhrase, std::max(parallelOps, parallelOpsPrev));
+
+    in["VersioningFolder"].attribute("Style", syncCfg.versioningStyle);
+
+    if (syncCfg.versioningStyle != VersioningStyle::replace)
     {
-        std::string tmp;
-        in["VersioningFolder"].attribute("Style", tmp);
+        if (verFolder.hasAttribute("MaxAge")) //try to get attributes if available => *no error* if not available
+            verFolder.attribute("MaxAge", syncCfg.versionMaxAgeDays);
 
-        trim(tmp);
-        if (tmp == "Replace")
-            syncCfg.versioningStyle = VersioningStyle::replace;
-        else if (tmp == "TimeStamp")
-            syncCfg.versioningStyle = VersioningStyle::timestampFile;
-
-        if (syncCfg.versioningStyle == VersioningStyle::replace)
-        {
-            if (endsWithAsciiNoCase(syncCfg.versioningFolderPhrase, "/%timestamp%") ||
-                endsWithAsciiNoCase(syncCfg.versioningFolderPhrase, "\\%timestamp%"))
-            {
-                syncCfg.versioningFolderPhrase.resize(syncCfg.versioningFolderPhrase.size() - strLength(Zstr("/%timestamp%")));
-                syncCfg.versioningStyle = VersioningStyle::timestampFolder;
-
-                if (syncCfg.versioningFolderPhrase.size() == 2 && isAsciiAlpha(syncCfg.versioningFolderPhrase[0]) && syncCfg.versioningFolderPhrase[1] == Zstr(':'))
-                    syncCfg.versioningFolderPhrase += Zstr('\\');
-            }
-        }
-    }
-    else
-    {
-        XmlIn verFolder = in["VersioningFolder"];
-
-        size_t parallelOps = 1;
-        if (verFolder.hasAttribute("Threads")) //*no error* if not available
-            verFolder.attribute("Threads", parallelOps); //try to get attribute
-
-        const size_t parallelOpsPrev = getDeviceParallelOps(deviceParallelOps, syncCfg.versioningFolderPhrase);
-        /**/                           setDeviceParallelOps(deviceParallelOps, syncCfg.versioningFolderPhrase, std::max(parallelOps, parallelOpsPrev));
-
-        in["VersioningFolder"].attribute("Style", syncCfg.versioningStyle);
-
-        if (syncCfg.versioningStyle != VersioningStyle::replace)
-        {
-            if (verFolder.hasAttribute("MaxAge")) //try to get attributes if available => *no error* if not available
-                verFolder.attribute("MaxAge", syncCfg.versionMaxAgeDays);
-
-            //TODO: remove if clause after migration! 2018-07-12
-            if (formatVer < 13)
-            {
-                if (verFolder.hasAttribute("CountMin"))
-                    verFolder.attribute("CountMin", syncCfg.versionCountMin); // => *no error* if not available
-                if (verFolder.hasAttribute("CountMax"))
-                    verFolder.attribute("CountMax", syncCfg.versionCountMax); //
-            }
-            else
-            {
-                if (verFolder.hasAttribute("MinCount"))
-                    verFolder.attribute("MinCount", syncCfg.versionCountMin); // => *no error* if not available
-                if (verFolder.hasAttribute("MaxCount"))
-                    verFolder.attribute("MaxCount", syncCfg.versionCountMax); //
-            }
-        }
+        if (verFolder.hasAttribute("MinCount"))
+            verFolder.attribute("MinCount", syncCfg.versionCountMin); // => *no error* if not available
+        if (verFolder.hasAttribute("MaxCount"))
+            verFolder.attribute("MaxCount", syncCfg.versionCountMax); //
     }
 }
 
@@ -1129,28 +1109,8 @@ void readConfig(const XmlIn& in, LocalPairConfig& lpc, std::map<AfsDevice, size_
 
     size_t parallelOpsL = 1;
     size_t parallelOpsR = 1;
-
-    //TODO: remove old parameter after migration! 2018-04-14
-    if (formatVer < 11)
-    {
-        auto getParallelOps = [&](const Zstring& folderPathPhrase, size_t& parallelOps)
-        {
-            if (startsWithAsciiNoCase(folderPathPhrase, "sftp:") ||
-                startsWithAsciiNoCase(folderPathPhrase,  "ftp:"))
-                split(folderPathPhrase, Zstr('|'), [&](const ZstringView optPhrase)
-            {
-                if (startsWith(optPhrase, Zstr("con=")))
-                    parallelOps = stringTo<int>(afterFirst(optPhrase, Zstr("con="), IfNotFoundReturn::none));
-            });
-        };
-        getParallelOps(lpc.folderPathPhraseLeft,  parallelOpsL);
-        getParallelOps(lpc.folderPathPhraseRight, parallelOpsR);
-    }
-    else
-    {
-        if (in["Left" ].hasAttribute("Threads")) in["Left" ].attribute("Threads", parallelOpsL); //try to get attributes:
-        if (in["Right"].hasAttribute("Threads")) in["Right"].attribute("Threads", parallelOpsR); // => *no error* if not available
-    }
+    if (in["Left" ].hasAttribute("Threads")) in["Left" ].attribute("Threads", parallelOpsL); //try to get attributes:
+    if (in["Right"].hasAttribute("Threads")) in["Right"].attribute("Threads", parallelOpsR); // => *no error* if not available
 
     auto setParallelOps = [&](const Zstring& folderPathPhrase, size_t parallelOps)
     {
@@ -1159,17 +1119,6 @@ void readConfig(const XmlIn& in, LocalPairConfig& lpc, std::map<AfsDevice, size_
     };
     setParallelOps(lpc.folderPathPhraseLeft,  parallelOpsL);
     setParallelOps(lpc.folderPathPhraseRight, parallelOpsR);
-
-    //TODO: remove after migration - 2016-07-24
-    auto ciReplace = [](Zstring& pathPhrase, const Zstring& oldTerm, const Zstring& newTerm) { replaceAsciiNoCase(pathPhrase, oldTerm, newTerm); };
-    ciReplace(lpc.folderPathPhraseLeft,  Zstr("%csidl_MyDocuments%"), Zstr("%csidl_Documents%"));
-    ciReplace(lpc.folderPathPhraseLeft,  Zstr("%csidl_MyMusic%"    ), Zstr("%csidl_Music%"));
-    ciReplace(lpc.folderPathPhraseLeft,  Zstr("%csidl_MyPictures%" ), Zstr("%csidl_Pictures%"));
-    ciReplace(lpc.folderPathPhraseLeft,  Zstr("%csidl_MyVideos%"   ), Zstr("%csidl_Videos%"));
-    ciReplace(lpc.folderPathPhraseRight, Zstr("%csidl_MyDocuments%"), Zstr("%csidl_Documents%"));
-    ciReplace(lpc.folderPathPhraseRight, Zstr("%csidl_MyMusic%"    ), Zstr("%csidl_Music%"));
-    ciReplace(lpc.folderPathPhraseRight, Zstr("%csidl_MyPictures%" ), Zstr("%csidl_Pictures%"));
-    ciReplace(lpc.folderPathPhraseRight, Zstr("%csidl_MyVideos%"   ), Zstr("%csidl_Videos%"));
 
     //TODO: remove after migration! 2020-04-24
     if (formatVer < 16)
@@ -1180,7 +1129,7 @@ void readConfig(const XmlIn& in, LocalPairConfig& lpc, std::map<AfsDevice, size_
 
     //###########################################################
     //alternate comp configuration (optional)
-    if (XmlIn inLocalCmp = in[formatVer < 10 ? "CompareConfig" : "Compare"]) //TODO: remove if parameter migration after some time! 2018-02-25
+    if (XmlIn inLocalCmp = in["Compare"])
     {
         CompConfig cmpCfg;
         readConfig(inLocalCmp, cmpCfg);
@@ -1189,7 +1138,7 @@ void readConfig(const XmlIn& in, LocalPairConfig& lpc, std::map<AfsDevice, size_
     }
     //###########################################################
     //alternate sync configuration (optional)
-    if (XmlIn inLocalSync = in[formatVer < 10 ? "SyncConfig" : "Synchronize"]) //TODO: remove if parameter migration after some time! 2018-02-25
+    if (XmlIn inLocalSync = in["Synchronize"])
     {
         SyncConfig syncCfg;
         readConfig(inLocalSync, syncCfg, deviceParallelOps, formatVer);
@@ -1199,39 +1148,28 @@ void readConfig(const XmlIn& in, LocalPairConfig& lpc, std::map<AfsDevice, size_
 
     //###########################################################
     //alternate filter configuration
-    if (XmlIn inLocFilter = in[formatVer < 10 ? "LocalFilter" : "Filter"]) //TODO: remove if parameter migration after some time! 2018-02-25
+    if (XmlIn inLocFilter = in["Filter"])
         readConfig(inLocFilter, lpc.localFilter);
 }
 
 
 void readConfig(const XmlIn& in, MainConfiguration& mainCfg, int formatVer)
 {
-    XmlIn in2 = formatVer < 10 ? in["MainConfig"] : in; //TODO: remove if parameter migration after some time! 2018-02-25
-
-    if (formatVer < 10) //TODO: remove if parameter migration after some time! 2018-02-25
-        readConfig(in2["Comparison"], mainCfg.cmpCfg);
+    if (formatVer < 18) //TODO: remove if parameter migration after some time! 2023-05-15
+        ;
     else
-        readConfig(in2["Compare"], mainCfg.cmpCfg);
-    //###########################################################
+        in["Notes"](mainCfg.notes);
 
-    //read sync configuration
-    if (formatVer < 10) //TODO: remove if parameter migration after some time! 2018-02-25
-        readConfig(in2["SyncConfig"], mainCfg.syncCfg, mainCfg.deviceParallelOps, formatVer);
-    else
-        readConfig(in2["Synchronize"], mainCfg.syncCfg, mainCfg.deviceParallelOps, formatVer);
+    readConfig(in["Compare"], mainCfg.cmpCfg);
 
-    //###########################################################
+    readConfig(in["Synchronize"], mainCfg.syncCfg, mainCfg.deviceParallelOps, formatVer);
 
-    //read filter settings
-    if (formatVer < 10) //TODO: remove if parameter migration after some time! 2018-02-25
-        readConfig(in2["GlobalFilter"], mainCfg.globalFilter);
-    else
-        readConfig(in2["Filter"], mainCfg.globalFilter);
+    readConfig(in["Filter"], mainCfg.globalFilter);
 
     //###########################################################
     //read folder pairs
     bool firstItem = true;
-    for (XmlIn inPair = in2["FolderPairs"]["Pair"]; inPair; inPair.next())
+    for (XmlIn inPair = in["FolderPairs"]["Pair"]; inPair; inPair.next())
     {
         LocalPairConfig lpc;
         readConfig(inPair, lpc, mainCfg.deviceParallelOps, formatVer);
@@ -1246,34 +1184,14 @@ void readConfig(const XmlIn& in, MainConfiguration& mainCfg, int formatVer)
             mainCfg.additionalPairs.push_back(lpc);
     }
 
-    //TODO: remove if parameter migration after some time! 2017-10-24
-    if (formatVer < 8)
-        ;
-    else
-        //TODO: remove if parameter migration after some time! 2018-02-24
-        if (formatVer < 10)
-            in2["IgnoreErrors"](mainCfg.ignoreErrors);
-        else
-        {
-            in2["Errors"].attribute("Ignore", mainCfg.ignoreErrors);
-            in2["Errors"].attribute("Retry",  mainCfg.autoRetryCount);
-            in2["Errors"].attribute("Delay",  mainCfg.autoRetryDelay);
-        }
+    in["Errors"].attribute("Ignore", mainCfg.ignoreErrors);
+    in["Errors"].attribute("Retry",  mainCfg.autoRetryCount);
+    in["Errors"].attribute("Delay",  mainCfg.autoRetryDelay);
 
-    //TODO: remove if parameter migration after some time! 2017-10-24
-    if (formatVer < 8)
-        in2["OnCompletion"](mainCfg.postSyncCommand);
-    else
-    {
-        in2["PostSyncCommand"](mainCfg.postSyncCommand);
-        in2["PostSyncCommand"].attribute("Condition", mainCfg.postSyncCondition);
-    }
+    in["PostSyncCommand"](mainCfg.postSyncCommand);
+    in["PostSyncCommand"].attribute("Condition", mainCfg.postSyncCondition);
 
-    //TODO: remove if parameter migration after some time! 2018-08-13
-    if (formatVer < 14)
-        ; //path will be extracted from BatchExclusiveConfig
-    else
-        in2["LogFolder"](mainCfg.altLogFolderPathPhrase);
+    in["LogFolder"](mainCfg.altLogFolderPathPhrase);
 
     //TODO: remove after migration! 2020-04-24
     if (formatVer < 16)
@@ -1284,19 +1202,17 @@ void readConfig(const XmlIn& in, MainConfiguration& mainCfg, int formatVer)
         ;
     else
     {
-        in2["EmailNotification"](mainCfg.emailNotifyAddress);
-        in2["EmailNotification"].attribute("Condition", mainCfg.emailNotifyCondition);
+        in["EmailNotification"](mainCfg.emailNotifyAddress);
+        in["EmailNotification"].attribute("Condition", mainCfg.emailNotifyCondition);
     }
 }
 
 
 void readConfig(const XmlIn& in, XmlGuiConfig& cfg, int formatVer)
 {
-    //read main config
     readConfig(in, cfg.mainCfg, formatVer);
 
-    //read GUI specific config data
-    XmlIn inGuiCfg = in[formatVer < 10 ? "GuiConfig" : "Gui"]; //TODO: remove if parameter migration after some time! 2018-02-25
+    XmlIn inGuiCfg = in["Gui"];
 
     //TODO: remove after migration! 2020-10-14
     if (formatVer < 17)
@@ -1314,69 +1230,20 @@ void readConfig(const XmlIn& in, XmlGuiConfig& cfg, int formatVer)
     }
     else
         inGuiCfg["GridViewType"](cfg.gridViewType);
-
-    //TODO: remove if clause after migration! 2017-10-24
-    if (formatVer < 8)
-    {
-        std::string str;
-        if (inGuiCfg["HandleError"](str))
-            cfg.mainCfg.ignoreErrors = str == "Ignore";
-
-        str = trimCpy(utfTo<std::string>(cfg.mainCfg.postSyncCommand));
-        if (equalAsciiNoCase(str, "Close progress dialog"))
-            cfg.mainCfg.postSyncCommand.clear();
-    }
 }
 
 
 void readConfig(const XmlIn& in, BatchExclusiveConfig& cfg, int formatVer)
 {
-    XmlIn inBatchCfg = in[formatVer < 10 ? "BatchConfig" : "Batch"]; //TODO: remove if parameter migration after some time! 2018-02-25
+    XmlIn inBatch = in["Batch"];
 
-    //TODO: remove if clause after migration! 2018-02-01
-    if (formatVer < 9)
-        inBatchCfg["RunMinimized"](cfg.runMinimized);
-    else
-        inBatchCfg["ProgressDialog"].attribute("Minimized", cfg.runMinimized);
+    inBatch["ProgressDialog"].attribute("Minimized", cfg.runMinimized);
 
-    //TODO: remove if clause after migration! 2018-02-01
-    if (formatVer < 9)
-        ; //n/a
-    else
-        inBatchCfg["ProgressDialog"].attribute("AutoClose", cfg.autoCloseSummary);
+    inBatch["ProgressDialog"].attribute("AutoClose", cfg.autoCloseSummary);
 
-    //TODO: remove if clause after migration! 2017-10-24
-    if (formatVer < 8)
-    {
-        std::string str;
-        if (inBatchCfg["HandleError"](str))
-            cfg.batchErrorHandling = str == "Stop" ? BatchErrorHandling::cancel : BatchErrorHandling::showPopup;
-    }
-    else
-        inBatchCfg["ErrorDialog"](cfg.batchErrorHandling);
+    inBatch["ErrorDialog"](cfg.batchErrorHandling);
 
-    //TODO: remove if clause after migration! 2017-10-24
-    if (formatVer < 8)
-        ; //n/a
-    //TODO: remove if clause after migration! 2018-02-01
-    else if (formatVer == 8)
-    {
-        std::string tmp;
-        if (inBatchCfg["PostSyncAction"](tmp))
-        {
-            tmp = trimCpy(tmp);
-            if (tmp == "Summary")
-                cfg.postSyncAction = PostSyncAction::none;
-            else if (tmp == "Exit")
-                cfg.autoCloseSummary = true;
-            else if (tmp == "Sleep")
-                cfg.postSyncAction = PostSyncAction::sleep;
-            else if (tmp == "Shutdown")
-                cfg.postSyncAction = PostSyncAction::shutdown;
-        }
-    }
-    else
-        inBatchCfg["PostSyncAction"](cfg.postSyncAction);
+    inBatch["PostSyncAction"](cfg.postSyncAction);
 }
 
 
@@ -1384,46 +1251,6 @@ void readConfig(const XmlIn& in, XmlBatchConfig& cfg, int formatVer)
 {
     readConfig(in, cfg.mainCfg,    formatVer);
     readConfig(in, cfg.batchExCfg, formatVer);
-
-    //TODO: remove if clause after migration! 2018-08-13
-    if (formatVer < 14)
-    {
-        XmlIn inBatchCfg = in[formatVer < 10 ? "BatchConfig" : "Batch"];
-        inBatchCfg["LogfileFolder"](cfg.mainCfg.altLogFolderPathPhrase);
-    }
-
-    //TODO: remove if clause after migration! 2017-10-24
-    if (formatVer < 8)
-    {
-        std::string str;
-        if (in["BatchConfig"]["HandleError"](str))
-            cfg.mainCfg.ignoreErrors = str == "Ignore";
-
-        str = trimCpy(utfTo<std::string>(cfg.mainCfg.postSyncCommand));
-        if (equalAsciiNoCase(str, "Close progress dialog"))
-        {
-            cfg.batchExCfg.autoCloseSummary = true;
-            cfg.mainCfg.postSyncCommand.clear();
-        }
-        else if (str == "rundll32.exe powrprof.dll,SetSuspendState Sleep" ||
-                 str == "rundll32.exe powrprof.dll,SetSuspendState" ||
-                 str == "systemctl suspend" ||
-                 str == "osascript -e 'tell application \"System Events\" to sleep'")
-        {
-            cfg.batchExCfg.postSyncAction = PostSyncAction::sleep;
-            cfg.mainCfg.postSyncCommand.clear();
-        }
-        else if (str == "shutdown /s /t 60"  ||
-                 str == "shutdown -s -t 60"  ||
-                 str == "systemctl poweroff" ||
-                 str == "osascript -e 'tell application \"System Events\" to shut down'")
-        {
-            cfg.batchExCfg.postSyncAction = PostSyncAction::shutdown;
-            cfg.mainCfg.postSyncCommand.clear();
-        }
-        else if (cfg.batchExCfg.runMinimized)
-            cfg.batchExCfg.autoCloseSummary = true;
-    }
 }
 
 
@@ -1433,9 +1260,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
 
     XmlIn in2 = in;
 
-    if (in["Shared"]) //TODO: remove old parameter after migration! 2016-01-18
-        in2 = in["Shared"];
-    else if (in["General"]) //TODO: remove old parameter after migration! 2020-12-03
+    if (in["General"]) //TODO: remove old parameter after migration! 2020-12-03
         in2 = in["General"];
 
     //TODO: remove after migration! 2022-04-18
@@ -1483,50 +1308,25 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
 
     in2["ProgressDialog"].attribute("AutoClose", cfg.progressDlgAutoClose);
 
-    //TODO: remove if parameter migration after some time! 2018-08-13
-    if (formatVer < 14)
-        if (cfg.logfilesMaxAgeDays == 14) //default value was too small
-            cfg.logfilesMaxAgeDays = XmlGlobalSettings().logfilesMaxAgeDays;
-
-    //TODO: remove old parameter after migration! 2018-02-04
-    if (formatVer < 8)
-    {
-        XmlIn inOpt = in2["OptionalDialogs"];
-        inOpt["ConfirmStartSync"                ].attribute("Enabled", cfg.confirmDlgs.confirmSyncStart);
-        inOpt["ConfirmSaveConfig"               ].attribute("Enabled", cfg.confirmDlgs.confirmSaveConfig);
-        inOpt["ConfirmExternalCommandMassInvoke"].attribute("Enabled", cfg.confirmDlgs.confirmCommandMassInvoke);
-        inOpt["WarnUnresolvedConflicts"         ].attribute("Enabled", cfg.warnDlgs.warnUnresolvedConflicts);
-        inOpt["WarnNotEnoughDiskSpace"          ].attribute("Enabled", cfg.warnDlgs.warnNotEnoughDiskSpace);
-        inOpt["WarnSignificantDifference"       ].attribute("Enabled", cfg.warnDlgs.warnSignificantDifference);
-        inOpt["WarnRecycleBinNotAvailable"      ].attribute("Enabled", cfg.warnDlgs.warnRecyclerMissing);
-        inOpt["WarnInputFieldEmpty"             ].attribute("Enabled", cfg.warnDlgs.warnInputFieldEmpty);
-        inOpt["WarnDependentFolderPair"         ].attribute("Enabled", cfg.warnDlgs.warnDependentFolderPair);
-        inOpt["WarnDependentBaseFolders"        ].attribute("Enabled", cfg.warnDlgs.warnDependentBaseFolders);
-        inOpt["WarnDirectoryLockFailed"         ].attribute("Enabled", cfg.warnDlgs.warnDirectoryLockFailed);
-        inOpt["WarnVersioningFolderPartOfSync"  ].attribute("Enabled", cfg.warnDlgs.warnVersioningFolderPartOfSync);
-    }
+    XmlIn inOpt = in2["OptionalDialogs"];
+    inOpt["ConfirmStartSync"                ].attribute("Show", cfg.confirmDlgs.confirmSyncStart);
+    inOpt["ConfirmSaveConfig"               ].attribute("Show", cfg.confirmDlgs.confirmSaveConfig);
+    inOpt["ConfirmSwapSides"                ].attribute("Show", cfg.confirmDlgs.confirmSwapSides);
+    if (formatVer < 12) //TODO: remove old parameter after migration! 2019-02-09
+        inOpt["ConfirmExternalCommandMassInvoke"].attribute("Show", cfg.confirmDlgs.confirmCommandMassInvoke);
     else
-    {
-        XmlIn inOpt = in2["OptionalDialogs"];
-        inOpt["ConfirmStartSync"                ].attribute("Show", cfg.confirmDlgs.confirmSyncStart);
-        inOpt["ConfirmSaveConfig"               ].attribute("Show", cfg.confirmDlgs.confirmSaveConfig);
-        inOpt["ConfirmSwapSides"                ].attribute("Show", cfg.confirmDlgs.confirmSwapSides);
-        if (formatVer < 12) //TODO: remove old parameter after migration! 2019-02-09
-            inOpt["ConfirmExternalCommandMassInvoke"].attribute("Show", cfg.confirmDlgs.confirmCommandMassInvoke);
-        else
-            inOpt["ConfirmCommandMassInvoke"].attribute("Show", cfg.confirmDlgs.confirmCommandMassInvoke);
-        inOpt["WarnFolderNotExisting"         ].attribute("Show", cfg.warnDlgs.warnFolderNotExisting);
-        inOpt["WarnFoldersDifferInCase"       ].attribute("Show", cfg.warnDlgs.warnFoldersDifferInCase);
-        inOpt["WarnUnresolvedConflicts"       ].attribute("Show", cfg.warnDlgs.warnUnresolvedConflicts);
-        inOpt["WarnNotEnoughDiskSpace"        ].attribute("Show", cfg.warnDlgs.warnNotEnoughDiskSpace);
-        inOpt["WarnSignificantDifference"     ].attribute("Show", cfg.warnDlgs.warnSignificantDifference);
-        inOpt["WarnRecycleBinNotAvailable"    ].attribute("Show", cfg.warnDlgs.warnRecyclerMissing);
-        inOpt["WarnInputFieldEmpty"           ].attribute("Show", cfg.warnDlgs.warnInputFieldEmpty);
-        inOpt["WarnDependentFolderPair"       ].attribute("Show", cfg.warnDlgs.warnDependentFolderPair);
-        inOpt["WarnDependentBaseFolders"      ].attribute("Show", cfg.warnDlgs.warnDependentBaseFolders);
-        inOpt["WarnDirectoryLockFailed"       ].attribute("Show", cfg.warnDlgs.warnDirectoryLockFailed);
-        inOpt["WarnVersioningFolderPartOfSync"].attribute("Show", cfg.warnDlgs.warnVersioningFolderPartOfSync);
-    }
+        inOpt["ConfirmCommandMassInvoke"].attribute("Show", cfg.confirmDlgs.confirmCommandMassInvoke);
+    inOpt["WarnFolderNotExisting"         ].attribute("Show", cfg.warnDlgs.warnFolderNotExisting);
+    inOpt["WarnFoldersDifferInCase"       ].attribute("Show", cfg.warnDlgs.warnFoldersDifferInCase);
+    inOpt["WarnUnresolvedConflicts"       ].attribute("Show", cfg.warnDlgs.warnUnresolvedConflicts);
+    inOpt["WarnNotEnoughDiskSpace"        ].attribute("Show", cfg.warnDlgs.warnNotEnoughDiskSpace);
+    inOpt["WarnSignificantDifference"     ].attribute("Show", cfg.warnDlgs.warnSignificantDifference);
+    inOpt["WarnRecycleBinNotAvailable"    ].attribute("Show", cfg.warnDlgs.warnRecyclerMissing);
+    inOpt["WarnInputFieldEmpty"           ].attribute("Show", cfg.warnDlgs.warnInputFieldEmpty);
+    inOpt["WarnDependentFolderPair"       ].attribute("Show", cfg.warnDlgs.warnDependentFolderPair);
+    inOpt["WarnDependentBaseFolders"      ].attribute("Show", cfg.warnDlgs.warnDependentBaseFolders);
+    inOpt["WarnDirectoryLockFailed"       ].attribute("Show", cfg.warnDlgs.warnDirectoryLockFailed);
+    inOpt["WarnVersioningFolderPartOfSync"].attribute("Show", cfg.warnDlgs.warnVersioningFolderPartOfSync);
 
     //TODO: remove after migration! 2022-08-26
     if (formatVer < 25)
@@ -1578,19 +1378,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
 
     //###########################################################
 
-    //TODO: remove old parameter after migration! 2018-02-04
-    if (formatVer < 8)
-        inMainWin["CaseSensitiveSearch"].attribute("Enabled", cfg.mainDlg.textSearchRespectCase);
-    else
-        //TODO: remove if parameter migration after some time! 2018-09-09
-        if (formatVer < 11)
-            inMainWin["Search"].attribute("CaseSensitive", cfg.mainDlg.textSearchRespectCase);
-        else
-            inMainWin["SearchPanel"].attribute("CaseSensitive", cfg.mainDlg.textSearchRespectCase);
-
-    //TODO: remove if parameter migration after some time! 2018-09-09
-    if (formatVer < 11)
-        inMainWin["FolderPairsVisible" ].attribute("Max", cfg.mainDlg.folderPairsVisibleMax);
+    inMainWin["SearchPanel"].attribute("CaseSensitive", cfg.mainDlg.textSearchRespectCase);
 
     //###########################################################
 
@@ -1604,45 +1392,12 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     if (formatVer < 21)
         inConfig["Columns"](cfg.dpiLayouts[getDpiScalePercent()].configColumnAttribs);
 
-    //TODO: remove after migration! 2018-07-27
-    if (formatVer < 10) //reset once to show the new log column
-        cfg.dpiLayouts[getDpiScalePercent()].configColumnAttribs = DpiLayout().configColumnAttribs;
+    inConfig["Configurations"].attribute("MaxSize",      cfg.mainDlg.config.histItemsMax);
+    inConfig["Configurations"].attribute("LastSelected", cfg.mainDlg.config.lastSelectedFile);
+    cfg.mainDlg.config.lastSelectedFile  = resolvePortablePath(cfg.mainDlg.config.lastSelectedFile);
 
-    //TODO: remove parameter migration after some time! 2018-01-08
-    if (formatVer < 6)
-    {
-        in["Gui"]["ConfigHistory"].attribute("MaxSize", cfg.mainDlg.config.histItemsMax);
+    inConfig["Configurations"](cfg.mainDlg.config.fileHistory);
 
-        //TODO: remove parameter migration after some time! 2016-09-23
-        if (formatVer < 4)
-            cfg.mainDlg.config.histItemsMax = std::max<size_t>(cfg.mainDlg.config.histItemsMax, 100);
-
-        std::vector<Zstring> cfgHist;
-        in["Gui"]["ConfigHistory"](cfgHist);
-
-        for (const Zstring& cfgPath : cfgHist)
-            cfg.mainDlg.config.fileHistory.emplace_back(
-                cfgPath,
-                0, getNullPath(), SyncResult::finishedSuccess, wxNullColour);
-    }
-    //TODO: remove after migration! 2018-07-27
-    else if (formatVer < 10)
-    {
-        inConfig["Configurations"].attribute("MaxSize", cfg.mainDlg.config.histItemsMax);
-
-        std::vector<ConfigFileItemV9> cfgFileHistory;
-        inConfig["Configurations"](cfgFileHistory);
-
-        for (const ConfigFileItemV9& item : cfgFileHistory)
-            cfg.mainDlg.config.fileHistory.emplace_back(item.filePath, item.lastSyncTime, getNullPath(), SyncResult::finishedSuccess, wxNullColour);
-    }
-    else
-    {
-        inConfig["Configurations"].attribute("MaxSize",      cfg.mainDlg.config.histItemsMax);
-        inConfig["Configurations"].attribute("LastSelected", cfg.mainDlg.config.lastSelectedFile);
-        cfg.mainDlg.config.lastSelectedFile  = resolvePortablePath(cfg.mainDlg.config.lastSelectedFile);
-        inConfig["Configurations"](cfg.mainDlg.config.fileHistory);
-    }
     //TODO: remove after migration! 2019-11-30
     if (formatVer < 15)
     {
@@ -1652,16 +1407,8 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
                 item.backColor = wxColor(0xdd, 0xdd, 0xdd); //light grey from onCfgGridContext()
     }
 
-    //TODO: remove parameter migration after some time! 2018-01-08
-    if (formatVer < 6)
-    {
-        in["Gui"]["LastUsedConfig"](cfg.mainDlg.config.lastUsedFiles);
-    }
-    else
-    {
-        inConfig["LastUsed"](cfg.mainDlg.config.lastUsedFiles);
-        cfg.mainDlg.config.lastUsedFiles = resolvePortablePath(cfg.mainDlg.config.lastUsedFiles);
-    }
+    inConfig["LastUsed"](cfg.mainDlg.config.lastUsedFiles);
+    cfg.mainDlg.config.lastUsedFiles = resolvePortablePath(cfg.mainDlg.config.lastUsedFiles);
 
     //###########################################################
 
@@ -1674,61 +1421,48 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     if (formatVer < 21)
         inOverview["Columns"](cfg.dpiLayouts[getDpiScalePercent()].overviewColumnAttribs);
 
-    XmlIn inFileGrid = inMainWin["FilePanel"];
-    //TODO: remove parameter migration after some time! 2018-01-08
-    if (formatVer < 6)
-        inFileGrid = inMainWin["CenterPanel"];
+    XmlIn inFilePanel = inMainWin["FilePanel"];
 
     //TODO: remove after migration! 2020-10-13
     if (formatVer < 19)
         ; //new icon layout => let user re-evaluate settings
     else
     {
-        inFileGrid.attribute("ShowIcons", cfg.mainDlg.showIcons);
-        inFileGrid.attribute("IconSize",  cfg.mainDlg.iconSize);
+        inFilePanel.attribute("ShowIcons", cfg.mainDlg.showIcons);
+        inFilePanel.attribute("IconSize",  cfg.mainDlg.iconSize);
     }
-    inFileGrid.attribute("SashOffset", cfg.mainDlg.sashOffset);
+    inFilePanel.attribute("SashOffset", cfg.mainDlg.sashOffset);
 
-    //TODO: remove if parameter migration after some time! 2018-09-09
-    if (formatVer < 11)
-        ;
     //TODO: remove if parameter migration after some time! 2020-01-30
-    else if (formatVer < 16)
-        inFileGrid.attribute("MaxFolderPairsShown", cfg.mainDlg.folderPairsVisibleMax);
+    if (formatVer < 16)
+        inFilePanel.attribute("MaxFolderPairsShown", cfg.mainDlg.folderPairsVisibleMax);
     else
-        inFileGrid.attribute("FolderPairsMax", cfg.mainDlg.folderPairsVisibleMax);
+        inFilePanel.attribute("FolderPairsMax", cfg.mainDlg.folderPairsVisibleMax);
 
     //TODO: remove old parameter after migration! 2021-03-06
     if (formatVer < 21)
     {
-        inFileGrid["ColumnsLeft" ](cfg.dpiLayouts[getDpiScalePercent()].fileColumnAttribsLeft);
-        inFileGrid["ColumnsRight"](cfg.dpiLayouts[getDpiScalePercent()].fileColumnAttribsRight);
+        inFilePanel["ColumnsLeft" ](cfg.dpiLayouts[getDpiScalePercent()].fileColumnAttribsLeft);
+        inFilePanel["ColumnsRight"](cfg.dpiLayouts[getDpiScalePercent()].fileColumnAttribsRight);
 
-        inFileGrid["ColumnsLeft" ].attribute("PathFormat", cfg.mainDlg.itemPathFormatLeftGrid);
-        inFileGrid["ColumnsRight"].attribute("PathFormat", cfg.mainDlg.itemPathFormatRightGrid);
+        inFilePanel["ColumnsLeft" ].attribute("PathFormat", cfg.mainDlg.itemPathFormatLeftGrid);
+        inFilePanel["ColumnsRight"].attribute("PathFormat", cfg.mainDlg.itemPathFormatRightGrid);
     }
     else
     {
-        inFileGrid.attribute("PathFormatLeft",  cfg.mainDlg.itemPathFormatLeftGrid);
-        inFileGrid.attribute("PathFormatRight", cfg.mainDlg.itemPathFormatRightGrid);
+        inFilePanel.attribute("PathFormatLeft",  cfg.mainDlg.itemPathFormatLeftGrid);
+        inFilePanel.attribute("PathFormatRight", cfg.mainDlg.itemPathFormatRightGrid);
     }
 
-    inFileGrid["FolderHistoryLeft" ](cfg.mainDlg.folderHistoryLeft);
-    inFileGrid["FolderHistoryRight"](cfg.mainDlg.folderHistoryRight);
+    inFilePanel["FolderHistoryLeft" ](cfg.mainDlg.folderHistoryLeft);
+    inFilePanel["FolderHistoryRight"](cfg.mainDlg.folderHistoryRight);
     cfg.mainDlg.folderHistoryLeft  = resolvePortablePath(cfg.mainDlg.folderHistoryLeft);
     cfg.mainDlg.folderHistoryRight = resolvePortablePath(cfg.mainDlg.folderHistoryRight);
 
-    inFileGrid["FolderHistoryLeft" ].attribute("LastSelected", cfg.mainDlg.folderLastSelectedLeft);
-    inFileGrid["FolderHistoryRight"].attribute("LastSelected", cfg.mainDlg.folderLastSelectedRight);
+    inFilePanel["FolderHistoryLeft" ].attribute("LastSelected", cfg.mainDlg.folderLastSelectedLeft);
+    inFilePanel["FolderHistoryRight"].attribute("LastSelected", cfg.mainDlg.folderLastSelectedRight);
     cfg.mainDlg.folderLastSelectedLeft  = resolvePortablePath(cfg.mainDlg.folderLastSelectedLeft);
     cfg.mainDlg.folderLastSelectedRight = resolvePortablePath(cfg.mainDlg.folderLastSelectedRight);
-
-    //TODO: remove parameter migration after some time! 2018-01-08
-    if (formatVer < 6)
-    {
-        in["Gui"]["FolderHistoryLeft" ](cfg.mainDlg.folderHistoryLeft);
-        in["Gui"]["FolderHistoryRight"](cfg.mainDlg.folderHistoryRight);
-    }
 
     //###########################################################
     XmlIn inCopyTo = inMainWin["ManualCopyTo"];
@@ -1746,9 +1480,6 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     //###########################################################
 
     XmlIn inDefFilter = inMainWin["DefaultViewFilter"];
-    //TODO: remove old parameter after migration! 2018-02-04
-    if (formatVer < 8)
-        inDefFilter = inMainWin["DefaultViewFilter"]["Shared"];
 
     inDefFilter.attribute("Equal",    cfg.mainDlg.viewFilterDefault.equal);
     inDefFilter.attribute("Conflict", cfg.mainDlg.viewFilterDefault.conflict);
@@ -1779,11 +1510,8 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     actView.attribute("DoNothing",   cfg.mainDlg.viewFilterDefault.doNothing);
 
 
-    //TODO: remove old parameter after migration! 2018-01-16
-    if (formatVer < 7)
-        inMainWin["Perspective5"](cfg.dpiLayouts[getDpiScalePercent()].panelLayout);
     //TODO: remove old parameter after migration! 2021-03-06
-    else if (formatVer < 21)
+    if (formatVer < 21)
         inMainWin["Perspective"](cfg.dpiLayouts[getDpiScalePercent()].panelLayout);
 
     //TODO: remove after migration! 2019-11-30
@@ -1802,14 +1530,6 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
         editItem(v.back());
         perspective += v.back();
     };
-
-    //TODO: remove after migration! 2018-07-27
-    if (formatVer < 10)
-        splitEditMerge(cfg.dpiLayouts[getDpiScalePercent()].panelLayout, L'|', [&](wxString& paneCfg)
-    {
-        if (contains(paneCfg, L"name=TopPanel"))
-            replace(paneCfg, L";row=2;", L";row=3;");
-    });
 
     //TODO: remove after migration! 2019-11-30
     if (formatVer < 15)
@@ -1909,13 +1629,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
         in["EmailHistory"].attribute("MaxSize", cfg.emailHistoryMax);
     }
 
-    //TODO: remove if clause after migration! 2017-10-24
-    if (formatVer < 5)
-    {
-        in["Gui"]["OnCompletionHistory"](cfg.commandHistory);
-        in["Gui"]["OnCompletionHistory"].attribute("MaxSize", cfg.commandHistoryMax);
-    }
-    else if (formatVer < 20) //TODO: remove old parameter after migration! 2020-12-03
+    if (formatVer < 20) //TODO: remove old parameter after migration! 2020-12-03
     {
         in["Gui"]["CommandHistory"](cfg.commandHistory);
         in["Gui"]["CommandHistory"].attribute("MaxSize", cfg.commandHistoryMax);
@@ -1932,10 +1646,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
             cfg.commandHistoryMax = XmlGlobalSettings().commandHistoryMax;
 
 
-    //TODO: remove old parameter after migration! 2018-01-16
-    if (formatVer < 7)
-        ; //reset this old crap
-    else if (formatVer < 20) //TODO: remove old parameter after migration! 2020-12-03
+    if (formatVer < 20) //TODO: remove old parameter after migration! 2020-12-03
         in["Gui"]["ExternalApps"](cfg.externalApps);
     else
         in["ExternalApps"](cfg.externalApps);
@@ -2050,11 +1761,6 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
 
             cfg.dpiLayouts.emplace(scalePercent, std::move(layout));
         }
-
-    //TODO: remove parameter migration after some time! 2018-03-14
-    if (formatVer < 9)
-        if (fastFromDIP(96) > 96) //high-DPI monitor => one-time migration
-            cfg.dpiLayouts[getDpiScalePercent()] = DpiLayout();
 }
 
 
@@ -2285,6 +1991,8 @@ void writeConfig(const LocalPairConfig& lpc, const std::map<AfsDevice, size_t>& 
 
 void writeConfig(const MainConfiguration& mainCfg, XmlOut& out)
 {
+    out["Notes"](mainCfg.notes);
+
     XmlOut outCmp = out["Compare"];
     writeConfig(mainCfg.cmpCfg, outCmp);
     //###########################################################
@@ -2410,19 +2118,19 @@ void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
     outOverview.attribute("SortByColumn",   cfg.mainDlg.overview.lastSortColumn);
     outOverview.attribute("SortAscending",  cfg.mainDlg.overview.lastSortAscending);
 
-    XmlOut outFileGrid = outMainWin["FilePanel"];
-    outFileGrid.attribute("ShowIcons",  cfg.mainDlg.showIcons);
-    outFileGrid.attribute("IconSize",   cfg.mainDlg.iconSize);
-    outFileGrid.attribute("SashOffset", cfg.mainDlg.sashOffset);
-    outFileGrid.attribute("FolderPairsMax", cfg.mainDlg.folderPairsVisibleMax);
-    outFileGrid.attribute("PathFormatLeft",  cfg.mainDlg.itemPathFormatLeftGrid);
-    outFileGrid.attribute("PathFormatRight", cfg.mainDlg.itemPathFormatRightGrid);
+    XmlOut outFilePanel = outMainWin["FilePanel"];
+    outFilePanel.attribute("ShowIcons",  cfg.mainDlg.showIcons);
+    outFilePanel.attribute("IconSize",   cfg.mainDlg.iconSize);
+    outFilePanel.attribute("SashOffset", cfg.mainDlg.sashOffset);
+    outFilePanel.attribute("FolderPairsMax", cfg.mainDlg.folderPairsVisibleMax);
+    outFilePanel.attribute("PathFormatLeft",  cfg.mainDlg.itemPathFormatLeftGrid);
+    outFilePanel.attribute("PathFormatRight", cfg.mainDlg.itemPathFormatRightGrid);
 
-    outFileGrid["FolderHistoryLeft" ](makePortablePath(cfg.mainDlg.folderHistoryLeft));
-    outFileGrid["FolderHistoryRight"](makePortablePath(cfg.mainDlg.folderHistoryRight));
+    outFilePanel["FolderHistoryLeft" ](makePortablePath(cfg.mainDlg.folderHistoryLeft));
+    outFilePanel["FolderHistoryRight"](makePortablePath(cfg.mainDlg.folderHistoryRight));
 
-    outFileGrid["FolderHistoryLeft" ].attribute("LastSelected", makePortablePath(cfg.mainDlg.folderLastSelectedLeft));
-    outFileGrid["FolderHistoryRight"].attribute("LastSelected", makePortablePath(cfg.mainDlg.folderLastSelectedRight));
+    outFilePanel["FolderHistoryLeft" ].attribute("LastSelected", makePortablePath(cfg.mainDlg.folderLastSelectedLeft));
+    outFilePanel["FolderHistoryRight"].attribute("LastSelected", makePortablePath(cfg.mainDlg.folderLastSelectedRight));
 
     //###########################################################
     XmlOut outCopyTo = outMainWin["ManualCopyTo"];

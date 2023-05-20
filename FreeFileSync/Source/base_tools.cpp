@@ -272,12 +272,15 @@ MainConfiguration fff::merge(const std::vector<MainConfiguration>& mainCfgs)
     [](const MainConfiguration& lhs, const MainConfiguration& rhs) { return lhs.autoRetryDelay < rhs.autoRetryDelay; })->autoRetryDelay;
 
     for (const MainConfiguration& mainCfg : mainCfgs)
+    {
         if (!mainCfg.altLogFolderPathPhrase.empty())
-        {
             cfgOut.altLogFolderPathPhrase = mainCfg.altLogFolderPathPhrase;
-            break;
-        }
 
+        if (!mainCfg.notes.empty())
+            cfgOut.notes += mainCfg.notes + L"\n\n";
+    }
+
+    trim(cfgOut.notes);
     //cfgOut.postSyncCommand   = -> better leave at default ... !?
     //cfgOut.postSyncCondition = ->
     //cfgOut.emailNotifyAddress   = -> better leave at default ... !?

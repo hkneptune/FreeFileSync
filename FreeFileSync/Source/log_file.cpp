@@ -57,7 +57,7 @@ std::string generateLogHeaderTxt(const ProcessSummary& s, const ErrorLog& log, i
     summary.push_back(tabSpace + utfTo<std::string>(_("Items processed:") + L' ' + formatNumber(s.statsProcessed.items) + //show always, even if 0!
                                                     L" (" + formatFilesizeShort(s.statsProcessed.bytes) + L')'));
 
-    if ((s.statsTotal.items < 0 && s.statsTotal.bytes < 0) || //no total items/bytes: e.g. for pure folder comparison
+    if ((s.statsTotal.items < 0 && s.statsTotal.bytes < 0) || //no total items/bytes: e.g. cancel during folder comparison
         s.statsProcessed == s.statsTotal) //...if everything was processed successfully
         ;
     else

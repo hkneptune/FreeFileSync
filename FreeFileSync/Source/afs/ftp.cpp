@@ -1415,44 +1415,61 @@ private:
 
         const int utcCurrentYear = tc.year;
 
-        std::optional<bool> unixListingHaveGroup_; //different listing format: better store at session level!?
+        //different listing formats: better store at session level!?
+        std::optional<int> dirOwnerGroupCount;  //
+        std::optional<int> fileOwnerGroupCount; //caveat: differentiate per item type: see alternative formats!
+        std::optional<int> linkOwnerGroupCount; //
+
         std::vector<FtpItem> output;
 
-        for (; it != lines.end(); ++it)
+        std::for_each(it, lines.end(), [&](const std::string_view line)
         {
-            //unix listing without group: https://freefilesync.org/forum/viewtopic.php?t=4306
-            if (!unixListingHaveGroup_)
-                unixListingHaveGroup_ = [&]
+            auto& ownerGroupCount = [&]() -> std::optional<int>&
             {
-                try
+                assert(!line.empty()); //see splitFtpResponse()
+                switch (line[0])
                 {
-                    parseUnixLine(*it, utcTimeNow, utcCurrentYear, true /*haveGroup*/, session); //throw SysError
-                    return true;
-                }
-                catch (SysError&)
-                {
-                    try
-                    {
-                        parseUnixLine(*it, utcTimeNow, utcCurrentYear, false /*haveGroup*/, session); //throw SysError
-                        return false;
-                    }
-                    catch (SysError&) {}
-                    throw;
+                    //*INDENT-OFF*
+                    case 'd': return dirOwnerGroupCount;
+                    case 'l': return linkOwnerGroupCount;
+                    default: return fileOwnerGroupCount;
+                    //*INDENT-ON*
                 }
             }();
 
-            const FtpItem item = parseUnixLine(*it, utcTimeNow, utcCurrentYear, *unixListingHaveGroup_, session); //throw SysError
+            //unix listing without group: https://freefilesync.org/forum/viewtopic.php?t=4306
+            if (!ownerGroupCount)
+                ownerGroupCount = [&]
+            {
+                for (int i = 3; i-- > 0;)
+                    try
+                    {
+                        parseUnixLine(line, utcTimeNow, utcCurrentYear, i /*ownerGroupCount*/, session); //throw SysError
+                        return i;
+                    }
+                    catch (SysError&)
+                    {
+                        if (i == 0)
+                            throw;
+                    }
+                assert(false);
+                return 1234; //placate bogus compiler warning: "not all control paths return a value"
+            }();
+
+            const FtpItem item = parseUnixLine(line, utcTimeNow, utcCurrentYear, *ownerGroupCount, session); //throw SysError
             if (item.itemName != Zstr(".") &&
                 item.itemName != Zstr(".."))
                 output.push_back(item);
-        }
+        });
 
         return output;
     }
 
-    static FtpItem parseUnixLine(const std::string_view& rawLine, time_t utcTimeNow, int utcCurrentYear, bool haveGroup, FtpSession& session) //throw SysError
+    static FtpItem parseUnixLine(const std::string_view& rawLine, time_t utcTimeNow, int utcCurrentYear, int ownerGroupCount, FtpSession& session) //throw SysError
     {
-        /*  total 4953                                                  <- optional first line
+        /* Unix standard listing: "ls -l --all"
+
+            total 4953                                                  <- optional first line
             drwxr-xr-x 1 root root    4096 Jan 10 11:58 version
             -rwxr-xr-x 1 root root    1084 Sep  2 01:17 Unit Test.vcxproj.user
             -rwxr-xr-x 1 1000  300    2217 Feb 28  2016 win32.manifest
@@ -1464,18 +1481,23 @@ private:
                      (r|-)(w|-)(x|s|S|-)    group  s := S + x      S = Setgid
                      (r|-)(w|-)(x|t|T|-)    others t := T + x      T = sticky bit
 
-        Alternative formats:
-           Unix, no group ("ls -alG") https://freefilesync.org/forum/viewtopic.php?t=4306
-               dr-xr-xr-x   2 root                  512 Apr  8  1994 etc
+        Alternative formats
+        -------------------
+        No group: "ls -l --no-group" https://freefilesync.org/forum/viewtopic.php?t=4306
+            dr-xr-xr-x   2 root                  512 Apr  8  1994 etc
+
+        No owner, no group, trailing slash (but only for directories!????): "ls -g --no-group --file-type" https://freefilesync.org/forum/viewtopic.php?t=10227
+            -rwxrwxrwx 1 ownername groupname      8064383 Mar 30 11:58 file.mp3
+            drwxrwxrwx 1              0 Jan  1 00:00 dirname/
 
         Yet to be seen in the wild:
-           Netware:
-               d [R----F--] supervisor            512       Jan 16 18:53    login
-               - [R----F--] rhesus             214059       Oct 20 15:27    cx.exe
+            Netware:
+                d [R----F--] supervisor            512       Jan 16 18:53    login
+                - [R----F--] rhesus             214059       Oct 20 15:27    cx.exe
 
-           NetPresenz for the Mac:
-           -------r--         326  1391972  1392298 Nov 22  1995 MegaPhone.sit
-           drwxrwxr-x               folder        2 May 10  1996 network                     */
+            NetPresenz for the Mac:
+                -------r--         326  1391972  1392298 Nov 22  1995 MegaPhone.sit
+                drwxrwxr-x               folder        2 May 10  1996 network                     */
         try
         {
             FtpLineParser parser(rawLine);
@@ -1496,12 +1518,9 @@ private:
             parser.readRange(&isDigit<char>);      //throw SysError
             parser.readRange(&isWhiteSpace<char>); //throw SysError
             //------------------------------------------------------------------------------------
-            //user
-            parser.readRange(std::not_fn(isWhiteSpace<char>)); //throw SysError
-            parser.readRange(&isWhiteSpace<char>);             //throw SysError
-            //------------------------------------------------------------------------------------
-            //group
-            if (haveGroup)
+            //both owner + group, owner only, or none at all
+            assert(0 <= ownerGroupCount && ownerGroupCount <=2);
+            for (int i = 0; i < ownerGroupCount; ++i)
             {
                 parser.readRange(std::not_fn(isWhiteSpace<char>)); //throw SysError
                 parser.readRange(&isWhiteSpace<char>);             //throw SysError
@@ -1586,13 +1605,16 @@ private:
                 item.fileSize = fileSize;
 
             item.itemName = session.serverToUtfEncoding(itemName); //throw SysError
+            if (item.type == AFS::ItemType::folder && endsWith(item.itemName, Zstr('/')))
+                item.itemName.pop_back();
+
             item.modTime = modTime;
 
             return item;
         }
         catch (const SysError& e)
         {
-            throw SysError(L"Unexpected FTP response. (" + utfTo<std::wstring>(rawLine) + L')' + (haveGroup ? L"" : L" [no-group]") + L' ' + e.toString());
+            throw SysError(L"Unexpected FTP response. (" + utfTo<std::wstring>(rawLine) + L") [ownerGroupCount: " + numberTo<std::wstring>(ownerGroupCount) + L"] " + e.toString());
         }
     }
 

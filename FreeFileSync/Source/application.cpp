@@ -195,7 +195,7 @@ bool Application::OnInit()
 
     //Windows User Experience Interaction Guidelines: tool tips should have 5s timeout, info tips no timeout => compromise:
     wxToolTip::Enable(true); //wxWidgets screw-up: wxToolTip::SetAutoPop is no-op if global tooltip window is not yet constructed: wxToolTip::Enable creates it
-    wxToolTip::SetAutoPop(10'000); //https://docs.microsoft.com/en-us/windows/win32/uxguide/ctrl-tooltips-and-infotips
+    wxToolTip::SetAutoPop(15'000); //https://docs.microsoft.com/en-us/windows/win32/uxguide/ctrl-tooltips-and-infotips
 
     SetAppName(L"FreeFileSync"); //if not set, the default is the executable's name!
 
@@ -551,7 +551,7 @@ void Application::runBatchMode(const Zstring& globalConfigFilePath, const XmlBat
 
     std::set<AbstractPath> logFilePathsToKeep;
     for (const ConfigFileItem& item : globalCfg.mainDlg.config.fileHistory)
-        logFilePathsToKeep.insert(item.logFilePath);
+        logFilePathsToKeep.insert(item.lastRunStats.logFilePath);
 
     const std::chrono::system_clock::time_point syncStartTime = std::chrono::system_clock::now();
 
@@ -627,7 +627,7 @@ void Application::runBatchMode(const Zstring& globalConfigFilePath, const XmlBat
                                                                logFolderPath, globalCfg.logfilesMaxAgeDays, globalCfg.logFormat, logFilePathsToKeep,
                                                                batchCfg.mainCfg.emailNotifyAddress, batchCfg.mainCfg.emailNotifyCondition); //noexcept
     //----------------------------------------------------------------------
-    switch (r.syncResult)
+    switch (r.summary.syncResult)
     {
         //*INDENT-OFF*
         case SyncResult::finishedSuccess: raiseExitCode(exitCode_, FfsExitCode::success); break;
@@ -651,14 +651,20 @@ void Application::runBatchMode(const Zstring& globalConfigFilePath, const XmlBat
     for (ConfigFileItem& cfi : globalCfg.mainDlg.config.fileHistory)
         if (equalNativePath(cfi.cfgFilePath, cfgFilePath))
         {
-            if (r.syncResult != SyncResult::aborted)
-                cfi.lastSyncTime = std::chrono::system_clock::to_time_t(syncStartTime);
             assert(!AFS::isNullPath(r.logFilePath));
-            if (!AFS::isNullPath(r.logFilePath))
+            assert(r.summary.startTime == syncStartTime);
+
+            cfi.lastRunStats =
             {
-                cfi.logFilePath = r.logFilePath;
-                cfi.logResult   = r.syncResult;
-            }
+                r.logFilePath,
+                std::chrono::system_clock::to_time_t(r.summary.startTime),
+                r.summary.syncResult,
+                r.summary.statsProcessed.items,
+                r.summary.statsProcessed.bytes,
+                r.summary.totalTime,
+                r.logStats.error,
+                r.logStats.warning,
+            };
             break;
         }
 

@@ -62,12 +62,6 @@ move the following constants from src/sftp.h to include/libssh2_sftp.h:
 	#define MAX_SFTP_OUTGOING_SIZE 30000
 	#define MAX_SFTP_READ_SIZE 30000
 __________________________________________________________________________________________________________
-src/sftp.c
-Always clear SFTP protocol error: https://github.com/libssh2/libssh2/pull/787
-__________________________________________________________________________________________________________
-src/openssl.c
-Fix misleading error message if wrong passphrase: https://github.com/libssh2/libssh2/pull/789
-__________________________________________________________________________________________________________
 
 
 -------------------

@@ -42,7 +42,6 @@
 #include "../afs/concrete.h"
 #include "../afs/native.h"
 #include "../base/comparison.h"
-#include "../base/synchronization.h"
 #include "../base/algorithm.h"
 #include "../base/lock_holder.h"
 #include "../base/icon_loader.h"
@@ -84,6 +83,11 @@ bool containsFileItemMacro(const Zstring& commandLinePhrase)
            contains(commandLinePhrase, macroNameParentPath ) ||
            contains(commandLinePhrase, macroNameParentPath2) ;
 }
+
+//let's NOT create wxWidgets objects statically:
+wxColor getColorCompareButtonHighlight() { return {236, 236, 255}; }
+wxColor getColorSyncButtonHighlight   () { return {230, 255, 215}; }
+wxColor getColorFilterButtonHighlight () { return {255, 230, 230}; }
 
 
 IconBuffer::IconSize convert(GridIconSize isize)
@@ -284,11 +288,11 @@ public:
 
 namespace
 {
-void updateTopButton(wxBitmapButton& btn, const wxImage& img, const wxString& varName, const char* varIconName /*optional*/, bool makeGrey)
+void updateTopButton(wxBitmapButton& btn, const wxImage& img, const wxString& varName, const char* varIconName /*optional*/, const wxColor& highlightCol /*optional*/)
 {
-    wxImage btnIconImg = makeGrey ? greyScale(img) : img;
+    wxImage btnIconImg = highlightCol.IsOk() ? img : greyScale(img);
 
-    wxImage btnLabelImg = createImageFromText(btn.GetLabelText(), btn.GetFont(), wxSystemSettings::GetColour(makeGrey ? wxSYS_COLOUR_GRAYTEXT : wxSYS_COLOUR_BTNTEXT));
+    wxImage btnLabelImg = createImageFromText(btn.GetLabelText(), btn.GetFont(), highlightCol.IsOk() ? *wxBLACK : wxSystemSettings::GetColour(wxSYS_COLOUR_BTNTEXT));
 
     wxImage varLabelImg = createImageFromText(varName,
                                               wxFont(wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD),
@@ -298,8 +302,8 @@ void updateTopButton(wxBitmapButton& btn, const wxImage& img, const wxString& va
     {
         wxImage varIcon = mirrorIfRtl(loadImage(varIconName, -1 /*maxWidth*/, getDefaultMenuIconSize()));
 
-        if (makeGrey)
-            varIcon = greyScale(varIcon);
+        //if (!highlightCol.IsOk())
+        //    varIcon = greyScale(varIcon);
 
         varImg = btn.GetLayoutDirection() != wxLayout_RightToLeft ?
                  stackImages(varLabelImg, varIcon, ImageStackLayout::horizontal, ImageStackAlignment::center, fastFromDIP(5)) :
@@ -317,6 +321,8 @@ void updateTopButton(wxBitmapButton& btn, const wxImage& img, const wxString& va
 
     btnImg = resizeCanvas(btnImg, btnSize, wxALIGN_CENTER);
 
+    if (highlightCol.IsOk())
+        btnImg = layOver(rectangleImage(btnImg.GetSize(), highlightCol), btnImg, wxALIGN_CENTER);
     setImage(btn, btnImg);
 }
 
@@ -440,7 +446,10 @@ void MainDialog::create(const Zstring& globalConfigFilePath,
     if (mainDlg->globalCfg_.welcomeDialogLastVersion != ffsVersion)
     {
         mainDlg->globalCfg_.welcomeDialogLastVersion = ffsVersion;
-        showAboutDialog(mainDlg);
+
+        //showAboutDialog(mainDlg); => dialog centered incorrectly (Centos), or hidden behind main dialog (Lubuntu) https://freefilesync.org/forum/viewtopic.php?t=10246
+        //mainDlg->CallAfter([mainDlg] { showAboutDialog(mainDlg); }); => dialog centered incorrectly (Windows, Centos)
+        mainDlg->guiQueue_.processAsync([] {}, [mainDlg]() { showAboutDialog(mainDlg); }); //apparently oh-kay?
     }
 
 
@@ -671,7 +680,7 @@ imgFileManagerSmall_([]
                     wxAuiPaneInfo().Name(L"CenterPanel").CenterPane().PaneBorder(false));
 
     //set comparison button label tentatively for m_panelTopButtons to receive final height:
-    updateTopButton(*m_buttonCompare, loadImage("compare"), L"Dummy", nullptr /*varIconName*/, false /*makeGrey*/);
+    updateTopButton(*m_buttonCompare, loadImage("compare"), L"Dummy", nullptr /*varIconName*/, wxNullColour);
     m_panelTopButtons->GetSizer()->SetSizeHints(m_panelTopButtons); //~=Fit() + SetMinSize()
 
     m_buttonCancel->SetMinSize({std::max(m_buttonCancel->GetSize().x, fastFromDIP(TOP_BUTTON_OPTIMAL_WIDTH_DIP)),
@@ -816,25 +825,25 @@ imgFileManagerSmall_([]
     setImage(*m_bitmapSmallFileRight,      imgFile);
 
     //---------------------- menu bar----------------------------
-    setImage(*m_menuItemNew,         loadImage("cfg_new_sicon"));
-    setImage(*m_menuItemLoad,        loadImage("cfg_load_sicon"));
-    setImage(*m_menuItemSave,        loadImage("cfg_save_sicon"));
-    setImage(*m_menuItemSaveAsBatch, loadImage("cfg_batch_sicon"));
+    setImage(*m_menuItemNew,         loadImage("cfg_new",   getDefaultMenuIconSize()));
+    setImage(*m_menuItemLoad,        loadImage("cfg_load",  getDefaultMenuIconSize()));
+    setImage(*m_menuItemSave,        loadImage("cfg_save",  getDefaultMenuIconSize()));
+    setImage(*m_menuItemSaveAsBatch, loadImage("cfg_batch", getDefaultMenuIconSize()));
 
-    setImage(*m_menuItemShowLog,      loadImage("log_file_sicon"));
-    setImage(*m_menuItemCompare,      loadImage("compare_sicon"));
-    setImage(*m_menuItemCompSettings, loadImage("options_compare_sicon"));
-    setImage(*m_menuItemFilter,       loadImage("options_filter_sicon"));
-    setImage(*m_menuItemSyncSettings, loadImage("options_sync_sicon"));
-    setImage(*m_menuItemSynchronize,  loadImage("start_sync_sicon"));
+    setImage(*m_menuItemShowLog,      loadImage("log_file",        getDefaultMenuIconSize()));
+    setImage(*m_menuItemCompare,      loadImage("compare",         getDefaultMenuIconSize()));
+    setImage(*m_menuItemCompSettings, loadImage("options_compare", getDefaultMenuIconSize()));
+    setImage(*m_menuItemFilter,       loadImage("options_filter",  getDefaultMenuIconSize()));
+    setImage(*m_menuItemSyncSettings, loadImage("options_sync",    getDefaultMenuIconSize()));
+    setImage(*m_menuItemSynchronize,  loadImage("start_sync",      getDefaultMenuIconSize()));
 
-    setImage(*m_menuItemOptions,     loadImage("settings_sicon"));
+    setImage(*m_menuItemOptions,     loadImage("settings", getDefaultMenuIconSize()));
     setImage(*m_menuItemFind,        loadImage("find_sicon"));
     setImage(*m_menuItemResetLayout, loadImage("reset_sicon"));
 
-    setImage(*m_menuItemHelp,            loadImage("help_sicon"));
-    setImage(*m_menuItemAbout,           loadImage("about_sicon"));
-    setImage(*m_menuItemCheckVersionNow, loadImage("update_check_sicon"));
+    setImage(*m_menuItemHelp,            loadImage("help",         getDefaultMenuIconSize()));
+    setImage(*m_menuItemAbout,           loadImage("about",        getDefaultMenuIconSize()));
+    setImage(*m_menuItemCheckVersionNow, loadImage("update_check", getDefaultMenuIconSize()));
 
     fixMenuIcons(*m_menuFile);
     fixMenuIcons(*m_menuActions);
@@ -1067,12 +1076,15 @@ void MainDialog::setGlobalCfgOnInit(const XmlGlobalSettings& globalSettings)
     cfggrid::setSyncOverdueDays(*m_gridCfgHistory, globalSettings.mainDlg.config.syncOverdueDays);
     //m_gridCfgHistory->Refresh(); <- implicit in last call
 
-    //remove non-existent items (we need this only on startup)
+    //remove non-existent items: sufficient to call once at startup
     std::vector<Zstring> cfgFilePaths;
     for (const ConfigFileItem& item : globalSettings.mainDlg.config.fileHistory)
         cfgFilePaths.push_back(item.cfgFilePath);
 
     cfgHistoryRemoveObsolete(cfgFilePaths);
+
+    //are we spawning too many async jobs, considering cfgHistoryRemoveObsolete()!?
+    cfgHistoryUpdateNotes(cfgFilePaths);
     //--------------------------------------------------------------------------------
 
     //load list of last used folders
@@ -1158,8 +1170,7 @@ XmlGlobalSettings MainDialog::getGlobalCfgBeforeExit()
     std::vector<ConfigFileItem> cfgHistory
     {
         //make sure [Last session] is always part of history list
-        ConfigFileItem(lastRunConfigPath_, 0 /*syncTime*/, getNullPath() /*logPath*/, SyncResult::aborted,
-                       wxColor(0xdd, 0xdd, 0xdd) /* light grey from onCfgGridContext()*/)
+        ConfigFileItem(lastRunConfigPath_, LastRunStats{}, wxColor(0xdd, 0xdd, 0xdd) /* light grey from onCfgGridContext()*/)
     };
 
     for (const ConfigFileItem& item : cfggrid::getDataView(*m_gridCfgHistory).get())
@@ -2357,8 +2368,9 @@ void MainDialog::onTreeGridContext(GridContextMenuEvent& event)
     //Gtk requires "no spaces" for shortcut identifiers!
     menu.addSeparator();
     //----------------------------------------------------------------------------------------------------
-    auto addFilterMenu = [&](const std::wstring& label, const char* iconName, bool include)
+    auto addFilterMenu = [&](const std::wstring& label, const wxImage& img, bool include)
     {
+
         if (selection.size() == 1)
         {
             ContextMenu submenu;
@@ -2377,16 +2389,16 @@ void MainDialog::onTreeGridContext(GridContextMenuEvent& event)
                 labelRel += FILE_NAME_SEPARATOR;
             submenu.addItem(utfTo<wxString>(labelRel), [this, &selection, include] { filterItems(selection, include); });
 
-            menu.addSubmenu(label, submenu, loadImage(iconName));
+            menu.addSubmenu(label, submenu, img);
         }
         else if (selection.size() > 1) //by relative path
             menu.addItem(label + L" <" + _("multiple selection") + L">",
-                         [this, &selection, include] { filterItems(selection, include); }, loadImage(iconName));
+                         [this, &selection, include] { filterItems(selection, include); }, img);
         else
-            menu.addItem(label, nullptr, loadImage(iconName), false /*enabled*/);
+            menu.addItem(label, nullptr, img, false /*enabled*/);
     };
-    addFilterMenu(_("&Include via filter:"), "filter_include_sicon", true);
-    addFilterMenu(_("&Exclude via filter:"), "filter_exclude_sicon", false);
+    addFilterMenu(_("&Include via filter:"), loadImage("filter_include", getDefaultMenuIconSize()), true);
+    addFilterMenu(_("&Exclude via filter:"), loadImage("filter_exclude", getDefaultMenuIconSize()), false);
     //----------------------------------------------------------------------------------------------------
     if (m_bpButtonShowExcluded->isActive() && !selection.empty() && !selection[0]->isActive())
         menu.addItem(_("Include temporarily") + L"\tSpace", [this, &selection] { setIncludedManually(selection, true); }, loadImage("checkbox_true"));
@@ -2420,7 +2432,7 @@ void MainDialog::onTreeGridContext(GridContextMenuEvent& event)
         return false;
     }();
     menu.addSeparator();
-    menu.addItem(_("&Synchronize selection") + L"\tEnter", [&] { startSyncForSelecction(selection); }, loadImage("start_sync_selection_sicon"), selectionContainsItemsToSync);
+    menu.addItem(_("&Synchronize selection") + L"\tEnter", [&] { startSyncForSelecction(selection); }, loadImage("start_sync_selection", getDefaultMenuIconSize()), selectionContainsItemsToSync);
     //----------------------------------------------------------------------------------------------------
     const bool haveItemsSelected = std::any_of(selection.begin(), selection.end(), [](const FileSystemObject* fsObj) { return !fsObj->isEmpty<SelectSide::left>() || !fsObj->isEmpty<SelectSide::right>(); });
     //menu.addSeparator();
@@ -2497,7 +2509,7 @@ void MainDialog::onGridContextRim(const std::vector<FileSystemObject*>& selectio
     //GTK does not allow spaces in shortcut identifiers!
     menu.addSeparator();
     //----------------------------------------------------------------------------------------------------
-    auto addFilterMenu = [&](const wxString& label, const char* iconName, bool include)
+    auto addFilterMenu = [&](const wxString& label, const wxImage& img, bool include)
     {
         if (selection.size() == 1)
         {
@@ -2526,16 +2538,16 @@ void MainDialog::onGridContextRim(const std::vector<FileSystemObject*>& selectio
                 labelRel += FILE_NAME_SEPARATOR;
             submenu.addItem(utfTo<wxString>(labelRel), [this, &selection, include] { filterItems(selection, include); });
 
-            menu.addSubmenu(label, submenu, loadImage(iconName));
+            menu.addSubmenu(label, submenu, img);
         }
         else if (selection.size() > 1) //by relative path
             menu.addItem(label + L" <" + _("multiple selection") + L">",
-                         [this, &selection, include] { filterItems(selection, include); }, loadImage(iconName));
+                         [this, &selection, include] { filterItems(selection, include); }, img);
         else
-            menu.addItem(label, nullptr, loadImage(iconName), false /*enabled*/);
+            menu.addItem(label, nullptr, img, false /*enabled*/);
     };
-    addFilterMenu(_("&Include via filter:"), "filter_include_sicon", true);
-    addFilterMenu(_("&Exclude via filter:"), "filter_exclude_sicon", false);
+    addFilterMenu(_("&Include via filter:"), loadImage("filter_include", getDefaultMenuIconSize()), true);
+    addFilterMenu(_("&Exclude via filter:"), loadImage("filter_exclude", getDefaultMenuIconSize()), false);
     //----------------------------------------------------------------------------------------------------
     if (m_bpButtonShowExcluded->isActive() && !selection.empty() && !selection[0]->isActive())
         menu.addItem(_("Include temporarily") + L"\tSpace", [this, &selection] { setIncludedManually(selection, true); }, loadImage("checkbox_true"));
@@ -2569,7 +2581,7 @@ void MainDialog::onGridContextRim(const std::vector<FileSystemObject*>& selectio
         return false;
     }();
     menu.addSeparator();
-    menu.addItem(_("&Synchronize selection") + L"\tEnter", [&] { startSyncForSelecction(selection); }, loadImage("start_sync_selection_sicon"), selectionContainsItemsToSync);
+    menu.addItem(_("&Synchronize selection") + L"\tEnter", [&] { startSyncForSelecction(selection); }, loadImage("start_sync_selection", getDefaultMenuIconSize()), selectionContainsItemsToSync);
     //----------------------------------------------------------------------------------------------------
     if (!globalCfg_.externalApps.empty())
     {
@@ -2711,8 +2723,8 @@ void MainDialog::onGridLabelContextC(GridLabelClickEvent& event)
     ContextMenu menu;
 
     const GridViewType viewType = m_bpButtonViewType->isActive() ? GridViewType::action : GridViewType::difference;
-    menu.addItem(_("Difference") + (viewType != GridViewType::difference ? L"\tF11" : L""), [&] { setGridViewType(GridViewType::difference); }, greyScaleIfDisabled(loadImage("compare_sicon"   ), viewType == GridViewType::difference));
-    menu.addItem(_("Action")     + (viewType != GridViewType::action     ? L"\tF11" : L""), [&] { setGridViewType(GridViewType::action    ); }, greyScaleIfDisabled(loadImage("start_sync_sicon"), viewType == GridViewType::action));
+    menu.addItem(_("Difference") + (viewType != GridViewType::difference ? L"\tF11" : L""), [&] { setGridViewType(GridViewType::difference); }, greyScaleIfDisabled(loadImage("compare", getDefaultMenuIconSize()), viewType == GridViewType::difference));
+    menu.addItem(_("Action")     + (viewType != GridViewType::action     ? L"\tF11" : L""), [&] { setGridViewType(GridViewType::action    ); }, greyScaleIfDisabled(loadImage("start_sync", getDefaultMenuIconSize()), viewType == GridViewType::action));
     menu.popup(*m_gridMainC, {event.mousePos_.x, m_gridMainC->getColumnLabelHeight()});
 }
 
@@ -2869,10 +2881,15 @@ void MainDialog::onSetLayoutContext(wxMouseEvent& event)
 
     bool addedSeparator = false;
 
+#if wxCHECK_VERSION(3,3,0)
+    static_assert(false, "migrate all access patterns of '[i];'");
+    for (wxAuiPaneInfo& paneInfo : auiMgr_.GetAllPanes())
+#else
     const wxAuiPaneInfoArray& paneArray = auiMgr_.GetAllPanes();
     for (size_t i = 0; i < paneArray.size(); ++i)
     {
         wxAuiPaneInfo& paneInfo = paneArray[i];
+#endif
         if (!paneInfo.IsShown() &&
             paneInfo.window != compareStatus_->getAsWindow() &&
             paneInfo.window != m_panelLog                    &&
@@ -2890,9 +2907,11 @@ void MainDialog::onSetLayoutContext(wxMouseEvent& event)
                 this->auiMgr_.Update();
             });
         }
-    }
+#if !wxCHECK_VERSION(3,3,0)
+}
+#endif
 
-    menu.popup(*this);
+menu.popup(*this);
 }
 
 
@@ -2996,7 +3015,7 @@ void MainDialog::cfgHistoryRemoveObsolete(const std::vector<Zstring>& filePaths)
 
         auto itFut = availableFiles.begin();
         for (auto it = filePaths.begin(); it != filePaths.end(); ++it, ++itFut)
-            if (isReady(*itFut) && !itFut->get()) //no ready? maybe on HDD that is just spinning up => better keep it
+            if (isReady(*itFut) && !itFut->get()) //not ready? maybe HDD that is just spinning up => better keep it
                 pathsToRemove.push_back(*it); //file access error? probably not accessible network share or usb stick => remove cfg
 
         return pathsToRemove;
@@ -3012,6 +3031,35 @@ void MainDialog::cfgHistoryRemoveObsolete(const std::vector<Zstring>& filePaths)
             cfggrid::addAndSelect(*m_gridCfgHistory, activeConfigFiles_, false /*scrollToSelection*/);
         }
     });
+}
+
+
+void MainDialog::cfgHistoryUpdateNotes(const std::vector<Zstring>& filePaths)
+{
+    //load per-config user notes (let's not keep stale copy in GlobalSettings.xml)
+    for (const Zstring& filePath : filePaths)
+    {
+        auto getCfgNotes = [filePath]
+        {
+            try
+            {
+                const auto& [newGuiCfg, warningMsg] = readAnyConfig({filePath}); //throw FileError
+                return newGuiCfg.mainCfg.notes;
+            }
+            catch (FileError&) { return std::wstring(); }
+        };
+
+        guiQueue_.processAsync(getCfgNotes, [this, filePath](const std::wstring& notes)
+        {
+            if (const auto& [item, row] = cfggrid::getDataView(*m_gridCfgHistory).getItem(filePath);
+                item)
+                if (item->notes != notes)
+                {
+                    cfggrid::getDataView(*m_gridCfgHistory).setNotes(filePath, notes);
+                    m_gridCfgHistory->Refresh();
+                }
+        });
+    }
 }
 
 
@@ -3148,6 +3196,7 @@ bool MainDialog::trySaveConfig(const Zstring* guiCfgPath) //"false": error/cance
     try
     {
         writeConfig(guiCfg, cfgFilePath); //throw FileError
+
         setLastUsedConfig(guiCfg, {cfgFilePath});
 
         flashStatusInfo(_("Configuration saved"));
@@ -3232,6 +3281,7 @@ bool MainDialog::trySaveBatchConfig(const Zstring* batchCfgPath) //"false": erro
     try
     {
         writeConfig(batchCfg, cfgFilePath); //throw FileError
+
         setLastUsedConfig(guiCfg, {cfgFilePath}); //[!] behave as if we had saved guiCfg
 
         flashStatusInfo(_("Configuration saved"));
@@ -3465,7 +3515,12 @@ void MainDialog::removeSelectedCfgHistoryItems(bool deleteFromDisk)
         {
             const size_t nextRow = std::min(selectedRows.front(), m_gridCfgHistory->getRowCount() - 1);
             if (const ConfigView::Details* cfg = cfggrid::getDataView(*m_gridCfgHistory).getItem(nextRow))
+            {
                 nextCfgPaths.push_back(cfg->cfgItem.cfgFilePath);
+
+                m_gridCfgHistory->setGridCursor(nextRow, GridEventPolicy::deny);
+                //= Grid::makeRowVisible(redundant) + set grid cursor + select cursor row(redundant)
+            }
         }
 
         loadConfiguration(nextCfgPaths); //=> error/(cancel)
@@ -3534,9 +3589,14 @@ void MainDialog::renameSelectedCfgHistoryItem()
                 continue;
             }
 
-            cfggrid::getDataView(*m_gridCfgHistory).removeItems({cfgPathOld});
+            cfggrid::getDataView(*m_gridCfgHistory).renameItem(cfgPathOld, cfgPathNew);
             m_gridCfgHistory->Refresh(); //grid size changed => clears selection!
 
+            const auto& [item, row] = cfggrid::getDataView(*m_gridCfgHistory).getItem(cfgPathNew);
+            assert(item);
+            m_gridCfgHistory->setGridCursor(row, GridEventPolicy::deny);
+            //= Grid::makeRowVisible(redundant) + set grid cursor + select cursor row(redundant)
+            //
             //keep current cfg and just swap the file name: see previous "loadConfiguration({cfgPathOld}"!
             setLastUsedConfig(lastSavedCfg_, {cfgPathNew});
             return;
@@ -3608,15 +3668,11 @@ void MainDialog::onCfgGridContext(GridContextMenuEvent& event)
 
     auto addColorOption = [&](const wxColor& col, const wxString& name)
     {
-        wxBitmap bmpSquare(this->GetCharHeight(), this->GetCharHeight()); //seems we don't need to pass 24-bit depth here even for high-contrast color schemes
-        bmpSquare.SetScaleFactor(getDisplayScaleFactor());
-        {
-            wxMemoryDC dc(bmpSquare);
-            const wxColor borderCol(0xdd, 0xdd, 0xdd); //light grey
-            const wxColor fillCol = col.Ok() ? col : wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW);
-            drawInsetRectangle(dc, wxRect(bmpSquare.GetSize()), fastFromDIP(1), borderCol, fillCol);
-        }
-        submenu.addItem(name, [&, col] { applyBackColor(col); }, bmpSquare.ConvertToImage(), !selectedRows.empty());
+        submenu.addItem(name, [&, col] { applyBackColor(col); },
+                        rectangleImage({this->GetCharHeight(), this->GetCharHeight()},
+                                       col.Ok() ? col : wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW),
+        {0xdd, 0xdd, 0xdd} /*light grey*/, fastFromDIP(1)),
+        !selectedRows.empty());
     };
 
     const std::vector<std::pair<wxColor, wxString>> defaultColors
@@ -3646,7 +3702,7 @@ void MainDialog::onCfgGridContext(GridContextMenuEvent& event)
     {
         wxMemoryDC dc(bmpColorPicker);
         const wxColor borderCol(0xdd, 0xdd, 0xdd); //light grey
-        drawInsetRectangle(dc, wxRect(bmpColorPicker.GetSize()), fastFromDIP(1), borderCol, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
+        drawFilledRectangle(dc, wxRect(bmpColorPicker.GetSize()), wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW), borderCol, fastFromDIP(1));
 
         dc.SetFont(dc.GetFont().Bold());
         dc.DrawText(L"?", wxPoint() + (bmpColorPicker.GetSize() - dc.GetTextExtent(L"?")) / 2);
@@ -3699,7 +3755,7 @@ void MainDialog::onCfgGridContext(GridContextMenuEvent& event)
                 inserted)
                 addColorOption(item.backColor, item.backColor.GetAsString(wxC2S_HTML_SYNTAX)); //#RRGGBB
 
-    menu.addSubmenu(_("Background color"), submenu, loadImage("color_sicon"), !selectedRows.empty());
+    menu.addSubmenu(_("Background color"), submenu, loadImage("color", getDefaultMenuIconSize()), !selectedRows.empty());
     menu.addSeparator();
     //--------------------------------------------------------------------------------------------------------
 
@@ -3857,6 +3913,9 @@ void MainDialog::setLastUsedConfig(const XmlGuiConfig& guiConfig, const std::vec
 
     cfggrid::addAndSelect(*m_gridCfgHistory, activeConfigFiles_, true /*scrollToSelection*/); //put file paths on list of last used config files
 
+    //update notes after save + for newly loaded files => BUT: superfluous when loading already known config files!
+    cfgHistoryUpdateNotes(cfgFilePaths);
+
     updateUnsavedCfgStatus();
 }
 
@@ -3943,6 +4002,7 @@ void MainDialog::showConfigDialog(SyncConfigPanel panelToShow, int localPairInde
     globalPairCfg.miscCfg.altLogFolderPathPhrase = currentCfg_.mainCfg.altLogFolderPathPhrase;
     globalPairCfg.miscCfg.emailNotifyAddress     = currentCfg_.mainCfg.emailNotifyAddress;
     globalPairCfg.miscCfg.emailNotifyCondition   = currentCfg_.mainCfg.emailNotifyCondition;
+    globalPairCfg.miscCfg.notes                  = currentCfg_.mainCfg.notes;
 
     //don't recalculate value but consider current screen status!!!
     //e.g. it's possible that the first folder pair local config is shown with all config initial if user just removed local config via mouse context menu!
@@ -3992,6 +4052,7 @@ void MainDialog::showConfigDialog(SyncConfigPanel panelToShow, int localPairInde
         currentCfg_.mainCfg.altLogFolderPathPhrase = globalPairCfg.miscCfg.altLogFolderPathPhrase;
         currentCfg_.mainCfg.emailNotifyAddress     = globalPairCfg.miscCfg.emailNotifyAddress;
         currentCfg_.mainCfg.emailNotifyCondition   = globalPairCfg.miscCfg.emailNotifyCondition;
+        currentCfg_.mainCfg.notes                  = globalPairCfg.miscCfg.notes;
 
         firstFolderPair_->setValues(localCfgs[0]);
 
@@ -4035,6 +4096,7 @@ void MainDialog::showConfigDialog(SyncConfigPanel panelToShow, int localPairInde
         //                               globalPairCfg.miscCfg.altLogFolderPathPhrase != globalPairCfgOld.miscCfg.altLogFolderPathPhrase ||
         //                               globalPairCfg.miscCfg.emailNotifyAddress     != globalPairCfgOld.miscCfg.emailNotifyAddress  ||
         //                               globalPairCfg.miscCfg.emailNotifyCondition   != globalPairCfgOld.miscCfg.emailNotifyCondition;
+        //                               globalPairCfg.miscCfg.notes                  != globalPairCfgOld.miscCfg.notes;
 
         if (cmpConfigChanged)
             applyCompareConfig(globalPairCfg.cmpCfg.compareVar != globalPairCfgOld.cmpCfg.compareVar /*setDefaultViewType*/);
@@ -4142,8 +4204,8 @@ void MainDialog::onViewTypeContextMouse(wxMouseEvent& event)
     ContextMenu menu;
 
     const GridViewType viewType = m_bpButtonViewType->isActive() ? GridViewType::action : GridViewType::difference;
-    menu.addItem(_("Difference") + (viewType != GridViewType::difference ? L"\tF11" : L""), [&] { setGridViewType(GridViewType::difference); }, greyScaleIfDisabled(loadImage("compare_sicon"   ), viewType == GridViewType::difference));
-    menu.addItem(_("Action")     + (viewType != GridViewType::action     ? L"\tF11" : L""), [&] { setGridViewType(GridViewType::action    ); }, greyScaleIfDisabled(loadImage("start_sync_sicon"), viewType == GridViewType::action));
+    menu.addItem(_("Difference") + (viewType != GridViewType::difference ? L"\tF11" : L""), [&] { setGridViewType(GridViewType::difference); }, greyScaleIfDisabled(loadImage("compare", getDefaultMenuIconSize()), viewType == GridViewType::difference));
+    menu.addItem(_("Action")     + (viewType != GridViewType::action     ? L"\tF11" : L""), [&] { setGridViewType(GridViewType::action    ); }, greyScaleIfDisabled(loadImage("start_sync", getDefaultMenuIconSize()), viewType == GridViewType::action));
 
     menu.popup(*m_bpButtonViewType, {m_bpButtonViewType->GetSize().x, 0});
 }
@@ -4183,7 +4245,7 @@ void MainDialog::onViewFilterContext(wxEvent& event)
         flashStatusInfo(_("View settings saved"));
     };
 
-    menu.addItem(_("&Save as default"), saveDefault, loadImage("cfg_save_sicon"));
+    menu.addItem(_("&Save as default"), saveDefault, loadImage("cfg_save", getDefaultMenuIconSize()));
     menu.popup(*m_bpButtonViewFilterContext, {m_bpButtonViewFilterContext->GetSize().x, 0});
 }
 
@@ -4295,15 +4357,15 @@ void MainDialog::onCompare(wxCommandEvent& event)
 
     //mark selected cfg files as "in sync" when there is nothing to do: https://freefilesync.org/forum/viewtopic.php?t=4991
     if (r.summary.syncResult == SyncResult::finishedSuccess)
-        if (const SyncStatistics st(folderCmp_);
-            st.createCount() +
-            st.updateCount() +
-            st.deleteCount() == 0)
+        if (getCUD(SyncStatistics(folderCmp_)) == 0)
         {
             setStatusInfo(_("No files to synchronize"), true /*highlight*/); //user might be AFK: don't flashStatusInfo()
             //overwrites status info already set in updateGui() above
 
-            updateConfigLastRunStats(std::chrono::system_clock::to_time_t(r.summary.startTime), r.summary.syncResult, getNullPath() /*logFilePath*/);
+            ProcessSummary dummySyncSummary = r.summary;
+            dummySyncSummary.statsProcessed = {}; //let's not misinterpret comparison stats as sync stats!
+            dummySyncSummary.statsTotal     = {}; //
+            updateConfigLastRunStats(dummySyncSummary, getStats(r.errorLog.ref()), getNullPath() /*logFilePath*/);
         }
 
     //reset icon cache (IconBuffer) after *each* comparison!
@@ -4315,7 +4377,8 @@ void MainDialog::updateGui()
 {
     updateGridViewData(); //update gridDataView and write status information
 
-    updateStatistics();
+    const SyncStatistics st(folderCmp_);
+    updateStatistics(st);
 
     updateUnsavedCfgStatus();
 
@@ -4345,8 +4408,9 @@ void MainDialog::updateGui()
             //*INDENT-ON*
         }
 
-    updateTopButton(*m_buttonCompare, loadImage("compare"),    getVariantName(cmpVar),  cmpVarIconName, false /*makeGrey*/);
-    updateTopButton(*m_buttonSync,    loadImage("start_sync"), getVariantName(syncVar), syncVarIconName, folderCmp_.empty());
+    updateTopButton(*m_buttonCompare, loadImage("compare"),    getVariantName(cmpVar),  cmpVarIconName, folderCmp_.empty() ? getColorCompareButtonHighlight() : wxNullColour);
+    updateTopButton(*m_buttonSync,    loadImage("start_sync"), getVariantName(syncVar), syncVarIconName, getCUD(st) != 0   ? getColorSyncButtonHighlight   () : wxNullColour);
+
     m_panelTopButtons->Layout();
 
     m_menuItemExportList->Enable(!folderCmp_.empty()); //empty CSV confuses users: https://freefilesync.org/forum/viewtopic.php?t=4787
@@ -4375,7 +4439,7 @@ void MainDialog::clearGrid(ptrdiff_t pos)
 }
 
 
-void MainDialog::updateStatistics()
+void MainDialog::updateStatistics(const SyncStatistics& st)
 {
     auto setValue = [](wxStaticText& txtControl, bool isZeroValue, const wxString& valueAsString, wxStaticBitmap& bmpControl, const char* imageName)
     {
@@ -4396,8 +4460,6 @@ void MainDialog::updateStatistics()
     };
 
     //update preview of item count and bytes to be transferred:
-    const SyncStatistics st(folderCmp_);
-
     setValue(*m_staticTextData, st.getBytesToProcess() == 0, formatFilesizeShort(st.getBytesToProcess()), *m_bitmapData, "data");
     setIntValue(*m_staticTextCreateLeft,  st.createCount<SelectSide::left >(), *m_bitmapCreateLeft,  "so_create_left_sicon");
     setIntValue(*m_staticTextUpdateLeft,  st.updateCount<SelectSide::left >(), *m_bitmapUpdateLeft,  "so_update_left_sicon");
@@ -4463,7 +4525,7 @@ void MainDialog::onStartSync(wxCommandEvent& event)
 
     std::set<AbstractPath> logFilePathsToKeep;
     for (const ConfigFileItem& item : cfggrid::getDataView(*m_gridCfgHistory).get())
-        logFilePathsToKeep.insert(item.logFilePath);
+        logFilePathsToKeep.insert(item.lastRunStats.logFilePath);
 
     const std::chrono::system_clock::time_point syncStartTime = std::chrono::system_clock::now();
 
@@ -4549,7 +4611,7 @@ void MainDialog::onStartSync(wxCommandEvent& event)
         globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.isMaximized = r.dlgIsMaximized;
 
         //update last sync stats for the selected cfg files
-        updateConfigLastRunStats(std::chrono::system_clock::to_time_t(r.summary.startTime), r.summary.syncResult, r.logFilePath);
+        updateConfigLastRunStats(r.summary, getStats(r.errorLog.ref()), r.logFilePath);
 
         //remove empty rows: just a beautification, invalid rows shouldn't cause issues
         filegrid::getDataView(*m_gridMainC).removeInvalidRows();
@@ -4740,9 +4802,19 @@ void MainDialog::startSyncForSelecction(const std::vector<FileSystemObject*>& se
 }
 
 
-void MainDialog::updateConfigLastRunStats(time_t lastRunTime, SyncResult result, const AbstractPath& logFilePath)
+void MainDialog::updateConfigLastRunStats(const ProcessSummary& summary, const ErrorLogStats& logStats, const AbstractPath& logFilePath)
 {
-    cfggrid::getDataView(*m_gridCfgHistory).setLastRunStats(activeConfigFiles_, {lastRunTime, result, logFilePath});
+    cfggrid::getDataView(*m_gridCfgHistory).setLastRunStats(activeConfigFiles_,
+    {
+        logFilePath,
+        std::chrono::system_clock::to_time_t(summary.startTime),
+        summary.syncResult,
+        summary.statsProcessed.items,
+        summary.statsProcessed.bytes,
+        summary.totalTime,
+        logStats.error,
+        logStats.warning,
+    });
 
     //re-apply selection: sort order changed if sorted by last sync time
     cfggrid::addAndSelect(*m_gridCfgHistory, activeConfigFiles_, false /*scrollToSelection*/);
@@ -5040,12 +5112,8 @@ void MainDialog::updateGridViewData()
                 wxImage imgButtonPressed  = stackImages(imgCategory,     imgCountPressed,  ImageStackLayout::horizontal, ImageStackAlignment::bottom);
                 wxImage imgButtonReleased = stackImages(imgIconReleased, imgCountReleased, ImageStackLayout::horizontal, ImageStackAlignment::bottom);
 
-                //draw rectangle border with gradient as background
-                wxImage imgBorderRect = renderPressedButton(imgButtonPressed.GetSize()).ConvertToImage();
-                convertToVanillaImage(imgBorderRect);
-                imgButtonPressed = layOver(imgBorderRect, imgButtonPressed);
-
-                btn.init(mirrorIfRtl(imgButtonPressed), mirrorIfRtl(imgButtonReleased));
+                btn.init(mirrorIfRtl(layOver(generatePressedButtonBack(imgButtonPressed.GetSize()), imgButtonPressed)),
+                         mirrorIfRtl(imgButtonReleased));
             }
         }
 

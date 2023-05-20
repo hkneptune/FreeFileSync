@@ -86,13 +86,13 @@ MainDialog::MainDialog(const Zstring& cfgFilePath) :
     m_bpButtonRemoveTopFolder->Hide();
     m_panelMainFolder->Layout();
 
-    setImage(*m_bitmapBatch,   loadImage("cfg_batch_sicon"));
+    setImage(*m_bitmapBatch,   loadImage("cfg_batch", fastFromDIP(20)));
     setImage(*m_bitmapFolders, fff::IconBuffer::genericDirIcon(fff::IconBuffer::IconSize::small));
     setImage(*m_bitmapConsole, loadImage("command_line", fastFromDIP(20)));
 
-    setImage(*m_bpButtonAddFolder, loadImage("item_add"));
+    setImage(*m_bpButtonAddFolder,       loadImage("item_add"));
     setImage(*m_bpButtonRemoveTopFolder, loadImage("item_remove"));
-    setBitmapTextLabel(*m_buttonStart, loadImage("startRts"), m_buttonStart->GetLabelText(), fastFromDIP(5), fastFromDIP(8));
+    setBitmapTextLabel(*m_buttonStart, loadImage("start_rts"), m_buttonStart->GetLabelText(), fastFromDIP(5), fastFromDIP(8));
 
     Bind(wxEVT_CHAR_HOOK, [this](wxKeyEvent& event) { onLocalKeyEvent(event); });
 

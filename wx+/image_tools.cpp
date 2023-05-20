@@ -397,7 +397,7 @@ void zen::convertToVanillaImage(wxImage& img)
             const unsigned char* rgb   = img.GetData();
 
             const int pixelCount = width * height;
-            for (int i = 0; i < pixelCount; ++ i)
+            for (int i = 0; i < pixelCount; ++i)
             {
                 const unsigned char r = *rgb++;
                 const unsigned char g = *rgb++;
@@ -414,4 +414,47 @@ void zen::convertToVanillaImage(wxImage& img)
     {
         assert(!img.HasMask());
     }
+}
+
+wxImage zen::rectangleImage(wxSize size, const wxColor& col)
+{
+    assert(col.IsSolid());
+    wxImage img(size);
+
+    unsigned char* rgb = img.GetData();
+    const int pixelCount = size.GetWidth() * size.GetHeight();
+    for (int i = 0; i < pixelCount; ++i)
+    {
+        *rgb++ = col.GetRed();
+        *rgb++ = col.GetGreen();
+        *rgb++ = col.GetBlue();
+    }
+    convertToVanillaImage(img);
+    return img;
+}
+
+
+wxImage zen::rectangleImage(wxSize size, const wxColor& innerCol, const wxColor& borderCol, int borderWidth)
+{
+    assert(innerCol.IsSolid() && borderCol.IsSolid());
+    wxImage img = rectangleImage(size, borderCol);
+
+    const int heightInner = size.GetHeight() - 2 * borderWidth;
+    const int widthInner  = size.GetWidth () - 2 * borderWidth;
+
+    if (widthInner > 0 && heightInner > 0 && innerCol != borderCol)
+        //copyImageLayover(rectangleImage({widthInner, heightInner}, innerCol), img, {borderWidth, borderWidth}); => inline:
+        for (int y = 0; y < heightInner; ++y)
+        {
+            unsigned char* rgb = img.GetData () + 3 * (borderWidth + (borderWidth + y) * size.GetWidth());
+
+            for (int x = 0; x < widthInner; ++x)
+            {
+                *rgb++ = innerCol.GetRed();
+                *rgb++ = innerCol.GetGreen();
+                *rgb++ = innerCol.GetBlue();
+            }
+        }
+
+    return img;
 }

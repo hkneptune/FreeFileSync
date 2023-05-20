@@ -58,6 +58,8 @@ inline wxImage shrinkImage(const wxImage& img, int maxSize) { return shrinkImage
 
 wxImage resizeCanvas(const wxImage& img, wxSize newSize, int alignment);
 
+wxImage rectangleImage(wxSize size, const wxColor& col);
+wxImage rectangleImage(wxSize size, const wxColor& innerCol, const wxColor& borderCol, int borderWidth);
 
 
 

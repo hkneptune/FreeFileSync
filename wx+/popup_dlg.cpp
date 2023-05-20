@@ -91,6 +91,17 @@ void setBestInitialSize(wxRichTextCtrl& ctrl, const wxString& text, wxSize maxSi
 }
 
 
+int zen::getTextCtrlHeight(wxTextCtrl& ctrl, double rowCount)
+{
+    const int rowHeight =
+        ctrl.GetTextExtent(L"X").GetHeight();
+
+    return std::round(
+               2 +
+               rowHeight * rowCount);
+}
+
+
 class zen::StandardPopupDialog : public PopupDialogGenerated
 {
 public:
@@ -277,8 +288,8 @@ public:
 
         GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
 #ifdef __WXGTK3__
-    Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
-    Hide(); //avoid old position flash when Center() moves window (asynchronously?)
+        Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
+        Hide(); //avoid old position flash when Center() moves window (asynchronously?)
 #endif
         Center(); //needs to be re-applied after a dialog size change!
 

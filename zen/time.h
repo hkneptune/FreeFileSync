@@ -391,7 +391,7 @@ TimeComp parseTime(const String& format, const String2& str)
 inline
 Zstring formatTimeSpan(int64_t timeInSec, bool hourOptional)
 {
-    Zstring timespanStr; 
+    Zstring timespanStr;
 
     if (timeInSec < 0)
     {
@@ -409,7 +409,7 @@ Zstring formatTimeSpan(int64_t timeInSec, bool hourOptional)
         timeInSec -= days * secsPerDay;
         timespanStr += numberTo<Zstring>(days) + Zstr("."); //don't need zen::formatNumber(), do we?
     }
-    
+
     //format time span as if absolute UTC time
     const TimeComp& tc = getUtcTime(timeInSec); //returns TimeComp() on error
     timespanStr += formatTime(timeSpanFmt, tc); //returns empty string on error

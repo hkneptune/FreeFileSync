@@ -110,17 +110,57 @@ void ConfigView::addCfgFilesImpl(const std::vector<Zstring>& filePaths)
 
 void ConfigView::removeItems(const std::vector<Zstring>& filePaths)
 {
-    const std::set<Zstring, LessNativePath> pathsSorted(filePaths.begin(), filePaths.end());
-
-    std::erase_if(cfgListView_, [&](auto it) { return pathsSorted.contains(it->first); });
-
     for (const Zstring& filePath : filePaths)
-        cfgList_.erase(filePath);
+        if (auto it = cfgList_.find(filePath);
+            it != cfgList_.end())
+        {
+            std::erase(cfgListView_, it);
+            cfgList_.erase(it);
+        }
+        else assert(false);
 
     assert(cfgList_.size() == cfgListView_.size());
 
     if (sortColumn_ == ColumnTypeCfg::name)
         sortListView(); //needed if top element of colored-group is removed
+}
+
+
+void ConfigView::renameItem(const Zstring& pathFrom, const Zstring& pathTo)
+{
+    auto it = cfgList_.find(pathFrom);
+    assert(it != cfgList_.end());
+    if (it != cfgList_.end())
+    {
+        const Details detailsOld = it->second;
+
+        std::erase(cfgListView_, it);
+        cfgList_.erase(it);
+        assert(cfgList_.size() == cfgListView_.size());
+
+        addCfgFilesImpl({pathTo});
+
+        //let's not lose certain metadata after renaming!
+        auto it2 = cfgList_.find(pathTo);
+        assert(it2 != cfgList_.end());
+        if (it2 != cfgList_.end())
+        {
+            it2->second.cfgItem.lastRunStats = detailsOld.cfgItem.lastRunStats;
+            it2->second.cfgItem.backColor    = detailsOld.cfgItem.backColor;
+            it2->second.lastUseIndex         = detailsOld.lastUseIndex;
+            it2->second.notes                = detailsOld.notes;
+        }
+        sortListView();
+    }
+}
+
+
+void ConfigView::setNotes(const Zstring& filePath, const std::wstring& notes)
+{
+    if (auto it = cfgList_.find(filePath);
+        it != cfgList_.end())
+        it->second.notes = notes;
+    else assert(false);
 }
 
 
@@ -132,16 +172,7 @@ void ConfigView::setLastRunStats(const std::vector<Zstring>& filePaths, const La
         auto it = cfgList_.find(filePath);
         assert(it != cfgList_.end());
         if (it != cfgList_.end())
-        {
-            if (lastRun.result != SyncResult::aborted)
-                it->second.cfgItem.lastSyncTime = lastRun.lastRunTime;
-
-            if (!AFS::isNullPath(lastRun.logFilePath))
-            {
-                it->second.cfgItem.logFilePath = lastRun.logFilePath;
-                it->second.cfgItem.logResult   = lastRun.result;
-            }
-        }
+            it->second.cfgItem.lastRunStats = lastRun;
     }
 
     if (sortColumn_ != ColumnTypeCfg::name)
@@ -178,6 +209,15 @@ const ConfigView::Details* ConfigView::getItem(size_t row) const
 }
 
 
+std::pair<const ConfigView::Details*, size_t/*row*/> ConfigView::getItem(const Zstring& filePath) const
+{
+    if (auto it = cfgList_.find(filePath);
+        it != cfgList_.end())
+        return {&it->second, std::find(cfgListView_.begin(), cfgListView_.end(), it) - cfgListView_.begin()};
+    return {};
+}
+
+
 void ConfigView::setSortDirection(ColumnTypeCfg colType, bool ascending)
 {
     sortColumn_    = colType;
@@ -203,7 +243,9 @@ void ConfigView::sortListViewImpl()
         if (lhs->second.isLastRunCfg != rhs->second.isLastRunCfg)
             return lhs->second.isLastRunCfg < rhs->second.isLastRunCfg; //"last session" label should be (always) last
 
-        return makeSortDirection(std::greater(), std::bool_constant<ascending>())(lhs->second.cfgItem.lastSyncTime, rhs->second.cfgItem.lastSyncTime);
+        return makeSortDirection(std::greater(), std::bool_constant<ascending>())(
+                   lhs->second.cfgItem.lastRunStats.syncTime,
+                   rhs->second.cfgItem.lastRunStats.syncTime);
         //[!] ascending lastSync shows lowest "days past" first <=> highest lastSyncTime first
     };
 
@@ -212,14 +254,14 @@ void ConfigView::sortListViewImpl()
         if (lhs->second.isLastRunCfg != rhs->second.isLastRunCfg)
             return lhs->second.isLastRunCfg < rhs->second.isLastRunCfg; //"last session" label should be (always) last
 
-        const bool hasLogL = !AFS::isNullPath(lhs->second.cfgItem.logFilePath);
-        const bool hasLogR = !AFS::isNullPath(rhs->second.cfgItem.logFilePath);
+        const bool hasLogL = !AFS::isNullPath(lhs->second.cfgItem.lastRunStats.logFilePath);
+        const bool hasLogR = !AFS::isNullPath(rhs->second.cfgItem.lastRunStats.logFilePath);
         if (hasLogL != hasLogR)
             return hasLogL > hasLogR; //move sync jobs that were never run to the back
 
         //primary sort order
-        if (hasLogL && lhs->second.cfgItem.logResult != rhs->second.cfgItem.logResult)
-            return makeSortDirection(std::greater(), std::bool_constant<ascending>())(lhs->second.cfgItem.logResult, rhs->second.cfgItem.logResult);
+        if (hasLogL && lhs->second.cfgItem.lastRunStats.syncResult != rhs->second.cfgItem.lastRunStats.syncResult)
+            return makeSortDirection(std::greater(), std::bool_constant<ascending>())(lhs->second.cfgItem.lastRunStats.syncResult, rhs->second.cfgItem.lastRunStats.syncResult);
 
         //secondary sort order
         return LessNaturalSort()(lhs->second.name, rhs->second.name);
@@ -320,23 +362,22 @@ private:
                 case ColumnTypeCfg::lastSync:
                     if (!item->isLastRunCfg)
                     {
-                        if (item->cfgItem.lastSyncTime == 0)
+                        if (item->cfgItem.lastRunStats.syncTime == 0)
                             return std::wstring(1, EN_DASH);
 
-                        //return utfTo<std::wstring>(formatTime(formatDateTimeTag, getLocalTime(item->cfgItem.lastSyncTime)));
+                        //return utfTo<std::wstring>(formatTime(formatDateTimeTag, getLocalTime(item->cfgItem.lastRunStats.syncTime)));
 
-                        const int daysPast = getDaysPast(item->cfgItem.lastSyncTime);
+                        const int daysPast = getDaysPast(item->cfgItem.lastRunStats.syncTime);
                         return daysPast == 0 ?
-                               utfTo<std::wstring>(formatTime(Zstr("%R") /*equivalent to "%H:%M"*/, getLocalTime(item->cfgItem.lastSyncTime))) :
+                               utfTo<std::wstring>(formatTime(Zstr("%R") /*equivalent to "%H:%M"*/, getLocalTime(item->cfgItem.lastRunStats.syncTime))) :
                                //_("Today") :
                                _P("1 day", "%x days", daysPast);
                     }
                     break;
 
                 case ColumnTypeCfg::lastLog:
-                    if (!item->isLastRunCfg &&
-                        !AFS::isNullPath(item->cfgItem.logFilePath))
-                        return getSyncResultLabel(item->cfgItem.logResult);
+                    if (!item->isLastRunCfg && item->cfgItem.lastRunStats.syncTime != 0)
+                        return getSyncResultLabel(item->cfgItem.lastRunStats.syncResult);
                     break;
             }
         return std::wstring();
@@ -396,7 +437,7 @@ private:
                         }
                     }
                     if (!selected && static_cast<HoverAreaConfig>(rowHover) == HoverAreaConfig::name)
-                        drawInsetRectangle(dc, rect, fastFromDIP(1), wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT));
+                        drawRectangleBorder(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT), fastFromDIP(1));
 
                     //-------------------------------------------------------------------------------------
                     wxRect rectTmp = rect;
@@ -410,9 +451,9 @@ private:
                             case ConfigView::Details::CFG_TYPE_NONE:
                                 return wxNullImage;
                             case ConfigView::Details::CFG_TYPE_GUI:
-                                return loadImage("start_sync_sicon");
+                                return loadImage("start_sync", getDefaultMenuIconSize());
                             case ConfigView::Details::CFG_TYPE_BATCH:
-                                return loadImage("cfg_batch_sicon");
+                                return loadImage("cfg_batch", getDefaultMenuIconSize());
                         }
                         assert(false);
                         return wxNullImage;
@@ -423,7 +464,19 @@ private:
                     rectTmp.x     += getDefaultMenuIconSize() + getColumnGapLeft();
                     rectTmp.width -= getDefaultMenuIconSize() + getColumnGapLeft();
 
+                    if (!item->notes.empty())
+                        rectTmp.width -= getDefaultMenuIconSize() + getColumnGapLeft();
+
                     drawCellText(dc, rectTmp, getValue(row, colType));
+
+                    if (!item->notes.empty())
+                    {
+                        rectTmp.x += rectTmp.width;
+                        rectTmp.width = getDefaultMenuIconSize();
+
+                        const wxImage notesIcon = loadImage("notes", getDefaultMenuIconSize());
+                        drawBitmapRtlNoMirror(dc, enabled ? notesIcon : notesIcon.ConvertToDisabled(), rectTmp, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
+                    }
                 }
                 break;
 
@@ -431,7 +484,7 @@ private:
                 {
                     wxDCTextColourChanger textColor2(dc);
                     if (syncOverdueDays_ > 0)
-                        if (getDaysPast(item->cfgItem.lastSyncTime) >= syncOverdueDays_)
+                        if (getDaysPast(item->cfgItem.lastRunStats.syncTime) >= syncOverdueDays_)
                             textColor2.Set(*wxRED);
 
                     drawCellText(dc, rect, getValue(row, colType), wxALIGN_CENTER);
@@ -439,12 +492,11 @@ private:
                 break;
 
                 case ColumnTypeCfg::lastLog:
-                    if (!item->isLastRunCfg &&
-                        !AFS::isNullPath(item->cfgItem.logFilePath))
+                    if (!item->isLastRunCfg && item->cfgItem.lastRunStats.syncTime != 0)
                     {
                         const wxImage statusIcon = [&]
                         {
-                            switch (item->cfgItem.logResult)
+                            switch (item->cfgItem.lastRunStats.syncResult)
                             {
                                 case SyncResult::finishedSuccess:
                                     return loadImage("msg_success", getDefaultMenuIconSize());
@@ -492,10 +544,10 @@ private:
             {
                 case ColumnTypeCfg::name:
                 case ColumnTypeCfg::lastSync:
+                    //if (!item->notes.empty() && cellRelativePosX >= cellWidth - (getColumnGapLeft() + getDefaultMenuIconSize() + getColumnGapLeft()))
                     break;
                 case ColumnTypeCfg::lastLog:
-
-                    if (!item->isLastRunCfg && !getNativeItemPath(item->cfgItem.logFilePath).empty())
+                    if (!item->isLastRunCfg && !getNativeItemPath(item->cfgItem.lastRunStats.logFilePath).empty())
                         return static_cast<HoverArea>(HoverAreaConfig::link);
                     break;
             }
@@ -534,7 +586,7 @@ private:
 
             case ColumnTypeCfg::lastLog:
             {
-                const wxImage logIcon = loadImage("log_file_sicon");
+                const wxImage logIcon = loadImage("log_file", getDefaultMenuIconSize());
                 drawBitmapRtlNoMirror(dc, enabled ? logIcon : logIcon.ConvertToDisabled(), rectInner, wxALIGN_CENTER);
 
                 if (sortMarker.IsOk())
@@ -580,18 +632,35 @@ private:
     std::wstring getToolTip(size_t row, ColumnType colType, HoverArea rowHover) override
     {
         if (const ConfigView::Details* item = cfgView_.getItem(row))
+        {
             switch (static_cast<ColumnTypeCfg>(colType))
             {
                 case ColumnTypeCfg::name:
                 case ColumnTypeCfg::lastSync:
                     break;
-                case ColumnTypeCfg::lastLog:
 
-                    if (!item->isLastRunCfg &&
-                        !AFS::isNullPath(item->cfgItem.logFilePath))
-                        return getSyncResultLabel(item->cfgItem.logResult) + L"\n" + AFS::getDisplayPath(item->cfgItem.logFilePath);
+                case ColumnTypeCfg::lastLog:
+                    if (!item->isLastRunCfg && item->cfgItem.lastRunStats.syncTime != 0)
+                    {
+                        std::wstring tooltip = getSyncResultLabel(item->cfgItem.lastRunStats.syncResult) + L"\n";
+
+                        if (item->cfgItem.lastRunStats.errors   > 0) tooltip += TAB_SPACE + _("Errors:")   + L' ' + formatNumber(item->cfgItem.lastRunStats.errors) + L"\n";
+                        if (item->cfgItem.lastRunStats.warnings > 0) tooltip += TAB_SPACE + _("Warnings:") + L' ' + formatNumber(item->cfgItem.lastRunStats.warnings) + L"\n";
+
+                        tooltip += TAB_SPACE + _("Items processed:") + L' ' + formatNumber(item->cfgItem.lastRunStats.itemsProcessed) +
+                                   L" (" + formatFilesizeShort(item->cfgItem.lastRunStats.bytesProcessed) + L")\n";
+
+                        const int64_t totalTimeSec = std::chrono::duration_cast<std::chrono::seconds>(item->cfgItem.lastRunStats.totalTime).count();
+                        tooltip += TAB_SPACE + _("Total time:") + L' ' + utfTo<std::wstring>(formatTimeSpan(totalTimeSec));
+
+                        //if (!AFS::isNullPath(item->cfgItem.lastRunStats.logFilePath))
+                        //    tooltip += L"\n" + AFS::getDisplayPath(item->cfgItem.lastRunStats.logFilePath);
+                        return tooltip;
+                    }
                     break;
             }
+            return item->notes;
+        }
         return std::wstring();
     }
 
@@ -605,12 +674,11 @@ private:
                 case HoverAreaConfig::link:
                     try
                     {
-                        if (const Zstring& nativePath = getNativeItemPath(item->cfgItem.logFilePath);
+                        if (const Zstring& nativePath = getNativeItemPath(item->cfgItem.lastRunStats.logFilePath);
                             !nativePath.empty())
                             openWithDefaultApp(nativePath); //throw FileError
                         else
-                            assert(false);
-                        assert(!AFS::isNullPath(item->cfgItem.logFilePath)); //see getMouseHover()
+                            assert(false); //see getMouseHover()
                     }
                     catch (const FileError& e) { showNotificationDialog(&grid_, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString())); }
                     return;

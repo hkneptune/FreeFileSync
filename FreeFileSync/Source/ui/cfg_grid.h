@@ -16,26 +16,32 @@
 
 namespace fff
 {
+struct LastRunStats
+{
+    AbstractPath logFilePath = getNullPath(); //optional
+    time_t syncTime = 0;
+    SyncResult syncResult = SyncResult::aborted;
+    int     itemsProcessed = 0;
+    int64_t bytesProcessed = 0;
+    std::chrono::milliseconds totalTime{};
+    int errors   = 0;
+    int warnings = 0;
+};
+
 struct ConfigFileItem
 {
     ConfigFileItem() {}
     ConfigFileItem(const Zstring& filePath,
-                   time_t syncTime,
-                   const AbstractPath& logPath,
-                   SyncResult result,
+                   const LastRunStats& runStats,
                    wxColor bcol) :
         cfgFilePath(filePath),
-        lastSyncTime(syncTime),
-        logFilePath(logPath),
-        logResult(result),
+        lastRunStats(runStats),
         backColor(bcol) {}
 
-    Zstring      cfgFilePath;
-    time_t       lastSyncTime = 0;  //last COMPLETED sync (aborted syncs don't count)
-    AbstractPath logFilePath = getNullPath();     //ANY last sync attempt (including aborted syncs)
-    SyncResult   logResult = SyncResult::aborted; //
-    wxColor      backColor;
-    wxColor      backColorPreview; //while the folder picker is shown
+    Zstring cfgFilePath;
+    LastRunStats lastRunStats;
+    wxColor backColor;
+    wxColor backColorPreview; //while the folder picker is shown
 };
 
 
@@ -97,13 +103,9 @@ public:
 
     void addCfgFiles(const std::vector<Zstring>& filePaths);
     void removeItems(const std::vector<Zstring>& filePaths);
+    void renameItem(const Zstring& pathFrom, const Zstring& pathTo);
 
-    struct LastRunStats
-    {
-        time_t       lastRunTime = 0;
-        SyncResult   result = SyncResult::aborted;
-        AbstractPath logFilePath; //optional
-    };
+    void setNotes(const Zstring& filePath, const std::wstring& notes);
     void setLastRunStats(const std::vector<Zstring>& filePaths, const LastRunStats& lastRun);
     void setBackColor(const std::vector<Zstring>& filePaths, const wxColor& col, bool previewOnly = false);
 
@@ -114,6 +116,7 @@ public:
         Zstring name;
         int lastUseIndex = 0; //support truncating the config list size via last usage, the higher the index the more recent the usage
         bool isLastRunCfg = false; //LastRun.ffs_gui
+        std::wstring notes;
 
         enum ConfigType
         {
@@ -124,6 +127,8 @@ public:
     };
 
     const Details* getItem(size_t row) const;
+    std::pair<const ConfigView::Details*, size_t /*row*/> getItem(const Zstring& filePath) const;
+
     size_t getRowCount() const { assert(cfgList_.size() == cfgListView_.size()); return cfgListView_.size(); }
 
     void setSortDirection(ColumnTypeCfg colType, bool ascending);

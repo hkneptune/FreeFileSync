@@ -845,7 +845,7 @@ private:
                     {
                         wxRect areaPerc(rectTmp.x, rectTmp.y + fastFromDIP(2), percentageBarWidth_, rectTmp.height - fastFromDIP(4));
                         //clear background
-                        drawInsetRectangle(dc, areaPerc, fastFromDIP(1), getColorPercentBorder(), getColorPercentBackground());
+                        drawFilledRectangle(dc, areaPerc, getColorPercentBackground(), getColorPercentBorder(), fastFromDIP(1));
                         areaPerc.Deflate(fastFromDIP(1));
 
                         //inner area
@@ -895,7 +895,7 @@ private:
                             drawIcon(nodeIcon, rectTmp, isActive);
 
                             if (static_cast<HoverAreaTree>(rowHover) == HoverAreaTree::item)
-                                drawInsetRectangle(dc, rectTmp, fastFromDIP(1), *wxBLUE);
+                                drawRectangleBorder(dc, rectTmp, *wxBLUE, fastFromDIP(1));
 
                             rectTmp.x     += widthNodeIcon_ + gapSize_;
                             rectTmp.width -= widthNodeIcon_ + gapSize_;

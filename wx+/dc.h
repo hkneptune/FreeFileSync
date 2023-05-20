@@ -13,7 +13,7 @@
 #include <wx/dcbuffer.h> //for macro: wxALWAYS_NATIVE_DOUBLE_BUFFER
 #include <wx/dcscreen.h>
 #include <wx/bmpbndl.h>
-//    #include <gtk/gtk.h>
+    //    #include <gtk/gtk.h>
 
 
 namespace zen
@@ -50,12 +50,12 @@ void clearArea(wxDC& dc, const wxRect& rect, const wxColor& col)
 
 //properly draw rectangle respecting high DPI (and avoiding wxPen position fuzzyness)
 inline
-void drawInsetRectangle(wxDC& dc, wxRect rect, int borderWidth, const wxColor& borderCol, const wxColor& innerCol)
+void drawFilledRectangle(wxDC& dc, wxRect rect, const wxColor& innerCol, const wxColor& borderCol, int borderWidth)
 {
     if (rect.width  > 0 &&
         rect.height > 0)
     {
-        assert(borderCol.IsSolid() && innerCol.IsSolid());
+        assert(innerCol.IsSolid() && borderCol.IsSolid());
         wxDCPenChanger   rectPen  (dc, *wxTRANSPARENT_PEN);
         wxDCBrushChanger rectBrush(dc, borderCol);
         dc.DrawRectangle(rect);
@@ -68,7 +68,7 @@ void drawInsetRectangle(wxDC& dc, wxRect rect, int borderWidth, const wxColor& b
 
 
 inline
-void drawInsetRectangle(wxDC& dc, const wxRect& rect, int borderWidth, const wxColor& col)
+void drawRectangleBorder(wxDC& dc, const wxRect& rect, const wxColor& col, int borderWidth)
 {
     if (rect.width  > 0 &&
         rect.height > 0)

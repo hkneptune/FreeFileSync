@@ -18,6 +18,7 @@
 #include <wx+/dc.h>
 #include <wx+/image_tools.h>
 #include <wx+/image_resources.h>
+#include <wx+/std_button_layout.h>
 #include "../base/file_hierarchy.h"
 
 using namespace zen;
@@ -968,7 +969,7 @@ private:
                             //mouse highlight: group name
                             if (static_cast<HoverAreaGroup>(rowHover) == HoverAreaGroup::groupName ||
                                 (static_cast<HoverAreaGroup>(rowHover) == HoverAreaGroup::item && pdi.fsObj == pdi.folderGroupObj /*exception: extend highlight*/))
-                                drawInsetRectangle(dc, rectGroupNameBack, fastFromDIP(1), *wxBLUE);
+                                drawRectangleBorder(dc, rectGroupNameBack, *wxBLUE, fastFromDIP(1));
 
                             if (!pdi.folderGroupObj->isEmpty<side>())
                                 drawCellText(dc, rectGroupName, groupName, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, &getTextExtentBuffered(dc, groupName));
@@ -1039,7 +1040,7 @@ private:
 
                         //mouse highlight: item name
                         if (static_cast<HoverAreaGroup>(rowHover) == HoverAreaGroup::item)
-                            drawInsetRectangle(dc, rectItemsBack, fastFromDIP(1), *wxBLUE);
+                            drawRectangleBorder(dc, rectItemsBack,*wxBLUE, fastFromDIP(1));
 
                         if (!pdi.fsObj->isEmpty<side>())
                             drawCellText(dc, rectGroupItems, itemName, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, &getTextExtentBuffered(dc, itemName));
@@ -1588,11 +1589,11 @@ private:
                 break;
 
             case ColumnTypeCenter::difference:
-                colIcon = greyScaleIfDisabled(loadImage("compare_sicon"), getViewType() == GridViewType::difference);
+                colIcon = greyScaleIfDisabled(loadImage("compare", getDefaultMenuIconSize()), getViewType() == GridViewType::difference);
                 break;
 
             case ColumnTypeCenter::action:
-                colIcon = greyScaleIfDisabled(loadImage("start_sync_sicon"), getViewType() == GridViewType::action);
+                colIcon = greyScaleIfDisabled(loadImage("start_sync", getDefaultMenuIconSize()), getViewType() == GridViewType::action);
                 break;
         }
 

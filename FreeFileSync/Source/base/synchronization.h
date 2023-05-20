@@ -69,6 +69,14 @@ private:
 };
 
 
+inline
+int getCUD(const SyncStatistics& stat)
+{
+    return stat.createCount() +
+           stat.updateCount() +
+           stat.deleteCount();
+}
+
 struct FolderPairSyncCfg
 {
     SyncVariant syncVar;

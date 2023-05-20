@@ -247,7 +247,7 @@ BatchStatusHandler::Result BatchStatusHandler::reportResults(const Zstring& post
                                                                                   syncResult, errorLogFinal);
     progressDlg_ = nullptr;
 
-    return {syncResult, getStats(errorLogFinal.ref()), finalRequest, logFilePath, dlgSize, dlgIsMaximized};
+    return {summary, getStats(errorLogFinal.ref()), finalRequest, logFilePath, dlgSize, dlgIsMaximized};
 }
 
 

@@ -88,7 +88,7 @@ std::variant<ItemType, Zstring /*last existing parent path*/> getItemTypeIfExist
                     //- case-sensitive comparison! itemPath must be normalized!
                     //- finding the item after getItemType() previously failed is exceptional
                 }
-                catch (const FileError& e) { throw SysError(replaceCpy(e.toString(), L"\n\n", L'\n')); }
+                catch (const FileError& e2) { throw SysError(replaceCpy(e2.toString(), L"\n\n", L'\n')); }
 
                 return *parentPath;
             }

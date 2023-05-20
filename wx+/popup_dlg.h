@@ -13,6 +13,7 @@
 #include <wx/window.h>
 #include <wx/bitmap.h>
 #include <wx/string.h>
+#include <wx/textctrl.h>
 
 
 namespace zen
@@ -94,6 +95,9 @@ private:
     wxString checkBoxLabel;
     ConfirmationButton3 buttonToDisableWhenChecked = ConfirmationButton3::cancel;
 };
+
+
+int getTextCtrlHeight(wxTextCtrl& ctrl, double rowCount);
 }
 
 #endif //POPUP_DLG_H_820780154723456

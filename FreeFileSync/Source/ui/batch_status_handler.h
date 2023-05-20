@@ -52,7 +52,7 @@ public:
     };
     struct Result
     {
-        SyncResult syncResult;
+        ProcessSummary summary;
         zen::ErrorLogStats logStats;
         FinalRequest finalRequest;
         AbstractPath logFilePath;

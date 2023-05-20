@@ -40,11 +40,11 @@ DirWatcher::DirWatcher(const Zstring& dirPath) : //throw FileError
         traverse = [&traverse, &fullFolderList](const Zstring& path) //throw FileError
         {
             traverseFolder(path, nullptr,
-            [&](const FolderInfo& fi )
-                {
-                    fullFolderList.push_back(fi.fullPath);
-                    traverse(fi.fullPath); //throw FileError
-                },
+                           [&](const FolderInfo& fi )
+            {
+                fullFolderList.push_back(fi.fullPath);
+                traverse(fi.fullPath); //throw FileError
+            },
             nullptr /*don't traverse into symlinks (analog to Windows)*/); //throw FileError
         };
 

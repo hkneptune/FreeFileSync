@@ -1407,9 +1407,9 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalCfg) :
     setImage(*m_bitmapLogFile,            loadImage("log_file",    fastFromDIP(20)));
     setImage(*m_bitmapNotificationSounds, loadImage("notification_sounds"));
     setImage(*m_bitmapConsole,            loadImage("command_line", fastFromDIP(20)));
-    setImage(*m_bitmapCompareDone,        loadImage("compare_sicon"));
-    setImage(*m_bitmapSyncDone,           loadImage("start_sync_sicon"));
-    setImage(*m_bitmapAlertPending,       loadImage("msg_error", loadImage("compare_sicon").GetSize().x));
+    setImage(*m_bitmapCompareDone,        loadImage("compare", fastFromDIP(20)));
+    setImage(*m_bitmapSyncDone,           loadImage("start_sync", fastFromDIP(20)));
+    setImage(*m_bitmapAlertPending,       loadImage("msg_error", fastFromDIP(20)));
     setImage(*m_bpButtonPlayCompareDone,  loadImage("play_sound"));
     setImage(*m_bpButtonPlaySyncDone,     loadImage("play_sound"));
     setImage(*m_bpButtonPlayAlertPending, loadImage("play_sound"));
@@ -2098,14 +2098,14 @@ void ActivationDlg::onCopyUrl(wxCommandEvent& event)
 
 void ActivationDlg::onActivateOnline(wxCommandEvent& event)
 {
-    manualActivationKeyOut_ = m_textCtrlOfflineActivationKey->GetValue();
+    manualActivationKeyOut_ = utfTo<std::wstring>(m_textCtrlOfflineActivationKey->GetValue());
     EndModal(static_cast<int>(ActivationDlgButton::activateOnline));
 }
 
 
 void ActivationDlg::onActivateOffline(wxCommandEvent& event)
 {
-    manualActivationKeyOut_ = m_textCtrlOfflineActivationKey->GetValue();
+    manualActivationKeyOut_ = utfTo<std::wstring>(m_textCtrlOfflineActivationKey->GetValue());
     if (trimCpy(manualActivationKeyOut_).empty()) //alternative: disable button? => user thinks option is not available!
     {
         showNotificationDialog(this, DialogInfoType::info, PopupDialogCfg().setMainInstructions(_("Please enter a key for offline activation.")));

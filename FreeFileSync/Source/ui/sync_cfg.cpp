@@ -78,11 +78,9 @@ void initBitmapRadioButtons(const std::vector<std::pair<ToggleButton*, std::stri
 
     for (auto& [btn, imgName] : buttons)
     {
-        wxImage imgSelBack = renderSelectedButton(maxExtent).ConvertToImage();
-        convertToVanillaImage(imgSelBack);
-
-        btn->init(layOver(imgSelBack, generateSelectImage(*btn, imgName, true /*selected*/), wxALIGN_CENTER_VERTICAL | (physicalLeft ? wxALIGN_LEFT : wxALIGN_RIGHT)),
-                  resizeCanvas(labelsNotSel[btn], maxExtent,                                 wxALIGN_CENTER_VERTICAL | (physicalLeft ? wxALIGN_LEFT : wxALIGN_RIGHT)));
+        btn->init(layOver(rectangleImage(maxExtent, getColorToggleButtonFill(), getColorToggleButtonBorder(), fastFromDIP(1)),
+                          generateSelectImage(*btn, imgName, true /*selected*/), wxALIGN_CENTER_VERTICAL | (physicalLeft ? wxALIGN_LEFT : wxALIGN_RIGHT)),
+                  resizeCanvas(labelsNotSel[btn], maxExtent,                     wxALIGN_CENTER_VERTICAL | (physicalLeft ? wxALIGN_LEFT : wxALIGN_RIGHT)));
 
         btn->SetMinSize(maxExtent); //get rid of selection border on Windows :)
         //SetMinSize() instead of SetSize() is needed here for wxWindows layout determination to work correctly
@@ -226,6 +224,8 @@ private:
     void onCancel(wxCommandEvent& event) override { EndModal(static_cast<int>(ConfirmationButton::cancel)); }
     void onClose (wxCloseEvent&   event) override { EndModal(static_cast<int>(ConfirmationButton::cancel)); }
 
+    void onAddNotes(wxCommandEvent& event) override;
+
     void onLocalKeyEvent(wxKeyEvent& event);
     void onListBoxKeyEvent(wxKeyEvent& event) override;
     void onSelectFolderPair(wxCommandEvent& event) override;
@@ -271,8 +271,6 @@ private:
     void onFilterDefaultContext     (wxCommandEvent& event) override { onFilterDefaultContext(static_cast<wxEvent&>(event)); }
     void onFilterDefaultContextMouse(wxMouseEvent&   event) override { onFilterDefaultContext(static_cast<wxEvent&>(event)); }
     void onFilterDefaultContext(wxEvent& event);
-
-    void onFilterKeyEvent(wxKeyEvent& event);
 
     FilterConfig getFilterConfig() const;
     void setFilterConfig(const FilterConfig& filter);
@@ -326,6 +324,7 @@ private:
     void setSyncConfig(const SyncConfig* syncCfg);
 
     void updateSyncGui();
+    //-----------------------------------------------------
 
     //parameters with ownership NOT within GUI controls!
     SyncDirectionConfig directionCfg_;
@@ -370,6 +369,8 @@ private:
 
     int selectedPairIndexToShow_ = EMPTY_PAIR_INDEX_SELECTED;
     static const int EMPTY_PAIR_INDEX_SELECTED = -2;
+
+    bool showNotesPanel_ = false;
 
     const bool enableExtraFeatures_;
     const bool showMultipleCfgs_;
@@ -464,6 +465,7 @@ emailHistoryOut_(emailHistory),
 commandHistoryOut_(commandHistory),
 globalPairCfg_(globalPairCfg),
 localPairCfg_(localPairCfg),
+showNotesPanel_(!globalPairCfg.miscCfg.notes.empty()),
     enableExtraFeatures_(false),
 showMultipleCfgs_(showMultipleCfgs),
 globalLogFolderPhrase_(globalLogFolderPhrase)
@@ -472,23 +474,38 @@ globalLogFolderPhrase_(globalLogFolderPhrase)
 
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
 
+
+    setBitmapTextLabel(*m_buttonAddNotes, loadImage("notes", fastFromDIP(16)), m_buttonAddNotes->GetLabelText());
+
+    setImage(*m_bitmapNotes, loadImage("notes", fastFromDIP(20)));
+
+    //set reasonable default height for notes: simplistic algorithm neglecting line-wrap!
+    int notesRows = 1;
+    for (wchar_t c : trimCpy(globalPairCfg.miscCfg.notes))
+        if (c == L'\n')
+            ++notesRows;
+
+    double visibleRows = 5;
+    if (showNotesPanel_)
+        visibleRows = notesRows <= 10 ? notesRows : 10.5; //add half a row as visual hint
+    m_textCtrNotes->SetMinSize({-1, getTextCtrlHeight(*m_textCtrNotes, visibleRows)});
+
+
     m_notebook->SetPadding(wxSize(fastFromDIP(2), 0)); //height cannot be changed
 
     //fill image list to cope with wxNotebook image setting design desaster...
-    const int imgListSize = loadImage("options_compare_sicon").GetHeight();
+    const int imgListSize = fastFromDIP(16); //also required by GTK => don't use getDefaultMenuIconSize()
     auto imgList = std::make_unique<wxImageList>(imgListSize, imgListSize);
 
     auto addToImageList = [&](const wxImage& img)
     {
-        assert(img.GetWidth () <= imgListSize);
-        assert(img.GetHeight() <= imgListSize);
         imgList->Add(toScaledBitmap(img));
         imgList->Add(toScaledBitmap(greyScale(img)));
     };
     //add images in same sequence like ConfigTypeImage enum!!!
-    addToImageList(loadImage("options_compare_sicon"));
-    addToImageList(loadImage("options_filter_sicon"));
-    addToImageList(loadImage("options_sync_sicon"));
+    addToImageList(loadImage("options_compare", imgListSize));
+    addToImageList(loadImage("options_filter",  imgListSize));
+    addToImageList(loadImage("options_sync",    imgListSize));
     assert(imgList->GetImageCount() == static_cast<int>(ConfigTypeImage::syncGrey) + 1);
 
     m_notebook->AssignImageList(imgList.release()); //pass ownership
@@ -535,9 +552,6 @@ globalLogFolderPhrase_(globalLogFolderPhrase)
     m_textCtrlInclude->SetMinSize({fastFromDIP(280), -1});
 
     assert(!contains(m_buttonClear->GetLabel(), L"&C") && !contains(m_buttonClear->GetLabel(), L"&c")); //gazillionth wxWidgets bug on OS X: Command + C mistakenly hits "&C" access key!
-
-    m_textCtrlInclude->Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onFilterKeyEvent(event); });
-    m_textCtrlExclude->Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onFilterKeyEvent(event); });
 
     setDefaultWidth(*m_spinCtrlMinSize);
     setDefaultWidth(*m_spinCtrlMaxSize);
@@ -643,8 +657,9 @@ globalLogFolderPhrase_(globalLogFolderPhrase)
     m_comboBoxPostSyncCommand->SetHint(_("Example:") + L" systemctl poweroff");
 
     m_comboBoxPostSyncCommand->setHistory(commandHistory, commandHistoryMax);
-    //-----------------------------------------------------
 
+    //-----------------------------------------------------
+    //
     //enable dialog-specific key events
     Bind(wxEVT_CHAR_HOOK, [this](wxKeyEvent& event) { onLocalKeyEvent(event); });
 
@@ -907,27 +922,10 @@ void ConfigDialog::onFilterDefaultContext(wxEvent& event)
     const FilterConfig defaultFilter = XmlGlobalSettings().defaultFilter;
 
     ContextMenu menu;
-    menu.addItem(_("&Save"),                 [&] { defaultFilterOut_ = activeCfg; updateFilterGui(); }, loadImage("cfg_save_sicon"), defaultFilterOut_ != activeCfg);
+    menu.addItem(_("&Save"),                 [&] { defaultFilterOut_ = activeCfg; updateFilterGui(); }, loadImage("cfg_save", getDefaultMenuIconSize()), defaultFilterOut_ != activeCfg);
     menu.addItem(_("&Load factory default"), [&] { setFilterConfig(defaultFilter); }, wxNullImage, activeCfg != defaultFilter);
 
     menu.popup(*m_bpButtonDefaultContext, {m_bpButtonDefaultContext->GetSize().x, 0});
-}
-
-
-void ConfigDialog::onFilterKeyEvent(wxKeyEvent& event)
-{
-    const int keyCode = event.GetKeyCode();
-
-    if (event.ControlDown())
-        switch (keyCode)
-        {
-            case 'A': //CTRL + A
-                if (auto textCtrl = dynamic_cast<wxTextCtrl*>(event.GetEventObject()))
-                    textCtrl->SelectAll();
-                return;
-        }
-
-    event.Skip();
 }
 
 
@@ -1412,6 +1410,8 @@ MiscSyncConfig ConfigDialog::getMiscSyncOptions() const
     miscCfg.emailNotifyAddress = m_checkBoxSendEmail->GetValue() ? emailAddress : std::string();
     miscCfg.emailNotifyCondition = emailNotifyCondition_;
     //----------------------------------------------------------------------------
+    miscCfg.notes = trimCpy(utfTo<std::wstring>(m_textCtrNotes->GetValue()));
+
     return miscCfg;
 }
 
@@ -1479,6 +1479,8 @@ void ConfigDialog::setMiscSyncOptions(const MiscSyncConfig& miscCfg)
     m_comboBoxEmail->setValue(m_checkBoxSendEmail->GetValue() ? utfTo<Zstring>(miscCfg.emailNotifyAddress) : defaultEmail);
     emailNotifyCondition_ = miscCfg.emailNotifyCondition;
     //----------------------------------------------------------------------------
+    m_textCtrNotes->ChangeValue(utfTo<wxString>(miscCfg.notes));
+
     updateMiscGui();
 }
 
@@ -1548,6 +1550,10 @@ void ConfigDialog::updateMiscGui()
 
     m_panelSyncSettings->Refresh(); //removes a few artifacts when toggling email notifications
     m_panelLogfile     ->Refresh();//
+
+    //----------------------------------------------------------------------------
+    m_buttonAddNotes->Show(!showNotesPanel_);
+    m_panelNotes    ->Show(showNotesPanel_);
 }
 
 
@@ -1727,6 +1733,18 @@ bool ConfigDialog::unselectFolderPairConfig(bool validateParams)
     selectedPairIndexToShow_ = EMPTY_PAIR_INDEX_SELECTED;
     //m_listBoxFolderPair->SetSelection(wxNOT_FOUND); not needed, selectedPairIndexToShow has parameter ownership
     return true;
+}
+
+
+void ConfigDialog::onAddNotes(wxCommandEvent& event)
+{
+    showNotesPanel_ = true;
+    updateMiscGui();
+
+    //=> enlarge dialog height!
+    GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
+
+    m_textCtrNotes->SetFocus();
 }
 
 

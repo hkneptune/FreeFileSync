@@ -176,7 +176,7 @@ private:
 
     const wxString jobName_; //RTS job name, may be empty
 
-    const wxImage trayImg_ = loadImage("RTS_tray_24"); //use 24x24 bitmap for perfect fit
+    const wxImage trayImg_ = loadImage("start_rts", fastFromDIP(24)); //use 24x24 bitmap for perfect fit
 };
 
 
@@ -262,8 +262,6 @@ rts::AbortReason rts::runFolderMonitor(const XmlRealConfig& config, const wxStri
             if (const auto& [exitCode, output] = consoleExecute(cmdLineExp, std::nullopt /*timeoutMs*/); //throw SysError, (SysErrorTimeOut)
                 exitCode != 0)
                 throw SysError(formatSystemError("", replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), utfTo<std::wstring>(output)));
-            //okay to fail when FFS returns exit code 1 (warning)?
-            warn_static("evaluate!") //https://freefilesync.org/forum/viewtopic.php?t=9395 https://freefilesync.org/forum/viewtopic.php?t=9399
         }
         catch (const SysError& e) { throw FileError(replaceCpy(_("Command %x failed."), L"%x", fmtPath(cmdLineExp)), e.toString()); }
     };

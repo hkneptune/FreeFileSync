@@ -18,7 +18,7 @@ enum class SyncConfigPanel
 {
     compare = 0, //used as zero-based notebook page index!
     filter,
-    sync
+    sync,
 };
 
 struct MiscSyncConfig
@@ -35,6 +35,8 @@ struct MiscSyncConfig
 
     std::string emailNotifyAddress;
     ResultsNotification emailNotifyCondition = ResultsNotification::always;
+
+    std::wstring notes;
 };
 
 struct GlobalPairConfig

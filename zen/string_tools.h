@@ -639,17 +639,17 @@ int saferPrintf(wchar_t* buffer, size_t bufferSize, const wchar_t* format, const
 template <class S, class T, class Num> inline
 S printNumber(const T& format, const Num& number) //format a single number using ::sprintf
 {
-#ifdef __cpp_lib_format
-#error refactor?
-#endif
     static_assert(std::is_same_v<GetCharTypeT<S>, GetCharTypeT<T>>);
     assert(strBegin(format)[strLength(format)] == 0); //format must be null-terminated!
 
     S buf(128, static_cast<GetCharTypeT<S>>('0'));
     const int charsWritten = impl::saferPrintf(buf.data(), buf.size(), strBegin(format), number);
 
-    if (makeUnsigned(charsWritten) > buf.size())
+    if (charsWritten < 0 || makeUnsigned(charsWritten) > buf.size())
+    {
+        assert(false);
         return S();
+    }
 
     buf.resize(charsWritten);
     return buf;

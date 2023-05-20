@@ -13,7 +13,7 @@
 #include "image_tools.h"
 #include "bitmap_button.h"
 #include "dc.h"
-#include <gtk/gtk.h>
+    #include <gtk/gtk.h>
 
 using namespace zen;
 

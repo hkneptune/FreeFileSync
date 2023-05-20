@@ -42,8 +42,10 @@ void setBitmapTextLabel(wxBitmapButton& btn, const wxImage& img, const wxString&
 void setImage(wxAnyButton& button, const wxImage& bmp);
 void setImage(wxStaticBitmap& staticBmp, const wxImage& img);
 
-wxBitmap renderSelectedButton(const wxSize& sz);
-wxBitmap renderPressedButton(const wxSize& sz);
+wxImage renderPressedButton(const wxSize& sz);
+
+inline wxColor getColorToggleButtonBorder(){ return {0x79, 0xbc, 0xed}; } //medium blue
+inline wxColor getColorToggleButtonFill  (){ return {0xcc, 0xe4, 0xf8}; } //light blue
 
 
 
@@ -100,25 +102,14 @@ void setImage(wxStaticBitmap& staticBmp, const wxImage& img)
 }
 
 
-inline
-wxBitmap renderSelectedButton(const wxSize& sz)
-{
-    wxBitmap bmp(sz); //seems we don't need to pass 24-bit depth here even for high-contrast color schemes
-    bmp.SetScaleFactor(getDisplayScaleFactor());
-    {
-        wxMemoryDC dc(bmp);
-
-        const wxColor borderCol(0x79, 0xbc, 0xed); //medium blue
-        const wxColor innerCol (0xcc, 0xe4, 0xf8); //light blue
-        drawInsetRectangle(dc, wxRect(bmp.GetSize()), fastFromDIP(1), borderCol, innerCol);
-    }
-    return bmp;
-}
-
 
 inline
-wxBitmap renderPressedButton(const wxSize& sz)
+wxImage generatePressedButtonBack(const wxSize& sz)
 {
+#if 1
+    return rectangleImage(sz, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW), {0x11, 0x79, 0xfe} /*light blue*/, fastFromDIP(2));
+
+#else //rectangle border with gradient as background
     wxBitmap bmp(sz); //seems we don't need to pass 24-bit depth here even for high-contrast color schemes
     bmp.SetScaleFactor(getDisplayScaleFactor());
     {
@@ -145,7 +136,10 @@ wxBitmap renderPressedButton(const wxSize& sz)
         dc.SetBrush(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
         dc.DrawRectangle(rect);
     }
-    return bmp;
+    wxImage img = bmp.ConvertToImage();
+    convertToVanillaImage(img);
+    return img;
+#endif
 }
 }
 

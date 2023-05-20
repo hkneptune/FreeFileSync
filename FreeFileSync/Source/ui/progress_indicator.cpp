@@ -189,12 +189,9 @@ CompareProgressPanel::Impl::Impl(wxFrame& parentWindow) :
     CompareProgressDlgGenerated(&parentWindow),
     parentWindow_(parentWindow)
 {
-    const wxImage& imgFile = IconBuffer::genericFileIcon(IconBuffer::IconSize::small);
-    setImage(*m_bitmapItemStat, imgFile);
-
-    const wxImage imgTime = loadImage("time", -1 /*maxWidth*/, imgFile.GetHeight());
-    setImage(*m_bitmapTimeStat, imgTime);
-    m_bitmapTimeStat->SetMinSize({-1, imgFile.GetHeight()});
+    setImage(*m_bitmapItemStat, IconBuffer::genericFileIcon(IconBuffer::IconSize::small));
+    setImage(*m_bitmapTimeStat, loadImage("time", -1 /*maxWidth*/, IconBuffer::getSize(IconBuffer::IconSize::small)));
+    m_bitmapTimeStat->SetMinSize({-1, IconBuffer::getSize(IconBuffer::IconSize::small)});
 
     setImage(*m_bitmapIgnoreErrors, loadImage("error_ignore_active"));
     setImage(*m_bitmapRetryErrors,  loadImage("error_retry"));
@@ -823,12 +820,9 @@ syncStat_(&syncStat)
 
     setImage(*pnl_.m_bpButtonMinimizeToTray, loadImage("minimize_to_tray"));
 
-    const wxImage& imgFile = IconBuffer::genericFileIcon(IconBuffer::IconSize::small);
-    setImage(*pnl_.m_bitmapItemStat, imgFile);
-
-    const wxImage imgTime = loadImage("time", -1 /*maxWidth*/, imgFile.GetHeight());
-    setImage(*pnl_.m_bitmapTimeStat, imgTime);
-    pnl_.m_bitmapTimeStat->SetMinSize({-1, imgFile.GetHeight()});
+    setImage(*pnl_.m_bitmapItemStat, IconBuffer::genericFileIcon(IconBuffer::IconSize::small));
+    setImage(*pnl_.m_bitmapTimeStat, loadImage("time", -1 /*maxWidth*/, IconBuffer::getSize(IconBuffer::IconSize::small)));
+    pnl_.m_bitmapTimeStat->SetMinSize({-1, IconBuffer::getSize(IconBuffer::IconSize::small)});
 
     setImage(*pnl_.m_bitmapIgnoreErrors, loadImage("error_ignore_active"));
     setImage(*pnl_.m_bitmapRetryErrors,  loadImage("error_retry"));
@@ -861,20 +855,8 @@ syncStat_(&syncStat)
     pnl_.m_panelGraphItems->addCurve(curveItemsTimeEstim_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(2)).setColor(getColorDarkGrey()));
 
     //graph legend:
-    auto generateSquareBitmap = [&](const wxColor& fillCol, const wxColor& borderCol)
-    {
-        wxBitmap bmpSquare(this->GetCharHeight(), this->GetCharHeight()); //seems we don't need to pass 24-bit depth here even for high-contrast color schemes
-        bmpSquare.SetScaleFactor(getDisplayScaleFactor());
-        {
-            wxMemoryDC dc(bmpSquare);
-            drawInsetRectangle(dc, wxRect(bmpSquare.GetSize()), fastFromDIP(1), borderCol, fillCol);
-        }
-        bmpSquare.SetScaleFactor(static_cast<double>(getDPI()) / defaultDpi);
-        return bmpSquare;
-    };
-    pnl_.m_bitmapGraphKeyBytes->SetBitmap(generateSquareBitmap(getColorBytes(), getColorBytesRim()));
-    pnl_.m_bitmapGraphKeyItems->SetBitmap(generateSquareBitmap(getColorItems(), getColorItemsRim()));
-
+    setImage(*pnl_.m_bitmapGraphKeyBytes, rectangleImage({this->GetCharHeight(), this->GetCharHeight()}, getColorBytes(), getColorBytesRim(), fastFromDIP(1)));
+    setImage(*pnl_.m_bitmapGraphKeyItems, rectangleImage({this->GetCharHeight(), this->GetCharHeight()}, getColorItems(), getColorItemsRim(), fastFromDIP(1)));
 
     pnl_.bSizerDynSpace->SetMinSize(yLabelWidth, -1); //ensure item/time stats are nicely centered
 
@@ -1437,17 +1419,11 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult syncResult, 
         pnl_.m_notebookResult->ChangeSelection(pagePosLog);
 
     //fill image list to cope with wxNotebook image setting design desaster...
-    const int imgListSize = loadImage("log_file_sicon").GetHeight();
+    const int imgListSize = fastFromDIP(16); //also required by GTK => don't use getDefaultMenuIconSize()
     auto imgList = std::make_unique<wxImageList>(imgListSize, imgListSize);
 
-    auto addToImageList = [&](const wxImage& img)
-    {
-        assert(img.GetWidth () <= imgListSize);
-        assert(img.GetHeight() <= imgListSize);
-        imgList->Add(img);
-    };
-    addToImageList(loadImage("progress_sicon"));
-    addToImageList(loadImage("log_file_sicon"));
+    imgList->Add(toScaledBitmap(loadImage("progress", imgListSize)));
+    imgList->Add(toScaledBitmap(loadImage("log_file", imgListSize)));
 
     pnl_.m_notebookResult->AssignImageList(imgList.release()); //pass ownership
 

@@ -30,14 +30,6 @@ namespace
 const size_t CONFLICTS_PREVIEW_MAX = 25; //=> consider memory consumption, log file size, email size!
 
 
-inline
-int getCUD(const SyncStatistics& stat)
-{
-    return stat.createCount() +
-           stat.updateCount() +
-           stat.deleteCount();
-}
-
 }
 
 
@@ -563,8 +555,8 @@ private:
 template <SelectSide sideL, SelectSide sideR>
 std::weak_ordering compareHashedPathNoCase(const ChildPathRef& lhs, const ChildPathRef& rhs)
 {
-    assert(lhs.fsObj->getAbstractPath<sideL>().afsDevice ==
-           rhs.fsObj->getAbstractPath<sideR>().afsDevice);
+    //assert(lhs.fsObj->getAbstractPath<sideL>().afsDevice ==         -> too slow, even for debug build
+    //       rhs.fsObj->getAbstractPath<sideR>().afsDevice);
 
     if (const std::weak_ordering cmp = lhs.afsPathHash <=> rhs.afsPathHash;
         cmp != std::weak_ordering::equivalent)

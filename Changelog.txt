@@ -1,3 +1,17 @@
+FreeFileSync 12.3 [2023-05-17]
+------------------------------
+Add custom notes to sync configurations
+Highlight comparison and sync buttons
+Show sync stats in config panel tool tip
+Update config panel sync info even if cancelled
+Support FTP listing format missing owner/group
+Fixed "Class not registered" error during installation
+Propagate process priority of launcher executable
+Fixed config panel metadata being reset after renaming
+Fixed config panel keyboard cursor after deletion/rename
+Improved small icon resolution for high-DPI monitors
+
+
 FreeFileSync 12.2 [2023-04-02]
 ------------------------------
 Fixed temporary access error when creating multiple folders in parallel

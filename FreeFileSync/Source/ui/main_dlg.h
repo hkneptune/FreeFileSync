@@ -22,6 +22,7 @@
 #include "../status_handler.h"
 #include "../base/algorithm.h"
 #include "../return_codes.h"
+#include "../base/synchronization.h"
 
 
 namespace fff
@@ -88,6 +89,7 @@ private:
     void setViewFilterDefault();
 
     void cfgHistoryRemoveObsolete(const std::vector<Zstring>& filepaths);
+    void cfgHistoryUpdateNotes   (const std::vector<Zstring>& filepaths);
 
     void insertAddFolderPair(const std::vector<LocalPairConfig>& newPairs, size_t pos);
     void moveAddFolderPairUp(size_t pos);
@@ -102,7 +104,7 @@ private:
     void updateGuiDelayedIf(bool condition); //400 ms delay
 
     void updateGridViewData();     //
-    void updateStatistics();       // more fine-grained updaters
+    void updateStatistics(const SyncStatistics& st); // more fine-grained updaters
     void updateUnsavedCfgStatus(); //
 
     std::vector<std::wstring> getJobNames() const;
@@ -229,7 +231,7 @@ private:
 
     void showConfigDialog(SyncConfigPanel panelToShow, int localPairIndexToShow);
 
-    void updateConfigLastRunStats(time_t lastRunTime, SyncResult result, const AbstractPath& logFilePath);
+    void updateConfigLastRunStats(const ProcessSummary& summary, const zen::ErrorLogStats& logStats, const AbstractPath& logFilePath);
 
     void setLastOperationLog(const ProcessSummary& summary, const std::shared_ptr<const zen::ErrorLog>& errorLog);
     void showLogPanel(bool show);

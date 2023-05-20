@@ -576,7 +576,7 @@ void Graph2D::render(wxDC& dc) const
     assert(attr_.yLabelpos == YLabelPos::none || attr_.labelFmtY);
 
     //paint graph background (excluding label area)
-    drawInsetRectangle(dc, graphArea, fastFromDIP(1), getBorderColor(), attr_.colorBack);
+    drawFilledRectangle(dc, graphArea, attr_.colorBack, getBorderColor(), fastFromDIP(1));
     graphArea.Deflate(fastFromDIP(1));
 
     //set label areas respecting graph area border!

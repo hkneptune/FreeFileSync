@@ -378,6 +378,8 @@ struct MainConfiguration
     std::string emailNotifyAddress; //optional
     ResultsNotification emailNotifyCondition = ResultsNotification::always;
 
+    std::wstring notes;
+
     bool operator==(const MainConfiguration&) const = default;
 };
 

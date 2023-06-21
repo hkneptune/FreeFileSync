@@ -586,7 +586,7 @@ void CloudSetupDlg::onTypingPassword(wxCommandEvent& event)
     assert(m_staticTextPassword->IsShown());
     const wxString password = (m_checkBoxShowPassword->GetValue() ? m_textCtrlPasswordVisible : m_textCtrlPasswordHidden)->GetValue();
     if (m_checkBoxShowPassword  ->IsShown() != !password.empty() || //let's avoid some minor flicker
-        m_checkBoxPasswordPrompt->IsShown() !=  password.empty())   //in updateGui() Layout()
+        m_checkBoxPasswordPrompt->IsShown() !=  password.empty())   //in updateGui() Dimensions()
         updateGui();
 }
 

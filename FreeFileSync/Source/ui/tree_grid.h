@@ -170,7 +170,7 @@ private:
     /*             /|\
                     | (update...)
                     |                         */
-    std::vector<std::shared_ptr<BaseFolderPair>> folderCmp_; //full raw data
+    std::vector<zen::SharedRef<BaseFolderPair>> folderCmp_; //full raw data
 
     SortInfo currentSort_;
 };

@@ -1040,7 +1040,7 @@ private:
 
                         //mouse highlight: item name
                         if (static_cast<HoverAreaGroup>(rowHover) == HoverAreaGroup::item)
-                            drawRectangleBorder(dc, rectItemsBack,*wxBLUE, fastFromDIP(1));
+                            drawRectangleBorder(dc, rectItemsBack, *wxBLUE, fastFromDIP(1));
 
                         if (!pdi.fsObj->isEmpty<side>())
                             drawCellText(dc, rectGroupItems, itemName, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, &getTextExtentBuffered(dc, itemName));

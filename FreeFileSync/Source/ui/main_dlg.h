@@ -231,8 +231,6 @@ private:
 
     void showConfigDialog(SyncConfigPanel panelToShow, int localPairIndexToShow);
 
-    void updateConfigLastRunStats(const ProcessSummary& summary, const zen::ErrorLogStats& logStats, const AbstractPath& logFilePath);
-
     void setLastOperationLog(const ProcessSummary& summary, const std::shared_ptr<const zen::ErrorLog>& errorLog);
     void showLogPanel(bool show);
 
@@ -305,12 +303,14 @@ private:
 
     XmlGuiConfig lastSavedCfg_; //support for: "Save changed configuration?" dialog
 
-    const Zstring lastRunConfigPath_ = getLastRunConfigPath(); //let's not use another static...
+    const Zstring lastRunConfigPath_ = getLastRunConfigPath(); //let's not use another global...
     //-------------------------------------
 
     //the prime data structure of this tool *bling*:
     FolderComparison folderCmp_; //optional!: sync button not available if empty
-    std::shared_ptr<const zen::ErrorLog> errorLogCmp_;
+    zen::ErrorLog errorLogPrepSync_; //prepend to sync log (e.g. comparison, manual interactions)
+    warn_static("errorLogPrepSync_ good idea? What about perf stats!? aggregate as well? https://freefilesync.org/forum/viewtopic.php?t=9022&p=38885#p38885")
+    warn_static("should logged errors impact the overall sync state!?")
 
     //folder pairs:
     std::unique_ptr<FolderPairFirst> firstFolderPair_; //always bound!!!
@@ -330,7 +330,7 @@ private:
     std::vector<wxString> statusTxts_; //the first one is the original/non-flash status message
     bool statusTxtHighlightFirst_ = false;
 
-    //compare status panel (hidden on start, shown when comparing)
+    //compare status panel (hidden on start, shown during comparison)
     std::unique_ptr<CompareProgressPanel> compareStatus_; //always bound
 
     LogPanel* logPanel_ = nullptr;
@@ -347,7 +347,7 @@ private:
     time_t manualTimeSpanFrom_ = 0;
     time_t manualTimeSpanTo_   = 0; //buffer manual time span selection at session level
 
-    //regenerate view filter button labels only when necessary:
+    //recreate view filter button labels only when necessary:
     std::unordered_map<const zen::ToggleButton*, int /*itemCount*/> buttonLabelItemCount_;
 
     const std::shared_ptr<HistoryList> folderHistoryLeft_;  //shared by all wxComboBox dropdown controls

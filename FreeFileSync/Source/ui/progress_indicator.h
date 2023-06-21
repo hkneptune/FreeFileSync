@@ -10,6 +10,7 @@
 #include <functional>
 #include <zen/error_log.h>
 #include <wx/frame.h>
+#include "wx+/window_tools.h"
 #include "../status_handler.h"
 
 
@@ -55,7 +56,7 @@ enum class PostSyncAction2
 
 struct SyncProgressDialog
 {
-    static SyncProgressDialog* create(const std::optional<wxSize>& dlgSize, bool dlgMaximize,
+    static SyncProgressDialog* create(const zen::WindowLayout::Dimensions& dim,
                                       const std::function<void()>& userRequestAbort,
                                       const Statistics& syncStat,
                                       wxFrame* parentWindow, //may be nullptr
@@ -69,8 +70,7 @@ struct SyncProgressDialog
     struct Result
     {
         bool autoCloseDialog;
-        std::optional<wxSize> dlgSize;
-        bool dlgIsMaximized;
+        zen::WindowLayout::Dimensions dim;
     };
     virtual Result destroy(bool autoClose, bool restoreParentFrame, SyncResult syncResult, const zen::SharedRef<const zen::ErrorLog>& log) = 0;
     //---------------------------------------------------------------------------

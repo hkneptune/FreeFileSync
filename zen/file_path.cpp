@@ -5,6 +5,7 @@
 // *****************************************************************************
 
 #include "file_path.h"
+#include "thread.h"
 
 using namespace zen;
 

@@ -20,7 +20,8 @@
     GCC       https://gcc.gnu.org/projects/cxx-status.html
     libstdc++ https://gcc.gnu.org/onlinedocs/libstdc++/manual/status.html
 
-    Clang  https://clang.llvm.org/cxx_status.html#cxx20
+    Clang  https://clang.llvm.org/cxx_status.html
+    Xcode  https://developer.apple.com/xcode/cpp
     libc++ https://libcxx.llvm.org/cxx2a_status.html                                     */
 
 
@@ -38,6 +39,9 @@ basic_string<Char, Traits, Alloc> operator+(basic_string<Char, Traits, Alloc>&& 
 //-> somewhat inefficient: single memory allocation should suffice!!!
 }
 //---------------------------------------------------------------------------------
+
+//support for std::string::resize_and_overwrite()
+#define ZEN_HAVE_RESIZE_AND_OVERWRITE 1
 
 namespace zen
 {

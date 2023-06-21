@@ -137,13 +137,13 @@ bool Application::OnInit()
 
     SetAppName(L"RealTimeSync");
 
+
     try
     {
         fff::localizationInit(appendPath(fff::getResourceDirPath(), Zstr("Languages.zip"))); //throw FileError
         fff::setLanguage(getProgramLanguage()); //throw FileError
     }
     catch (const FileError& e) { notifyAppError(e.toString(), FfsExitCode::warning); }
-
 
     auto onSystemShutdown = [](int /*unused*/ = 0)
     {

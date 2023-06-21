@@ -29,7 +29,7 @@ public:
                        std::chrono::seconds autoRetryDelay,
                        const Zstring& soundFileSyncComplete,
                        const Zstring& soundFileAlertPending,
-                       const std::optional<wxSize>& progressDlgSize, bool dlgMaximize,
+                       const zen::WindowLayout::Dimensions& dim,
                        bool autoCloseDialog,
                        PostSyncAction postSyncAction,
                        BatchErrorHandling batchErrorHandling); //noexcept!!
@@ -40,6 +40,7 @@ public:
     void     reportWarning   (const std::wstring& msg, bool& warningActive)             override; //throw AbortProcess
     Response reportError     (const ErrorInfo& errorInfo)                               override; //
     void     reportFatalError(const std::wstring& msg)                                  override; //
+    ErrorStats getErrorStats() const override;
 
     void updateDataProcessed(int itemsDelta, int64_t bytesDelta) override; //noexcept
     void forceUiUpdateNoThrow()                                  override; //
@@ -56,8 +57,7 @@ public:
         zen::ErrorLogStats logStats;
         FinalRequest finalRequest;
         AbstractPath logFilePath;
-        std::optional<wxSize> dlgSize;
-        bool dlgIsMaximized;
+        zen::WindowLayout::Dimensions dlgDim;
     };
     Result reportResults(const Zstring& postSyncCommand, PostSyncCondition postSyncCondition,
                          const AbstractPath& logFolderPath, int logfilesMaxAgeDays, LogFileFormat logFormat, const std::set<AbstractPath>& logFilePathsToKeep,
@@ -74,7 +74,9 @@ private:
     const Zstring soundFileAlertPending_;
 
     SyncProgressDialog* progressDlg_; //managed to have the same lifetime as this handler!
-    zen::ErrorLog errorLog_; //list of non-resolved errors and warnings
+    zen::SharedRef<zen::ErrorLog> errorLog_ = zen::makeSharedRef<zen::ErrorLog>();
+    mutable Statistics::ErrorStats errorStatsBuf_{};
+    mutable size_t errorStatsRowsChecked_ = 0;
     const BatchErrorHandling batchErrorHandling_;
     bool switchToGuiRequested_ = false;
 };

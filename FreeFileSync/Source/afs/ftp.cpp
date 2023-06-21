@@ -774,7 +774,7 @@ private:
         static_assert(LIBCURL_VERSION_MAJOR > 7 || (LIBCURL_VERSION_MAJOR == 7 && LIBCURL_VERSION_MINOR >= 67));
         /*  1. CURLFTPMETHOD_NOCWD requires absolute paths to unconditionally skip CWDs: https://github.com/curl/curl/pull/4382
             2. CURLFTPMETHOD_SINGLECWD requires absolute paths to skip one needless "CWD entry path": https://github.com/curl/curl/pull/4332
-              => https://curl.haxx.se/docs/faq.html#How_do_I_list_the_root_dir_of_an
+              => https://curl.se/docs/faq.html#How_do_I_list_the_root_directory
               => use // because /%2f had bugs (but they should be fixed: https://github.com/curl/curl/pull/4348)             */
         std::string path = utfTo<std::string>(Zstring(ftpPrefix) + Zstr("//") + sessionCfg_.deviceId.server) + "//" + curlRelPath;
 

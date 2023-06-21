@@ -55,8 +55,15 @@ struct Statistics
 
     virtual ProcessPhase currentPhase() const = 0;
 
-    virtual ProgressStats getStatsCurrent() const = 0;
-    virtual ProgressStats getStatsTotal  () const = 0;
+    virtual ProgressStats getCurrentStats() const = 0;
+    virtual ProgressStats getTotalStats  () const = 0;
+
+    struct ErrorStats
+    {
+        int errorCount;
+        int warningCount;
+    };
+    virtual ErrorStats getErrorStats() const = 0;
 
     virtual std::optional<AbortTrigger> getAbortStatus() const = 0;
     virtual const std::wstring& currentStatusText() const = 0;
@@ -140,8 +147,8 @@ public:
     //implement Statistics
     ProcessPhase currentPhase() const final { return currentPhase_; }
 
-    ProgressStats getStatsCurrent() const override { return statsCurrent_; }
-    ProgressStats getStatsTotal  () const override { return statsTotal_; }
+    ProgressStats getCurrentStats() const override { return statsCurrent_; }
+    ProgressStats getTotalStats  () const override { return statsTotal_; }
 
     const std::wstring& currentStatusText() const override { return statusText_; }
 

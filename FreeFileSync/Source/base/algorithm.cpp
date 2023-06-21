@@ -704,7 +704,7 @@ std::vector<std::pair<BaseFolderPair*, SyncDirectionConfig>> fff::extractDirecti
 
     for (auto it = folderCmp.begin(); it != folderCmp.end(); ++it)
     {
-        BaseFolderPair& baseFolder = **it;
+        BaseFolderPair& baseFolder = it->ref();
         const LocalPairConfig& lpc = allPairs[it - folderCmp.begin()];
 
         output.emplace_back(&baseFolder, lpc.localSyncCfg ? lpc.localSyncCfg->directionCfg : mainCfg.syncCfg.directionCfg);
@@ -1009,7 +1009,7 @@ void fff::applyFiltering(FolderComparison& folderCmp, const MainConfiguration& m
 
     for (auto it = allPairs.begin(); it != allPairs.end(); ++it)
     {
-        BaseFolderPair& baseFolder = *folderCmp[it - allPairs.begin()];
+        BaseFolderPair& baseFolder = folderCmp[it - allPairs.begin()].ref();
 
         const NormalizedFilter normFilter = normalizeFilters(mainCfg.globalFilter, it->localFilter);
 

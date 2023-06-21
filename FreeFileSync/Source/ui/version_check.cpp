@@ -28,7 +28,6 @@
 
     #include <gtk/gtk.h>
     #include <wx/uilocale.h>
-    #include <zen/symlink_target.h>
 
 
 using namespace zen;

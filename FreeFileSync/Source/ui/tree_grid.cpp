@@ -37,10 +37,10 @@ inline wxColor getColorPercentBackground() { return {0xf8, 0xf8, 0xf8}; }
 TreeView::TreeView(FolderComparison& folderCmp, const SortInfo& si) : folderCmp_(folderCmp), currentSort_(si)
 {
     //remove truly empty folder pairs as early as this: we want to distinguish single/multiple folder pair cases by looking at "folderCmp"
-    std::erase_if(folderCmp_, [](const std::shared_ptr<BaseFolderPair>& baseObj)
+    std::erase_if(folderCmp_, [](const SharedRef<BaseFolderPair>& baseObj)
     {
-        return AFS::isNullPath(baseObj->getAbstractPath<SelectSide::left >()) &&
-               AFS::isNullPath(baseObj->getAbstractPath<SelectSide::right>());
+        return AFS::isNullPath(baseObj.ref().getAbstractPath<SelectSide::left >()) &&
+               AFS::isNullPath(baseObj.ref().getAbstractPath<SelectSide::right>());
     });
 }
 
@@ -382,11 +382,11 @@ void TreeView::updateView(Predicate pred)
     std::vector<RootNodeImpl> newView;
     newView.reserve(folderCmp_.size()); //avoid expensive reallocations!
 
-    for (const std::shared_ptr<BaseFolderPair>& baseObj : folderCmp_)
+    for (SharedRef<BaseFolderPair>& baseObj : folderCmp_)
     {
         newView.emplace_back();
         RootNodeImpl& root = newView.back();
-        this->extractVisibleSubtree(*baseObj, root, pred); //"this->" is bogus for a static method, but GCC screws this one up
+        this->extractVisibleSubtree(baseObj.ref(), root, pred); //"this->" is bogus for a static method, but GCC screws this one up
 
         //warning: the following lines are almost 1:1 copy from extractVisibleSubtree:
         //however we *cannot* reuse code here; this were only possible if we replaced "std::vector<RootNodeImpl>" with "Container"!
@@ -394,9 +394,9 @@ void TreeView::updateView(Predicate pred)
             newView.pop_back();
         else
         {
-            root.baseFolder = baseObj;
-            root.displayName = getShortDisplayNameForFolderPair(baseObj->getAbstractPath<SelectSide::left >(),
-                                                                baseObj->getAbstractPath<SelectSide::right>());
+            root.baseFolder = baseObj.ptr();
+            root.displayName = getShortDisplayNameForFolderPair(baseObj.ref().getAbstractPath<SelectSide::left >(),
+                                                                baseObj.ref().getAbstractPath<SelectSide::right>());
 
             this->compressNode(root); //"this->" required by two-pass lookup as enforced by GCC 4.7
         }

@@ -2528,7 +2528,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
     //------------------- start checking folder pairs -------------------
     for (size_t folderIndex = 0; folderIndex < folderCmp.size(); ++folderIndex)
     {
-        BaseFolderPair&          baseFolder     = *folderCmp[folderIndex];
+        BaseFolderPair&          baseFolder     = folderCmp[folderIndex].ref();
         const FolderPairSyncCfg& folderPairCfg  = syncConfig[folderIndex];
         const SyncStatistics&    folderPairStat = folderPairStats[folderIndex];
 
@@ -2767,7 +2767,7 @@ break2:
         //create mapping table for folder pair positions
         std::unordered_map<const BaseFolderPair*, size_t> folderPairIdxs;
         for (size_t folderIndex = 0; folderIndex < folderCmp.size(); ++folderIndex)
-            folderPairIdxs[folderCmp[folderIndex].get()] = folderIndex;
+            folderPairIdxs[&folderCmp[folderIndex].ref()] = folderIndex;
 
         std::partial_sort(pathRaceItems.begin(),
                           pathRaceItems.begin() + std::min(pathRaceItems.size(), CONFLICTS_PREVIEW_MAX),
@@ -2892,7 +2892,7 @@ break2:
         //loop through all directory pairs
         for (size_t folderIndex = 0; folderIndex < folderCmp.size(); ++folderIndex)
         {
-            BaseFolderPair&          baseFolder     = *folderCmp[folderIndex];
+            BaseFolderPair&          baseFolder     = folderCmp[folderIndex].ref();
             const FolderPairSyncCfg& folderPairCfg  = syncConfig[folderIndex];
             const SyncStatistics&    folderPairStat = folderPairStats[folderIndex];
 

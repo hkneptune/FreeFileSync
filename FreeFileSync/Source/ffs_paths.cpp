@@ -8,6 +8,7 @@
 #include <zen/file_access.h>
 #include <zen/thread.h>
 #include <zen/sys_info.h>
+//#include <zen/symlink_target.h>
 
     #include <iostream> //std::cerr
 
@@ -24,9 +25,14 @@ Zstring getProcessParentFolderPath()
     {
         try
         {
-            const Zstring exePath = getRealProcessPath(); //throw FileError
-            const Zstring parentFolderPath = beforeLast(exePath, FILE_NAME_SEPARATOR, IfNotFoundReturn::none);
-            return beforeLast(parentFolderPath, FILE_NAME_SEPARATOR, IfNotFoundReturn::none);
+            const Zstring& processPath = getProcessPath(); //throw FileError
+            /*  no need for getSymlinkResolvedPath():
+                => support file systems with buggy GetFinalPathNameByHandle() implementation, e.g. Dokany-based: https://freefilesync.org/forum/viewtopic.php?t=8828
+                => we're already supporting calling FFS via symlink for launcher executable, which guarantees: */
+            assert(getItemType(                     processPath)  != ItemType::symlink); //throw FileError
+            assert(getItemType(*getParentFolderPath(processPath)) != ItemType::symlink); //throw FileError
+
+            return *getParentFolderPath(*getParentFolderPath(processPath)); //no parent folder!!? => let it crash!
         }
         catch (const FileError& e)
         {
@@ -92,6 +98,6 @@ Zstring fff::getConfigDirPath()
 //this function is called by RealTimeSync!!!
 Zstring fff::getFreeFileSyncLauncherPath()
 {
-    return appendPath(getProcessParentFolderPath(), Zstr("FreeFileSync"));
+    return appendPath(getInstallDirPath(), Zstr("FreeFileSync"));
 
 }

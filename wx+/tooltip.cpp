@@ -78,7 +78,7 @@ void Tooltip::show(const wxString& text, wxPoint mousePos, const wxImage* img)
     }
 
     if (imgChanged || txtChanged)
-        //tipWindow_->Layout(); -> apparently not needed!?
+        //tipWindow_->Dimensions(); -> apparently not needed!?
         tipWindow_->GetSizer()->SetSizeHints(tipWindow_); //~=Fit() + SetMinSize()
 #ifdef __WXGTK3__
     //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088

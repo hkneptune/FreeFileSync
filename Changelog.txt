@@ -1,3 +1,15 @@
+FreeFileSync 12.4 [2023-06-20]
+------------------------------
+Show dynamic error and warning count in progress dialogs
+Show process elevation status in title bar (Administrator, root)
+Fixed libcurl bug CURLE_URL_MALFORMAT for numerical host name
+Don't discard config panel last log after no changes found
+Set taskbar relaunch command to launcher executable (Windows)
+Fixed Btrfs compression not being applied during copy (Linux)
+Run on file systems with buggy GetFinalPathNameByHandle() implementation, e.g. Dokany-based
+Save selected view mode (F11) in batch config file
+
+
 FreeFileSync 12.3 [2023-05-17]
 ------------------------------
 Add custom notes to sync configurations

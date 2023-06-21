@@ -22,7 +22,7 @@ namespace
 void setText(wxTextCtrl& control, const wxString& newText, bool* additionalLayoutChange = nullptr)
 {
     const wxString& label = control.GetValue(); //perf: don't call twice!
-    if (additionalLayoutChange && !*additionalLayoutChange) //never revert from true to false!
+    if (additionalLayoutChange && !*additionalLayoutChange && control.IsShown()) //never revert from true to false!
         *additionalLayoutChange = label.length() != newText.length(); //avoid screen flicker: update layout only when necessary
 
     if (label != newText)
@@ -36,7 +36,7 @@ void setText(wxStaticText& control, const wxString& newText, bool* additionalLay
     //e.g. "filenames in the sync progress dialog": https://sourceforge.net/p/freefilesync/bugs/279/
 
     const wxString& label = control.GetLabelText(); //perf: don't call twice!
-    if (additionalLayoutChange && !*additionalLayoutChange)
+    if (additionalLayoutChange && !*additionalLayoutChange && control.IsShown()) //"better" or overkill(?): IsShownOnScreen()
         *additionalLayoutChange = label.length() != newText.length(); //avoid screen flicker: update layout only when necessary
 
     if (label != newText)

@@ -165,15 +165,12 @@ StatusHandlerTemporaryPanel::Result StatusHandlerTemporaryPanel::reportResults()
     const ProcessSummary summary
     {
         startTime_, syncResult, {} /*jobName*/,
-        getStatsCurrent(),
-        getStatsTotal  (),
+        getCurrentStats(),
+        getTotalStats  (),
         totalTime
     };
 
-    auto errorLogFinal = makeSharedRef<const ErrorLog>(std::move(errorLog_));
-    errorLog_ = ErrorLog(); //see check in ~StatusHandlerTemporaryPanel()
-
-    return {summary, errorLogFinal};
+    return {summary, makeSharedRef<const ErrorLog>(std::exchange(errorLog_, {}))}; //see check in ~StatusHandlerTemporaryPanel()
 }
 
 
@@ -326,6 +323,29 @@ void StatusHandlerTemporaryPanel::reportFatalError(const std::wstring& msg)
 }
 
 
+Statistics::ErrorStats StatusHandlerTemporaryPanel::getErrorStats() const
+{
+    //errorLog_ is an "append only" structure, so we can make getErrorStats() complexity "constant time":
+    std::for_each(errorLog_.begin() + errorStatsRowsChecked_, errorLog_.end(), [&](const LogEntry& entry)
+    {
+        switch (entry.type)
+        {
+            case MSG_TYPE_INFO:
+                break;
+            case MSG_TYPE_WARNING:
+                ++errorStatsBuf_.warningCount;
+                break;
+            case MSG_TYPE_ERROR:
+                ++errorStatsBuf_.errorCount;
+                break;
+        }
+    });
+    errorStatsRowsChecked_ = errorLog_.size();
+
+    return errorStatsBuf_;
+}
+
+
 void StatusHandlerTemporaryPanel::forceUiUpdateNoThrow()
 {
     if (!mainDlg_.auiMgr_.GetPane(mainDlg_.compareStatus_->getAsWindow()).IsShown() &&
@@ -361,20 +381,20 @@ StatusHandlerFloatingDialog::StatusHandlerFloatingDialog(wxFrame* parentDlg,
                                                          std::chrono::seconds autoRetryDelay,
                                                          const Zstring& soundFileSyncComplete,
                                                          const Zstring& soundFileAlertPending,
-                                                         const std::optional<wxSize>& progressDlgSize, bool dlgMaximize,
+                                                         const WindowLayout::Dimensions& dim,
                                                          bool autoCloseDialog,
-                                                         const ErrorLog* errorLogStart) :
+                                                         ErrorLog errorLogPrefix) :
     jobNames_(jobNames),
     startTime_(startTime),
     autoRetryCount_(autoRetryCount),
     autoRetryDelay_(autoRetryDelay),
     soundFileSyncComplete_(soundFileSyncComplete),
     soundFileAlertPending_(soundFileAlertPending),
-    progressDlg_(SyncProgressDialog::create(progressDlgSize, dlgMaximize, [this] { userRequestAbort(); }, *this, parentDlg, true /*showProgress*/, autoCloseDialog,
-jobNames, std::chrono::system_clock::to_time_t(startTime), ignoreErrors, autoRetryCount, PostSyncAction2::none))
+    errorLog_(makeSharedRef<ErrorLog>(std::move(errorLogPrefix)))
 {
-    if (errorLogStart)
-        errorLog_ = *errorLogStart;
+    //set *after* initializer list => callbacks during construction to getErrorStats()!
+    progressDlg_ = SyncProgressDialog::create(dim, [this] { userRequestAbort(); }, *this, parentDlg, true /*showProgress*/, autoCloseDialog,
+                                              jobNames, std::chrono::system_clock::to_time_t(startTime), ignoreErrors, autoRetryCount, PostSyncAction2::none);
 }
 
 
@@ -398,18 +418,18 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(c
     {
         if (getAbortStatus())
         {
-            logMsg(errorLog_, _("Stopped"), MSG_TYPE_ERROR); //= user cancel
+            logMsg(errorLog_.ref(), _("Stopped"), MSG_TYPE_ERROR); //= user cancel
             return SyncResult::aborted;
         }
 
-        const ErrorLogStats logCount = getStats(errorLog_);
+        const ErrorLogStats logCount = getStats(errorLog_.ref());
         if (logCount.error > 0)
             return SyncResult::finishedError;
         else if (logCount.warning > 0)
             return SyncResult::finishedWarning;
 
-        if (getStatsTotal() == ProgressStats())
-            logMsg(errorLog_, _("Nothing to synchronize"), MSG_TYPE_INFO);
+        if (getTotalStats() == ProgressStats())
+            logMsg(errorLog_.ref(), _("Nothing to synchronize"), MSG_TYPE_INFO);
         return SyncResult::finishedSuccess;
     }();
 
@@ -418,8 +438,8 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(c
     const ProcessSummary summary
     {
         startTime_, syncResult, jobNames_,
-        getStatsCurrent(),
-        getStatsTotal  (),
+        getCurrentStats(),
+        getTotalStats  (),
         totalTime
     };
 
@@ -448,7 +468,7 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(c
                 ////----------------------------------------------------------------------
                 //::wxSetEnv(L"logfile_path", AFS::getDisplayPath(logFilePath));
                 ////----------------------------------------------------------------------
-                runCommandAndLogErrors(expandMacros(cmdLine), errorLog_);
+                runCommandAndLogErrors(expandMacros(cmdLine), errorLog_.ref());
 
         //--------------------- email notification ----------------------
         if (const std::string notifyEmail = trimCpy(emailNotifyAddress);
@@ -461,10 +481,10 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(c
                                                                             syncResult == SyncResult::finishedError)))
                 try
                 {
-                    logMsg(errorLog_, replaceCpy(_("Sending email notification to %x"), L"%x", utfTo<std::wstring>(notifyEmail)), MSG_TYPE_INFO);
-                    sendLogAsEmail(notifyEmail, summary, errorLog_, logFilePath, notifyStatusNoThrow); //throw FileError
+                    logMsg(errorLog_.ref(), replaceCpy(_("Sending email notification to %x"), L"%x", utfTo<std::wstring>(notifyEmail)), MSG_TYPE_INFO);
+                    sendLogAsEmail(notifyEmail, summary, errorLog_.ref(), logFilePath, notifyStatusNoThrow); //throw FileError
                 }
-                catch (const FileError& e) { logMsg(errorLog_, e.toString(), MSG_TYPE_ERROR); }
+                catch (const FileError& e) { logMsg(errorLog_.ref(), e.toString(), MSG_TYPE_ERROR); }
 
         //--------------------- post sync actions ----------------------
         auto proceedWithShutdown = [&](const std::wstring& operationName)
@@ -532,20 +552,20 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(c
     try //create not before destruction: 1. avoid issues with FFS trying to sync open log file 2. include status in log file name without extra rename
     {
         //do NOT use tryReportingError()! saving log files should not be cancellable!
-        saveLogFile(logFilePath, summary, errorLog_, logfilesMaxAgeDays, logFormat, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
+        saveLogFile(logFilePath, summary, errorLog_.ref(), logfilesMaxAgeDays, logFormat, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
     }
     catch (const FileError& e)
     {
-        logMsg(errorLog_, e.toString(), MSG_TYPE_ERROR);
+        logMsg(errorLog_.ref(), e.toString(), MSG_TYPE_ERROR);
 
         const AbstractPath logFileDefaultPath = AFS::appendRelPath(createAbstractPath(getLogFolderDefaultPath()), generateLogFileName(logFormat, summary));
         if (logFilePath != logFileDefaultPath) //fallback: log file *must* be saved no matter what!
             try
             {
                 logFilePath = logFileDefaultPath;
-                saveLogFile(logFileDefaultPath, summary, errorLog_, logfilesMaxAgeDays, logFormat, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
+                saveLogFile(logFileDefaultPath, summary, errorLog_.ref(), logfilesMaxAgeDays, logFormat, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
             }
-            catch (const FileError& e2) { logMsg(errorLog_, e2.toString(), MSG_TYPE_ERROR); }
+            catch (const FileError& e2) { logMsg(errorLog_.ref(), e2.toString(), MSG_TYPE_ERROR); }
     }
     //----------------------------------------------------------
 
@@ -554,17 +574,16 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(c
         {
             suspendSystem(); //throw FileError
         }
-        catch (const FileError& e) { logMsg(errorLog_, e.toString(), MSG_TYPE_ERROR); }
+        catch (const FileError& e) { logMsg(errorLog_.ref(), e.toString(), MSG_TYPE_ERROR); }
 
 
-    auto errorLogFinal = makeSharedRef<const ErrorLog>(std::move(errorLog_));
-
-    const auto [autoCloseFinal, dlgSize, dlgIsMaximized] = progressDlg_->destroy(autoClose,
-                                                                                 finalRequest == FinalRequest::none /*restoreParentFrame*/,
-                                                                                 syncResult, errorLogFinal);
+    const auto [autoCloseFinal, dim] = progressDlg_->destroy(autoClose,
+                                                             finalRequest == FinalRequest::none /*restoreParentFrame*/,
+                                                             syncResult, errorLog_);
+    //caveat: calls back to getErrorStats() => share errorLog_
     progressDlg_ = nullptr;
 
-    return {summary, errorLogFinal, finalRequest, logFilePath, dlgSize, dlgIsMaximized, autoCloseFinal};
+    return {summary, errorLog_, finalRequest, logFilePath, dim, autoCloseFinal};
 }
 
 
@@ -582,7 +601,7 @@ void StatusHandlerFloatingDialog::initNewPhase(int itemsTotal, int64_t bytesTota
 
 void StatusHandlerFloatingDialog::logMessage(const std::wstring& msg, MsgType type)
 {
-    logMsg(errorLog_, msg, [&]
+    logMsg(errorLog_.ref(), msg, [&]
     {
         switch (type)
         {
@@ -603,7 +622,7 @@ void StatusHandlerFloatingDialog::reportWarning(const std::wstring& msg, bool& w
 {
     PauseTimers dummy(*progressDlg_);
 
-    logMsg(errorLog_, msg, MSG_TYPE_WARNING);
+    logMsg(errorLog_.ref(), msg, MSG_TYPE_WARNING);
 
     if (!warningActive)
         return;
@@ -641,7 +660,7 @@ ProcessCallback::Response StatusHandlerFloatingDialog::reportError(const ErrorIn
     //auto-retry
     if (errorInfo.retryNumber < autoRetryCount_)
     {
-        logMsg(errorLog_, errorInfo.msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO, failTime);
+        logMsg(errorLog_.ref(), errorInfo.msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO, failTime);
         delayAndCountDown(errorInfo.failTime + autoRetryDelay_,
                           [&, statusPrefix  = _("Automatic retry") +
                                               (errorInfo.retryNumber == 0 ? L"" : L' ' + formatNumber(errorInfo.retryNumber + 1)) + SPACED_DASH,
@@ -651,7 +670,7 @@ ProcessCallback::Response StatusHandlerFloatingDialog::reportError(const ErrorIn
     }
 
     //always, except for "retry":
-    auto guardWriteLog = makeGuard<ScopeGuardRunMode::onExit>([&] { logMsg(errorLog_, errorInfo.msg, MSG_TYPE_ERROR, failTime); });
+    auto guardWriteLog = makeGuard<ScopeGuardRunMode::onExit>([&] { logMsg(errorLog_.ref(), errorInfo.msg, MSG_TYPE_ERROR, failTime); });
 
     if (!progressDlg_->getOptionIgnoreErrors())
     {
@@ -671,7 +690,7 @@ ProcessCallback::Response StatusHandlerFloatingDialog::reportError(const ErrorIn
 
             case ConfirmationButton3::decline: //retry
                 guardWriteLog.dismiss();
-                logMsg(errorLog_, errorInfo.msg + L"\n-> " + _("Retrying operation..."), //explain why there are duplicate "doing operation X" info messages in the log!
+                logMsg(errorLog_.ref(), errorInfo.msg + L"\n-> " + _("Retrying operation..."), //explain why there are duplicate "doing operation X" info messages in the log!
                        MSG_TYPE_INFO, failTime);
                 return ProcessCallback::retry;
 
@@ -692,7 +711,7 @@ void StatusHandlerFloatingDialog::reportFatalError(const std::wstring& msg)
 {
     PauseTimers dummy(*progressDlg_);
 
-    logMsg(errorLog_, msg, MSG_TYPE_ERROR);
+    logMsg(errorLog_.ref(), msg, MSG_TYPE_ERROR);
 
     if (!progressDlg_->getOptionIgnoreErrors())
     {
@@ -715,6 +734,29 @@ void StatusHandlerFloatingDialog::reportFatalError(const std::wstring& msg)
                 break;
         }
     }
+}
+
+
+Statistics::ErrorStats StatusHandlerFloatingDialog::getErrorStats() const
+{
+    //errorLog_ is an "append only" structure, so we can make getErrorStats() complexity "constant time":
+    std::for_each(errorLog_.ref().begin() + errorStatsRowsChecked_, errorLog_.ref().end(), [&](const LogEntry& entry)
+    {
+        switch (entry.type)
+        {
+            case MSG_TYPE_INFO:
+                break;
+            case MSG_TYPE_WARNING:
+                ++errorStatsBuf_.warningCount;
+                break;
+            case MSG_TYPE_ERROR:
+                ++errorStatsBuf_.errorCount;
+                break;
+        }
+    });
+    errorStatsRowsChecked_ = errorLog_.ref().size();
+
+    return errorStatsBuf_;
 }
 
 

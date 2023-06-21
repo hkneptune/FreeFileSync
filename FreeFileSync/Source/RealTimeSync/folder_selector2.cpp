@@ -104,7 +104,7 @@ void FolderSelector2::onFilesDropped(FileDropEvent& event)
     try
     {
         if (getItemType(itemPath) == ItemType::file) //throw FileError
-            if (std::optional<Zstring> parentPath = getParentFolderPath(itemPath))
+            if (const std::optional<Zstring>& parentPath = getParentFolderPath(itemPath))
                 itemPath = *parentPath;
     }
     catch (FileError&) {} //e.g. good for inactive mapped network shares, not so nice for C:\pagefile.sys

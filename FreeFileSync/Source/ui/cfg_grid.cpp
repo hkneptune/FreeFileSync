@@ -164,7 +164,6 @@ void ConfigView::setNotes(const Zstring& filePath, const std::wstring& notes)
 }
 
 
-//coordinate with similar code in application.cpp
 void ConfigView::setLastRunStats(const std::vector<Zstring>& filePaths, const LastRunStats& lastRun)
 {
     for (const Zstring& filePath : filePaths)
@@ -176,7 +175,22 @@ void ConfigView::setLastRunStats(const std::vector<Zstring>& filePaths, const La
     }
 
     if (sortColumn_ != ColumnTypeCfg::name)
-        sortListView(); //needed if sorted by log, or last sync time
+        sortListView(); //needed if sorted by last sync time, or log
+}
+
+
+void ConfigView::setLastInSyncTime(const std::vector<Zstring>& filePaths, time_t lastRunTime)
+{
+    for (const Zstring& filePath : filePaths)
+    {
+        auto it = cfgList_.find(filePath);
+        assert(it != cfgList_.end());
+        if (it != cfgList_.end())
+            it->second.cfgItem.lastRunStats.syncTime = lastRunTime;
+    }
+
+    if (sortColumn_ != ColumnTypeCfg::name)
+        sortListView(); //needed if sorted by last sync time, or log
 }
 
 
@@ -249,18 +263,18 @@ void ConfigView::sortListViewImpl()
         //[!] ascending lastSync shows lowest "days past" first <=> highest lastSyncTime first
     };
 
-    const auto lessLastLog = [](CfgFileList::iterator lhs, CfgFileList::iterator rhs)
+    const auto lessSyncResult = [](CfgFileList::iterator lhs, CfgFileList::iterator rhs)
     {
         if (lhs->second.isLastRunCfg != rhs->second.isLastRunCfg)
             return lhs->second.isLastRunCfg < rhs->second.isLastRunCfg; //"last session" label should be (always) last
 
-        const bool hasLogL = !AFS::isNullPath(lhs->second.cfgItem.lastRunStats.logFilePath);
-        const bool hasLogR = !AFS::isNullPath(rhs->second.cfgItem.lastRunStats.logFilePath);
-        if (hasLogL != hasLogR)
-            return hasLogL > hasLogR; //move sync jobs that were never run to the back
+        const bool wasRunL = lhs->second.cfgItem.lastRunStats.syncTime != 0;
+        const bool wasRunR = rhs->second.cfgItem.lastRunStats.syncTime != 0;
+        if (wasRunL != wasRunR)
+            return wasRunL > wasRunR; //move sync jobs that were never run to the back
 
         //primary sort order
-        if (hasLogL && lhs->second.cfgItem.lastRunStats.syncResult != rhs->second.cfgItem.lastRunStats.syncResult)
+        if (wasRunL && lhs->second.cfgItem.lastRunStats.syncResult != rhs->second.cfgItem.lastRunStats.syncResult)
             return makeSortDirection(std::greater(), std::bool_constant<ascending>())(lhs->second.cfgItem.lastRunStats.syncResult, rhs->second.cfgItem.lastRunStats.syncResult);
 
         //secondary sort order
@@ -291,7 +305,7 @@ void ConfigView::sortListViewImpl()
             break;
 
         case ColumnTypeCfg::lastLog:
-            std::sort(cfgListView_.begin(), cfgListView_.end(), lessLastLog);
+            std::sort(cfgListView_.begin(), cfgListView_.end(), lessSyncResult);
             break;
     }
 }

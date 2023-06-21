@@ -207,7 +207,7 @@ std::wstring zen::getOsDescription() //throw FileError
 
 
 
-Zstring zen::getRealProcessPath() //throw FileError
+Zstring zen::getProcessPath() //throw FileError
 {
     try
     {
@@ -283,4 +283,14 @@ Zstring zen::getUserDownloadsPath() //throw FileError
         return appendPath(getUserHome(), "Downloads"); //throw FileError
     }
     catch (const SysError& e) { throw FileError(_("Cannot get process information."), e.toString()); }
+}
+
+
+bool zen::runningElevated() //throw FileError
+{
+    if (::geteuid() != 0) //nofail; non-root
+        return false;
+
+    return getLoginUser() != "root"; //throw FileError
+    //consider "root login" like "UAC disabled" on Windows
 }

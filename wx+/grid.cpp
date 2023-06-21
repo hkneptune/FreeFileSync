@@ -1443,7 +1443,7 @@ private:
 
     void setMouseHighlight(const std::optional<MouseHighlight>& hl)
     {
-        assert(!hl || hl->row < refParent().getRowCount() && hl->rowHover != HoverArea::none);
+        assert(!hl || (hl->row < refParent().getRowCount() && hl->rowHover != HoverArea::none));
         if (highlight_ != hl)
         {
             if (highlight_)

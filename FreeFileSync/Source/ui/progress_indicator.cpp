@@ -21,7 +21,6 @@
 #include <zen/perf.h>
 #include <wx+/choice_enum.h>
 #include "wx+/taskbar.h"
-#include "wx+/window_tools.h"
 #include "gui_generated.h"
 #include "tray_icon.h"
 #include "log_panel.h"
@@ -193,10 +192,13 @@ CompareProgressPanel::Impl::Impl(wxFrame& parentWindow) :
     setImage(*m_bitmapTimeStat, loadImage("time", -1 /*maxWidth*/, IconBuffer::getSize(IconBuffer::IconSize::small)));
     m_bitmapTimeStat->SetMinSize({-1, IconBuffer::getSize(IconBuffer::IconSize::small)});
 
-    setImage(*m_bitmapIgnoreErrors, loadImage("error_ignore_active"));
-    setImage(*m_bitmapRetryErrors,  loadImage("error_retry"));
+    setImage(*m_bitmapErrors,   loadImage("msg_error",   getDefaultMenuIconSize()));
+    setImage(*m_bitmapWarnings, loadImage("msg_warning", getDefaultMenuIconSize()));
 
-    //make sure that standard height matches ProcessPhase::comparingContent statistics layout (== largest)
+    setImage(*m_bitmapIgnoreErrors, loadImage("error_ignore_active", getDefaultMenuIconSize()));
+    setImage(*m_bitmapRetryErrors,  loadImage("error_retry",         getDefaultMenuIconSize()));
+
+    //make sure standard height matches ProcessPhase::comparingContent statistics layout (== largest)
 
     //init graph
     m_panelProgressGraph->setAttributes(Graph2D::MainAttributes().setMinY(0).setMaxY(2).
@@ -213,6 +215,7 @@ CompareProgressPanel::Impl::Impl(wxFrame& parentWindow) :
     Layout();
     m_panelItemStats->Layout();
     m_panelTimeStats->Layout();
+    m_panelErrorStats->Layout();
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
 #ifdef __WXGTK3__
@@ -233,7 +236,7 @@ void CompareProgressPanel::Impl::init(const Statistics& syncStat, bool ignoreErr
     }
     catch (const TaskbarNotAvailable&) {}
 
-    stopWatch_.restart(); //measure total time
+    stopWatch_ = StopWatch(); //reset to measure total time
 
     setText(*m_staticTextRetryCount, L'(' + formatNumber(autoRetryCount) + MULT_SIGN + L')');
     bSizerErrorsRetry->Show(autoRetryCount > 0);
@@ -265,8 +268,8 @@ void CompareProgressPanel::Impl::initNewPhase()
     timeLastSpeedEstimate_ = std::chrono::seconds(-100); //make sure estimate is updated upon next check
     phaseStart_ = stopWatch_.elapsed();
 
-    const int     itemsTotal = syncStat_->getStatsTotal().items;
-    const int64_t bytesTotal = syncStat_->getStatsTotal().bytes;
+    const int     itemsTotal = syncStat_->getTotalStats().items;
+    const int64_t bytesTotal = syncStat_->getTotalStats().bytes;
 
     const bool haveTotalStats = itemsTotal >= 0 || bytesTotal >= 0;
 
@@ -279,9 +282,9 @@ void CompareProgressPanel::Impl::initNewPhase()
     m_staticTextTimeRemaining ->Show(haveTotalStats);
     bSizerProgressGraph       ->Show(haveTotalStats);
 
-    Layout();
-    m_panelItemStats->Layout();
-    m_panelTimeStats->Layout();
+    Layout();                   //
+    m_panelItemStats->Layout(); //redundant? can we trust updateProgressGui() to do the same after detecting "layoutChanged"?
+    m_panelTimeStats->Layout(); //
 
     updateProgressGui();
 }
@@ -309,10 +312,10 @@ void CompareProgressPanel::Impl::updateProgressGui()
     bool layoutChanged = false; //avoid screen flicker by calling layout() only if necessary
     const std::chrono::nanoseconds timeElapsed = stopWatch_.elapsed();
 
-    const int     itemsCurrent = syncStat_->getStatsCurrent().items;
-    const int64_t bytesCurrent = syncStat_->getStatsCurrent().bytes;
-    const int     itemsTotal   = syncStat_->getStatsTotal  ().items;
-    const int64_t bytesTotal   = syncStat_->getStatsTotal  ().bytes;
+    const int     itemsCurrent = syncStat_->getCurrentStats().items;
+    const int64_t bytesCurrent = syncStat_->getCurrentStats().bytes;
+    const int     itemsTotal   = syncStat_->getTotalStats  ().items;
+    const int64_t bytesTotal   = syncStat_->getTotalStats  ().bytes;
 
     const bool haveTotalStats = itemsTotal >= 0 || bytesTotal >= 0;
 
@@ -359,6 +362,37 @@ void CompareProgressPanel::Impl::updateProgressGui()
         setText(*m_staticTextBytesRemaining, L'(' + formatFilesizeShort(bytesTotal - bytesCurrent) + L')', &layoutChanged);
     }
 
+    auto showIfNeeded = [&](wxWindow& wnd, bool show)
+    {
+        if (wnd.IsShown() != show)
+        {
+            wnd.Show(show);
+            layoutChanged = true;
+        }
+    };
+
+    //errors and warnings (pop up dynamically)
+    const Statistics::ErrorStats errorStats = syncStat_->getErrorStats();
+
+    showIfNeeded(*m_staticTextErrors,   errorStats.errorCount != 0);
+    showIfNeeded(*m_staticTextWarnings, errorStats.warningCount != 0);
+    showIfNeeded(*m_panelErrorStats, errorStats.errorCount != 0 || errorStats.warningCount != 0);
+
+    if (m_panelErrorStats->IsShown())
+    {
+        showIfNeeded(*m_bitmapErrors,         errorStats.errorCount != 0);
+        showIfNeeded(*m_staticTextErrorCount, errorStats.errorCount != 0);
+
+        if (m_staticTextErrorCount->IsShown())
+            setText(*m_staticTextErrorCount, formatNumber(errorStats.errorCount), &layoutChanged);
+
+        showIfNeeded(*m_bitmapWarnings,         errorStats.warningCount != 0);
+        showIfNeeded(*m_staticTextWarningCount, errorStats.warningCount != 0);
+
+        if (m_staticTextWarningCount->IsShown())
+            setText(*m_staticTextWarningCount, formatNumber(errorStats.warningCount), &layoutChanged);
+    }
+
     //current time elapsed
     const int64_t timeElapSec = std::chrono::duration_cast<std::chrono::seconds>(timeElapsed).count();
 
@@ -394,6 +428,8 @@ void CompareProgressPanel::Impl::updateProgressGui()
         Layout();
         m_panelItemStats->Layout();
         m_panelTimeStats->Layout();
+        if (m_panelErrorStats->IsShown())
+            m_panelErrorStats->Layout();
     }
 
     //do the ui update
@@ -634,7 +670,7 @@ class SyncProgressDialogImpl : public TopLevelDialog, public SyncProgressDialog
 {
 public:
     SyncProgressDialogImpl(long style, //wxFrame/wxDialog style
-                           const std::optional<wxSize>& dlgSize, bool dlgMaximize,
+                           const WindowLayout::Dimensions& dim,
                            const std::function<void()>& userRequestAbort,
                            const Statistics& syncStat,
                            wxFrame* parentFrame,
@@ -739,7 +775,7 @@ private:
 
 template <class TopLevelDialog>
 SyncProgressDialogImpl<TopLevelDialog>::SyncProgressDialogImpl(long style, //wxFrame/wxDialog style
-                                                               const std::optional<wxSize>& dlgSize, bool dlgMaximize,
+                                                               const WindowLayout::Dimensions& dim,
                                                                const std::function<void()>& userRequestAbort,
                                                                const Statistics& syncStat,
                                                                wxFrame* parentFrame,
@@ -824,8 +860,11 @@ syncStat_(&syncStat)
     setImage(*pnl_.m_bitmapTimeStat, loadImage("time", -1 /*maxWidth*/, IconBuffer::getSize(IconBuffer::IconSize::small)));
     pnl_.m_bitmapTimeStat->SetMinSize({-1, IconBuffer::getSize(IconBuffer::IconSize::small)});
 
-    setImage(*pnl_.m_bitmapIgnoreErrors, loadImage("error_ignore_active"));
-    setImage(*pnl_.m_bitmapRetryErrors,  loadImage("error_retry"));
+    setImage(*pnl_.m_bitmapErrors,   loadImage("msg_error",   getDefaultMenuIconSize()));
+    setImage(*pnl_.m_bitmapWarnings, loadImage("msg_warning", getDefaultMenuIconSize()));
+
+    setImage(*pnl_.m_bitmapIgnoreErrors, loadImage("error_ignore_active", getDefaultMenuIconSize()));
+    setImage(*pnl_.m_bitmapRetryErrors,  loadImage("error_retry", getDefaultMenuIconSize()));
 
     //init graph
     const int xLabelHeight = this->GetCharHeight() + fastFromDIP(2) /*margin*/; //use same height for both graphs to make sure they stretch evenly
@@ -888,7 +927,7 @@ syncStat_(&syncStat)
     pnl_.Layout();
     this->Center(); //call *after* dialog layout update and *before* wxWindow::Show()!
 
-    WindowLayout::setInitial(*this, {dlgSize, std::nullopt/*pos*/, dlgMaximize}, this->GetSize() /*defaultSize*/);
+    WindowLayout::setInitial(*this, dim, this->GetSize() /*defaultSize*/);
 
     if (showProgress)
     {
@@ -971,7 +1010,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::notifyProgressChange() //noexcept!
     if (syncStat_) //sync running
     {
         const double timeElapsedDouble = std::chrono::duration<double>(stopWatch_.elapsed()).count();
-        const ProgressStats stats = syncStat_->getStatsCurrent();
+        const ProgressStats stats = syncStat_->getCurrentStats();
         curveBytes_.ref().addSample(timeElapsedDouble, stats.bytes);
         curveItems_.ref().addSample(timeElapsedDouble, stats.items);
     }
@@ -1051,10 +1090,10 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
     const std::chrono::nanoseconds timeElapsed = stopWatch_.elapsed();
     const double timeElapsedDouble = std::chrono::duration<double>(timeElapsed).count();
 
-    const int     itemsCurrent = syncStat_->getStatsCurrent().items;
-    const int64_t bytesCurrent = syncStat_->getStatsCurrent().bytes;
-    const int     itemsTotal   = syncStat_->getStatsTotal  ().items;
-    const int64_t bytesTotal   = syncStat_->getStatsTotal  ().bytes;
+    const int     itemsCurrent = syncStat_->getCurrentStats().items;
+    const int64_t bytesCurrent = syncStat_->getCurrentStats().bytes;
+    const int     itemsTotal   = syncStat_->getTotalStats  ().items;
+    const int64_t bytesTotal   = syncStat_->getTotalStats  ().bytes;
 
     const bool haveTotalStats = itemsTotal >= 0 || bytesTotal >= 0;
 
@@ -1118,6 +1157,37 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
         setText(*pnl_.m_staticTextItemsRemaining,               formatNumber(itemsTotal - itemsCurrent), &layoutChanged);
         setText(*pnl_.m_staticTextBytesRemaining, L'(' + formatFilesizeShort(bytesTotal - bytesCurrent) + L')', &layoutChanged);
         //it's possible data remaining becomes shortly negative if last file synced has ADS data and the bytesTotal was not yet corrected!
+    }
+
+    auto showIfNeeded = [&](wxWindow& wnd, bool show)
+    {
+        if (wnd.IsShown() != show)
+        {
+            wnd.Show(show);
+            layoutChanged = true;
+        }
+    };
+
+    //errors and warnings (pop up dynamically)
+    const Statistics::ErrorStats errorStats = syncStat_->getErrorStats();
+
+    showIfNeeded(*pnl_.m_staticTextErrors,   errorStats.errorCount != 0);
+    showIfNeeded(*pnl_.m_staticTextWarnings, errorStats.warningCount != 0);
+    showIfNeeded(*pnl_.m_panelErrorStats, errorStats.errorCount != 0 || errorStats.warningCount != 0);
+
+    if (pnl_.m_panelErrorStats->IsShown())
+    {
+        showIfNeeded(*pnl_.m_bitmapErrors,         errorStats.errorCount != 0);
+        showIfNeeded(*pnl_.m_staticTextErrorCount, errorStats.errorCount != 0);
+
+        if (pnl_.m_staticTextErrorCount->IsShown())
+            setText(*pnl_.m_staticTextErrorCount, formatNumber(errorStats.errorCount), &layoutChanged);
+
+        showIfNeeded(*pnl_.m_bitmapWarnings,         errorStats.warningCount != 0);
+        showIfNeeded(*pnl_.m_staticTextWarningCount, errorStats.warningCount != 0);
+
+        if (pnl_.m_staticTextWarningCount->IsShown())
+            setText(*pnl_.m_staticTextWarningCount, formatNumber(errorStats.warningCount), &layoutChanged);
     }
 
     //current time elapsed
@@ -1184,6 +1254,8 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
         //small statistics panels:
         pnl_.m_panelItemStats->Layout();
         pnl_.m_panelTimeStats->Layout();
+        if (pnl_.m_panelErrorStats->IsShown())
+            pnl_.m_panelErrorStats->Layout();
     }
 
 
@@ -1253,8 +1325,8 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateStaticGui() //depends on "syn
             taskbar_->setStatus(Taskbar::STATUS_PAUSED);
         else
         {
-            const int     itemsTotal = syncStat_->getStatsTotal().items;
-            const int64_t bytesTotal = syncStat_->getStatsTotal().bytes;
+            const int     itemsTotal = syncStat_->getTotalStats().items;
+            const int64_t bytesTotal = syncStat_->getTotalStats().bytes;
 
             const bool haveTotalStats = itemsTotal >= 0 || bytesTotal >= 0;
 
@@ -1287,10 +1359,10 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult syncResult, 
     updateProgressGui(false /*allowYield*/);
     //===================================================================================
 
-    const int     itemsProcessed = syncStat_->getStatsCurrent().items;
-    const int64_t bytesProcessed = syncStat_->getStatsCurrent().bytes;
-    const int     itemsTotal     = syncStat_->getStatsTotal  ().items;
-    const int64_t bytesTotal     = syncStat_->getStatsTotal  ().bytes;
+    const int     itemsProcessed = syncStat_->getCurrentStats().items;
+    const int64_t bytesProcessed = syncStat_->getCurrentStats().bytes;
+    const int     itemsTotal     = syncStat_->getTotalStats  ().items;
+    const int64_t bytesTotal     = syncStat_->getTotalStats  ().bytes;
 
     //set overall speed (instead of current speed)
     const double timeDelta = std::chrono::duration<double>(stopWatch_.elapsed() - phaseStart_).count();
@@ -1440,6 +1512,8 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult syncResult, 
     //small statistics panels:
     pnl_.m_panelItemStats->Layout();
     pnl_.m_panelTimeStats->Layout();
+    if (pnl_.m_panelErrorStats->IsShown())
+        pnl_.m_panelErrorStats->Layout();
 
     //this->Raise(); -> don't! user may be watching a movie in the meantime ;)
 
@@ -1494,11 +1568,11 @@ auto SyncProgressDialogImpl<TopLevelDialog>::destroy(bool autoClose, bool restor
     //------------------------------------------------------------------------
     const bool autoCloseDialog = getOptionAutoCloseDialog();
 
-    const auto& [dlgSize, pos, isMaximized] = WindowLayout::getBeforeClose(*this);
+    const WindowLayout::Dimensions dims = WindowLayout::getBeforeClose(*this);
 
     this->Destroy(); //wxWidgets macOS: simple "delete"!!!!!!!
 
-    return {autoCloseDialog, dlgSize, isMaximized};
+    return {autoCloseDialog, dims};
 }
 
 
@@ -1619,7 +1693,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::resumeFromSystray(bool userRequeste
 
 //########################################################################################
 
-SyncProgressDialog* SyncProgressDialog::create(const std::optional<wxSize>& dlgSize, bool dlgMaximize,
+SyncProgressDialog* SyncProgressDialog::create(const WindowLayout::Dimensions& dim,
                                                const std::function<void()>& userRequestAbort,
                                                const Statistics& syncStat,
                                                wxFrame* parentWindow, //may be nullptr
@@ -1633,12 +1707,12 @@ SyncProgressDialog* SyncProgressDialog::create(const std::optional<wxSize>& dlgS
 {
     if (parentWindow) //FFS GUI sync
         return new SyncProgressDialogImpl<wxDialog>(wxDEFAULT_DIALOG_STYLE | wxMAXIMIZE_BOX | wxMINIMIZE_BOX | wxRESIZE_BORDER,
-                                                    dlgSize, dlgMaximize, userRequestAbort, syncStat, parentWindow, showProgress,
+                                                    dim, userRequestAbort, syncStat, parentWindow, showProgress,
                                                     autoCloseDialog, jobNames, syncStartTime, ignoreErrors, autoRetryCount, postSyncAction);
     else //FFS batch job
     {
         auto dlg = new SyncProgressDialogImpl<wxFrame>(wxDEFAULT_FRAME_STYLE,
-                                                       dlgSize, dlgMaximize, userRequestAbort, syncStat, parentWindow, showProgress,
+                                                       dim, userRequestAbort, syncStat, parentWindow, showProgress,
                                                        autoCloseDialog, jobNames, syncStartTime, ignoreErrors, autoRetryCount, postSyncAction);
         dlg->SetIcon(getFfsIcon()); //only top level windows should have an icon
         return dlg;

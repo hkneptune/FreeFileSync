@@ -192,15 +192,15 @@ public:
                      ProcessCallback& callback);
 
     //create comparison result table and fill category except for files existing on both sides: undefinedFiles and undefinedSymlinks are appended!
-    std::shared_ptr<BaseFolderPair> compareByTimeSize(const ResolvedFolderPair& fp, const FolderPairCfg& fpConfig) const;
-    std::shared_ptr<BaseFolderPair> compareBySize    (const ResolvedFolderPair& fp, const FolderPairCfg& fpConfig) const;
-    std::vector<std::shared_ptr<BaseFolderPair>> compareByContent(const std::vector<std::pair<ResolvedFolderPair, FolderPairCfg>>& workLoad) const;
+    SharedRef<BaseFolderPair> compareByTimeSize(const ResolvedFolderPair& fp, const FolderPairCfg& fpConfig) const;
+    SharedRef<BaseFolderPair> compareBySize    (const ResolvedFolderPair& fp, const FolderPairCfg& fpConfig) const;
+    std::vector<SharedRef<BaseFolderPair>> compareByContent(const std::vector<std::pair<ResolvedFolderPair, FolderPairCfg>>& workLoad) const;
 
 private:
     ComparisonBuffer           (const ComparisonBuffer&) = delete;
     ComparisonBuffer& operator=(const ComparisonBuffer&) = delete;
 
-    std::shared_ptr<BaseFolderPair> performComparison(const ResolvedFolderPair& fp,
+    SharedRef<BaseFolderPair> performComparison(const ResolvedFolderPair& fp,
                                                       const FolderPairCfg& fpCfg,
                                                       std::vector<FilePair*>& undefinedFiles,
                                                       std::vector<SymlinkPair*>& undefinedSymlinks) const;
@@ -360,12 +360,12 @@ void categorizeSymlinkByTime(SymlinkPair& symlink)
 }
 
 
-std::shared_ptr<BaseFolderPair> ComparisonBuffer::compareByTimeSize(const ResolvedFolderPair& fp, const FolderPairCfg& fpConfig) const
+SharedRef<BaseFolderPair> ComparisonBuffer::compareByTimeSize(const ResolvedFolderPair& fp, const FolderPairCfg& fpConfig) const
 {
     //do basis scan and retrieve files existing on both sides as "compareCandidates"
     std::vector<FilePair*> uncategorizedFiles;
     std::vector<SymlinkPair*> uncategorizedLinks;
-    std::shared_ptr<BaseFolderPair> output = performComparison(fp, fpConfig, uncategorizedFiles, uncategorizedLinks);
+    SharedRef<BaseFolderPair> output = performComparison(fp, fpConfig, uncategorizedFiles, uncategorizedLinks);
 
     //finish symlink categorization
     for (SymlinkPair* symlink : uncategorizedLinks)
@@ -456,12 +456,12 @@ void categorizeSymlinkByContent(SymlinkPair& symlink, PhaseCallback& callback)
 }
 
 
-std::shared_ptr<BaseFolderPair> ComparisonBuffer::compareBySize(const ResolvedFolderPair& fp, const FolderPairCfg& fpConfig) const
+SharedRef<BaseFolderPair> ComparisonBuffer::compareBySize(const ResolvedFolderPair& fp, const FolderPairCfg& fpConfig) const
 {
     //do basis scan and retrieve files existing on both sides as "compareCandidates"
     std::vector<FilePair*> uncategorizedFiles;
     std::vector<SymlinkPair*> uncategorizedLinks;
-    std::shared_ptr<BaseFolderPair> output = performComparison(fp, fpConfig, uncategorizedFiles, uncategorizedLinks);
+    SharedRef<BaseFolderPair> output = performComparison(fp, fpConfig, uncategorizedFiles, uncategorizedLinks);
 
     //finish symlink categorization
     for (SymlinkPair* symlink : uncategorizedLinks)
@@ -557,7 +557,7 @@ void categorizeFileByContent(FilePair& file, const std::wstring& txtComparingCon
 }
 
 
-std::vector<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(const std::vector<std::pair<ResolvedFolderPair, FolderPairCfg>>& workLoad) const
+std::vector<SharedRef<BaseFolderPair>> ComparisonBuffer::compareByContent(const std::vector<std::pair<ResolvedFolderPair, FolderPairCfg>>& workLoad) const
 {
     struct ParallelOps
     {
@@ -580,7 +580,7 @@ std::vector<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(
         fpWorkload.push_back({posL, posR, std::move(filesToCompareBytewise)});
     };
 
-    std::vector<std::shared_ptr<BaseFolderPair>> output;
+    std::vector<SharedRef<BaseFolderPair>> output;
 
     const Zstringc txtConflictSkippedBinaryComparison = getConflictSkippedBinaryComparison(); //avoid premature pess.: save memory via ref-counted string
 
@@ -608,8 +608,8 @@ std::vector<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(
                     filesToCompareBytewise.push_back(file);
             }
         if (!filesToCompareBytewise.empty())
-            addToBinaryWorkload(output.back()->getAbstractPath<SelectSide::left >(),
-                                output.back()->getAbstractPath<SelectSide::right>(), std::move(filesToCompareBytewise));
+            addToBinaryWorkload(output.back().ref().getAbstractPath<SelectSide::left >(),
+                                output.back().ref().getAbstractPath<SelectSide::right>(), std::move(filesToCompareBytewise));
 
         //finish symlink categorization
         for (SymlinkPair* symlink : uncategorizedLinks)
@@ -623,7 +623,7 @@ std::vector<std::shared_ptr<BaseFolderPair>> ComparisonBuffer::compareByContent(
         uint64_t bytesTotal = 0;
         for (const BinaryWorkload& bwl : fpWorkload)
         {
-            itemsTotal += bwl.filesToCompareBytewise.size();
+            itemsTotal += static_cast<int>(bwl.filesToCompareBytewise.size());
 
             for (const FilePair* file : bwl.filesToCompareBytewise)
                 bytesTotal += file->getFileSize<SelectSide::left>(); //left and right file sizes are equal
@@ -968,7 +968,7 @@ void stripExcludedDirectories(ContainerObject& hierObj, const PathFilter& filter
 
 
 //create comparison result table and fill category except for files existing on both sides: undefinedFiles and undefinedSymlinks are appended!
-std::shared_ptr<BaseFolderPair> ComparisonBuffer::performComparison(const ResolvedFolderPair& fp,
+SharedRef<BaseFolderPair> ComparisonBuffer::performComparison(const ResolvedFolderPair& fp,
                                                                     const FolderPairCfg& fpCfg,
                                                                     std::vector<FilePair*>& undefinedFiles,
                                                                     std::vector<SymlinkPair*>& undefinedSymlinks) const
@@ -1026,7 +1026,7 @@ std::shared_ptr<BaseFolderPair> ComparisonBuffer::performComparison(const Resolv
         return BaseFolderStatus::notExisting;
     };
 
-    std::shared_ptr<BaseFolderPair> output = std::make_shared<BaseFolderPair>(fp.folderPathLeft,
+    SharedRef<BaseFolderPair> output = makeSharedRef<BaseFolderPair>(fp.folderPathLeft,
                                                                               getBaseFolderStatus(fp.folderPathLeft), //dir existence must be checked only once!
                                                                               fp.folderPathRight,
                                                                               getBaseFolderStatus(fp.folderPathRight),
@@ -1035,7 +1035,7 @@ std::shared_ptr<BaseFolderPair> ComparisonBuffer::performComparison(const Resolv
                                                                               fileTimeTolerance_,
                                                                               fpCfg.ignoreTimeShiftMinutes);
     //PERF_START;
-    MergeSides(failedReads, undefinedFiles, undefinedSymlinks).execute(folderContL, folderContR, *output);
+    MergeSides(failedReads, undefinedFiles, undefinedSymlinks).execute(folderContL, folderContR, output.ref());
     //PERF_STOP;
 
     //##################### in/exclude rows according to filtering #####################
@@ -1043,10 +1043,10 @@ std::shared_ptr<BaseFolderPair> ComparisonBuffer::performComparison(const Resolv
 
     //attention: some excluded directories are still in the comparison result! (see include filter handling!)
     if (!fpCfg.filter.nameFilter.ref().isNull())
-        stripExcludedDirectories(*output, fpCfg.filter.nameFilter.ref()); //mark excluded directories (see parallelDeviceTraversal()) + remove superfluous excluded subdirectories
+        stripExcludedDirectories(output.ref(), fpCfg.filter.nameFilter.ref()); //mark excluded directories (see parallelDeviceTraversal()) + remove superfluous excluded subdirectories
 
     //apply soft filtering (hard filter already applied during traversal!)
-    addSoftFiltering(*output, fpCfg.filter.timeSizeFilter);
+    addSoftFiltering(output.ref(), fpCfg.filter.timeSizeFilter);
 
     //##################################################################################
     return output;
@@ -1184,7 +1184,7 @@ FolderComparison fff::compare(WarningDialogs& warnings,
                 if (fpCfg.compareVar == CompareVariant::content)
                     workLoadByContent.push_back({folderPair, fpCfg});
 
-            std::vector<std::shared_ptr<BaseFolderPair>> outputByContent = cmpBuff.compareByContent(workLoadByContent);
+            std::vector<SharedRef<BaseFolderPair>> outputByContent = cmpBuff.compareByContent(workLoadByContent);
             auto itOByC = outputByContent.begin();
 
             //write output in expected order
@@ -1209,7 +1209,7 @@ FolderComparison fff::compare(WarningDialogs& warnings,
         //--------- set initial sync-direction --------------------------------------------------
         std::vector<std::pair<BaseFolderPair*, SyncDirectionConfig>> directCfgs;
         for (auto it = output.begin(); it != output.end(); ++it)
-            directCfgs.emplace_back(&** it, fpCfgList[it - output.begin()].directionCfg);
+            directCfgs.emplace_back(&it->ref(), fpCfgList[it - output.begin()].directionCfg);
 
         redetermineSyncDirection(directCfgs,
                                  callback); //throw X

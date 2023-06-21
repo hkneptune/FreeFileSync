@@ -107,6 +107,7 @@ public:
 
     void setNotes(const Zstring& filePath, const std::wstring& notes);
     void setLastRunStats(const std::vector<Zstring>& filePaths, const LastRunStats& lastRun);
+    void setLastInSyncTime(const std::vector<Zstring>& filePaths, time_t lastRunTime);
     void setBackColor(const std::vector<Zstring>& filePaths, const wxColor& col, bool previewOnly = false);
 
     struct Details

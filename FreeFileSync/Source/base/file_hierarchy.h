@@ -189,8 +189,8 @@ public:
     using SymlinkList = std::list<SymlinkPair>; //
     using FolderList  = std::list<FolderPair>;
 
-    FolderPair& addFolder(const Zstring&          itemNameL,
-                          const FolderAttributes& left,    //file exists on both sides
+    FolderPair& addFolder(const Zstring&          itemNameL, //file exists on both sides
+                          const FolderAttributes& left,
                           CompareDirResult        defaultCmpResult,
                           const Zstring&          itemNameR,
                           const FolderAttributes& right);
@@ -199,8 +199,8 @@ public:
     FolderPair& addFolder(const Zstring& itemName, //dir exists on one side only
                           const FolderAttributes& attr);
 
-    FilePair& addFile(const Zstring&        itemNameL,
-                      const FileAttributes& left,          //file exists on both sides
+    FilePair& addFile(const Zstring&        itemNameL, //file exists on both sides
+                      const FileAttributes& left,
                       CompareFileResult    defaultCmpResult,
                       const Zstring&        itemNameR,
                       const FileAttributes& right);
@@ -209,8 +209,8 @@ public:
     FilePair& addFile(const Zstring&        itemName, //file exists on one side only
                       const FileAttributes& attr);
 
-    SymlinkPair& addLink(const Zstring&        itemNameL,
-                         const LinkAttributes& left, //link exists on both sides
+    SymlinkPair& addLink(const Zstring&        itemNameL, //link exists on both sides
+                         const LinkAttributes& left,
                          CompareSymlinkResult  defaultCmpResult,
                          const Zstring&        itemNameR,
                          const LinkAttributes& right);
@@ -322,7 +322,7 @@ private:
 };
 
 
-//get rid of shared_ptr indirection
+//get rid of SharedRef<> indirection
 template <class IterImpl, //underlying iterator type
           class T>        //target value type
 class DerefIter
@@ -343,15 +343,15 @@ public:
     inline friend DerefIter operator--(DerefIter& it, int) { return it--; }
     inline friend ptrdiff_t operator-(const DerefIter& lhs, const DerefIter& rhs) { return lhs.it_ - rhs.it_; }
     bool operator==(const DerefIter&) const = default;
-    T& operator* () const { return  **it_; }
-    T* operator->() const { return &** it_; }
+    T& operator* () const { return  it_->ref(); }
+    T* operator->() const { return &it_->ref(); }
 private:
     IterImpl it_{};
 };
 
 
-using FolderComparison = std::vector<std::shared_ptr<BaseFolderPair>>; //make sure pointers to sub-elements remain valid
-//don't change this back to std::vector<BaseFolderPair> too easily: comparison uses push_back to add entries which may result in a full copy!
+using FolderComparison = std::vector<zen::SharedRef<BaseFolderPair>>; //make sure pointers to sub-elements remain valid
+//don't change this back to std::vector<BaseFolderPair> inconsiderately: comparison uses push_back to add entries which may result in a full copy!
 
 DerefIter<typename FolderComparison::iterator,             BaseFolderPair> inline begin(      FolderComparison& vect) { return vect.begin(); }
 DerefIter<typename FolderComparison::iterator,             BaseFolderPair> inline end  (      FolderComparison& vect) { return vect.end  (); }

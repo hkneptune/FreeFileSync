@@ -199,12 +199,12 @@ bool Application::OnInit()
 
     SetAppName(L"FreeFileSync"); //if not set, the default is the executable's name!
 
+
     //tentatively set program language to OS default until GlobalSettings.xml is read later
     try { localizationInit(appendPath(getResourceDirPath(), Zstr("Languages.zip"))); } //throw FileError
     catch (const FileError& e) { notifyAppError(e.toString(), FfsExitCode::warning); }
 
     initAfs({getResourceDirPath(), getConfigDirPath()}); //bonus: using FTP Gdrive implicitly inits OpenSSL (used in runSanityChecks() on Linux) already during globals init
-
 
 
     auto onSystemShutdown = [](int /*unused*/ = 0)
@@ -353,7 +353,7 @@ void Application::onEnterEventLoop()
                                 try
                                 {
                                     if (getItemType(itemPath) == ItemType::file) //throw FileError
-                                        if (std::optional<Zstring> parentPath = getParentFolderPath(itemPath))
+                                        if (const std::optional<Zstring>& parentPath = getParentFolderPath(itemPath))
                                             return *parentPath;
                                 }
                                 catch (FileError&) {}
@@ -453,7 +453,7 @@ void Application::onEnterEventLoop()
                 if (!warningMsg.empty())
                     throw FileError(warningMsg); //batch mode: break on errors AND even warnings!
 
-                replaceDirectories(batchCfg.mainCfg); //throw FileError
+                replaceDirectories(batchCfg.guiCfg.mainCfg); //throw FileError
 
                 runBatchMode(globalConfigFilePath, batchCfg, filePath);
             }
@@ -555,23 +555,29 @@ void Application::runBatchMode(const Zstring& globalConfigFilePath, const XmlBat
 
     const std::chrono::system_clock::time_point syncStartTime = std::chrono::system_clock::now();
 
+    const WindowLayout::Dimensions progressDim
+    {
+        globalCfg.dpiLayouts[getDpiScalePercent()].progressDlg.size,
+        std::nullopt /*pos*/,
+        globalCfg.dpiLayouts[getDpiScalePercent()].progressDlg.isMaximized
+    };
+
     //class handling status updates and error messages
     BatchStatusHandler statusHandler(!batchCfg.batchExCfg.runMinimized,
                                      extractJobName(cfgFilePath),
                                      syncStartTime,
-                                     batchCfg.mainCfg.ignoreErrors,
-                                     batchCfg.mainCfg.autoRetryCount,
-                                     batchCfg.mainCfg.autoRetryDelay,
+                                     batchCfg.guiCfg.mainCfg.ignoreErrors,
+                                     batchCfg.guiCfg.mainCfg.autoRetryCount,
+                                     batchCfg.guiCfg.mainCfg.autoRetryDelay,
                                      globalCfg.soundFileSyncFinished,
                                      globalCfg.soundFileAlertPending,
-                                     globalCfg.dpiLayouts[getDpiScalePercent()].progressDlg.size,
-                                     globalCfg.dpiLayouts[getDpiScalePercent()].progressDlg.isMaximized,
+                                     progressDim,
                                      batchCfg.batchExCfg.autoCloseSummary,
                                      batchCfg.batchExCfg.postSyncAction,
                                      batchCfg.batchExCfg.batchErrorHandling);
 
     const bool allowUserInteraction = !batchCfg.batchExCfg.autoCloseSummary ||
-                                      (!batchCfg.mainCfg.ignoreErrors && batchCfg.batchExCfg.batchErrorHandling == BatchErrorHandling::showPopup);
+                                      (!batchCfg.guiCfg.mainCfg.ignoreErrors && batchCfg.batchExCfg.batchErrorHandling == BatchErrorHandling::showPopup);
 
     AFS::RequestPasswordFun requestPassword; //throw AbortProcess
     if (allowUserInteraction)
@@ -599,7 +605,7 @@ void Application::runBatchMode(const Zstring& globalConfigFilePath, const XmlBat
                                              globalCfg.runWithBackgroundPriority,
                                              globalCfg.createLockFile,
                                              dirLocks,
-                                             extractCompareCfg(batchCfg.mainCfg),
+                                             extractCompareCfg(batchCfg.guiCfg.mainCfg),
                                              statusHandler); //throw AbortProcess
         //START SYNCHRONIZATION
         if (!cmpResult.empty())
@@ -609,23 +615,23 @@ void Application::runBatchMode(const Zstring& globalConfigFilePath, const XmlBat
                         globalCfg.copyFilePermissions,
                         globalCfg.failSafeFileCopy,
                         globalCfg.runWithBackgroundPriority,
-                        extractSyncCfg(batchCfg.mainCfg),
+                        extractSyncCfg(batchCfg.guiCfg.mainCfg),
                         cmpResult,
                         globalCfg.warnDlgs,
                         statusHandler); //throw AbortProcess
     }
     catch (AbortProcess&) {} //exit used by statusHandler
 
-    AbstractPath logFolderPath = createAbstractPath(batchCfg.mainCfg.altLogFolderPathPhrase); //optional
+    AbstractPath logFolderPath = createAbstractPath(batchCfg.guiCfg.mainCfg.altLogFolderPathPhrase); //optional
     if (AFS::isNullPath(logFolderPath))
         logFolderPath = createAbstractPath(globalCfg.logFolderPhrase);
     assert(!AFS::isNullPath(logFolderPath)); //mandatory! but still: let's include fall back
     if (AFS::isNullPath(logFolderPath))
         logFolderPath = createAbstractPath(getLogFolderDefaultPath());
 
-    BatchStatusHandler::Result r = statusHandler.reportResults(batchCfg.mainCfg.postSyncCommand, batchCfg.mainCfg.postSyncCondition,
+    BatchStatusHandler::Result r = statusHandler.reportResults(batchCfg.guiCfg.mainCfg.postSyncCommand, batchCfg.guiCfg.mainCfg.postSyncCondition,
                                                                logFolderPath, globalCfg.logfilesMaxAgeDays, globalCfg.logFormat, logFilePathsToKeep,
-                                                               batchCfg.mainCfg.emailNotifyAddress, batchCfg.mainCfg.emailNotifyCondition); //noexcept
+                                                               batchCfg.guiCfg.mainCfg.emailNotifyAddress, batchCfg.guiCfg.mainCfg.emailNotifyCondition); //noexcept
     //----------------------------------------------------------------------
     switch (r.summary.syncResult)
     {
@@ -637,10 +643,10 @@ void Application::runBatchMode(const Zstring& globalConfigFilePath, const XmlBat
         //*INDENT-ON*
     }
 
-    globalCfg.dpiLayouts[getDpiScalePercent()].progressDlg.size        = r.dlgSize;
-    globalCfg.dpiLayouts[getDpiScalePercent()].progressDlg.isMaximized = r.dlgIsMaximized;
+    globalCfg.dpiLayouts[getDpiScalePercent()].progressDlg.size        = r.dlgDim.size; //=> ignore r.dim.pos
+    globalCfg.dpiLayouts[getDpiScalePercent()].progressDlg.isMaximized = r.dlgDim.isMaximized;
 
-    //email sending, or saving log file failed? at the very least this should affect the exit code:
+    //email sending, or saving log file failed? at least this should affect the exit code:
     if (r.logStats.error > 0)
         raiseExitCode(exitCode_, FfsExitCode::error);
     else if (r.logStats.warning > 0)
@@ -684,7 +690,7 @@ void Application::runBatchMode(const Zstring& globalConfigFilePath, const XmlBat
         case FinalRequest::none:
             break;
         case FinalRequest::switchGui: //open new top-level window *after* progress dialog is gone => run on main event loop
-            MainDialog::create(globalConfigFilePath, &globalCfg, convertBatchToGui(batchCfg), {cfgFilePath}, true /*startComparison*/);
+            MainDialog::create(globalConfigFilePath, &globalCfg, batchCfg.guiCfg, {cfgFilePath}, true /*startComparison*/);
             break;
         case FinalRequest::shutdown: //run *after* last sync stats were updated and saved! https://freefilesync.org/forum/viewtopic.php?t=5761
             try

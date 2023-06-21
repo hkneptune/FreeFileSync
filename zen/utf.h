@@ -16,7 +16,7 @@ namespace zen
 template <class TargetString, class SourceString>
 TargetString utfTo(const SourceString& str);
 
-const std::string_view BYTE_ORDER_MARK_UTF8 = "\xEF\xBB\xBF";
+constexpr std::string_view BYTE_ORDER_MARK_UTF8 = "\xEF\xBB\xBF";
 
 template <class UtfString>
 bool isValidUtf(const UtfString& str); //check for UTF-8 encoding errors

@@ -23,7 +23,7 @@ namespace zen
 
     Scope Exit:
         ZEN_ON_SCOPE_EXIT   (CleanUp());
-        ZEN_ON_SCOPE_FAIL   (UndoPreviousWork());
+        ZEN_ON_SCOPE_FAIL   (UndoTemporaryWork());
         ZEN_ON_SCOPE_SUCCESS(NotifySuccess());                    */
 
 enum class ScopeGuardRunMode

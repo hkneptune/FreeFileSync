@@ -137,9 +137,9 @@ BatchDialogConfig BatchDialog::getConfig() const
     {
         .batchExCfg
         {
-            .batchErrorHandling  = m_radioBtnErrorDialogCancel->GetValue() ? BatchErrorHandling::cancel : BatchErrorHandling::showPopup,
             .runMinimized        = m_checkBoxRunMinimized->GetValue(),
             .autoCloseSummary    = m_checkBoxAutoClose   ->GetValue(),
+            .batchErrorHandling  = m_radioBtnErrorDialogCancel->GetValue() ? BatchErrorHandling::cancel : BatchErrorHandling::showPopup,
             .postSyncAction = getEnumVal(enumPostSyncAction_, *m_choicePostSyncAction),
         },
         .ignoreErrors = m_checkBoxIgnoreErrors->GetValue(),

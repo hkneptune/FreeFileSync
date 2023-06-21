@@ -34,39 +34,37 @@ namespace
 {
 XmlDoc loadXml(const Zstring& filePath) //throw FileError
 {
-    FileInputPlain fileIn(filePath); //throw FileError
-    const size_t blockSize = fileIn.getBlockSize(); //throw FileError
-    bool xmlPrefixChecked = false;
+    FileInputPlain fileIn(filePath); //throw FileError, ErrorFileLocked
+    std::string headBuf;
+    const size_t headSizeMin = BYTE_ORDER_MARK_UTF8.size() + strLength("<?xml?>");
 
-    std::string buffer;
-    for (;;)
+    const std::string buf = unbufferedLoad<std::string>([&](void* buffer, size_t bytesToRead)
     {
-        warn_static("don't need zero-initialization! => resize_and_overwrite")
-        buffer.resize(buffer.size() + blockSize);
-        const size_t bytesRead = fileIn.tryRead(&*(buffer.end() - blockSize), blockSize); //throw FileError; may return short, only 0 means EOF! CONTRACT: bytesToRead > 0!
-        buffer.resize(buffer.size() - blockSize + bytesRead); //caveat: unsigned arithmetics
+        const size_t bytesRead = fileIn.tryRead(buffer, bytesToRead); //throw FileError; may return short, only 0 means EOF! =>  CONTRACT: bytesToRead > 0!
 
         //quick test whether input is an XML: avoid loading large binary files up front!
-        if (!xmlPrefixChecked && buffer.size() >= strLength(BYTE_ORDER_MARK_UTF8) + strLength("<?xml?>"))
+        if (headBuf.size() < headSizeMin)
         {
-            xmlPrefixChecked = true;
+            headBuf.append(static_cast<const char*>(buffer), std::min(headSizeMin - headBuf.size(), bytesRead));
 
-            std::string_view bufStart = buffer;
-            if (startsWith(bufStart, BYTE_ORDER_MARK_UTF8))
-                bufStart.remove_prefix(strLength(BYTE_ORDER_MARK_UTF8));
+            if (headBuf.size() == headSizeMin)
+            {
+                std::string_view header = headBuf;
+                if (startsWith(header, BYTE_ORDER_MARK_UTF8))
+                    header.remove_prefix(BYTE_ORDER_MARK_UTF8.size()); //keep headBuf.size()!
 
-            if (!startsWith(bufStart, "<?xml ") &&
-                !startsWith(bufStart, "<?xml?>"))
-                throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)));
+                if (!startsWith(header, "<?xml ") &&
+                    !startsWith(header, "<?xml?>"))
+                    throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)));
+            }
         }
-
-        if (bytesRead == 0) //end of file
-            break;
-    }
+        return bytesRead;
+    },
+    fileIn.getBlockSize()); //throw FileError
 
     try
     {
-        return parseXml(buffer); //throw XmlParsingError
+        return parseXml(buf); //throw XmlParsingError
     }
     catch (const XmlParsingError& e)
     {

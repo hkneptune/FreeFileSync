@@ -245,6 +245,11 @@ void FileOutputPlain::reserveSpace(uint64_t expectedSize) //throw FileError
 
     try
     {
+#if 0 /*  fallocate(FALLOC_FL_KEEP_SIZE):
+            - perf: no real benefit (in a quick and dirty local test)
+            - breaks Btrfs compression: https://freefilesync.org/forum/viewtopic.php?t=10356
+            - apparently not even used by cp: https://github.com/coreutils/coreutils/blob/17479ef60c8edbd2fe8664e31a7f69704f0cd221/src/copy.c#LL1234C5-L1234C5      */
+
         //don't use ::posix_fallocate which uses horribly inefficient fallback if FS doesn't support it (EOPNOTSUPP) and changes files size!
         //FALLOC_FL_KEEP_SIZE => allocate only, file size is NOT changed!
         if (::fallocate(getHandle(),         //int fd
@@ -253,6 +258,7 @@ void FileOutputPlain::reserveSpace(uint64_t expectedSize) //throw FileError
                         expectedSize) != 0)  //off_t len
             if (errno != EOPNOTSUPP) //possible, unlike with posix_fallocate()
                 THROW_LAST_SYS_ERROR("fallocate");
+#endif
 
     }
     catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getFilePath())), e.toString()); }

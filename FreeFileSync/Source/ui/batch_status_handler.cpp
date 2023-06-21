@@ -26,7 +26,7 @@ BatchStatusHandler::BatchStatusHandler(bool showProgress,
                                        std::chrono::seconds autoRetryDelay,
                                        const Zstring& soundFileSyncComplete,
                                        const Zstring& soundFileAlertPending,
-                                       const std::optional<wxSize>& progressDlgSize, bool dlgMaximize,
+                                       const WindowLayout::Dimensions& dims,
                                        bool autoCloseDialog,
                                        PostSyncAction postSyncAction,
                                        BatchErrorHandling batchErrorHandling) :
@@ -36,23 +36,24 @@ BatchStatusHandler::BatchStatusHandler(bool showProgress,
     autoRetryDelay_(autoRetryDelay),
     soundFileSyncComplete_(soundFileSyncComplete),
     soundFileAlertPending_(soundFileAlertPending),
-    progressDlg_(SyncProgressDialog::create(progressDlgSize, dlgMaximize, [this] { userRequestAbort(); }, *this, nullptr /*parentWindow*/, showProgress, autoCloseDialog,
-{jobName}, std::chrono::system_clock::to_time_t(startTime), ignoreErrors, autoRetryCount, [&]
+    batchErrorHandling_(batchErrorHandling)
 {
-    switch (postSyncAction)
+    //set *after* initializer list => callbacks during construction to getErrorStats()!
+    progressDlg_ = SyncProgressDialog::create(dims, [this] { userRequestAbort(); }, *this, nullptr /*parentWindow*/, showProgress, autoCloseDialog,
+    {jobName}, std::chrono::system_clock::to_time_t(startTime), ignoreErrors, autoRetryCount, [&]
     {
-        case PostSyncAction::none:
-            return PostSyncAction2::none;
-        case PostSyncAction::sleep:
-            return PostSyncAction2::sleep;
-        case PostSyncAction::shutdown:
-            return PostSyncAction2::shutdown;
-    }
-    assert(false);
-    return PostSyncAction2::none;
-}())),
-batchErrorHandling_(batchErrorHandling)
-{
+        switch (postSyncAction)
+        {
+            case PostSyncAction::none:
+                return PostSyncAction2::none;
+            case PostSyncAction::sleep:
+                return PostSyncAction2::sleep;
+            case PostSyncAction::shutdown:
+                return PostSyncAction2::shutdown;
+        }
+        assert(false);
+        return PostSyncAction2::none;
+    }());
     //ATTENTION: "progressDlg_" is an unmanaged resource!!! However, at this point we already consider construction complete! =>
     //ZEN_ON_SCOPE_FAIL( cleanup(); ); //destructor call would lead to member double clean-up!!!
 }
@@ -78,17 +79,17 @@ BatchStatusHandler::Result BatchStatusHandler::reportResults(const Zstring& post
     {
         if (getAbortStatus())
         {
-            logMsg(errorLog_, _("Stopped"), MSG_TYPE_ERROR); //= user cancel
+            logMsg(errorLog_.ref(), _("Stopped"), MSG_TYPE_ERROR); //= user cancel
             return SyncResult::aborted;
         }
-        const ErrorLogStats logCount = getStats(errorLog_);
+        const ErrorLogStats logCount = getStats(errorLog_.ref());
         if (logCount.error > 0)
             return SyncResult::finishedError;
         else if (logCount.warning > 0)
             return SyncResult::finishedWarning;
 
-        if (getStatsTotal() == ProgressStats())
-            logMsg(errorLog_, _("Nothing to synchronize"), MSG_TYPE_INFO);
+        if (getTotalStats() == ProgressStats())
+            logMsg(errorLog_.ref(), _("Nothing to synchronize"), MSG_TYPE_INFO);
         return SyncResult::finishedSuccess;
     }();
 
@@ -97,8 +98,8 @@ BatchStatusHandler::Result BatchStatusHandler::reportResults(const Zstring& post
     const ProcessSummary summary
     {
         startTime_, syncResult, {jobName_},
-        getStatsCurrent(),
-        getStatsTotal  (),
+        getCurrentStats(),
+        getTotalStats  (),
         totalTime
     };
 
@@ -127,7 +128,7 @@ BatchStatusHandler::Result BatchStatusHandler::reportResults(const Zstring& post
                 ////----------------------------------------------------------------------
                 //::wxSetEnv(L"logfile_path", AFS::getDisplayPath(logFilePath));
                 ////----------------------------------------------------------------------
-                runCommandAndLogErrors(expandMacros(cmdLine), errorLog_);
+                runCommandAndLogErrors(expandMacros(cmdLine), errorLog_.ref());
 
         //--------------------- email notification ----------------------
         if (const std::string notifyEmail = trimCpy(emailNotifyAddress);
@@ -140,10 +141,10 @@ BatchStatusHandler::Result BatchStatusHandler::reportResults(const Zstring& post
                                                                             syncResult == SyncResult::finishedError)))
                 try
                 {
-                    logMsg(errorLog_, replaceCpy(_("Sending email notification to %x"), L"%x", utfTo<std::wstring>(notifyEmail)), MSG_TYPE_INFO);
-                    sendLogAsEmail(notifyEmail, summary, errorLog_, logFilePath, notifyStatusNoThrow); //throw FileError
+                    logMsg(errorLog_.ref(), replaceCpy(_("Sending email notification to %x"), L"%x", utfTo<std::wstring>(notifyEmail)), MSG_TYPE_INFO);
+                    sendLogAsEmail(notifyEmail, summary, errorLog_.ref(), logFilePath, notifyStatusNoThrow); //throw FileError
                 }
-                catch (const FileError& e) { logMsg(errorLog_, e.toString(), MSG_TYPE_ERROR); }
+                catch (const FileError& e) { logMsg(errorLog_.ref(), e.toString(), MSG_TYPE_ERROR); }
 
         //--------------------- post sync actions ----------------------
         auto proceedWithShutdown = [&](const std::wstring& operationName)
@@ -210,20 +211,20 @@ BatchStatusHandler::Result BatchStatusHandler::reportResults(const Zstring& post
     try //create not before destruction: 1. avoid issues with FFS trying to sync open log file 2. include status in log file name without extra rename
     {
         //do NOT use tryReportingError()! saving log files should not be cancellable!
-        saveLogFile(logFilePath, summary, errorLog_, logfilesMaxAgeDays, logFormat, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
+        saveLogFile(logFilePath, summary, errorLog_.ref(), logfilesMaxAgeDays, logFormat, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
     }
     catch (const FileError& e)
     {
-        logMsg(errorLog_, e.toString(), MSG_TYPE_ERROR);
+        logMsg(errorLog_.ref(), e.toString(), MSG_TYPE_ERROR);
 
         const AbstractPath logFileDefaultPath = AFS::appendRelPath(createAbstractPath(getLogFolderDefaultPath()), generateLogFileName(logFormat, summary));
         if (logFilePath != logFileDefaultPath) //fallback: log file *must* be saved no matter what!
             try
             {
                 logFilePath = logFileDefaultPath;
-                saveLogFile(logFileDefaultPath, summary, errorLog_, logfilesMaxAgeDays, logFormat, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
+                saveLogFile(logFileDefaultPath, summary, errorLog_.ref(), logfilesMaxAgeDays, logFormat, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
             }
-            catch (const FileError& e2) { logMsg(errorLog_, e2.toString(), MSG_TYPE_ERROR); }
+            catch (const FileError& e2) { logMsg(errorLog_.ref(), e2.toString(), MSG_TYPE_ERROR); }
     }
     //----------------------------------------------------------
 
@@ -232,7 +233,7 @@ BatchStatusHandler::Result BatchStatusHandler::reportResults(const Zstring& post
         {
             suspendSystem(); //throw FileError
         }
-        catch (const FileError& e) { logMsg(errorLog_, e.toString(), MSG_TYPE_ERROR); }
+        catch (const FileError& e) { logMsg(errorLog_.ref(), e.toString(), MSG_TYPE_ERROR); }
 
     if (switchToGuiRequested_) //-> avoid recursive yield() calls, thous switch not before ending batch mode
     {
@@ -240,14 +241,13 @@ BatchStatusHandler::Result BatchStatusHandler::reportResults(const Zstring& post
         finalRequest = FinalRequest::switchGui;
     }
 
-    auto errorLogFinal = makeSharedRef<const ErrorLog>(std::move(errorLog_));
-
-    const auto [autoCloseDialog, dlgSize, dlgIsMaximized] = progressDlg_->destroy(autoClose,
-                                                                                  true /*restoreParentFrame: n/a here*/,
-                                                                                  syncResult, errorLogFinal);
+    const auto [autoCloseDialog, dims] = progressDlg_->destroy(autoClose,
+                                                               true /*restoreParentFrame: n/a here*/,
+                                                               syncResult, errorLog_);
+    //caveat: calls back to getErrorStats() => share errorLog_
     progressDlg_ = nullptr;
 
-    return {summary, getStats(errorLogFinal.ref()), finalRequest, logFilePath, dlgSize, dlgIsMaximized};
+    return {summary, getStats(errorLog_.ref()), finalRequest, logFilePath, dims};
 }
 
 
@@ -279,7 +279,7 @@ void BatchStatusHandler::updateDataProcessed(int itemsDelta, int64_t bytesDelta)
 
 void BatchStatusHandler::logMessage(const std::wstring& msg, MsgType type)
 {
-    logMsg(errorLog_, msg, [&]
+    logMsg(errorLog_.ref(), msg, [&]
     {
         switch (type)
         {
@@ -300,7 +300,7 @@ void BatchStatusHandler::reportWarning(const std::wstring& msg, bool& warningAct
 {
     PauseTimers dummy(*progressDlg_);
 
-    logMsg(errorLog_, msg, MSG_TYPE_WARNING);
+    logMsg(errorLog_.ref(), msg, MSG_TYPE_WARNING);
 
     if (!warningActive)
         return;
@@ -324,7 +324,7 @@ void BatchStatusHandler::reportWarning(const std::wstring& msg, bool& warningAct
                         break;
 
                     case QuestionButton2::no: //switch
-                        logMsg(errorLog_, _("Switching to FreeFileSync's main window"), MSG_TYPE_INFO);
+                        logMsg(errorLog_.ref(), _("Switching to FreeFileSync's main window"), MSG_TYPE_INFO);
                         switchToGuiRequested_ = true; //treat as a special kind of cancel
                         abortProcessNow(AbortTrigger::user); //throw AbortProcess
 
@@ -352,7 +352,7 @@ ProcessCallback::Response BatchStatusHandler::reportError(const ErrorInfo& error
     //auto-retry
     if (errorInfo.retryNumber < autoRetryCount_)
     {
-        logMsg(errorLog_, errorInfo.msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO, failTime);
+        logMsg(errorLog_.ref(), errorInfo.msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO, failTime);
         delayAndCountDown(errorInfo.failTime + autoRetryDelay_,
                           [&, statusPrefix  = _("Automatic retry") +
                                               (errorInfo.retryNumber == 0 ? L"" : L' ' + formatNumber(errorInfo.retryNumber + 1)) + SPACED_DASH,
@@ -362,7 +362,7 @@ ProcessCallback::Response BatchStatusHandler::reportError(const ErrorInfo& error
     }
 
     //always, except for "retry":
-    auto guardWriteLog = makeGuard<ScopeGuardRunMode::onExit>([&] { logMsg(errorLog_, errorInfo.msg, MSG_TYPE_ERROR, failTime); });
+    auto guardWriteLog = makeGuard<ScopeGuardRunMode::onExit>([&] { logMsg(errorLog_.ref(), errorInfo.msg, MSG_TYPE_ERROR, failTime); });
 
     if (!progressDlg_->getOptionIgnoreErrors())
     {
@@ -386,7 +386,7 @@ ProcessCallback::Response BatchStatusHandler::reportError(const ErrorInfo& error
 
                     case ConfirmationButton3::decline: //retry
                         guardWriteLog.dismiss();
-                        logMsg(errorLog_, errorInfo.msg + L"\n-> " + _("Retrying operation..."), MSG_TYPE_INFO, failTime);
+                        logMsg(errorLog_.ref(), errorInfo.msg + L"\n-> " + _("Retrying operation..."), MSG_TYPE_INFO, failTime);
                         return ProcessCallback::retry;
 
                     case ConfirmationButton3::cancel:
@@ -413,7 +413,7 @@ void BatchStatusHandler::reportFatalError(const std::wstring& msg)
 {
     PauseTimers dummy(*progressDlg_);
 
-    logMsg(errorLog_, msg, MSG_TYPE_ERROR);
+    logMsg(errorLog_.ref(), msg, MSG_TYPE_ERROR);
 
     if (!progressDlg_->getOptionIgnoreErrors())
         switch (batchErrorHandling_)
@@ -445,6 +445,29 @@ void BatchStatusHandler::reportFatalError(const std::wstring& msg)
                 abortProcessNow(AbortTrigger::program); //throw AbortProcess
                 break;
         }
+}
+
+
+Statistics::ErrorStats BatchStatusHandler::getErrorStats() const
+{
+    //errorLog_ is an "append only" structure, so we can make getErrorStats() complexity "constant time":
+    std::for_each(errorLog_.ref().begin() + errorStatsRowsChecked_, errorLog_.ref().end(), [&](const LogEntry& entry)
+    {
+        switch (entry.type)
+        {
+            case MSG_TYPE_INFO:
+                break;
+            case MSG_TYPE_WARNING:
+                ++errorStatsBuf_.warningCount;
+                break;
+            case MSG_TYPE_ERROR:
+                ++errorStatsBuf_.errorCount;
+                break;
+        }
+    });
+    errorStatsRowsChecked_ = errorLog_.ref().size();
+
+    return errorStatsBuf_;
 }
 
 

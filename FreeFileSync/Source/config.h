@@ -47,7 +47,7 @@ extern const ExternalApp extCommandOpenDefault;
 struct XmlGuiConfig
 {
     MainConfiguration mainCfg;
-    GridViewType gridViewType = GridViewType::action;
+    GridViewType gridViewType = GridViewType::action; //keep "visual" setting out of "MainConfiguration"
 
     bool operator==(const XmlGuiConfig&) const = default;
 };
@@ -55,16 +55,16 @@ struct XmlGuiConfig
 
 struct BatchExclusiveConfig
 {
-    BatchErrorHandling batchErrorHandling = BatchErrorHandling::showPopup;
     bool runMinimized = false;
     bool autoCloseSummary = false;
+    BatchErrorHandling batchErrorHandling = BatchErrorHandling::showPopup;
     PostSyncAction postSyncAction = PostSyncAction::none;
 };
 
 
 struct XmlBatchConfig
 {
-    MainConfiguration mainCfg;
+    XmlGuiConfig guiCfg; //batch config can be used in GUI (but not the other way round)
     BatchExclusiveConfig batchExCfg;
 };
 
@@ -126,6 +126,7 @@ struct DpiLayout
     struct
     {
         std::optional<wxSize> size;
+        //std::optional<wxPoint> pos; -> most users probably want it centered, but others at a fixed (relative??) location
         bool isMaximized = false;
     } progressDlg;
 
@@ -264,9 +265,6 @@ void writeConfig(const XmlGlobalSettings& cfg, const Zstring& filePath); //
 //convert (multiple) *.ffs_gui, *.ffs_batch files or combinations of both into target config structure:
 std::pair<XmlGuiConfig, std::wstring /*warningMsg*/> readAnyConfig(const std::vector<Zstring>& filePaths); //throw FileError
 
-//config conversion utilities
-XmlGuiConfig   convertBatchToGui(const XmlBatchConfig& batchCfg); //noexcept
-XmlBatchConfig convertGuiToBatch(const XmlGuiConfig&   guiCfg, const BatchExclusiveConfig& batchExCfg); //
 
 std::wstring extractJobName(const Zstring& cfgFilePath);
 

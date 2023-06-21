@@ -25,7 +25,7 @@ namespace
 {
 //-------------------------------------------------------------------------------------------------------------------------------
 const int XML_FORMAT_GLOBAL_CFG = 27; //2023-05-13
-const int XML_FORMAT_SYNC_CFG   = 18; //2023-05-15
+const int XML_FORMAT_SYNC_CFG   = 19; //2023-06-09
 //-------------------------------------------------------------------------------------------------------------------------------
 }
 
@@ -52,24 +52,6 @@ XmlGlobalSettings::XmlGlobalSettings() :
 
 Zstring fff::getGlobalConfigDefaultPath() { return appendPath(getConfigDirPath(), Zstr("GlobalSettings.xml")); }
 Zstring fff::getLogFolderDefaultPath   () { return appendPath(getConfigDirPath(), Zstr("Logs")); }
-
-
-XmlGuiConfig fff::convertBatchToGui(const XmlBatchConfig& batchCfg) //noexcept
-{
-    XmlGuiConfig output;
-    output.mainCfg = batchCfg.mainCfg;
-    return output;
-}
-
-
-XmlBatchConfig fff::convertGuiToBatch(const XmlGuiConfig& guiCfg, const BatchExclusiveConfig& batchExCfg) //noexcept
-{
-    XmlBatchConfig output;
-    output.mainCfg = guiCfg.mainCfg;
-    output.batchExCfg = batchExCfg;
-    return output;
-}
-
 
 namespace
 {
@@ -1000,8 +982,8 @@ void writeStruc(const ConfigFileItem& value, XmlElement& output)
 
     output.setAttribute("TotalTime", value.lastRunStats.totalTime);
 
-        output.setAttribute("Errors", value.lastRunStats.errors);
-        output.setAttribute("Warnings", value.lastRunStats.warnings);
+    output.setAttribute("Errors", value.lastRunStats.errors);
+    output.setAttribute("Warnings", value.lastRunStats.warnings);
 
     if (value.backColor.IsOk())
     {
@@ -1212,45 +1194,43 @@ void readConfig(const XmlIn& in, XmlGuiConfig& cfg, int formatVer)
 {
     readConfig(in, cfg.mainCfg, formatVer);
 
-    XmlIn inGuiCfg = in["Gui"];
-
-    //TODO: remove after migration! 2020-10-14
-    if (formatVer < 17)
+    if (formatVer < 19) //TODO: remove after migration! 2023-06-09
     {
-        if (inGuiCfg["MiddleGridView"])
+        XmlIn inGui = in["Gui"];
+        //TODO: remove after migration! 2020-10-14
+        if (formatVer < 17)
         {
-            std::string tmp;
-            inGuiCfg["MiddleGridView"](tmp);
+            if (inGui["MiddleGridView"])
+            {
+                std::string tmp;
+                inGui["MiddleGridView"](tmp);
 
-            if (tmp == "Category")
-                cfg.gridViewType = GridViewType::difference;
-            else if (tmp == "Action")
-                cfg.gridViewType = GridViewType::action;
+                if (tmp == "Category")
+                    cfg.gridViewType = GridViewType::difference;
+                else if (tmp == "Action")
+                    cfg.gridViewType = GridViewType::action;
+            }
         }
+        else
+            inGui["GridViewType"](cfg.gridViewType);
     }
     else
-        inGuiCfg["GridViewType"](cfg.gridViewType);
-}
-
-
-void readConfig(const XmlIn& in, BatchExclusiveConfig& cfg, int formatVer)
-{
-    XmlIn inBatch = in["Batch"];
-
-    inBatch["ProgressDialog"].attribute("Minimized", cfg.runMinimized);
-
-    inBatch["ProgressDialog"].attribute("AutoClose", cfg.autoCloseSummary);
-
-    inBatch["ErrorDialog"](cfg.batchErrorHandling);
-
-    inBatch["PostSyncAction"](cfg.postSyncAction);
+        in["GridViewType"](cfg.gridViewType);
 }
 
 
 void readConfig(const XmlIn& in, XmlBatchConfig& cfg, int formatVer)
 {
-    readConfig(in, cfg.mainCfg,    formatVer);
-    readConfig(in, cfg.batchExCfg, formatVer);
+    if (formatVer < 19) //TODO: remove after migration! 2023-06-09
+        readConfig(in, cfg.guiCfg.mainCfg, formatVer);
+    else
+        readConfig(in, cfg.guiCfg, formatVer);
+
+    XmlIn inBatch = in["Batch"];
+    inBatch["ProgressDialog"].attribute("Minimized", cfg.batchExCfg.runMinimized);
+    inBatch["ProgressDialog"].attribute("AutoClose", cfg.batchExCfg.autoCloseSummary);
+    inBatch["ErrorDialog"](cfg.batchExCfg.batchErrorHandling);
+    inBatch["PostSyncAction"](cfg.batchExCfg.postSyncAction);
 }
 
 
@@ -1800,7 +1780,7 @@ std::pair<ConfigType, std::wstring /*warningMsg*/> readConfig(const Zstring& fil
 {
     XmlDoc doc = loadXml(filePath); //throw FileError
 
-    const std::string cfgType =[&]
+    const std::string cfgType = [&]
     {
         if (doc.root().getName() == "FreeFileSync")
         {
@@ -1863,8 +1843,8 @@ std::pair<XmlGuiConfig, std::wstring /*warningMsg*/> fff::readAnyConfig(const st
         {
             const auto& [batchCfg, warningMsg] = readBatchConfig(filePath); //throw FileError
             if (firstItem)
-                cfg = convertBatchToGui(batchCfg);
-            mainCfgs.push_back(batchCfg.mainCfg);
+                cfg = batchCfg.guiCfg;
+            mainCfgs.push_back(batchCfg.guiCfg.mainCfg);
 
             if (!warningMsg.empty())
                 warningMsgAll += warningMsg + L"\n\n";
@@ -2030,28 +2010,19 @@ void writeConfig(const XmlGuiConfig& cfg, XmlOut& out)
 {
     writeConfig(cfg.mainCfg, out); //write main config
 
-    //write GUI specific config data
-    XmlOut outGuiCfg = out["Gui"];
-
-    outGuiCfg["GridViewType"](cfg.gridViewType);
-}
-
-
-void writeConfig(const BatchExclusiveConfig& cfg, XmlOut& out)
-{
-    XmlOut outBatchCfg = out["Batch"];
-
-    outBatchCfg["ProgressDialog"].attribute("Minimized", cfg.runMinimized);
-    outBatchCfg["ProgressDialog"].attribute("AutoClose", cfg.autoCloseSummary);
-    outBatchCfg["ErrorDialog"   ](cfg.batchErrorHandling);
-    outBatchCfg["PostSyncAction"](cfg.postSyncAction);
+    out["GridViewType"](cfg.gridViewType);
 }
 
 
 void writeConfig(const XmlBatchConfig& cfg, XmlOut& out)
 {
-    writeConfig(cfg.mainCfg,    out);
-    writeConfig(cfg.batchExCfg, out);
+    writeConfig(cfg.guiCfg, out);
+
+    XmlOut outBatch = out["Batch"];
+    outBatch["ProgressDialog"].attribute("Minimized", cfg.batchExCfg.runMinimized);
+    outBatch["ProgressDialog"].attribute("AutoClose", cfg.batchExCfg.autoCloseSummary);
+    outBatch["ErrorDialog"   ](cfg.batchExCfg.batchErrorHandling);
+    outBatch["PostSyncAction"](cfg.batchExCfg.postSyncAction);
 }
 
 

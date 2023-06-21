@@ -35,6 +35,7 @@ public:
     void     reportWarning   (const std::wstring& msg, bool& warningActive)             override; //throw AbortProcess
     Response reportError     (const ErrorInfo& errorInfo)                               override; //
     void     reportFatalError(const std::wstring& msg)                                  override; //
+    ErrorStats getErrorStats() const override;
 
     void forceUiUpdateNoThrow() override;
 
@@ -52,6 +53,8 @@ private:
 
     MainDialog& mainDlg_;
     zen::ErrorLog errorLog_;
+    mutable Statistics::ErrorStats errorStatsBuf_{};
+    mutable size_t errorStatsRowsChecked_ = 0;
     const bool ignoreErrors_;
     const size_t autoRetryCount_;
     const std::chrono::seconds autoRetryDelay_;
@@ -73,9 +76,9 @@ public:
                                 std::chrono::seconds autoRetryDelay,
                                 const Zstring& soundFileSyncComplete,
                                 const Zstring& soundFileAlertPending,
-                                const std::optional<wxSize>& progressDlgSize, bool dlgMaximize,
+                                const zen::WindowLayout::Dimensions& dim,
                                 bool autoCloseDialog,
-                                const zen::ErrorLog* errorLogStart /*optional*/); //noexcept!
+                                zen::ErrorLog errorLogPrefix /*optional, unifying assignment*/); //noexcept!
     ~StatusHandlerFloatingDialog();
 
     void     initNewPhase    (int itemsTotal, int64_t bytesTotal, ProcessPhase phaseID) override; //
@@ -83,6 +86,7 @@ public:
     void     reportWarning   (const std::wstring& msg, bool& warningActive)             override; //throw AbortProcess
     Response reportError     (const ErrorInfo& errorInfo)                               override; //
     void     reportFatalError(const std::wstring& msg)                                  override; //
+    ErrorStats getErrorStats() const override;
 
     void updateDataProcessed(int itemsDelta, int64_t bytesDelta) override; //noexcept!!
     void forceUiUpdateNoThrow()                                  override; //
@@ -99,8 +103,7 @@ public:
         zen::SharedRef<const zen::ErrorLog> errorLog;
         FinalRequest finalRequest;
         AbstractPath logFilePath;
-        std::optional<wxSize> dlgSize;
-        bool dlgIsMaximized;
+        zen::WindowLayout::Dimensions dlgDim;
         bool autoCloseDialog;
     };
     Result reportResults(const Zstring& postSyncCommand, PostSyncCondition postSyncCondition,
@@ -115,7 +118,9 @@ private:
     const Zstring soundFileSyncComplete_;
     const Zstring soundFileAlertPending_;
     SyncProgressDialog* progressDlg_; //managed to have the same lifetime as this handler!
-    zen::ErrorLog errorLog_;
+    zen::SharedRef<zen::ErrorLog> errorLog_;
+    mutable Statistics::ErrorStats errorStatsBuf_{};
+    mutable size_t errorStatsRowsChecked_ = 0;
 };
 }
 

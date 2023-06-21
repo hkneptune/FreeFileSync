@@ -314,7 +314,7 @@ public:
     explicit Scanner(const std::string& stream) : stream_(stream), pos_(stream_.begin())
     {
         if (zen::startsWith(stream_, BYTE_ORDER_MARK_UTF8))
-            pos_ += strLength(BYTE_ORDER_MARK_UTF8);
+            pos_ += BYTE_ORDER_MARK_UTF8.size();
     }
 
     Token getNextToken() //throw XmlParsingError

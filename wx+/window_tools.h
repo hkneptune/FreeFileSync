@@ -90,52 +90,50 @@ private:
 };
 
 
-namespace
-{
 class WindowLayout
 {
 public:
-    struct Layout
+    struct Dimensions
     {
         std::optional<wxSize> size;
         std::optional<wxPoint> pos;
         bool isMaximized = false;
     };
-    static void setInitial(wxTopLevelWindow& topWin, const Layout& layout, wxSize defaultSize)
+    static void setInitial(wxTopLevelWindow& topWin, const Dimensions& dim, wxSize defaultSize)
     {
-        initialLayouts_[&topWin] = layout;
+        initialDims_[&topWin] = dim;
 
         wxSize newSize = defaultSize;
         std::optional<wxPoint> newPos;
         //set dialog size and position:
         // - width/height are invalid if the window is minimized (eg x,y = -32000; width = 160, height = 28)
         // - multi-monitor setup: dialog may be placed on second monitor which is currently turned off
-        if (layout.size &&
-            layout.size->GetWidth () > 0 &&
-            layout.size->GetHeight() > 0)
+        if (dim.size &&
+            dim.size->GetWidth () > 0 &&
+            dim.size->GetHeight() > 0)
         {
-            if (layout.pos)
+            if (dim.pos)
             {
                 //calculate how much of the dialog will be visible on screen
-                const int dlgArea = layout.size->GetWidth() * layout.size->GetHeight();
+                const int dlgArea = dim.size->GetWidth() * dim.size->GetHeight();
                 int dlgAreaMaxVisible = 0;
 
                 const int monitorCount = wxDisplay::GetCount();
                 for (int i = 0; i < monitorCount; ++i)
                 {
-                    wxRect overlap = wxDisplay(i).GetClientArea().Intersect(wxRect(*layout.pos, *layout.size));
+                    wxRect overlap = wxDisplay(i).GetClientArea().Intersect(wxRect(*dim.pos, *dim.size));
                     dlgAreaMaxVisible = std::max(dlgAreaMaxVisible, overlap.GetWidth() * overlap.GetHeight());
                 }
 
                 if (dlgAreaMaxVisible > 0.1 * dlgArea //at least 10% of the dialog should be visible!
                    )
                 {
-                    newSize = *layout.size;
-                    newPos  = layout.pos;
+                    newSize = *dim.size;
+                    newPos  = dim.pos;
                 }
             }
             else
-                newSize = *layout.size;
+                newSize = *dim.size;
         }
 
         //old comment: "wxGTK's wxWindow::SetSize seems unreliable and behaves like a wxWindow::SetClientSize
@@ -150,7 +148,7 @@ public:
             topWin.Center();
         }
 
-        if (layout.isMaximized) //no real need to support both maximize and full screen functions
+        if (dim.isMaximized) //no real need to support both maximize and full screen functions
         {
             topWin.Maximize(true);
         }
@@ -191,7 +189,7 @@ public:
     }
 
     //destructive! changes window size!
-    static Layout getBeforeClose(wxTopLevelWindow& topWin)
+    static Dimensions getBeforeClose(wxTopLevelWindow& topWin)
     {
         //we need to portably retrieve non-iconized, non-maximized size and position
         //  non-portable: Win32 GetWindowPlacement(); wxWidgets take: wxTopLevelWindow::SaveGeometry/RestoreToGeometry()
@@ -220,8 +218,8 @@ public:
             }
 
         //reuse previous values if current ones are not available:
-        if (const auto it = initialLayouts_.find(&topWin);
-            it != initialLayouts_.end())
+        if (const auto it = initialDims_.find(&topWin);
+            it != initialDims_.end())
         {
             if (!size)
                 size = it->second.size;
@@ -256,9 +254,8 @@ public:
     }
 
 private:
-    inline static std::unordered_map<const wxTopLevelWindow* /*don't access! use as key only!*/, Layout> initialLayouts_;
+    inline static std::unordered_map<const wxTopLevelWindow* /*don't access! use as key only!*/, Dimensions> initialDims_;
 };
-}
 }
 
 #endif //FOCUS_1084731021985757843

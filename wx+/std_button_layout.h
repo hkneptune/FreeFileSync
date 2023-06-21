@@ -29,7 +29,7 @@ struct StdButtons
 };
 
 void setStandardButtonLayout(wxBoxSizer& sizer, const StdButtons& buttons = StdButtons());
-//sizer width will change! => call wxWindow::Fit and wxWindow::Layout
+//sizer width will change! => call wxWindow::Fit and wxWindow::Dimensions
 
 
 inline

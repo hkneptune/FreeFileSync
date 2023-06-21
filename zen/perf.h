@@ -40,45 +40,35 @@ namespace zen
 class StopWatch
 {
 public:
-    explicit StopWatch(bool startPaused = false) : paused_(startPaused) {}
+    explicit StopWatch(bool startPaused = false)
+    {
+        if (startPaused)
+            startTime_ = {};
+    }
 
-    bool isPaused() const { return paused_; }
+    bool isPaused() const { return startTime_ == std::chrono::steady_clock::time_point{}; }
 
     void pause()
     {
-        if (!paused_)
-        {
-            paused_ = true;
-            elapsedUntilPause_ += std::chrono::steady_clock::now() - startTime_;
-        }
+        if (!isPaused())
+            elapsedUntilPause_ += std::chrono::steady_clock::now() - std::exchange(startTime_, {});
     }
 
     void resume()
     {
-        if (paused_)
-        {
-            paused_ = false;
+        if (isPaused())
             startTime_ = std::chrono::steady_clock::now();
-        }
-    }
-
-    void restart()
-    {
-        paused_ = false;
-        startTime_ = std::chrono::steady_clock::now();
-        elapsedUntilPause_ = std::chrono::nanoseconds::zero();
     }
 
     std::chrono::nanoseconds elapsed() const
     {
         auto elapsedTotal = elapsedUntilPause_;
-        if (!paused_)
+        if (!isPaused())
             elapsedTotal += std::chrono::steady_clock::now() - startTime_;
         return elapsedTotal;
     }
 
 private:
-    bool paused_;
     std::chrono::steady_clock::time_point startTime_ = std::chrono::steady_clock::now();
     std::chrono::nanoseconds elapsedUntilPause_{}; //std::chrono::duration is uninitialized by default! WTF! When will this stupidity end!
 };

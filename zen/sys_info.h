@@ -30,12 +30,14 @@ ComputerModel getComputerModel(); //throw FileError
 std::wstring getOsDescription(); //throw FileError
 
 
-Zstring getRealProcessPath(); //throw FileError
+Zstring getProcessPath(); //throw FileError
 
 Zstring getUserDownloadsPath(); //throw FileError
 Zstring getUserDataPath(); //throw FileError
 
 Zstring getUserHome(); //throw FileError
+
+bool runningElevated(); //throw FileError
 }
 
 #endif //SYSTEM_H_4189731847832147508915

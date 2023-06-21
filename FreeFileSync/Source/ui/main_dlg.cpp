@@ -13,6 +13,7 @@
 #include <zen/perf.h>
 #include <zen/shutdown.h>
 #include <zen/resolve_path.h>
+#include <zen/sys_info.h>
 #include <wx/colordlg.h>
 #include <wx/wupdlock.h>
 #include <wx/sound.h>
@@ -447,7 +448,7 @@ void MainDialog::create(const Zstring& globalConfigFilePath,
     {
         mainDlg->globalCfg_.welcomeDialogLastVersion = ffsVersion;
 
-        //showAboutDialog(mainDlg); => dialog centered incorrectly (Centos), or hidden behind main dialog (Lubuntu) https://freefilesync.org/forum/viewtopic.php?t=10246
+        //showAboutDialog(mainDlg); => dialog centered incorrectly (Centos)
         //mainDlg->CallAfter([mainDlg] { showAboutDialog(mainDlg); }); => dialog centered incorrectly (Windows, Centos)
         mainDlg->guiQueue_.processAsync([] {}, [mainDlg]() { showAboutDialog(mainDlg); }); //apparently oh-kay?
     }
@@ -946,7 +947,7 @@ imgFileManagerSmall_([]
     //register regular check for update on next idle event
     Bind(wxEVT_IDLE, &MainDialog::onStartupUpdateCheck, this);
 
-    //asynchronous call to wxWindow::Layout(): fix superfluous frame on right and bottom when FFS is started in fullscreen mode
+    //asynchronous call to wxWindow::Dimensions(): fix superfluous frame on right and bottom when FFS is started in fullscreen mode
     Bind(wxEVT_IDLE, &MainDialog::onLayoutWindowAsync, this);
     wxCommandEvent evtDummy;           //call once before onLayoutWindowAsync()
     onResizeLeftFolderWidth(evtDummy); //
@@ -1508,6 +1509,8 @@ void MainDialog::deleteSelectedFiles(const std::vector<FileSystemObject*>& selec
 
     const StatusHandlerTemporaryPanel::Result r = statusHandler.reportResults(); //noexcept
     setLastOperationLog(r.summary, r.errorLog.ptr());
+
+    append(errorLogPrepSync_, r.errorLog.ref());
 
     //remove rows that are empty: just a beautification, invalid rows shouldn't cause issues
     filegrid::getDataView(*m_gridMainC).removeInvalidRows();
@@ -2869,6 +2872,10 @@ void MainDialog::resetLayout()
     m_splitterMain->setSashOffset(0);
     auiMgr_.LoadPerspective(defaultPerspective_, false /*don't call wxAuiManager::Update() => already done in updateGuiForFolderPair() */);
     updateGuiForFolderPair();
+
+    //progress dialog size:
+    globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.size        = std::nullopt;
+    globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.isMaximized = false;
 }
 
 
@@ -3120,8 +3127,16 @@ void MainDialog::updateUnsavedCfgStatus()
     else
     {
         title += L"FreeFileSync " + utfTo<std::wstring>(ffsVersion);
+        //if (!haveUnsavedCfg)
         title += SPACED_DASH + _("Folder Comparison and Synchronization");
     }
+
+    try
+    {
+        if (runningElevated()) //throw FileError
+            title += L" (root)";
+    }
+    catch (FileError&) { assert(false); }
 
     SetTitle(title);
 
@@ -3276,11 +3291,9 @@ bool MainDialog::trySaveBatchConfig(const Zstring* batchCfgPath) //"false": erro
     }
 
     const XmlGuiConfig guiCfg = getConfig();
-    const XmlBatchConfig batchCfg = convertGuiToBatch(guiCfg, batchExCfg);
-
     try
     {
-        writeConfig(batchCfg, cfgFilePath); //throw FileError
+        writeConfig({guiCfg, batchExCfg}, cfgFilePath); //throw FileError
 
         setLastUsedConfig(guiCfg, {cfgFilePath}); //[!] behave as if we had saved guiCfg
 
@@ -3924,8 +3937,6 @@ void MainDialog::setConfig(const XmlGuiConfig& newGuiCfg, const std::vector<Zstr
 {
     currentCfg_ = newGuiCfg;
 
-    //evaluate new settings...
-
     //(re-)set view filter buttons
     setViewFilterDefault();
 
@@ -3934,14 +3945,11 @@ void MainDialog::setConfig(const XmlGuiConfig& newGuiCfg, const std::vector<Zstr
     //set first folder pair
     firstFolderPair_->setValues(currentCfg_.mainCfg.firstPair);
 
-    //folderHistoryLeft- >addItem(currentCfg.mainCfg.firstPair.leftDirectory);
-    //folderHistoryRight->addItem(currentCfg.mainCfg.firstPair.rightDirectory);
-
     setAddFolderPairs(currentCfg_.mainCfg.additionalPairs);
 
     setGridViewType(currentCfg_.gridViewType);
 
-    clearGrid(); //+ update GUI!
+    //clearGrid(); //+ update GUI!  -> already called by setAddFolderPairs()
 
     setLastUsedConfig(newGuiCfg, referenceFiles);
 }
@@ -4322,10 +4330,10 @@ void MainDialog::onCompare(wxCommandEvent& event)
     catch (AbortProcess&) {}
 
     const StatusHandlerTemporaryPanel::Result r = statusHandler.reportResults(); //noexcept
-    errorLogCmp_ = r.errorLog.ptr();
     //---------------------------------------------------------------------------
-
     setLastOperationLog(r.summary, r.errorLog.ptr());
+
+    errorLogPrepSync_ = r.errorLog.ref();
 
     if (r.summary.syncResult == SyncResult::aborted)
         return updateGui(); //refresh grid in ANY case! (also on abort)
@@ -4362,10 +4370,10 @@ void MainDialog::onCompare(wxCommandEvent& event)
             setStatusInfo(_("No files to synchronize"), true /*highlight*/); //user might be AFK: don't flashStatusInfo()
             //overwrites status info already set in updateGui() above
 
-            ProcessSummary dummySyncSummary = r.summary;
-            dummySyncSummary.statsProcessed = {}; //let's not misinterpret comparison stats as sync stats!
-            dummySyncSummary.statsTotal     = {}; //
-            updateConfigLastRunStats(dummySyncSummary, getStats(r.errorLog.ref()), getNullPath() /*logFilePath*/);
+            cfggrid::getDataView(*m_gridCfgHistory).setLastInSyncTime(activeConfigFiles_, std::chrono::system_clock::to_time_t(r.summary.startTime));
+            //re-apply selection: sort order changed if sorted by last sync time, or log
+            cfggrid::addAndSelect(*m_gridCfgHistory, activeConfigFiles_, false /*scrollToSelection*/);
+            //m_gridCfgHistory->Refresh(); <- implicit in last call
         }
 
     //reset icon cache (IconBuffer) after *each* comparison!
@@ -4431,7 +4439,7 @@ void MainDialog::clearGrid(ptrdiff_t pos)
     }
 
     if (folderCmp_.empty())
-        errorLogCmp_.reset();
+        errorLogPrepSync_.clear();
 
     filegrid::setData(*m_gridMainC,    folderCmp_);
     treegrid::setData(*m_gridOverview, folderCmp_);
@@ -4529,15 +4537,20 @@ void MainDialog::onStartSync(wxCommandEvent& event)
 
     const std::chrono::system_clock::time_point syncStartTime = std::chrono::system_clock::now();
 
+    const WindowLayout::Dimensions progressDim
+    {
+        globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.size,
+        std::nullopt /*pos*/,
+        globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.isMaximized
+    };
+
+
     using FinalRequest = StatusHandlerFloatingDialog::FinalRequest;
     FinalRequest finalRequest = FinalRequest::none;
     {
         disableGuiElements(false /*enableAbort*/); //StatusHandlerFloatingDialog will internally process Window messages, so avoid unexpected callbacks!
         ZEN_ON_SCOPE_EXIT(enableGuiElements());
         //run this->enableGuiElements() BEFORE "finalRequest" buf AFTER StatusHandlerFloatingDialog::reportResults()
-
-        std::shared_ptr<const ErrorLog> errorLogStart;
-        errorLogStart.swap(errorLogCmp_); //"consume" comparison's error log on first sync
 
         //class handling status updates and error messages
         StatusHandlerFloatingDialog statusHandler(this, getJobNames(), syncStartTime,
@@ -4546,10 +4559,9 @@ void MainDialog::onStartSync(wxCommandEvent& event)
                                                   guiCfg.mainCfg.autoRetryDelay,
                                                   globalCfg_.soundFileSyncFinished,
                                                   globalCfg_.soundFileAlertPending,
-                                                  globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.size,
-                                                  globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.isMaximized,
+                                                  progressDim,
                                                   globalCfg_.progressDlgAutoClose,
-                                                  errorLogStart.get());
+                                                  std::exchange(errorLogPrepSync_, {})); //"consume" comparison's error log during sync
         try
         {
             //PERF_START;
@@ -4607,11 +4619,26 @@ void MainDialog::onStartSync(wxCommandEvent& event)
         setLastOperationLog(r.summary, r.errorLog.ptr());
 
         globalCfg_.progressDlgAutoClose = r.autoCloseDialog;
-        globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.size        = r.dlgSize;
-        globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.isMaximized = r.dlgIsMaximized;
+        globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.size        = r.dlgDim.size;
+        globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.isMaximized = r.dlgDim.isMaximized;
 
         //update last sync stats for the selected cfg files
-        updateConfigLastRunStats(r.summary, getStats(r.errorLog.ref()), r.logFilePath);
+        const ErrorLogStats& logStats = getStats(r.errorLog.ref());
+        cfggrid::getDataView(*m_gridCfgHistory).setLastRunStats(activeConfigFiles_,
+        {
+            r.logFilePath,
+            std::chrono::system_clock::to_time_t(r.summary.startTime),
+            r.summary.syncResult,
+            r.summary.statsProcessed.items,
+            r.summary.statsProcessed.bytes,
+            r.summary.totalTime,
+            logStats.error,
+            logStats.warning,
+        });
+        //re-apply selection: sort order changed if sorted by last sync time
+        cfggrid::addAndSelect(*m_gridCfgHistory, activeConfigFiles_, false /*scrollToSelection*/);
+        //m_gridCfgHistory->Refresh(); <- implicit in last call
+
 
         //remove empty rows: just a beautification, invalid rows shouldn't cause issues
         filegrid::getDataView(*m_gridMainC).removeInvalidRows();
@@ -4732,11 +4759,11 @@ void MainDialog::startSyncForSelecction(const std::vector<FileSystemObject*>& se
         const std::vector<FolderPairSyncCfg> fpCfg = extractSyncCfg(guiCfg.mainCfg);
 
         //only apply partial sync to base pairs that contain at least one item to sync (e.g. avoid needless sync.ffs_db updates)
-        std::vector<std::shared_ptr<BaseFolderPair>> folderCmpSelect;
-        std::vector<FolderPairSyncCfg>               fpCfgSelect;
+        std::vector<SharedRef<BaseFolderPair>> folderCmpSelect;
+        std::vector<FolderPairSyncCfg>         fpCfgSelect;
 
         for (size_t i = 0; i < folderCmp_.size(); ++i)
-            if (basePairsSelect.contains(folderCmp_[i].get()))
+            if (basePairsSelect.contains(&folderCmp_[i].ref()))
             {
                 folderCmpSelect.push_back(folderCmp_[i]);
                 fpCfgSelect    .push_back(     fpCfg[i]);
@@ -4793,32 +4820,15 @@ void MainDialog::startSyncForSelecction(const std::vector<FileSystemObject*>& se
         const StatusHandlerTemporaryPanel::Result r = statusHandler.reportResults(); //noexcept
 
         setLastOperationLog(r.summary, r.errorLog.ptr());
+
+        append(errorLogPrepSync_, r.errorLog.ref());
+
     } //run updateGui() *after* reverting our temporary exclusions
 
     //remove empty rows: just a beautification, invalid rows shouldn't cause issues
     filegrid::getDataView(*m_gridMainC).removeInvalidRows();
 
     updateGui();
-}
-
-
-void MainDialog::updateConfigLastRunStats(const ProcessSummary& summary, const ErrorLogStats& logStats, const AbstractPath& logFilePath)
-{
-    cfggrid::getDataView(*m_gridCfgHistory).setLastRunStats(activeConfigFiles_,
-    {
-        logFilePath,
-        std::chrono::system_clock::to_time_t(summary.startTime),
-        summary.syncResult,
-        summary.statsProcessed.items,
-        summary.statsProcessed.bytes,
-        summary.totalTime,
-        logStats.error,
-        logStats.warning,
-    });
-
-    //re-apply selection: sort order changed if sorted by last sync time
-    cfggrid::addAndSelect(*m_gridCfgHistory, activeConfigFiles_, false /*scrollToSelection*/);
-    //m_gridCfgHistory->Refresh(); <- implicit in last call
 }
 
 
@@ -4884,8 +4894,8 @@ void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::s
     logPanel_->setLog(errorLog);
 
     m_panelLog->Layout();
-    //m_panelItemStats->Layout(); //needed?
-    //m_panelTimeStats->Layout(); //
+    //m_panelItemStats->Dimensions(); //needed?
+    //m_panelTimeStats->Dimensions(); //
 
     setImage(*m_bpButtonToggleLog, layOver(loadImage("log_file"), logOverlayImage, wxALIGN_BOTTOM | wxALIGN_RIGHT));
     m_bpButtonToggleLog->Show(static_cast<bool>(errorLog));
@@ -5212,7 +5222,7 @@ void MainDialog::updateGridViewData()
     m_bpButtonViewType         ->Show(anyViewButtonShown);
     m_bpButtonViewFilterContext->Show(anyViewButtonShown);
 
-    //m_panelViewFilter->Layout(); -> yes, needed, but will also be called in updateStatistics();
+    //m_panelViewFilter->Dimensions(); -> yes, needed, but will also be called in updateStatistics();
 
     //all three grids retrieve their data directly via gridDataView
     filegrid::refresh(*m_gridMainL, *m_gridMainC, *m_gridMainR);

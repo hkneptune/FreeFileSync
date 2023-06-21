@@ -64,7 +64,7 @@ std::variant<ItemType, Zstring /*last existing parent path*/> getItemTypeIfExist
     }
     catch (const SysErrorCode& e) //let's dig deeper, but *only* if error code sounds like "not existing"
     {
-        const std::optional<Zstring> parentPath = getParentFolderPath(itemPath);
+        const std::optional<Zstring>& parentPath = getParentFolderPath(itemPath);
         if (!parentPath) //device root => quick access test
             throw;
         if (e.errorCode == ENOENT)
@@ -176,8 +176,6 @@ uint64_t zen::getFileSize(const Zstring& filePath) //throw FileError
     }
     catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(filePath)), e.toString()); }
 }
-
-
 
 
 Zstring zen::getTempFolderPath() //throw FileError
@@ -561,7 +559,7 @@ void zen::createDirectoryIfMissingRecursion(const Zstring& dirPath) //throw File
             }
             catch (FileError&) //not yet existing or access error
             {
-                const std::optional<Zstring> parentPath = getParentFolderPath(dirPathEx);
+                const std::optional<Zstring>& parentPath = getParentFolderPath(dirPathEx);
                 if (!parentPath)//device root => quick access test
                     throw;
                 dirNames.push_front(getItemName(dirPathEx));
@@ -667,7 +665,7 @@ FileCopyResult zen::copyNewFile(const Zstring& sourceFile, const Zstring& target
     }
     FileOutputPlain fileOut(fdTarget, targetFile); //pass ownership
 
-    //preallocate disk space + reduce fragmentation (perf: no real benefit)
+    //preallocate disk space + reduce fragmentation 
     fileOut.reserveSpace(sourceInfo.st_size); //throw FileError
 
     unbufferedStreamCopy([&](void* buffer, size_t bytesToRead)
@@ -686,8 +684,10 @@ FileCopyResult zen::copyNewFile(const Zstring& sourceFile, const Zstring& target
     },
     fileOut.getBlockSize() /*throw FileError*/); //throw FileError, X
 
+  //possible improvement: copy_file_range() performs an in-kernel copy: https://github.com/coreutils/coreutils/blob/17479ef60c8edbd2fe8664e31a7f69704f0cd221/src/copy.c#L342
+
 #if 0
-    //clean file system cache: needed at all? no user complaints at all!!!
+    //clean file system cache: needed at all? no user complaints at all so far!!!
     //posix_fadvise(POSIX_FADV_DONTNEED) does nothing, unless data was already read from/written to disk: https://insights.oetiker.ch/linux/fadvise/
     //    => should be "most" of the data at this point => good enough?
     if (::posix_fadvise(fileIn.getHandle(), 0 /*offset*/, 0 /*len*/, POSIX_FADV_DONTNEED) != 0) //"len == 0" means "end of the file"

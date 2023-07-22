@@ -27,7 +27,8 @@ std::wstring zen::formatTwoDigitPrecision(double value)
     //print two digits: 0,1 | 1,1 | 11
     if (std::abs(value) < 9.95) //9.99 must not be formatted as "10.0"
         return printNumber<std::wstring>(L"%.1f", value);
-    return numberTo<std::wstring>(std::llround(value));
+
+    return formatNumber(std::llround(value));
 }
 
 
@@ -38,7 +39,8 @@ std::wstring zen::formatThreeDigitPrecision(double value)
         return printNumber<std::wstring>(L"%.2f", value);
     if (std::abs(value) < 99.95) //99.99 must not be formatted as "100.0"
         return printNumber<std::wstring>(L"%.1f", value);
-    return numberTo<std::wstring>(std::llround(value));
+
+    return formatNumber(std::llround(value));
 }
 
 
@@ -151,10 +153,9 @@ std::wstring zen::formatRemainingTime(double timeInSec)
 
 std::wstring zen::formatProgressPercent(double fraction, int decPlaces)
 {
-#if 0 //special case for perf!?
-    if (decPlaces == 0)
-        return numberTo<std::wstring>(static_cast<int>(fraction * 100)) + L'%';
-#endif
+    if (decPlaces == 0) //special case for perf
+        return numberTo<std::wstring>(static_cast<int>(std::floor(fraction * 100))) + L'%';
+
     //round down! don't show 100% when not actually done: https://freefilesync.org/forum/viewtopic.php?t=9781
     const double blocks = std::pow(10, decPlaces);
     const double percent = std::floor(fraction * 100 * blocks) / blocks;

@@ -22,20 +22,20 @@ bool uiUpdateDue(bool force = false); //test if a specific amount of time is ove
     - Synchronization  0.74 ms (despite complex graph control!)               */
 
 //Exception class used to abort the "compare" and "sync" process
-class AbortProcess {};
+class CancelProcess {};
 
 
-enum class AbortTrigger
+enum class CancelReason
 {
     user,
-    program,
+    firstError,
 };
 
 //GUI may want to abort process
-struct AbortCallback
+struct CancelCallback
 {
-    virtual ~AbortCallback() {}
-    virtual void userRequestAbort() = 0;
+    virtual ~CancelCallback() {}
+    virtual void userRequestCancel() = 0;
 };
 
 
@@ -65,7 +65,7 @@ struct Statistics
     };
     virtual ErrorStats getErrorStats() const = 0;
 
-    virtual std::optional<AbortTrigger> getAbortStatus() const = 0;
+    virtual std::optional<CancelReason> taskCancelled() const = 0;
     virtual const std::wstring& currentStatusText() const = 0;
 };
 
@@ -73,7 +73,7 @@ struct Statistics
 struct ProcessSummary
 {
     std::chrono::system_clock::time_point startTime;
-    SyncResult syncResult = SyncResult::aborted;
+    TaskResult result = TaskResult::cancelled;
     std::vector<std::wstring> jobNames; //may be empty
     ProgressStats statsProcessed;
     ProgressStats statsTotal;
@@ -82,7 +82,7 @@ struct ProcessSummary
 
 
 //partial callback implementation with common functionality for "batch", "GUI/Compare" and "GUI/Sync"
-class StatusHandler : public ProcessCallback, public AbortCallback, public Statistics
+class StatusHandler : public ProcessCallback, public CancelCallback, public Statistics
 {
 public:
     //StatusHandler() {}
@@ -99,49 +99,49 @@ public:
     void updateDataProcessed(int itemsDelta, int64_t bytesDelta) override { updateData(statsCurrent_, itemsDelta, bytesDelta); } //note: these methods MUST NOT throw in order
     void updateDataTotal    (int itemsDelta, int64_t bytesDelta) override { updateData(statsTotal_,   itemsDelta, bytesDelta); } //to allow usage within destructors!
 
-    void requestUiUpdate(bool force) final //throw AbortProcess
+    void requestUiUpdate(bool force) final //throw CancelProcess
     {
         if (uiUpdateDue(force))
         {
-            const bool abortRequestedBefore = static_cast<bool>(abortRequested_);
+            const bool abortRequestedBefore = static_cast<bool>(cancelRequested_);
 
             forceUiUpdateNoThrow();
 
-            //triggered by userRequestAbort()
+            //triggered by userRequestCancel()
             // => sufficient to evaluate occasionally when uiUpdateDue()!
             // => refresh *before* throwing: support requestUiUpdate() during destruction
-            if (abortRequested_)
+            if (cancelRequested_)
             {
                 if (!abortRequestedBefore)
-                    forceUiUpdateNoThrow(); //just once to immediately show the "Stop requested..." status after user clicks cancel
-                throw AbortProcess();
+                    forceUiUpdateNoThrow(); //immediately show the "Stop requested..." status after user clicked cancel
+                throw CancelProcess();
             }
         }
     }
 
     virtual void forceUiUpdateNoThrow() = 0; //noexcept
 
-    void updateStatus(std::wstring&& msg) final //throw AbortProcess
+    void updateStatus(std::wstring&& msg) final //throw CancelProcess
     {
         //assert(!msg.empty()); -> possible, e.g. start of parallel scan
         statusText_ = std::move(msg); //update *before* running operations that can throw
-        requestUiUpdate(false /*force*/); //throw AbortProcess
+        requestUiUpdate(false /*force*/); //throw CancelProcess
     }
 
-    [[noreturn]] void abortProcessNow(AbortTrigger trigger)
+    [[noreturn]] void cancelProcessNow(CancelReason reason)
     {
-        if (!abortRequested_ || trigger == AbortTrigger::user) //AbortTrigger::USER overwrites AbortTrigger::program
-            abortRequested_ = trigger;
+        if (!cancelRequested_ || reason == CancelReason::user) //CancelReason::user overwrites CancelReason::firstError
+            cancelRequested_ = reason;
 
         forceUiUpdateNoThrow(); //flush GUI to show new cancelled state
-        throw AbortProcess();
+        throw CancelProcess();
     }
 
-    //implement AbortCallback
-    void userRequestAbort() final
+    //implement CancelCallback
+    void userRequestCancel() final
     {
-        abortRequested_ = AbortTrigger::user; //may overwrite AbortTrigger::program
-    } //called from GUI code: this does NOT call abortProcessNow() immediately, but later when we're out of the C GUI call stack
+        cancelRequested_ = CancelReason::user; //may overwrite CancelReason::firstError
+    } //called from GUI code: this does NOT call cancelProcessNow() immediately, but later when we're out of the C GUI call stack
     //=> don't call forceUiUpdateNoThrow() here!
 
     //implement Statistics
@@ -152,7 +152,7 @@ public:
 
     const std::wstring& currentStatusText() const override { return statusText_; }
 
-    std::optional<AbortTrigger> getAbortStatus() const override { return abortRequested_; }
+    std::optional<CancelReason> taskCancelled() const override { return cancelRequested_; }
 
 private:
     void updateData(ProgressStats& stats, int itemsDelta, int64_t bytesDelta)
@@ -168,12 +168,11 @@ private:
     ProgressStats statsTotal_ {-1, -1};
     std::wstring statusText_;
 
-    std::optional<AbortTrigger> abortRequested_;
+    std::optional<CancelReason> cancelRequested_;
 };
 
 
 void delayAndCountDown(std::chrono::steady_clock::time_point delayUntil, const std::function<void(const std::wstring& timeRemMsg)>& notifyStatus);
-void runCommandAndLogErrors(const Zstring& cmdLine, zen::ErrorLog& errorLog);
 }
 
 #endif //STATUS_HANDLER_H_81704805908341534

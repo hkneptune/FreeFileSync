@@ -6,7 +6,7 @@
 
 #include "status_handler.h"
 #include <zen/basic_math.h>
-#include <zen/process_exec.h>
+//#include <zen/process_exec.h>
 
 using namespace zen;
 
@@ -27,30 +27,6 @@ bool fff::uiUpdateDue(bool force)
         return true;
     }
     return false;
-}
-
-
-void fff::runCommandAndLogErrors(const Zstring& cmdLine, ErrorLog& errorLog)
-{
-    try
-    {
-        //give consoleExecute() some "time to fail", but not too long to hang our process
-        const int DEFAULT_APP_TIMEOUT_MS = 100;
-
-        if (const auto& [exitCode, output] = consoleExecute(cmdLine, DEFAULT_APP_TIMEOUT_MS); //throw SysError, SysErrorTimeOut
-            exitCode != 0)
-            throw SysError(formatSystemError("", replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), utfTo<std::wstring>(output)));
-
-        logMsg(errorLog, _("Executing command:") + L' ' + utfTo<std::wstring>(cmdLine) + L" [" + replaceCpy(_("Exit code %x"), L"%x", L"0") + L']', MSG_TYPE_INFO);
-    }
-    catch (SysErrorTimeOut&) //child process not failed yet => probably fine :>
-    {
-        logMsg(errorLog, _("Executing command:") + L' ' + utfTo<std::wstring>(cmdLine), MSG_TYPE_INFO);
-    }
-    catch (const SysError& e)
-    {
-        logMsg(errorLog, replaceCpy(_("Command %x failed."), L"%x", fmtPath(cmdLine)) + L"\n\n" + e.toString(), MSG_TYPE_ERROR);
-    }
 }
 
 

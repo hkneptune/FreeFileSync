@@ -1,3 +1,17 @@
+FreeFileSync 12.5 [2023-07-21]
+------------------------------
+Merge logs of individual steps (comparison, manual operation, sync)
+Show total percentage in progress dialog header
+Log and report errors during cleanup or exception handling
+Skip folder traversal if existence check fails for other side of the pair
+Automatically adapt batch options to prevent hanging a non-interactive process (Windows)
+Support path lists for external applications: %item_paths%, %local_paths%, %item_names%, %parent_paths%
+Create directory lock files with hidden attribute
+Don't clear other side when right-clicking file selection
+Fixed passive FTP when using different IP than control connection
+Work around FTP servers silently renaming unsupported characters of temporary file
+
+
 FreeFileSync 12.4 [2023-06-20]
 ------------------------------
 Show dynamic error and warning count in progress dialogs

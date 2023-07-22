@@ -46,7 +46,7 @@ std::string generateLogHeaderTxt(const ProcessSummary& s, const ErrorLog& log, i
     //assemble summary box
     std::vector<std::string> summary;
     summary.emplace_back();
-    summary.push_back(tabSpace + utfTo<std::string>(getSyncResultLabel(s.syncResult)));
+    summary.push_back(tabSpace + utfTo<std::string>(getSyncResultLabel(s.result)));
     summary.emplace_back();
 
     const ErrorLogStats logCount = getStats(log);
@@ -192,12 +192,12 @@ std::wstring generateLogTitle(const ProcessSummary& s)
     if (!jobNamesFmt.empty())
         title += jobNamesFmt + L' ';
 
-    switch (s.syncResult)
+    switch (s.result)
     {
-        case SyncResult::finishedSuccess: title += utfTo<std::wstring>("\xe2\x9c\x94" "\xef\xb8\x8f"); break; //✔️
-        case SyncResult::finishedWarning: title += utfTo<std::wstring>("\xe2\x9a\xa0" "\xef\xb8\x8f"); break; //⚠️
-        case SyncResult::finishedError: //efb88f (U+FE0F): variation selector-16 to prefer emoji over text rendering
-        case SyncResult::aborted:         title += utfTo<std::wstring>("\xe2\x9d\x8c" "\xef\xb8\x8f"); break; //❌️
+        case TaskResult::success: title += utfTo<std::wstring>("\xe2\x9c\x94" "\xef\xb8\x8f"); break; //✔️
+        case TaskResult::warning: title += utfTo<std::wstring>("\xe2\x9a\xa0" "\xef\xb8\x8f"); break; //⚠️
+        case TaskResult::error: //efb88f (U+FE0F): variation selector-16 to prefer emoji over text rendering
+        case TaskResult::cancelled:         title += utfTo<std::wstring>("\xe2\x9d\x8c" "\xef\xb8\x8f"); break; //❌️
     }
     return title;
 }
@@ -205,6 +205,7 @@ std::wstring generateLogTitle(const ProcessSummary& s)
 
 std::string generateLogHeaderHtml(const ProcessSummary& s, const ErrorLog& log, int logPreviewMax)
 {
+    //caveat: non-inline CSS is often ignored by email clients!
     std::string output = R"(<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -212,7 +213,6 @@ std::string generateLogHeaderHtml(const ProcessSummary& s, const ErrorLog& log, 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>)" + htmlTxt(generateLogTitle(s)) + R"(</title>
     <style>
-)" +   /*caveat: non-inline CSS is often ignored by email clients!*/ R"(
         .summary-table td:nth-child(1) { padding-right: 10px; }
         .summary-table td:nth-child(2) { padding-right:  5px; }
         .summary-table img { display: block; }
@@ -235,18 +235,18 @@ std::string generateLogHeaderHtml(const ProcessSummary& s, const ErrorLog& log, 
               htmlTxt(formatTime(formatDateTag, tc)) + " &nbsp;" + htmlTxt(formatTime(formatTimeTag, tc)) + "</span></div>\n";
 
     std::string resultsStatusImage;
-    switch (s.syncResult)
+    switch (s.result)
     {
-        case SyncResult::finishedSuccess: resultsStatusImage = "result-succes.png"; break;
-        case SyncResult::finishedWarning: resultsStatusImage = "result-warning.png"; break;
-        case SyncResult::finishedError:
-        case SyncResult::aborted:         resultsStatusImage = "result-error.png"; break;
+        case TaskResult::success: resultsStatusImage = "result-succes.png"; break;
+        case TaskResult::warning: resultsStatusImage = "result-warning.png"; break;
+        case TaskResult::error:
+        case TaskResult::cancelled:         resultsStatusImage = "result-error.png"; break;
     }
     output += R"(
     <div style="margin:10px 0; display:inline-block; border-radius:7px; background:#f8f8f8; box-shadow:1px 1px 4px #888; overflow:hidden;">
         <div style="background-color:white; border-bottom:1px solid #AAA; font-size:larger; padding:10px;">
             <img src="https://freefilesync.org/images/log/)" + resultsStatusImage + R"(" width="32" height="32" alt="" style="vertical-align:middle;">
-            <span style="font-weight:600; vertical-align:middle;">)" + htmlTxt(getSyncResultLabel(s.syncResult)) + R"(</span>
+            <span style="font-weight:600; vertical-align:middle;">)" + htmlTxt(getSyncResultLabel(s.result)) + R"(</span>
         </div>
         <table role="presentation" class="summary-table" style="border-spacing:0; margin-left:10px; padding:5px 10px;">)";
 
@@ -603,12 +603,12 @@ Zstring fff::generateLogFileName(LogFileFormat logFormat, const ProcessSummary& 
 
     const std::wstring failStatus = [&]
     {
-        switch (summary.syncResult)
+        switch (summary.result)
         {
-            case SyncResult::finishedSuccess: break;
-            case SyncResult::finishedWarning: return _("Warning");
-            case SyncResult::finishedError:   return _("Error");
-            case SyncResult::aborted:         return _("Stopped");
+            case TaskResult::success: break;
+            case TaskResult::warning: return _("Warning");
+            case TaskResult::error:   return _("Error");
+            case TaskResult::cancelled:         return _("Stopped");
         }
         return std::wstring();
     }();
@@ -619,7 +619,7 @@ Zstring fff::generateLogFileName(LogFileFormat logFormat, const ProcessSummary& 
         logFileName += Zstr(' ');
 
     logFileName += formatTime(Zstr("%Y-%m-%d %H%M%S"), tc) +
-                   Zstr(".") + printNumber<Zstring>(Zstr("%03d"), static_cast<int>(timeMs)); //[ms] should yield a fairly unique name
+                   Zstr('.') + printNumber<Zstring>(Zstr("%03d"), static_cast<int>(timeMs)); //[ms] should yield a fairly unique name
     static_assert(TIME_STAMP_LENGTH == 21);
 
     if (!failStatus.empty())

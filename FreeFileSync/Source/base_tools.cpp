@@ -12,7 +12,7 @@ using namespace zen;
 using namespace fff;
 
 
-std::vector<unsigned int> fff::fromTimeShiftPhrase(const std::wstring& timeShiftPhrase)
+std::vector<unsigned int> fff::fromTimeShiftPhrase(const std::wstring_view timeShiftPhrase)
 {
     std::vector<unsigned int> minutes;
 

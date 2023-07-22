@@ -73,7 +73,7 @@ void writeConfig(const XmlRealConfig& cfg, XmlOut& out)
 }
 
 
-void rts::readConfig(const Zstring& filePath, XmlRealConfig& cfg, std::wstring& warningMsg) //throw FileError
+std::pair<XmlRealConfig, std::wstring /*warningMsg*/> rts::readConfig(const Zstring& filePath) //throw FileError
 {
     XmlDoc doc = loadXml(filePath); //throw FileError
 
@@ -84,23 +84,23 @@ void rts::readConfig(const Zstring& filePath, XmlRealConfig& cfg, std::wstring& 
     /*bool success =*/ doc.root().getAttribute("XmlFormat", formatVer);
 
     XmlIn in(doc);
+    XmlRealConfig cfg;
     ::readConfig(in, cfg, formatVer);
 
-    try
-    {
-        checkXmlMappingErrors(in); //throw FileError
-
-        //(try to) migrate old configuration automatically
+    std::wstring warningMsg;
+    if (const std::wstring& errors = in.getErrors();
+        !errors.empty())
+        warningMsg = replaceCpy(_("Configuration file %x is incomplete. The missing elements have been set to their default values."), L"%x", fmtPath(filePath)) + L"\n\n" +
+                     _("The following XML elements could not be read:") + L'\n' + errors;
+    else //(try to) migrate old configuration automatically
         if (formatVer < XML_FORMAT_RTS_CFG)
-            try { rts::writeConfig(cfg, filePath); /*throw FileError*/ }
-            catch (FileError&) { assert(false); } //don't bother user!
-        warn_static("at least log on failure!")
-    }
-    catch (const FileError& e)
-    {
-        warningMsg = replaceCpy(_("Configuration file %x is incomplete. The missing elements have been set to their default values."), L"%x", fmtPath(filePath)) +
-                     L"\n\n" + e.toString();
-    }
+            try
+            {
+                rts::writeConfig(cfg, filePath); //throw FileError
+            }
+            catch (const FileError& e) { warningMsg = e.toString(); }
+
+    return {cfg, warningMsg};
 }
 
 
@@ -117,7 +117,7 @@ void rts::writeConfig(const XmlRealConfig& cfg, const Zstring& filePath) //throw
 }
 
 
-void rts::readRealOrBatchConfig(const Zstring& filePath, XmlRealConfig& cfg, std::wstring& warningMsg) //throw FileError
+std::pair<XmlRealConfig, std::wstring /*warningMsg*/> rts::readRealOrBatchConfig(const Zstring& filePath) //throw FileError
 {
     XmlDoc doc = loadXml(filePath); //throw FileError
     //quick exit if file is not an FFS XML
@@ -130,8 +130,10 @@ void rts::readRealOrBatchConfig(const Zstring& filePath, XmlRealConfig& cfg, std
         //read folder pairs
         std::set<Zstring, LessNativePath> uniqueFolders;
 
-        for (XmlIn inPair = in["FolderPairs"]["Pair"]; inPair; inPair.next())
+        in["FolderPairs"].visitChildren([&](const XmlIn& inPair)
         {
+            assert(*inPair.getName() == "Pair");
+
             Zstring folderPathPhraseLeft;
             Zstring folderPathPhraseRight;
             inPair["Left" ](folderPathPhraseLeft);
@@ -139,21 +141,40 @@ void rts::readRealOrBatchConfig(const Zstring& filePath, XmlRealConfig& cfg, std
 
             uniqueFolders.insert(folderPathPhraseLeft);
             uniqueFolders.insert(folderPathPhraseRight);
-        }
+        });
 
-        try
-        {
-            checkXmlMappingErrors(in); //throw FileError
-        }
-        catch (const FileError& e) { throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)) + L"\n\n" + e.toString()); }
+        if (const std::wstring& errors = in.getErrors();
+            !errors.empty())
+            throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)),
+                            _("The following XML elements could not be read:") + L'\n' + errors);
+
         //---------------------------------------------------------------------------------------
 
         std::erase_if(uniqueFolders, [](const Zstring& str) { return trimCpy(str).empty(); });
-        cfg.directories.assign(uniqueFolders.begin(), uniqueFolders.end());
-        cfg.commandline = escapeCommandArg(fff::getFreeFileSyncLauncherPath()) + Zstr(' ') + escapeCommandArg(filePath);
+
+        std::wstring warningMsg;
+        const Zstring ffsLaunchPath = [&]() -> Zstring
+        {
+            try
+            {
+                return fff::getFreeFileSyncLauncherPath(); //throw FileError
+            }
+            catch (const FileError& e)
+            {
+                warningMsg = e.toString();
+                return Zstr("FreeFileSync"); //fallback: at least give some hint...
+            }
+        }();
+
+        XmlRealConfig cfg
+        {
+            .directories = {uniqueFolders.begin(), uniqueFolders.end()},
+            .commandline = escapeCommandArg(ffsLaunchPath) + Zstr(' ') + escapeCommandArg(filePath),
+        };
+        return {cfg, warningMsg};
     }
     else
-        return readConfig(filePath, cfg, warningMsg); //throw FileError
+        return readConfig(filePath); //throw FileError
 }
 
 
@@ -181,11 +202,11 @@ wxLanguage rts::getProgramLanguage() //throw FileError
     wxLanguage lng = wxLANGUAGE_UNKNOWN;
     in["Language"].attribute("Code", lng);
 
-    try
-    {
-        checkXmlMappingErrors(in); //throw FileError
-    }
-    catch (const FileError& e) { throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)) + L"\n\n" + e.toString()); }
+
+    if (const std::wstring& errors = in.getErrors();
+        !errors.empty())
+        throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)),
+                        _("The following XML elements could not be read:") + L'\n' + errors);
 
     return lng;
 }

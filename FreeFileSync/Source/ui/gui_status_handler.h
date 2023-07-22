@@ -32,7 +32,7 @@ public:
 
     void     initNewPhase    (int itemsTotal, int64_t bytesTotal, ProcessPhase phaseID) override; //
     void     logMessage      (const std::wstring& msg, MsgType type)                    override; //
-    void     reportWarning   (const std::wstring& msg, bool& warningActive)             override; //throw AbortProcess
+    void     reportWarning   (const std::wstring& msg, bool& warningActive)             override; //throw CancelProcess
     Response reportError     (const ErrorInfo& errorInfo)                               override; //
     void     reportFatalError(const std::wstring& msg)                                  override; //
     ErrorStats getErrorStats() const override;
@@ -44,7 +44,7 @@ public:
         ProcessSummary summary;
         zen::SharedRef<const zen::ErrorLog> errorLog;
     };
-    Result reportResults(); //noexcept!!
+    Result prepareResult(); //noexcept!!
 
 private:
     void onLocalKeyEvent(wxKeyEvent& event);
@@ -60,7 +60,7 @@ private:
     const std::chrono::seconds autoRetryDelay_;
     const Zstring soundFileAlertPending_;
     const std::chrono::system_clock::time_point startTime_;
-    const std::chrono::steady_clock::time_point startTimeSteady_ = std::chrono::steady_clock::now();
+    const std::chrono::steady_clock::time_point panelInitTime_ = std::chrono::steady_clock::now();
 };
 
 
@@ -77,13 +77,12 @@ public:
                                 const Zstring& soundFileSyncComplete,
                                 const Zstring& soundFileAlertPending,
                                 const zen::WindowLayout::Dimensions& dim,
-                                bool autoCloseDialog,
-                                zen::ErrorLog errorLogPrefix /*optional, unifying assignment*/); //noexcept!
+                                bool autoCloseDialog); //noexcept!
     ~StatusHandlerFloatingDialog();
 
     void     initNewPhase    (int itemsTotal, int64_t bytesTotal, ProcessPhase phaseID) override; //
     void     logMessage      (const std::wstring& msg, MsgType type)                    override; //
-    void     reportWarning   (const std::wstring& msg, bool& warningActive)             override; //throw AbortProcess
+    void     reportWarning   (const std::wstring& msg, bool& warningActive)             override; //throw CancelProcess
     Response reportError     (const ErrorInfo& errorInfo)                               override; //
     void     reportFatalError(const std::wstring& msg)                                  override; //
     ErrorStats getErrorStats() const override;
@@ -91,24 +90,26 @@ public:
     void updateDataProcessed(int itemsDelta, int64_t bytesDelta) override; //noexcept!!
     void forceUiUpdateNoThrow()                                  override; //
 
+    struct Result
+    {
+        ProcessSummary summary;
+        zen::SharedRef<zen::ErrorLog> errorLog;
+    };
+    Result prepareResult();
+
     enum class FinalRequest
     {
         none,
         exit,
         shutdown
     };
-    struct Result
+    struct DlgOptions
     {
-        ProcessSummary summary;
-        zen::SharedRef<const zen::ErrorLog> errorLog;
+        bool autoCloseSelected;
+        zen::WindowLayout::Dimensions dim;
         FinalRequest finalRequest;
-        AbstractPath logFilePath;
-        zen::WindowLayout::Dimensions dlgDim;
-        bool autoCloseDialog;
     };
-    Result reportResults(const Zstring& postSyncCommand, PostSyncCondition postSyncCondition,
-                         const AbstractPath& logFolderPath, int logfilesMaxAgeDays, LogFileFormat logFormat, const std::set<AbstractPath>& logFilePathsToKeep,
-                         const std::string& emailNotifyAddress, ResultsNotification emailNotifyCondition); //noexcept!!
+    DlgOptions showResult();
 
 private:
     const std::vector<std::wstring> jobNames_;
@@ -118,9 +119,10 @@ private:
     const Zstring soundFileSyncComplete_;
     const Zstring soundFileAlertPending_;
     SyncProgressDialog* progressDlg_; //managed to have the same lifetime as this handler!
-    zen::SharedRef<zen::ErrorLog> errorLog_;
+    zen::SharedRef<zen::ErrorLog> errorLog_ = zen::makeSharedRef<zen::ErrorLog>();
     mutable Statistics::ErrorStats errorStatsBuf_{};
     mutable size_t errorStatsRowsChecked_ = 0;
+    std::optional<TaskResult> syncResult_;
 };
 }
 

@@ -15,7 +15,7 @@
 namespace fff
 {
 //convert "ignoreTimeShiftMinutes" into compact format:
-std::vector<unsigned int> fromTimeShiftPhrase(const std::wstring& timeShiftPhrase);
+std::vector<unsigned int> fromTimeShiftPhrase(const std::wstring_view timeShiftPhrase);
 std::wstring              toTimeShiftPhrase  (const std::vector<unsigned int>& ignoreTimeShiftMinutes);
 
 //inform about (important) non-default global settings related to comparison and synchronization

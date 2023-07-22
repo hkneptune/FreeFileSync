@@ -173,13 +173,6 @@ std::unordered_map<Zstring, Zstring> getAllEnvVars()
 }
 
 constinit Global<std::unordered_map<Zstring, Zstring>> globalEnvVars;
-GLOBAL_RUN_ONCE(
-    //*INDENT-OFF*
-    //mitigate static initialization order fiasco: (whatever comes first)
-    if (!globalEnvVars.get())
-        globalEnvVars.set(std::make_unique<std::unordered_map<Zstring, Zstring>>(getAllEnvVars()))
-    //*INDENT-ON*
-);
 }
 
 
@@ -191,24 +184,17 @@ std::optional<Zstring> zen::getEnvironmentVar(const ZstringView name)
         getenv_s() to the rescue!? not implemented on GCC, apparently *still* not threadsafe!!!
 
         => *eff* this: make a global copy during start up! */
-    std::shared_ptr<std::unordered_map<Zstring, Zstring>> envVars = globalEnvVars.get();
-    if (!envVars) //access during static init or shutdown?
+    globalEnvVars.setOnce([] { return std::make_unique<std::unordered_map<Zstring, Zstring>>(getAllEnvVars()); });
+
+    if (std::shared_ptr<std::unordered_map<Zstring, Zstring>> envVars = globalEnvVars.get())
     {
-        if (globalEnvVars.wasDestroyed())
-        {
-            assert(false);
-            return {}; //SOL!
-        }
-        //mitigate static initialization order fiasco: (whatever comes first)
-        globalEnvVars.set(std::make_unique<std::unordered_map<Zstring, Zstring>>(getAllEnvVars()));
-        envVars = globalEnvVars.get();
+        if (const auto it = envVars->find(name);
+            it != envVars->end())
+            return it->second;
     }
-
-    const auto it = envVars->find(name);
-    if (it == envVars->end())
-        return {};
-
-    return it->second;
+    else
+        assert(false); //access during global shutdown => SOL!
+    return {};
 }
 
 

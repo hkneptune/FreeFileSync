@@ -59,7 +59,6 @@ std::wstring formatGaiErrorCode(int ec)
 using SocketType = int;
 const SocketType invalidSocket = -1;
 inline void closeSocket(SocketType s) { ::close(s); }
-warn_static("log on error!")
 
 void setNonBlocking(SocketType socket, bool value); //throw SysError
 
@@ -194,8 +193,7 @@ size_t tryReadSocket(SocketType socket, void* buffer, size_t bytesToRead) //thro
     if (bytesReceived < 0)
         THROW_LAST_SYS_ERROR_WSA("recv");
 
-    if (static_cast<size_t>(bytesReceived) > bytesToRead) //better safe than sorry
-        throw SysError(formatSystemError("recv", L"", L"Buffer overflow."));
+    ASSERT_SYSERROR(makeUnsigned(bytesReceived) <= bytesToRead); //better safe than sorry
 
     return bytesReceived; //"zero indicates end of file"
 }
@@ -218,10 +216,11 @@ size_t tryWriteSocket(SocketType socket, const void* buffer, size_t bytesToWrite
     }
     if (bytesWritten < 0)
         THROW_LAST_SYS_ERROR_WSA("send");
-    if (bytesWritten > static_cast<int>(bytesToWrite))
-        throw SysError(formatSystemError("send", L"", L"Buffer overflow."));
+
     if (bytesWritten == 0)
         throw SysError(formatSystemError("send", L"", L"Zero bytes processed."));
+
+    ASSERT_SYSERROR(makeUnsigned(bytesWritten) <= bytesToWrite); //better safe than sorry
 
     return bytesWritten;
 }

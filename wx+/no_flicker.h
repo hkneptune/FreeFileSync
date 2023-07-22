@@ -55,7 +55,7 @@ void setTextWithUrls(wxRichTextCtrl& richCtrl, const wxString& newText)
 
     for (auto it = newText.begin();;)
     {
-        const std::wstring_view urlPrefix = L"https://";
+        constexpr std::wstring_view urlPrefix = L"https://";
         const auto itUrl = std::search(it, newText.end(), urlPrefix.begin(), urlPrefix.end());
         if (it != itUrl)
             blocks.emplace_back(BlockType::text, wxString(it, itUrl));

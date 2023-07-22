@@ -41,7 +41,7 @@ basic_string<Char, Traits, Alloc> operator+(basic_string<Char, Traits, Alloc>&& 
 //---------------------------------------------------------------------------------
 
 //support for std::string::resize_and_overwrite()
-#define ZEN_HAVE_RESIZE_AND_OVERWRITE 1
+    #define ZEN_HAVE_RESIZE_AND_OVERWRITE 1
 
 namespace zen
 {

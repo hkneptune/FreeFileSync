@@ -24,7 +24,6 @@ private:
     int  OnExit() override;
     bool OnExceptionInMainLoop() override { throw; } //just re-throw and avoid display of additional messagebox: it will be caught in OnUnhandledException()
     void OnUnhandledException () override;
-    void notifyAppError(const std::wstring& msg, FfsExitCode rc);
     wxLayoutDirection GetLayoutDirection() const override;
     void onEnterEventLoop();
 

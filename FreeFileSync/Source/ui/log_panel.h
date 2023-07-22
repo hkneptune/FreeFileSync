@@ -30,9 +30,9 @@ private:
     void onErrors  (wxCommandEvent& event) override;
     void onWarnings(wxCommandEvent& event) override;
     void onInfo    (wxCommandEvent& event) override;
-    void onGridButtonEvent(wxKeyEvent& event);
     void onMsgGridContext (zen::GridContextMenuEvent& event);
-    void onLocalKeyEvent  (wxKeyEvent& event);
+    void onGridKeyEvent (wxKeyEvent& event);
+    void onLocalKeyEvent(wxKeyEvent& event);
 
     void copySelectionToClipboard();
 

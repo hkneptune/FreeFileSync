@@ -26,12 +26,8 @@ void libsshCurlUnifiedInit()
 
     libcurlInit(); //includes WSAStartup() also needed by libssh2
 
-    [[maybe_unused]] const int rc2 = ::libssh2_init(0);
-    assert(rc2 == 0); //libssh2 unconditionally returns 0 => why then have a return value in first place???
-    /*  we need libssh2's crypto init:
-        - there is other OpenSSL-related initialization which might be needed (and hopefully won't hurt...) */
-
-    warn_static("log on error")
+    [[maybe_unused]] const int rc = ::libssh2_init(0); //includes OpenSSL-related initialization which might be needed (and hopefully won't hurt...)
+    assert(rc == 0); //libssh2 unconditionally returns 0 => why then have a return value in first place???
 }
 
 

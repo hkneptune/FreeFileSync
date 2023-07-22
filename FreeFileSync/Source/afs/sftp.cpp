@@ -47,7 +47,7 @@ OpenSSL supports the same ciphers like WinCNG plus the following:
     cast128-cbc
     blowfish-cbc                    */
 
-const ZstringView sftpPrefix = Zstr("sftp:");
+constexpr ZstringView sftpPrefix = Zstr("sftp:");
 
 constexpr std::chrono::seconds SFTP_SESSION_MAX_IDLE_TIME           (20);
 constexpr std::chrono::seconds SFTP_SESSION_CLEANUP_INTERVAL         (4); //facilitate default of 5-seconds delay for error retry
@@ -658,19 +658,23 @@ private:
     {
         for (SftpChannelInfo& ci : sftpChannels_)
             //ci.nbInfo.commandPending? => may "legitimately" happen when an SFTP command times out
-            ::libssh2_sftp_shutdown(ci.sftpChannel);
+            if (::libssh2_sftp_shutdown(ci.sftpChannel) != LIBSSH2_ERROR_NONE)
+                assert(false);
 
         if (sshSession_)
         {
+            //*INDENT-OFF*
             if (!nbInfo_.commandPending && std::all_of(sftpChannels_.begin(), sftpChannels_.end(),
-            [](const SftpChannelInfo& ci) { return !ci.nbInfo.commandPending; }))
-            ::libssh2_session_disconnect(sshSession_, "FreeFileSync says \"bye\"!"); //= server notification only! no local cleanup apparently
+                [](const SftpChannelInfo& ci) { return !ci.nbInfo.commandPending; }))
+                if (::libssh2_session_disconnect(sshSession_, "FreeFileSync says \"bye\"!") != LIBSSH2_ERROR_NONE) //= server notification only! no local cleanup apparently
+                    assert(false);
             //else: avoid further stress on the broken SSH session and take French leave
 
             //nbInfo_.commandPending? => have to clean up, no matter what!
-            ::libssh2_session_free(sshSession_);
+            if (::libssh2_session_free(sshSession_) != LIBSSH2_ERROR_NONE)
+                assert(false);
+            //*INDENT-ON*
         }
-        warn_static("log on error!")
     }
 
     std::wstring formatLastSshError(const char* functionName, LIBSSH2_SFTP* sftpChannel /*optional*/) const
@@ -787,19 +791,9 @@ public:
             return session_->tryNonBlocking(channelNo, commandStartTime, functionName, sftpCommand, timeoutSec_); //throw SysError, SysErrorSftpProtocol
         }
 
-        void finishBlocking(size_t channelNo, std::chrono::steady_clock::time_point commandStartTime, const char* functionName,
-                            const std::function<int(const SshSession::Details& sd)>& sftpCommand /*noexcept!*/)
+        void waitForTraffic() //throw SysError
         {
-            for (;;)
-                try
-                {
-                    if (session_->tryNonBlocking(channelNo, commandStartTime, functionName, sftpCommand, timeoutSec_)) //throw SysError, SysErrorSftpProtocol
-                        return;
-                    else //pending
-                        SshSession::waitForTraffic({session_.get()}, timeoutSec_); //throw SysError
-                }
-                catch (SysError&) { return; }
-            warn_static("log on error!")
+            SshSession::waitForTraffic({session_.get()}, timeoutSec_); //throw SysError
         }
 
         size_t getSftpChannelCount() const { return session_->getSftpChannelCount(); }
@@ -1148,8 +1142,7 @@ std::vector<SftpItem> getDirContentFlat(const SftpLogin& login, const AfsPath& d
         runSftpCommand(login, "libssh2_sftp_closedir", //throw SysError, SysErrorSftpProtocol
         [&](const SshSession::Details& sd) { return ::libssh2_sftp_closedir(dirHandle); }); //noexcept!
     }
-    catch (SysError&) {});
-    warn_static("log on error!")
+    catch (const SysError& e) { logExtraError(replaceCpy(_("Cannot read directory %x."), L"%x", fmtPath(getSftpDisplayPath(login, dirPath))) + L"\n\n" + e.toString()); });
 
     std::vector<SftpItem> output;
     for (;;)
@@ -1340,8 +1333,7 @@ struct InputStreamSftp : public AFS::InputStream
             session_->executeBlocking("libssh2_sftp_close", //throw SysError, SysErrorSftpProtocol
             [&](const SshSession::Details& sd) { return ::libssh2_sftp_close(fileHandle_); }); //noexcept!
         }
-        catch (const SysError&) {}
-        warn_static("log on error?")
+        catch (const SysError& e) { logExtraError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(displayPath_)) + L"\n\n" + e.toString()); }
     }
 
     size_t getBlockSize() override { return SFTP_OPTIMAL_BLOCK_SIZE_READ; } //throw (FileError); non-zero block size is AFS contract!
@@ -1364,8 +1356,7 @@ struct InputStreamSftp : public AFS::InputStream
                 return static_cast<int>(bytesRead);
             });
 
-            if (makeUnsigned(bytesRead) > bytesToRead) //better safe than sorry
-                throw SysError(formatSystemError("libssh2_sftp_read", L"", L"Buffer overflow.")); //user should never see this
+            ASSERT_SYSERROR(makeUnsigned(bytesRead) <= bytesToRead); //better safe than sorry (user should never see this)
         }
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(displayPath_)), e.toString()); }
 
@@ -1424,8 +1415,7 @@ struct OutputStreamSftp : public AFS::OutputStreamImpl
             {
                 close(); //throw FileError
             }
-            catch (FileError&) {}
-        warn_static("log!?")
+            catch (const FileError& e) { logExtraError(e.toString()); }
     }
 
     size_t getBlockSize() override { return SFTP_OPTIMAL_BLOCK_SIZE_WRITE; } //throw (FileError)
@@ -1450,8 +1440,7 @@ struct OutputStreamSftp : public AFS::OutputStreamImpl
                 return static_cast<int>(bytesWritten);
             });
 
-            if (makeUnsigned(bytesWritten) > bytesToWrite) //better safe than sorry
-                throw SysError(formatSystemError("libssh2_sftp_write", L"", L"Buffer overflow."));
+            ASSERT_SYSERROR(makeUnsigned(bytesWritten) <= bytesToWrite); //better safe than sorry
         }
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(displayPath_)), e.toString()); }
 
@@ -1755,8 +1744,7 @@ private:
                 runSftpCommand(sftpFs.login_, "libssh2_sftp_readlink", //throw SysError, SysErrorSftpProtocol
                 [&](const SshSession::Details& sd) { return rc = ::libssh2_sftp_readlink(sd.sftpChannel, getLibssh2Path(linkPath), buf.data(), buf.size()); }); //noexcept!
 
-                if (makeUnsigned(rc) > buf.size()) //better safe than sorry
-                    throw SysError(formatSystemError("libssh2_sftp_readlink", L"", L"Buffer overflow.")); //user should never see this
+                ASSERT_SYSERROR(makeUnsigned(rc) <= buf.size()); //better safe than sorry
             }
             catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(sftpFs.getDisplayPath(linkPath))), e.toString()); }
 

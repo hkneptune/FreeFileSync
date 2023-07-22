@@ -598,71 +598,68 @@ void checkPathRaceCondition(const BaseFolderPair& baseFolderP, const BaseFolderP
     const AbstractPath basePathP = baseFolderP.getAbstractPath<sideP>(); //parent/child notion is tentative at this point
     const AbstractPath basePathC = baseFolderC.getAbstractPath<sideC>(); //=> will be swapped if necessary
 
-    if (!AFS::isNullPath(basePathP) && !AFS::isNullPath(basePathC))
-        if (basePathP.afsDevice == basePathC.afsDevice)
+    assert(!AFS::isNullPath(basePathP) && !AFS::isNullPath(basePathC));
+    if (basePathP.afsDevice == basePathC.afsDevice)
+    {
+        if (basePathP.afsPath.value.size() > basePathC.afsPath.value.size())
+            return checkPathRaceCondition<sideC, sideP>(baseFolderC, baseFolderP, pathRaceItems);
+
+        const std::vector<Zstring> relPathP = splitCpy(basePathP.afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip);
+        const std::vector<Zstring> relPathC = splitCpy(basePathC.afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip);
+
+        if (relPathP.size() <= relPathC.size() &&
+        /**/std::equal(relPathP.begin(), relPathP.end(), relPathC.begin(), [](const Zstring& lhs, const Zstring& rhs) { return equalNoCase(lhs, rhs); }))
         {
-            if (basePathP.afsPath.value.size() > basePathC.afsPath.value.size())
-                return checkPathRaceCondition<sideC, sideP>(baseFolderC, baseFolderP, pathRaceItems);
+            //=> at this point parent/child folders are confirmed
+            //now find child folder match inside baseFolderP
+            //e.g.  C:\folder <-> C:\folder\sub    =>  find "sub" inside C:\folder
+            std::vector<const ContainerObject*> childFolderP{&baseFolderP};
 
-            const std::vector<Zstring> relPathP = splitCpy(basePathP.afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip);
-            const std::vector<Zstring> relPathC = splitCpy(basePathC.afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip);
-
-            if (relPathP.size() <= relPathC.size() &&
-            /**/std::equal(relPathP.begin(), relPathP.end(), relPathC.begin(), [](const Zstring& lhs, const Zstring& rhs) { return equalNoCase(lhs, rhs); }))
+            std::for_each(relPathC.begin() + relPathP.size(), relPathC.end(), [&](const Zstring& itemName)
             {
-                //=> at this point parent/child folders are confirmed
-                //now find child folder match inside baseFolderP
-                //e.g.  C:\folder <-> C:\folder\sub    =>  find "sub" inside C:\folder
-                std::vector<const ContainerObject*> childFolderP{&baseFolderP};
+                std::vector<const ContainerObject*> childFolderP2;
 
-                std::for_each(relPathC.begin() + relPathP.size(), relPathC.end(), [&](const Zstring& itemName)
-                {
-                    std::vector<const ContainerObject*> childFolderP2;
-
-                    for (const ContainerObject* childFolder : childFolderP)
-                        for (const FolderPair& folder : childFolder->refSubFolders())
-                            if (equalNoCase(folder.getItemName<sideP>(), itemName))
-                                childFolderP2.push_back(&folder);
-                    //no "break": yes, weird, but there could be more than one (for case-sensitive file system)
-
-                    childFolderP = std::move(childFolderP2);
-                });
-
-                std::vector<ChildPathRef> pathRefsP;
                 for (const ContainerObject* childFolder : childFolderP)
-                    append(pathRefsP, GetChildItemsHashed<sideP>::execute(*childFolder));
+                    for (const FolderPair& folder : childFolder->refSubFolders())
+                        if (equalNoCase(folder.getItemName<sideP>(), itemName))
+                            childFolderP2.push_back(&folder);
+                //no "break": yes, weird, but there could be more than one (for case-sensitive file system)
 
-                std::vector<ChildPathRef> pathRefsC = GetChildItemsHashed<sideC>::execute(baseFolderC);
+                childFolderP = std::move(childFolderP2);
+            });
 
-                //---------------------------------------------------------------------------------------------------
-                //case-sensitive comparison because items were scanned by FFS (=> no messy user input)?
-                //not good enough! E.g. not-yet-existing files are set to be created with different case!
-                // + (weird) a file and a folder are set to be created with same name
-                // => (throw hands in the air) fine, check path only and don't consider case
-                sortAndRemoveDuplicates<sideP>(pathRefsP);
-                sortAndRemoveDuplicates<sideC>(pathRefsC);
+            std::vector<ChildPathRef> pathRefsP;
+            for (const ContainerObject* childFolder : childFolderP)
+                append(pathRefsP, GetChildItemsHashed<sideP>::execute(*childFolder));
 
-                mergeTraversal(pathRefsP.begin(), pathRefsP.end(),
-                               pathRefsC.begin(), pathRefsC.end(),
-                [](const ChildPathRef&) {} /*left only*/,
-                [&](const ChildPathRef& lhs, const ChildPathRef& rhs)
+            std::vector<ChildPathRef> pathRefsC = GetChildItemsHashed<sideC>::execute(baseFolderC);
+
+            //---------------------------------------------------------------------------------------------------
+            //case-sensitive comparison because items were scanned by FFS (=> no messy user input)?
+            //not good enough! E.g. not-yet-existing files are set to be created with different case!
+            // + (weird) a file and a folder are set to be created with same name
+            // => (throw hands in the air) fine, check path only and don't consider case
+            sortAndRemoveDuplicates<sideP>(pathRefsP);
+            sortAndRemoveDuplicates<sideC>(pathRefsC);
+
+            mergeTraversal(pathRefsP.begin(), pathRefsP.end(),
+                           pathRefsC.begin(), pathRefsC.end(),
+            [](const ChildPathRef&) {} /*left only*/,
+            [&](const ChildPathRef& lhs, const ChildPathRef& rhs)
+            {
+                if (plannedWriteAccess<sideP>(*lhs.fsObj) ||
+                    plannedWriteAccess<sideC>(*rhs.fsObj))
                 {
-                    if (plannedWriteAccess<sideP>(*lhs.fsObj) ||
-                        plannedWriteAccess<sideC>(*rhs.fsObj))
-                    {
-                        pathRaceItems.push_back({lhs.fsObj, sideP});
-                        pathRaceItems.push_back({rhs.fsObj, sideC});
-                    }
-                },
-                [](const ChildPathRef&) {} /*right only*/, compareHashedPathNoCase<sideP, sideC>);
-            }
+                    pathRaceItems.push_back({lhs.fsObj, sideP});
+                    pathRaceItems.push_back({rhs.fsObj, sideC});
+                }
+            },
+            [](const ChildPathRef&) {} /*right only*/, compareHashedPathNoCase<sideP, sideC>);
         }
+    }
 }
 
 //#################################################################################################################
-
-warn_static("review: does flushFileBuffers() make sense?")
-//https://devblogs.microsoft.com/oldnewthing/20221007-00/?p=107261
 
 //--------------------- data verification -------------------------
 void flushFileBuffers(const Zstring& nativeFilePath) //throw FileError
@@ -2485,7 +2482,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
         //keep at beginning so that all gui elements are initialized properly
         callback.initNewPhase(itemsTotal, //throw X
                               bytesTotal,
-                              ProcessPhase::synchronizing);
+                              ProcessPhase::sync);
     }
 
     //-------------------------------------------------------------------------------
@@ -2532,6 +2529,9 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
         const FolderPairSyncCfg& folderPairCfg  = syncConfig[folderIndex];
         const SyncStatistics&    folderPairStat = folderPairStats[folderIndex];
 
+        //=============== start with checks that may SKIP folder pairs ===============
+        //============================================================================
+
         //exclude a few pathological cases, e.g. empty folder pair
         if (baseFolder.getAbstractPath<SelectSide::left >() ==
             baseFolder.getAbstractPath<SelectSide::right>())
@@ -2540,54 +2540,19 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
             continue;
         }
 
-        //prepare conflict preview:
-        if (folderPairStat.conflictCount() > 0)
-            checkUnresolvedConflicts.emplace_back(&baseFolder, folderPairStat.conflictCount(), folderPairStat.getConflictsPreview());
-
-        //consider *all* paths that might be used during versioning limit at some time
-        const AbstractPath versioningFolderPath = createAbstractPath(folderPairCfg.versioningFolderPhrase);
-
-        if (folderPairCfg.handleDeletion == DeletionVariant::versioning &&
-            folderPairCfg.versioningStyle != VersioningStyle::replace)
-            if (folderPairCfg.versionMaxAgeDays > 0 || folderPairCfg.versionCountMax > 0) //same check as in applyVersioningLimit()
-                checkVersioningLimitPaths.insert(versioningFolderPath);
-
-        const bool writeLeft = folderPairStat.createCount<SelectSide::left>() +
-                               folderPairStat.updateCount<SelectSide::left>() +
-                               folderPairStat.deleteCount<SelectSide::left>() > 0;
-
-        const bool writeRight = folderPairStat.createCount<SelectSide::right>() +
-                                folderPairStat.updateCount<SelectSide::right>() +
-                                folderPairStat.deleteCount<SelectSide::right>() > 0;
-
-        //prepare: check if some files are used by multiple pairs in read/write access
-        checkBaseFolderRaceCondition.emplace_back(&baseFolder, SelectSide::left,  writeLeft);
-        checkBaseFolderRaceCondition.emplace_back(&baseFolder, SelectSide::right, writeRight);
-
-        //prepare: check if versioning path itself will be synchronized (and was not excluded via filter)
-        if (folderPairCfg.handleDeletion == DeletionVariant::versioning)
-            checkVersioningPaths.insert(versioningFolderPath);
-
-        checkVersioningBasePaths.emplace_back(baseFolder.getAbstractPath<SelectSide::left >(), &baseFolder.getFilter());
-        checkVersioningBasePaths.emplace_back(baseFolder.getAbstractPath<SelectSide::right>(), &baseFolder.getFilter());
-
-        //===============================================================================
-        //================ begin of checks that may SKIP folder pairs ===================
-        //===============================================================================
+        //synchronization with only one folder selected, doesn't make sense => don't support "deletion via empty source folder"
+        if (AFS::isNullPath(baseFolder.getAbstractPath<SelectSide::left >()) ||
+            AFS::isNullPath(baseFolder.getAbstractPath<SelectSide::right>()))
+        {
+            callback.reportFatalError(_("A folder input field is empty."));
+            skipFolderPair[folderIndex] = true;
+            continue;
+        }
 
         //skip folder pair if there is nothing to do (except when DB files need to be updated for two-way mode and move-detection)
         //=> avoid redundant errors in checkBaseFolderStatus() if base folder existence test failed during comparison
         if (getCUD(folderPairStat) == 0 && !folderPairCfg.saveSyncDB)
         {
-            skipFolderPair[folderIndex] = true;
-            continue;
-        }
-
-        //check for empty target folder paths: this only makes sense if empty field is source (and no DB files need to be created)
-        if ((AFS::isNullPath(baseFolder.getAbstractPath<SelectSide::left >()) && (writeLeft  || folderPairCfg.saveSyncDB)) ||
-            (AFS::isNullPath(baseFolder.getAbstractPath<SelectSide::right>()) && (writeRight || folderPairCfg.saveSyncDB)))
-        {
-            callback.reportFatalError(_("Target folder input field must not be empty."));
             skipFolderPair[folderIndex] = true;
             continue;
         }
@@ -2605,16 +2570,15 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
         //allow propagation of deletions only from *empty* or *existing* source folder:
         auto sourceFolderMissing = [&](const AbstractPath& baseFolderPath, BaseFolderStatus folderStatus) //we need to evaluate existence status from time of comparison!
         {
-            if (!AFS::isNullPath(baseFolderPath))
-                //PERMANENT network drop: avoid data loss when source directory is not found AND user chose to ignore errors (else we wouldn't arrive here)
-                if (folderPairStat.deleteCount() > 0) //check deletions only... (respect filtered items!)
-                    //folderPairStat.conflictCount() == 0 && -> there COULD be conflicts for <Two way> variant if directory existence check fails, but loading sync.ffs_db succeeds
-                    //https://sourceforge.net/tracker/?func=detail&atid=1093080&aid=3531351&group_id=234430 -> fixed, but still better not consider conflicts!
-                    if (folderStatus != BaseFolderStatus::existing) //avoid race-condition: we need to evaluate existence status from time of comparison!
-                    {
-                        callback.reportFatalError(replaceCpy(_("Source folder %x not found."), L"%x", fmtPath(AFS::getDisplayPath(baseFolderPath))));
-                        return true;
-                    }
+            //PERMANENT network drop: avoid data loss when source directory is not found AND user chose to ignore errors (else we wouldn't arrive here)
+            if (folderPairStat.deleteCount() > 0) //check deletions only... (respect filtered items!)
+                //folderPairStat.conflictCount() == 0 && -> there COULD be conflicts for <Two way> variant if directory existence check fails, but loading sync.ffs_db succeeds
+                //https://sourceforge.net/tracker/?func=detail&atid=1093080&aid=3531351&group_id=234430 -> fixed, but still better not consider conflicts!
+                if (folderStatus != BaseFolderStatus::existing) //avoid race-condition: we need to evaluate existence status from time of comparison!
+                {
+                    callback.reportFatalError(replaceCpy(_("Source folder %x not found."), L"%x", fmtPath(AFS::getDisplayPath(baseFolderPath))));
+                    return true;
+                }
             return false;
         };
         if (sourceFolderMissing(baseFolder.getAbstractPath<SelectSide::left >(), baseFolder.getFolderStatus<SelectSide:: left>()) ||
@@ -2625,6 +2589,8 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
         }
 
         //check if user-defined directory for deletion was specified
+        const AbstractPath versioningFolderPath = createAbstractPath(folderPairCfg.versioningFolderPhrase);
+
         if (folderPairCfg.handleDeletion == DeletionVariant::versioning)
             if (AFS::isNullPath(versioningFolderPath))
             {
@@ -2633,17 +2599,47 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
                 continue;
             }
 
+        //============ Warnings (*after* potential folder pair skips) ============
+        //========================================================================
+
+        //prepare conflict preview:
+        if (folderPairStat.conflictCount() > 0)
+            checkUnresolvedConflicts.emplace_back(&baseFolder, folderPairStat.conflictCount(), folderPairStat.getConflictsPreview());
+
+        //prepare: check if some files are used by multiple pairs in read/write access
+        const bool writeLeft = folderPairStat.createCount<SelectSide::left>() +
+                               folderPairStat.updateCount<SelectSide::left>() +
+                               folderPairStat.deleteCount<SelectSide::left>() > 0;
+
+        const bool writeRight = folderPairStat.createCount<SelectSide::right>() +
+                                folderPairStat.updateCount<SelectSide::right>() +
+                                folderPairStat.deleteCount<SelectSide::right>() > 0;
+
+        checkBaseFolderRaceCondition.emplace_back(&baseFolder, SelectSide::left,  writeLeft);
+        checkBaseFolderRaceCondition.emplace_back(&baseFolder, SelectSide::right, writeRight);
+
+        //prepare: check if versioning path itself will be synchronized (and was not excluded via filter)
+        if (folderPairCfg.handleDeletion == DeletionVariant::versioning)
+            checkVersioningPaths.insert(versioningFolderPath);
+
+        checkVersioningBasePaths.emplace_back(baseFolder.getAbstractPath<SelectSide::left >(), &baseFolder.getFilter());
+        checkVersioningBasePaths.emplace_back(baseFolder.getAbstractPath<SelectSide::right>(), &baseFolder.getFilter());
+
+        //prepare: versioning folder paths differing only in case
+        if (folderPairCfg.handleDeletion == DeletionVariant::versioning &&
+            folderPairCfg.versioningStyle != VersioningStyle::replace)
+            if (folderPairCfg.versionMaxAgeDays > 0 || folderPairCfg.versionCountMax > 0) //same check as in applyVersioningLimit()
+                checkVersioningLimitPaths.insert(versioningFolderPath);
+
         //check if more than 50% of total number of files/dirs are to be created/overwritten/deleted
-        if (!AFS::isNullPath(baseFolder.getAbstractPath<SelectSide::left >()) &&
-            !AFS::isNullPath(baseFolder.getAbstractPath<SelectSide::right>()))
-            if (significantDifferenceDetected(folderPairStat))
-                checkSignificantDiffPairs.emplace_back(baseFolder.getAbstractPath<SelectSide::left >(),
-                                                       baseFolder.getAbstractPath<SelectSide::right>());
+        if (significantDifferenceDetected(folderPairStat))
+            checkSignificantDiffPairs.emplace_back(baseFolder.getAbstractPath<SelectSide::left >(),
+                                                   baseFolder.getAbstractPath<SelectSide::right>());
 
         //check for sufficient free diskspace (folderPath might not yet exist!)
         auto checkSpace = [&](const AbstractPath& baseFolderPath, int64_t minSpaceNeeded)
         {
-            if (!AFS::isNullPath(baseFolderPath) && minSpaceNeeded > 0)
+            if (minSpaceNeeded > 0)
                 try
                 {
                     const int64_t freeSpace = AFS::getFreeDiskSpace(baseFolderPath); //throw FileError, returns < 0 if not available
@@ -2823,14 +2819,14 @@ break2:
                         msg += L"\n\n" +
                                _("Selected folder:")   + L" \t" + AFS::getDisplayPath(folderPath) + L'\n' +
                                _("Versioning folder:") + L" \t" + AFS::getDisplayPath(versioningFolderPath);
-                        if (pd->folderPathParent == folderPath) //else: probably fine? :>
-                            if (!pd->relPath.empty())
+
+                        if (pd->folderPathParent == folderPath) //if versioning folder is a subfolder of a base folder
+                            if (!pd->relPath.empty())           //this can be fixed via an exclude filter
                             {
                                 shouldExclude = true;
                                 msg += std::wstring() + L'\n' + L"⇒ " +
                                        _("Exclude:") + L" \t" + utfTo<std::wstring>(FILE_NAME_SEPARATOR + pd->relPath + FILE_NAME_SEPARATOR);
                             }
-                        warn_static("else: ???")
                     }
         }
         if (!msg.empty())
@@ -2935,8 +2931,6 @@ break2:
             tryReportingError([&]
             {
                 copyPermissionsFp = copyFilePermissions && //copy permissions only if asked for and supported by *both* sides!
-                !AFS::isNullPath(baseFolder.getAbstractPath<SelectSide::left >()) && //scenario: directory selected on one side only
-                !AFS::isNullPath(baseFolder.getAbstractPath<SelectSide::right>()) && //
                 AFS::supportPermissionCopy(baseFolder.getAbstractPath<SelectSide::left>(),
                                            baseFolder.getAbstractPath<SelectSide::right>()); //throw FileError
             }, callback); //throw X

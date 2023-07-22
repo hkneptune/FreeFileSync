@@ -35,7 +35,7 @@ const size_t FTP_BLOCK_SIZE_UPLOAD   = 64 * 1024; //libcurl requests blocks of 6
 const size_t FTP_STREAM_BUFFER_SIZE = 1024 * 1024; //unit: [byte]
 //stream buffer should be big enough to facilitate prefetching during alternating read/write operations => e.g. see serialize.h::unbufferedStreamCopy()
 
-const ZstringView ftpPrefix = Zstr("ftp:");
+constexpr ZstringView ftpPrefix = Zstr("ftp:");
 
 
 enum class ServerEncoding
@@ -331,10 +331,16 @@ public:
         else
             ::curl_easy_reset(easyHandle_);
 
-        std::vector<CurlOption> options;
+        auto setCurlOption = [easyHandle = easyHandle_](const CurlOption& curlOpt) //throw SysError
+        {
+            if (const CURLcode rc = ::curl_easy_setopt(easyHandle, curlOpt.option, curlOpt.value);
+                rc != CURLE_OK)
+                throw SysError(formatSystemError("curl_easy_setopt(" + numberTo<std::string>(static_cast<int>(curlOpt.option)) + ")",
+                                                 formatCurlStatusCode(rc), utfTo<std::wstring>(::curl_easy_strerror(rc))));
+        };
 
         char curlErrorBuf[CURL_ERROR_SIZE] = {};
-        options.emplace_back(CURLOPT_ERRORBUFFER, curlErrorBuf);
+        setCurlOption({CURLOPT_ERRORBUFFER, curlErrorBuf}); //throw SysError
 
         std::string headerData;
         curl_write_callback onHeaderReceived = [](/*const*/ char* buffer, size_t size, size_t nitems, void* callbackData)
@@ -343,50 +349,59 @@ public:
             output.append(buffer, size * nitems);
             return size * nitems;
         };
-        options.emplace_back(CURLOPT_HEADERDATA, &headerData);
-        options.emplace_back(CURLOPT_HEADERFUNCTION, onHeaderReceived);
+        setCurlOption({CURLOPT_HEADERDATA, &headerData}); //throw SysError
+        setCurlOption({CURLOPT_HEADERFUNCTION, onHeaderReceived}); //throw SysError
 
-        //lifetime: keep alive until after curl_easy_setopt() below
-        const std::string curlPath = getCurlUrlPath(itemPath, isDir); //throw SysError
-        options.emplace_back(CURLOPT_URL, curlPath.c_str());
+        setCurlOption({CURLOPT_URL, getCurlUrlPath(itemPath, isDir).c_str()}); //throw SysError
 
         assert(pathMethod != CURLFTPMETHOD_MULTICWD); //too slow!
-        options.emplace_back(CURLOPT_FTP_FILEMETHOD, pathMethod);
+        setCurlOption({CURLOPT_FTP_FILEMETHOD, pathMethod}); //throw SysError
 
-        //ANSI or UTF encoding?
-        //  "modern" FTP servers (implementing RFC 2640) have UTF8 enabled by default => pray and hope for the best.
-        //  What about ANSI-FTP servers and "Microsoft FTP Service" which requires "OPTS UTF8 ON"? => *psh*
-        //  CURLOPT_PREQUOTE to the rescue? Nope, issued long after USER/PASS
-        const auto& username = utfTo<std::string>(sessionCfg_.deviceId.username);
-        const auto& password = utfTo<std::string>(sessionCfg_.password);
-        if (!username.empty()) //else: libcurl will default to CURL_DEFAULT_USER("anonymous") and CURL_DEFAULT_PASSWORD("ftp@example.com")
+        if (!sessionCfg_.deviceId.username.empty()) //else: libcurl will default to CURL_DEFAULT_USER("anonymous") and CURL_DEFAULT_PASSWORD("ftp@example.com")
         {
-            options.emplace_back(CURLOPT_USERNAME, username.c_str());
-            options.emplace_back(CURLOPT_PASSWORD, password.c_str()); //curious: libcurl will *not* default to CURL_DEFAULT_USER when setting password but no username
+            //ANSI or UTF encoding?
+            //  "modern" FTP servers (implementing RFC 2640) have UTF8 enabled by default => pray and hope for the best.
+            //  What about ANSI-FTP servers and "Microsoft FTP Service" which requires "OPTS UTF8 ON"? => *psh*
+            //  CURLOPT_PREQUOTE to the rescue? Nope, issued long after USER/PASS
+            setCurlOption({CURLOPT_USERNAME, utfTo<std::string>(sessionCfg_.deviceId.username).c_str()}); //throw SysError
+            setCurlOption({CURLOPT_PASSWORD, utfTo<std::string>(sessionCfg_.password         ).c_str()}); //throw SysError
+            //curious: libcurl will *not* default to CURL_DEFAULT_USER when setting password but no username
         }
 
-        options.emplace_back(CURLOPT_PORT, sessionCfg_.deviceId.port);
+        setCurlOption({CURLOPT_PORT, sessionCfg_.deviceId.port}); //throw SysError
 
-        options.emplace_back(CURLOPT_NOSIGNAL, 1); //thread-safety: https://curl.haxx.se/libcurl/c/threadsafe.html
+        //thread-safety: https://curl.haxx.se/libcurl/c/threadsafe.html
+        setCurlOption({CURLOPT_NOSIGNAL, 1}); //throw SysError
+
+        //allow PASV IP: some FTP servers really use IP different from control connection
+        setCurlOption({CURLOPT_FTP_SKIP_PASV_IP, 0}); //throw SysError
+        //let's not hold our breath until Curl adds a reasonable PASV handling => patch libcurl accordingly!
+        //https://github.com/curl/curl/issues/1455
+        //https://github.com/curl/curl/pull/1470
+        //support broken servers like this one: https://freefilesync.org/forum/viewtopic.php?t=4301
+
 
         const std::shared_ptr<int> timeoutSec = timeoutSec_.lock();
         assert(timeoutSec);
         if (!timeoutSec)
             throw std::runtime_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] FtpSession: Timeout duration was not set.");
 
-        options.emplace_back(CURLOPT_CONNECTTIMEOUT, *timeoutSec);
+        setCurlOption({CURLOPT_CONNECTTIMEOUT, *timeoutSec}); //throw SysError
 
         //CURLOPT_TIMEOUT: "Since this puts a hard limit for how long time a request is allowed to take, it has limited use in dynamic use cases with varying transfer times."
-        options.emplace_back(CURLOPT_LOW_SPEED_TIME, *timeoutSec);
-        options.emplace_back(CURLOPT_LOW_SPEED_LIMIT, 1); //[bytes], can't use "0" which means "inactive", so use some low number
+        setCurlOption({CURLOPT_LOW_SPEED_TIME, *timeoutSec}); //throw SysError
+        setCurlOption({CURLOPT_LOW_SPEED_LIMIT, 1}); //throw SysError
+        ; //[bytes], can't use "0" which means "inactive", so use some low number
 
         //unlike CURLOPT_TIMEOUT, this one is NOT a limit on the total transfer time
-        options.emplace_back(CURLOPT_SERVER_RESPONSE_TIMEOUT, *timeoutSec); //== alias of CURLOPT_SERVER_RESPONSE_TIMEOUT
+        setCurlOption({CURLOPT_SERVER_RESPONSE_TIMEOUT, *timeoutSec}); //throw SysError
+        //== alias of CURLOPT_SERVER_RESPONSE_TIMEOUT
 
         //CURLOPT_ACCEPTTIMEOUT_MS? => only relevant for "active" FTP connections
 
         //long-running file uploads require us to send keep-alives for the TCP control connection: https://freefilesync.org/forum/viewtopic.php?t=6928
-        options.emplace_back(CURLOPT_TCP_KEEPALIVE, 1); //=> CURLOPT_TCP_KEEPIDLE (=delay) and CURLOPT_TCP_KEEPINTVL both default to 60 sec
+        setCurlOption({CURLOPT_TCP_KEEPALIVE, 1}); //throw SysError
+        //=> CURLOPT_TCP_KEEPIDLE (=delay) and CURLOPT_TCP_KEEPINTVL both default to 60 sec
 
 
         std::optional<SysError> socketException;
@@ -409,8 +424,8 @@ public:
             return (*clientp)(curlfd, purpose); //free this poor little C-API from its shackles and redirect to a proper lambda
         };
 
-        options.emplace_back(CURLOPT_SOCKOPTFUNCTION, onSocketCreateWrapper);
-        options.emplace_back(CURLOPT_SOCKOPTDATA, &onSocketCreate);
+        setCurlOption({CURLOPT_SOCKOPTFUNCTION, onSocketCreateWrapper}); //throw SysError
+        setCurlOption({CURLOPT_SOCKOPTDATA, &onSocketCreate}); //throw SysError
 
         //Use share interface? https://curl.haxx.se/libcurl/c/libcurl-share.html
         //perf test, 4 and 8 parallel threads:
@@ -475,37 +490,35 @@ public:
             return cs;
         }();
         //CURLSHcode ::curl_share_cleanup(curlShare);
-        options.emplace_back(CURLOPT_SHARE, curlShare);
+        setCurlOption({CURLOPT_SHARE, curlShare}); //throw SysError
 #endif
 
         //TODO: FTP option to require certificate checking?
 #if 0
-        options.emplace_back(CURLOPT_CAINFO, "cacert.pem"); //hopefully latest version from https://curl.haxx.se/docs/caextract.html
+        setCurlOption({CURLOPT_CAINFO, "cacert.pem"}); //throw SysError
+        //hopefully latest version from https://curl.haxx.se/docs/caextract.html
         //libcurl forwards this char-string to OpenSSL as is, which (thank god) accepts UTF8
 #else
-        options.emplace_back(CURLOPT_CAINFO, 0); //be explicit: "even when [CURLOPT_SSL_VERIFYPEER] is disabled [...] curl may still load the certificate file specified in CURLOPT_CAINFO."
+        setCurlOption({CURLOPT_CAINFO, 0}); //throw SysError
+        //be explicit: "even when [CURLOPT_SSL_VERIFYPEER] is disabled [...] curl may still load the certificate file specified in CURLOPT_CAINFO."
 
         //check if server certificate can be trusted? (Default: 1L)
         //  => may fail with: "CURLE_PEER_FAILED_VERIFICATION: SSL certificate problem: certificate has expired"
-        options.emplace_back(CURLOPT_SSL_VERIFYPEER, 0);
+        setCurlOption({CURLOPT_SSL_VERIFYPEER, 0}); //throw SysError
         //check that server name matches the name in the certificate? (Default: 2L)
         //  => may fail with: "CURLE_PEER_FAILED_VERIFICATION: SSL: no alternative certificate subject name matches target host name 'freefilesync.org'"
-        options.emplace_back(CURLOPT_SSL_VERIFYHOST, 0);
+        setCurlOption({CURLOPT_SSL_VERIFYHOST, 0}); //throw SysError
 #endif
         if (sessionCfg_.useTls) //https://tools.ietf.org/html/rfc4217
         {
-            options.emplace_back(CURLOPT_USE_SSL,    CURLUSESSL_ALL); //require SSL for both control and data
-            options.emplace_back(CURLOPT_FTPSSLAUTH, CURLFTPAUTH_TLS); //try TLS first, then SSL (currently: CURLFTPAUTH_DEFAULT == CURLFTPAUTH_SSL)
+            //require SSL for both control and data:
+            setCurlOption({CURLOPT_USE_SSL,    CURLUSESSL_ALL}); //throw SysError
+            //try TLS first, then SSL (currently: CURLFTPAUTH_DEFAULT == CURLFTPAUTH_SSL):
+            setCurlOption({CURLOPT_FTPSSLAUTH, CURLFTPAUTH_TLS}); //throw SysError
         }
 
-        //let's not hold our breath until Curl adds a reasonable PASV handling => patch libcurl accordingly!
-        //https://github.com/curl/curl/issues/1455
-        //https://github.com/curl/curl/pull/1470
-        //support broken servers like this one: https://freefilesync.org/forum/viewtopic.php?t=4301
-
-        append(options, extraOptions);
-
-        applyCurlOptions(easyHandle_, options); //throw SysError
+        for (const CurlOption& option : extraOptions)
+            setCurlOption(option); //throw SysError
 
         //=======================================================================================================
         const CURLcode rcPerf = ::curl_easy_perform(easyHandle_);
@@ -857,11 +870,11 @@ private:
         if (!featureCache_)
         {
             static constinit FunStatGlobal<Protected<FeatureList>> globalServerFeatures;
-            globalServerFeatures.initOnce([] { return std::make_unique<Protected<FeatureList>>(); });
+            globalServerFeatures.setOnce([] { return std::make_unique<Protected<FeatureList>>(); });
 
             const auto sf = globalServerFeatures.get();
             if (!sf)
-                throw SysError(formatSystemError("FtpSession::getFeatureSupport", L"", L"Function call not allowed during init/shutdown."));
+                throw SysError(formatSystemError("FtpSession::getFeatureSupport", L"", L"Function call not allowed during application shutdown."));
 
             sf->access([&](const FeatureList& featList)
             {
@@ -2210,7 +2223,7 @@ private:
             const Zstring itemName = getItemName(itemPath);
             assert(!itemName.empty());
             //is the underlying file system case-sensitive? we don't know => assume "case-sensitive"
-            //all path components (except the base folder part!) can be expected to have the right case anyway after traversal
+            //all path components (except the base folder part!) can be expected to have the right case anyway after directory traversal
             for (const FtpItem& item : items)
                 if (item.itemName == itemName)
                     return item.type;

@@ -304,17 +304,17 @@ struct fff::UpdateCheckResultPrep
     std::vector<std::pair<std::string, std::string>> postParameters;
     std::optional<SysError> error;
 };
-std::shared_ptr<const UpdateCheckResultPrep> fff::automaticUpdateCheckPrepare(wxWindow& parent)
+SharedRef<const UpdateCheckResultPrep> fff::automaticUpdateCheckPrepare(wxWindow& parent)
 {
     assert(runningOnMainThread());
-    auto prep = std::make_shared<UpdateCheckResultPrep>();
+    auto prep = makeSharedRef<UpdateCheckResultPrep>();
     try
     {
-        prep->postParameters = geHttpPostParameters(parent); //throw SysError
+        prep.ref().postParameters = geHttpPostParameters(parent); //throw SysError
     }
     catch (const SysError& e)
     {
-        prep->error = e;
+        prep.ref().error = e;
     }
     return prep;
 }
@@ -326,32 +326,30 @@ struct fff::UpdateCheckResult
     bool internetIsAlive = false;
     std::optional<SysError> error;
 };
-std::shared_ptr<const UpdateCheckResult> fff::automaticUpdateCheckRunAsync(const UpdateCheckResultPrep* resultPrep)
+SharedRef<const UpdateCheckResult> fff::automaticUpdateCheckRunAsync(const UpdateCheckResultPrep& resultPrep)
 {
     //assert(!runningOnMainThread()); -> allow synchronous call, too
-    auto result = std::make_shared<UpdateCheckResult>();
+    auto result = makeSharedRef<UpdateCheckResult>();
     try
     {
-        if (resultPrep->error)
-            throw* resultPrep->error; //throw SysError
+        if (resultPrep.error)
+            throw* resultPrep.error; //throw SysError
 
-        result->onlineVersion = getOnlineVersion(resultPrep->postParameters); //throw SysError
-        result->internetIsAlive = true;
+        result.ref().onlineVersion = getOnlineVersion(resultPrep.postParameters); //throw SysError
+        result.ref().internetIsAlive = true;
     }
     catch (const SysError& e)
     {
-        result->error = e;
-        result->internetIsAlive = internetIsAlive();
+        result.ref().error = e;
+        result.ref().internetIsAlive = internetIsAlive();
     }
     return result;
 }
 
 
-void fff::automaticUpdateCheckEval(wxWindow& parent, time_t& lastUpdateCheck, std::string& lastOnlineVersion, const UpdateCheckResult* asyncResult)
+void fff::automaticUpdateCheckEval(wxWindow& parent, time_t& lastUpdateCheck, std::string& lastOnlineVersion, const UpdateCheckResult& result)
 {
     assert(runningOnMainThread());
-
-    const UpdateCheckResult& result = *asyncResult;
 
     if (!result.error)
     {
@@ -378,7 +376,7 @@ void fff::automaticUpdateCheckEval(wxWindow& parent, time_t& lastUpdateCheck, st
                     break;
                 case ConfirmationButton2::accept2: //retry
                     automaticUpdateCheckEval(parent, lastUpdateCheck, lastOnlineVersion,
-                                             automaticUpdateCheckRunAsync(automaticUpdateCheckPrepare(parent).get()).get()); //note: retry via recursion!!!
+                                             automaticUpdateCheckRunAsync(automaticUpdateCheckPrepare(parent).ref()).ref()); //note: retry via recursion!!!
                     break;
                 case ConfirmationButton2::cancel:
                     break;

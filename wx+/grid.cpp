@@ -129,17 +129,23 @@ void GridData::renderCell(wxDC& dc, const wxRect& rect, size_t row, ColumnType c
 
 int GridData::getBestSize(wxDC& dc, size_t row, ColumnType colType)
 {
-    return dc.GetTextExtent(getValue(row, colType)).GetWidth() + 2 * getColumnGapLeft() + 1; //gap on left and right side + border
+    return dc.GetTextExtent(getValue(row, colType)).GetWidth() + 2 * getColumnGapLeft() + fastFromDIP(1); //gap on left and right side + border
 }
 
 
 wxRect GridData::drawCellBorder(wxDC& dc, const wxRect& rect) //returns remaining rectangle
 {
-    wxDCPenChanger dummy2(dc, wxPen(getColorGridLine(), fastFromDIP(1)));
-    dc.DrawLine(rect.GetBottomLeft(),  rect.GetBottomRight());
-    dc.DrawLine(rect.GetBottomRight(), rect.GetTopRight() + wxPoint(0, -1));
+    //following code is adapted from clearArea():
+    assert(getColorGridLine().IsSolid());
+    //wxDC::DrawRectangle() just widens inner area if wxTRANSPARENT_PEN is used!
+    //bonus: wxTRANSPARENT_PEN is about 2x faster than redundantly drawing with col!
+    wxDCPenChanger   areaPen  (dc, *wxTRANSPARENT_PEN);
+    wxDCBrushChanger areaBrush(dc, getColorGridLine());
 
-    return wxRect(rect.GetTopLeft(), wxSize(rect.width - 1, rect.height - 1));
+    dc.DrawRectangle(rect.x + rect.width - fastFromDIP(1), rect.y, fastFromDIP(1), rect.height); //right border
+    dc.DrawRectangle(rect.x, rect.y + rect.height - fastFromDIP(1), rect.width, fastFromDIP(1)); //bottom border
+
+    return wxRect(rect.GetTopLeft(), wxSize(rect.width - fastFromDIP(1), rect.height - fastFromDIP(1)));
 }
 
 
@@ -439,7 +445,7 @@ class Grid::RowLabelWin : public SubWindow
 public:
     explicit RowLabelWin(Grid& parent) :
         SubWindow(parent),
-        rowHeight_(parent.GetCharHeight() + 2 + 1) {} //default height; don't call any functions on "parent" other than those from wxWindow during construction!
+        rowHeight_(parent.GetCharHeight() + fastFromDIP(2) + fastFromDIP(1)) {} //default height; don't call any functions on "parent" other than those from wxWindow during construction!
     //2 for some more space, 1 for bottom border (gives 15 + 2 + 1 on Windows, 17 + 2 + 1 on Ubuntu)
 
     int getBestWidth(ptrdiff_t rowFrom, ptrdiff_t rowTo)

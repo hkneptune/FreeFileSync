@@ -186,7 +186,7 @@ void ConfigView::setLastInSyncTime(const std::vector<Zstring>& filePaths, time_t
         auto it = cfgList_.find(filePath);
         assert(it != cfgList_.end());
         if (it != cfgList_.end())
-            it->second.cfgItem.lastRunStats.syncTime = lastRunTime;
+            it->second.cfgItem.lastRunStats.startTime = lastRunTime;
     }
 
     if (sortColumn_ != ColumnTypeCfg::name)
@@ -258,8 +258,8 @@ void ConfigView::sortListViewImpl()
             return lhs->second.isLastRunCfg < rhs->second.isLastRunCfg; //"last session" label should be (always) last
 
         return makeSortDirection(std::greater(), std::bool_constant<ascending>())(
-                   lhs->second.cfgItem.lastRunStats.syncTime,
-                   rhs->second.cfgItem.lastRunStats.syncTime);
+                   lhs->second.cfgItem.lastRunStats.startTime,
+                   rhs->second.cfgItem.lastRunStats.startTime);
         //[!] ascending lastSync shows lowest "days past" first <=> highest lastSyncTime first
     };
 
@@ -268,8 +268,8 @@ void ConfigView::sortListViewImpl()
         if (lhs->second.isLastRunCfg != rhs->second.isLastRunCfg)
             return lhs->second.isLastRunCfg < rhs->second.isLastRunCfg; //"last session" label should be (always) last
 
-        const bool wasRunL = lhs->second.cfgItem.lastRunStats.syncTime != 0;
-        const bool wasRunR = rhs->second.cfgItem.lastRunStats.syncTime != 0;
+        const bool wasRunL = lhs->second.cfgItem.lastRunStats.startTime != 0;
+        const bool wasRunR = rhs->second.cfgItem.lastRunStats.startTime != 0;
         if (wasRunL != wasRunR)
             return wasRunL > wasRunR; //move sync jobs that were never run to the back
 
@@ -337,7 +337,7 @@ public:
 
     static int getRowDefaultHeight(const Grid& grid)
     {
-        return std::max(getDefaultMenuIconSize(), grid.getMainWin().GetCharHeight()) + fastFromDIP(1); //+ some space
+        return std::max(getDefaultMenuIconSize(), grid.getMainWin().GetCharHeight()) + fastFromDIP(1) /*extra space*/; 
     }
 
     int  getSyncOverdueDays() const { return syncOverdueDays_; }
@@ -376,21 +376,21 @@ private:
                 case ColumnTypeCfg::lastSync:
                     if (!item->isLastRunCfg)
                     {
-                        if (item->cfgItem.lastRunStats.syncTime == 0)
+                        if (item->cfgItem.lastRunStats.startTime == 0)
                             return std::wstring(1, EN_DASH);
 
-                        //return utfTo<std::wstring>(formatTime(formatDateTimeTag, getLocalTime(item->cfgItem.lastRunStats.syncTime)));
+                        //return utfTo<std::wstring>(formatTime(formatDateTimeTag, getLocalTime(item->cfgItem.lastRunStats.startTime)));
 
-                        const int daysPast = getDaysPast(item->cfgItem.lastRunStats.syncTime);
+                        const int daysPast = getDaysPast(item->cfgItem.lastRunStats.startTime);
                         return daysPast == 0 ?
-                               utfTo<std::wstring>(formatTime(Zstr("%R") /*equivalent to "%H:%M"*/, getLocalTime(item->cfgItem.lastRunStats.syncTime))) :
+                               utfTo<std::wstring>(formatTime(Zstr("%R") /*equivalent to "%H:%M"*/, getLocalTime(item->cfgItem.lastRunStats.startTime))) :
                                //_("Today") :
                                _P("1 day", "%x days", daysPast);
                     }
                     break;
 
                 case ColumnTypeCfg::lastLog:
-                    if (!item->isLastRunCfg && item->cfgItem.lastRunStats.syncTime != 0)
+                    if (!item->isLastRunCfg && item->cfgItem.lastRunStats.startTime != 0)
                         return getSyncResultLabel(item->cfgItem.lastRunStats.syncResult);
                     break;
             }
@@ -498,7 +498,7 @@ private:
                 {
                     wxDCTextColourChanger textColor2(dc);
                     if (syncOverdueDays_ > 0)
-                        if (getDaysPast(item->cfgItem.lastRunStats.syncTime) >= syncOverdueDays_)
+                        if (getDaysPast(item->cfgItem.lastRunStats.startTime) >= syncOverdueDays_)
                             textColor2.Set(*wxRED);
 
                     drawCellText(dc, rect, getValue(row, colType), wxALIGN_CENTER);
@@ -506,18 +506,18 @@ private:
                 break;
 
                 case ColumnTypeCfg::lastLog:
-                    if (!item->isLastRunCfg && item->cfgItem.lastRunStats.syncTime != 0)
+                    if (!item->isLastRunCfg && item->cfgItem.lastRunStats.startTime != 0)
                     {
                         const wxImage statusIcon = [&]
                         {
                             switch (item->cfgItem.lastRunStats.syncResult)
                             {
-                                case SyncResult::finishedSuccess:
+                                case TaskResult::success:
                                     return loadImage("msg_success", getDefaultMenuIconSize());
-                                case SyncResult::finishedWarning:
+                                case TaskResult::warning:
                                     return loadImage("msg_warning", getDefaultMenuIconSize());
-                                case SyncResult::finishedError:
-                                case SyncResult::aborted:
+                                case TaskResult::error:
+                                case TaskResult::cancelled:
                                     return loadImage("msg_error", getDefaultMenuIconSize());
                             }
                             assert(false);
@@ -654,7 +654,7 @@ private:
                     break;
 
                 case ColumnTypeCfg::lastLog:
-                    if (!item->isLastRunCfg && item->cfgItem.lastRunStats.syncTime != 0)
+                    if (!item->isLastRunCfg && item->cfgItem.lastRunStats.startTime != 0)
                     {
                         std::wstring tooltip = getSyncResultLabel(item->cfgItem.lastRunStats.syncResult) + L"\n";
 

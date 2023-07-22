@@ -20,12 +20,12 @@ struct XmlRealConfig
     unsigned int delay = 10;
 };
 
-void readConfig(const Zstring& filePath, XmlRealConfig& config, std::wstring& warningMsg); //throw FileError
+std::pair<XmlRealConfig, std::wstring /*warningMsg*/>  readConfig(const Zstring& filePath); //throw FileError
 void writeConfig(const XmlRealConfig& config, const Zstring& filePath); //throw FileError
 
 
 //reuse (some of) FreeFileSync's xml files
-void readRealOrBatchConfig(const Zstring& filePath, XmlRealConfig& config, std::wstring& warningMsg); //throw FileError
+std::pair<XmlRealConfig, std::wstring /*warningMsg*/> readRealOrBatchConfig(const Zstring& filePath); //throw FileError
 
 wxLanguage getProgramLanguage(); //throw FileError
 }

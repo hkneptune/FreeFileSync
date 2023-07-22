@@ -21,13 +21,13 @@ public:
     Taskbar(wxWindow* window); //throw TaskbarNotAvailable
     ~Taskbar();
 
-    enum Status
+    enum class Status
     {
-        STATUS_NORMAL,
-        STATUS_INDETERMINATE,
-        STATUS_WARNING,
-        STATUS_ERROR,
-        STATUS_PAUSED
+        normal,
+        indeterminate,
+        warning,
+        error,
+        paused,
     };
 
     void setStatus(Status status); //noexcept

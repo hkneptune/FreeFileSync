@@ -283,7 +283,7 @@ public:
 
     static int getRowDefaultHeight(const Grid& grid)
     {
-        return std::max(getDefaultMenuIconSize(), grid.getMainWin().GetCharHeight() + fastFromDIP(2)) + 1; //+ some space + bottom border
+        return std::max(getDefaultMenuIconSize(), grid.getMainWin().GetCharHeight() + fastFromDIP(2) /*extra space*/) + fastFromDIP(1) /*bottom border*/;
     }
 
     std::wstring getToolTip(size_t row, ColumnType colType, HoverArea rowHover) override
@@ -326,7 +326,7 @@ LogPanel::LogPanel(wxWindow* parent) : LogPanelGenerated(parent)
     });
 
     //support for CTRL + C
-    m_gridMessages->Bind(wxEVT_KEY_DOWN,          [this](wxKeyEvent& event) { onGridButtonEvent(event); });
+    m_gridMessages->Bind(wxEVT_KEY_DOWN,          [this](wxKeyEvent& event) { onGridKeyEvent(event); });
 
     m_gridMessages->Bind(EVENT_GRID_CONTEXT_MENU, [this](GridContextMenuEvent& event) { onMsgGridContext(event); });
 
@@ -440,7 +440,7 @@ void LogPanel::onMsgGridContext(GridContextMenuEvent& event)
 }
 
 
-void LogPanel::onGridButtonEvent(wxKeyEvent& event)
+void LogPanel::onGridKeyEvent(wxKeyEvent& event)
 {
     int keyCode = event.GetKeyCode();
 
@@ -482,8 +482,6 @@ void LogPanel::onLocalKeyEvent(wxKeyEvent& event) //process key events without e
                     m_gridMessages->SetFocus();
                     m_gridMessages->selectAllRows(GridEventPolicy::allow);
                     return; // -> swallow event! don't allow default grid commands!
-
-                    //case 'C': -> already implemented by "Grid" class
             }
         else
             switch (keyCode)

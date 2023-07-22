@@ -17,7 +17,7 @@ enum class FfsExitCode //as returned on process exit
     success = 0,
     warning,
     error,
-    aborted,
+    cancelled,
     exception,
 };
 
@@ -30,25 +30,25 @@ void raiseExitCode(FfsExitCode& rc, FfsExitCode rcProposed)
 }
 
 
-enum class SyncResult
+enum class TaskResult
 {
-    finishedSuccess,
-    finishedWarning,
-    finishedError,
-    aborted,
+    success,
+    warning,
+    error,
+    cancelled,
 };
 
 
 inline
-std::wstring getSyncResultLabel(SyncResult syncResult)
+std::wstring getSyncResultLabel(TaskResult syncResult)
 {
     switch (syncResult)
     {
         //*INDENT-OFF*
-        case SyncResult::finishedSuccess: return _("Completed successfully");
-        case SyncResult::finishedWarning: return _("Completed with warnings");
-        case SyncResult::finishedError:   return _("Completed with errors");
-        case SyncResult::aborted:         return _("Stopped");
+        case TaskResult::success: return _("Completed successfully");
+        case TaskResult::warning: return _("Completed with warnings");
+        case TaskResult::error:   return _("Completed with errors");
+        case TaskResult::cancelled: return _("Stopped");
         //*INDENT-ON*
     }
     assert(false);

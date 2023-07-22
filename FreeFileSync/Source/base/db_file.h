@@ -15,7 +15,7 @@
 
 namespace fff
 {
-const ZstringView SYNC_DB_FILE_ENDING = Zstr(".ffs_db"); //don't use Zstring as global constant: avoid static initialization order problem in global namespace!
+constexpr ZstringView SYNC_DB_FILE_ENDING = Zstr(".ffs_db"); //don't use Zstring as global constant: avoid static initialization order problem in global namespace!
 
 struct InSyncDescrFile //subset of FileAttributes
 {

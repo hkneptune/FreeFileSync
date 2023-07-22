@@ -76,9 +76,9 @@ constexpr std::chrono::milliseconds UI_UPDATE_INTERVAL(100); //perform ui update
 enum class ProcessPhase
 {
     none, //initial status
-    scanning,
-    comparingContent,
-    synchronizing
+    scan,
+    binaryCompare,
+    sync
 };
 
 //report status during comparison and synchronization

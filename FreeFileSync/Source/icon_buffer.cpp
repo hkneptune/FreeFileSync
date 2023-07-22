@@ -46,6 +46,7 @@ std::variant<ImageHolder, FileIconHolder> getDisplayIcon(const AbstractPath& ite
                     return ih;
             }
             catch (FileError&) {}
+
             //else: fallback to non-thumbnail icon
             break;
     }
@@ -141,7 +142,7 @@ public:
         {
             if (*ih) //if not yet converted...
             {
-                idata.iconFmt = std::make_unique<wxImage>(extractWxImage(std::move(*ih))); //convert in main thread!
+                idata.iconImg = std::make_unique<wxImage>(extractWxImage(std::move(*ih))); //convert in main thread!
                 assert(!*ih);
             }
         }
@@ -149,13 +150,13 @@ public:
         {
             if (FileIconHolder& fih = std::get<FileIconHolder>(idata.iconHolder)) //if not yet converted...
             {
-                idata.iconFmt = std::make_unique<wxImage>(extractWxImage(std::move(fih))); //convert in main thread!
+                idata.iconImg = std::make_unique<wxImage>(extractWxImage(std::move(fih))); //convert in main thread!
                 assert(!fih);
-                //!idata.iconFmt->IsOk(): extractWxImage() might fail if icon theme is missing a MIME type!
+                //!idata.iconImg->IsOk(): extractWxImage() might fail if icon theme is missing a MIME type!
             }
         }
 
-        return idata.iconFmt ? *idata.iconFmt : wxNullImage; //idata.iconHolder may be inserted as empty from worker thread!
+        return idata.iconImg ? *idata.iconImg : wxNullImage; //idata.iconHolder may be inserted as empty from worker thread!
     }
 
     //called by main and worker thread:
@@ -253,11 +254,11 @@ private:
     struct IconData
     {
         IconData() {}
-        IconData(IconData&& tmp) noexcept : iconHolder(std::move(tmp.iconHolder)), iconFmt(std::move(tmp.iconFmt)), prev(tmp.prev), next(tmp.next) {}
+        IconData(IconData&& tmp) noexcept : iconHolder(std::move(tmp.iconHolder)), iconImg(std::move(tmp.iconImg)), prev(tmp.prev), next(tmp.next) {}
 
         std::variant<ImageHolder, FileIconHolder> iconHolder; //native icon representation: may be used by any thread
 
-        std::unique_ptr<wxImage> iconFmt; //use ONLY from main thread!
+        std::unique_ptr<wxImage> iconImg; //use ONLY from main thread!
         //wxImage is NOT thread-safe: non-atomic ref-count just to begin with...
         //- prohibit implicit calls to wxImage()
         //- prohibit calls to ~wxImage() and transitively ~IconData()

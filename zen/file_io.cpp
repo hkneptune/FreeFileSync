@@ -58,8 +58,7 @@ FileBase::~FileBase()
         {
             close(); //throw FileError
         }
-        catch (FileError&) { assert(false); }
-    warn_static("log it!")
+        catch (const FileError& e) { logExtraError(e.toString()); }
 }
 
 
@@ -170,8 +169,7 @@ size_t FileInputPlain::tryRead(void* buffer, size_t bytesToRead) //throw FileErr
         if (bytesRead < 0)
             THROW_LAST_SYS_ERROR("read");
 
-        if (makeUnsigned(bytesRead) > bytesToRead) //better safe than sorry
-            throw SysError(formatSystemError("read", L"", L"Buffer overflow."));
+        ASSERT_SYSERROR(makeUnsigned(bytesRead) <= bytesToRead); //better safe than sorry
         return bytesRead; //"zero indicates end of file"
     }
     catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(getFilePath())), e.toString()); }
@@ -229,10 +227,9 @@ FileOutputPlain::~FileOutputPlain()
             if (::unlink(getFilePath().c_str()) != 0)
                 THROW_LAST_SYS_ERROR("unlink");
         }
-        catch (const SysError&)
+        catch (const SysError& e)
         {
-            assert(false);
-            warn_static("at least log on failure!")
+            logExtraError(replaceCpy(_("Cannot delete file %x."), L"%x", fmtPath(getFilePath())) + L"\n\n" + e.toString());
         }
 }
 
@@ -289,8 +286,8 @@ size_t FileOutputPlain::tryWrite(const void* buffer, size_t bytesToWrite) //thro
 
             THROW_LAST_SYS_ERROR("write");
         }
-        if (makeUnsigned(bytesWritten) > bytesToWrite) //better safe than sorry
-            throw SysError(formatSystemError("write", L"", L"Buffer overflow."));
+
+        ASSERT_SYSERROR(makeUnsigned(bytesWritten) <= bytesToWrite); //better safe than sorry
         return bytesWritten;
     }
     catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getFilePath())), e.toString()); }
@@ -330,9 +327,8 @@ void zen::setFileContent(const Zstring& filePath, const std::string_view byteStr
 
     tmpFile.close(); //throw FileError
     //take over ownership:
-    ZEN_ON_SCOPE_FAIL( try { removeFilePlain(tmpFilePath); /*throw FileError*/ }
-    catch (FileError&) {});
-    warn_static("log it!")
+    ZEN_ON_SCOPE_FAIL( try { removeFilePlain(tmpFilePath); }
+    catch (const FileError& e) { logExtraError(e.toString()); });
 
     //operation finished: move temp file transactionally
     moveAndRenameItem(tmpFilePath, filePath, true /*replaceExisting*/); //throw FileError, (ErrorMoveUnsupported), (ErrorTargetExisting)

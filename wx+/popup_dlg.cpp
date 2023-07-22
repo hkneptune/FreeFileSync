@@ -123,10 +123,10 @@ public:
                     case DialogInfoType::info:
                         break;
                     case DialogInfoType::warning:
-                        taskbar_->setStatus(Taskbar::STATUS_WARNING);
+                        taskbar_->setStatus(Taskbar::Status::warning);
                         break;
                     case DialogInfoType::error:
-                        taskbar_->setStatus(Taskbar::STATUS_ERROR);
+                        taskbar_->setStatus(Taskbar::Status::error);
                         break;
                 }
             }

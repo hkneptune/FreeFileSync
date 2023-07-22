@@ -124,9 +124,9 @@ struct ConvertElement<T, ValueType::stlContainer>
         value.clear();
 
         bool success = true;
-        const auto itPair = input.getChildren("Item");
+        auto [it, itEnd] = input.getChildren();
 
-        std::for_each(itPair.first, itPair.second, [&](const XmlElement& xmlChild)
+        std::for_each(it, itEnd, [&](const XmlElement& xmlChild)
         {
             typename T::value_type childVal;
             if (zen::readStruc(xmlChild, childVal))

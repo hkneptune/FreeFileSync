@@ -44,8 +44,8 @@ void setImage(wxStaticBitmap& staticBmp, const wxImage& img);
 
 wxImage renderPressedButton(const wxSize& sz);
 
-inline wxColor getColorToggleButtonBorder(){ return {0x79, 0xbc, 0xed}; } //medium blue
-inline wxColor getColorToggleButtonFill  (){ return {0xcc, 0xe4, 0xf8}; } //light blue
+inline wxColor getColorToggleButtonBorder() { return {0x79, 0xbc, 0xed}; } //medium blue
+inline wxColor getColorToggleButtonFill  () { return {0xcc, 0xe4, 0xf8}; } //light blue
 
 
 

@@ -330,7 +330,7 @@ struct Token
 class Scanner
 {
 public:
-    Scanner(const std::string& stream) : stream_(stream), pos_(stream_.begin())
+    explicit Scanner(const std::string& stream) : stream_(stream), pos_(stream_.begin())
     {
         if (zen::startsWith(stream_, BYTE_ORDER_MARK_UTF8))
             pos_ += BYTE_ORDER_MARK_UTF8.size();
@@ -435,7 +435,7 @@ private:
 class JsonParser
 {
 public:
-    JsonParser(const std::string& stream) :
+    explicit JsonParser(const std::string& stream) :
         scn_(stream),
         tk_(scn_.getNextToken()) {} //throw JsonParsingError
 

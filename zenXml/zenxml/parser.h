@@ -206,14 +206,14 @@ void serialize(const XmlElement& element, std::string& stream,
     for (auto it = attr.first; it != attr.second; ++it)
         stream += ' ' + normalizeName(it->name) + "=\"" + normalizeAttribValue(it->value) + '"';
 
-    auto itPair = element.getChildren();
-    if (itPair.first != itPair.second) //structured element
+    auto [it, itEnd] = element.getChildren();
+    if (it != itEnd) //structured element
     {
         //no support for mixed-mode content
         stream += '>' + lineBreak;
 
-        std::for_each(itPair.first, itPair.second,
-        [&](const XmlElement& el) { serialize(el, stream, lineBreak, indent, indentLevel + 1); });
+        std::for_each(it, itEnd, [&](const XmlElement& el)
+        { serialize(el, stream, lineBreak, indent, indentLevel + 1); });
 
         for (size_t i = 0; i < indentLevel; ++i)
             stream += indent;
@@ -483,9 +483,9 @@ public:
         XmlElement dummy;
         parseChildElements(dummy);
 
-        auto itPair = dummy.getChildren();
-        if (itPair.first != itPair.second)
-            doc.root().swapSubtree(*itPair.first);
+        auto [it, itEnd] = dummy.getChildren();
+        if (it != itEnd)
+            doc.root().swapSubtree(*it);
 
         expectToken(Token::TK_END); //throw XmlParsingError
         return doc;

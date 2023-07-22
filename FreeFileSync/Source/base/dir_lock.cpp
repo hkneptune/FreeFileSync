@@ -37,23 +37,15 @@ const int ABANDONED_LOCK_LEVEL_MAX = 10;
 }
 
 
-Zstring fff::impl::getLockFilePathForAbandonedLock(const Zstring& lockFilePath) //throw FileError
+Zstring fff::impl::getAbandonedLockFileName(const Zstring& lockFileName) //throw SysError
 {
-    auto it = zen::findLast(lockFilePath.begin(), lockFilePath.end(), FILE_NAME_SEPARATOR);
-    if (it == lockFilePath.end())
-        it = lockFilePath.begin();
-    else
-        ++it;
-
-    const Zstring prefix  (lockFilePath.begin(), it);
-    /**/  Zstring fileName(                      it, lockFilePath.end());
+    Zstring fileName = lockFileName;
     int level = 0;
 
     //recursive abandoned locks!? (almost) impossible, except for file system bugs: https://freefilesync.org/forum/viewtopic.php?t=6568
-    if (startsWith(fileName, Zstr("Delete."))) //e.g. Delete.1.sync.ffs_lock
+    const Zstring tmp = afterFirst(fileName, Zstr("Delete."), IfNotFoundReturn::none); //e.g. Delete.1.sync.ffs_lock
+    if (!tmp.empty())
     {
-        const Zstring tmp = afterFirst(fileName, Zstr('.'), IfNotFoundReturn::none);
-
         const Zstring levelStr = beforeFirst(tmp, Zstr('.'), IfNotFoundReturn::none);
         if (!levelStr.empty() && std::all_of(levelStr.begin(), levelStr.end(), [](Zchar c) { return zen::isDigit(c); }))
         {
@@ -61,11 +53,11 @@ Zstring fff::impl::getLockFilePathForAbandonedLock(const Zstring& lockFilePath) 
             level = stringTo<int>(levelStr) + 1;
 
             if (level >= ABANDONED_LOCK_LEVEL_MAX)
-                throw FileError(replaceCpy(_("Cannot delete file %x."), L"%x", fmtPath(lockFilePath)), L"Endless recursion.");
+                throw SysError(L"Endless recursion.");
         }
     }
 
-    return prefix + Zstr("Delete.") + numberTo<Zstring>(level) + Zstr(".") + fileName; //preserve lock file extension!
+    return Zstr("Delete.") + numberTo<Zstring>(level) + Zstr(".") + fileName; //preserve lock file extension!
 }
 
 
@@ -113,22 +105,18 @@ private:
                 offset == -1)
                 THROW_LAST_SYS_ERROR("lseek");
 #endif
-            if (const ssize_t bytesWritten = ::write(fdLockFile, " ", 1); //writes *up to* count bytes
-                bytesWritten <= 0)
+            const ssize_t bytesWritten = ::write(fdLockFile, " ", 1); //writes *up to* count bytes
+            if (bytesWritten <= 0)
             {
                 if (bytesWritten == 0) //comment in safe-read.c suggests to treat this as an error due to buggy drivers
                     errno = ENOSPC;
                 THROW_LAST_SYS_ERROR("write");
             }
-            else if (bytesWritten > 1) //better safe than sorry
-                throw SysError(formatSystemError("write", L"", L"Buffer overflow."));
+            ASSERT_SYSERROR(bytesWritten == 1); //better safe than sorry
         }
         catch (const SysError& e)
         {
-            const std::wstring logMsg = replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(lockFilePath_)) + L' ' + e.toString();
-            std::cerr << utfTo<std::string>(logMsg) + '\n';
-
-            warn_static("log on failure!")
+            logExtraError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(lockFilePath_)) + L"\n\n" + e.toString());
         }
     }
 
@@ -373,7 +361,16 @@ void waitOnDirLock(const Zstring& lockFilePath, const DirLockCallback& notifySta
         if (lockOwnderDead || //no need to wait any longer...
             lastCheckTime >= lastLifeSign + DETECT_ABANDONED_INTERVAL)
         {
-            DirLock guardDeletion(fff::impl::getLockFilePathForAbandonedLock(lockFilePath), notifyStatus, cbInterval); //throw FileError
+            const Zstring lockFileName = [&]
+            {
+                try
+                {
+                    return fff::impl::getAbandonedLockFileName(getItemName(lockFilePath)); //throw SysError
+                }
+                catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot delete file %x."), L"%x", fmtPath(lockFilePath)), e.toString()); }
+            }();
+
+            DirLock guardDeletion(*getParentFolderPath(lockFilePath), lockFileName, notifyStatus, cbInterval); //throw FileError
 
             //now that the lock is in place check existence again: meanwhile another process may have deleted and created a new lock!
             std::string currentLockId;
@@ -388,7 +385,7 @@ void waitOnDirLock(const Zstring& lockFilePath, const DirLockCallback& notifySta
                 if (getLockFileSize(lockFilePath) != fileSizeOld) //throw FileError, ErrorFileNotExisting
                     return; //late life sign (or maybe even a different lock if retrieveLockId() failed!)
             }
-            catch (ErrorFileNotExisting&) { return; } //what we are waiting for...
+            catch (ErrorFileNotExisting&) { return; } //what we are waiting for anyway...
 
             removeFilePlain(lockFilePath); //throw FileError
             return;
@@ -480,8 +477,7 @@ public:
         {
             ::releaseLock(lockFilePath_); //throw FileError
         }
-        catch (FileError&) {}
-        warn_static("log!!! at the very least") //https://freefilesync.org/forum/viewtopic.php?t=7655
+        catch (const FileError& e) { logExtraError(e.toString()); } //inform user about remnant lock files *somehow*!
     }
 
 private:
@@ -560,7 +556,7 @@ private:
 };
 
 
-DirLock::DirLock(const Zstring& lockFilePath, const DirLockCallback& notifyStatus, std::chrono::milliseconds cbInterval) //throw FileError
+DirLock::DirLock(const Zstring& folderPath, const Zstring& fileName, const DirLockCallback& notifyStatus, std::chrono::milliseconds cbInterval) //throw FileError
 {
-    sharedLock_ = LockAdmin::instance().retrieve(lockFilePath, notifyStatus, cbInterval); //throw FileError
+    sharedLock_ = LockAdmin::instance().retrieve(appendPath(folderPath, fileName), notifyStatus, cbInterval); //throw FileError
 }

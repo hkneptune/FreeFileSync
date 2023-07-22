@@ -56,7 +56,7 @@ private:
     //output-only parameters
     BatchDialogConfig& dlgCfgOut_;
 
-    EnumDescrList<PostSyncAction> enumPostSyncAction_;
+    EnumDescrList<PostBatchAction> enumPostBatchAction_;
 };
 
 //###################################################################################################################################
@@ -72,10 +72,10 @@ BatchDialog::BatchDialog(wxWindow* parent, BatchDialogConfig& dlgCfg) :
 
     setImage(*m_bitmapBatchJob, loadImage("cfg_batch"));
 
-    enumPostSyncAction_.
-    add(PostSyncAction::none,     L"").
-    add(PostSyncAction::sleep,    _("System: Sleep")).
-    add(PostSyncAction::shutdown, _("System: Shut down"));
+    enumPostBatchAction_.
+    add(PostBatchAction::none,     L"").
+    add(PostBatchAction::sleep,    _("System: Sleep")).
+    add(PostBatchAction::shutdown, _("System: Shut down"));
 
     setConfig(dlgCfg);
 
@@ -125,7 +125,7 @@ void BatchDialog::setConfig(const BatchDialogConfig& dlgCfg)
 
     m_checkBoxRunMinimized->SetValue(dlgCfg.batchExCfg.runMinimized);
     m_checkBoxAutoClose   ->SetValue(dlgCfg.batchExCfg.autoCloseSummary);
-    setEnumVal(enumPostSyncAction_, *m_choicePostSyncAction, dlgCfg.batchExCfg.postSyncAction);
+    setEnumVal(enumPostBatchAction_, *m_choicePostSyncAction, dlgCfg.batchExCfg.postBatchAction);
 
     updateGui(); //re-evaluate gui after config changes
 }
@@ -140,7 +140,7 @@ BatchDialogConfig BatchDialog::getConfig() const
             .runMinimized        = m_checkBoxRunMinimized->GetValue(),
             .autoCloseSummary    = m_checkBoxAutoClose   ->GetValue(),
             .batchErrorHandling  = m_radioBtnErrorDialogCancel->GetValue() ? BatchErrorHandling::cancel : BatchErrorHandling::showPopup,
-            .postSyncAction = getEnumVal(enumPostSyncAction_, *m_choicePostSyncAction),
+            .postBatchAction = getEnumVal(enumPostBatchAction_, *m_choicePostSyncAction),
         },
         .ignoreErrors = m_checkBoxIgnoreErrors->GetValue(),
     };

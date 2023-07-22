@@ -83,12 +83,8 @@ Zstring fff::getConfigDirPath()
         {
             createDirectoryIfMissingRecursion(configPath); //throw FileError
         }
-        catch (const FileError& e)
-        {
-            assert(false);
-            std::cerr << utfTo<std::string>(e.toString()) + '\n';
-            warn_static("at least log on failure!")
-        }
+        catch (const FileError& e) { logExtraError(e.toString()); }
+
         return configPath;
     }();
     return ffsConfigPath;
@@ -96,7 +92,7 @@ Zstring fff::getConfigDirPath()
 
 
 //this function is called by RealTimeSync!!!
-Zstring fff::getFreeFileSyncLauncherPath()
+Zstring fff::getFreeFileSyncLauncherPath() //throw FileError
 {
     return appendPath(getInstallDirPath(), Zstr("FreeFileSync"));
 

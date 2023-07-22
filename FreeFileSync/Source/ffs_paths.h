@@ -22,7 +22,8 @@ Zstring getConfigDirPath();
 
 Zstring getInstallDirPath();
 
-Zstring getFreeFileSyncLauncherPath(); //full path to application launcher C:\...\FreeFileSync.exe
+Zstring getFreeFileSyncLauncherPath(); //throw FileError
+//full path to application launcher C:\...\FreeFileSync.exe
 }
 
 #endif //FFS_PATHS_H_842759083425342534253

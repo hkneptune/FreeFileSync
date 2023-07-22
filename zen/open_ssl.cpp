@@ -22,43 +22,13 @@
 using namespace zen;
 
 
+namespace
+{
 #ifndef OPENSSL_THREADS
     #error FFS, we are royally screwed!
 #endif
 
-static_assert(OPENSSL_VERSION_NUMBER >= 0x30000000L, "OpenSSL version too old");
-
-
-void zen::openSslInit()
-{
-    //official Wiki:           https://wiki.openssl.org/index.php/Library_Initialization
-    //see apps_shutdown():     https://github.com/openssl/openssl/blob/master/apps/openssl.c
-    //see Curl_ossl_cleanup(): https://github.com/curl/curl/blob/master/lib/vtls/openssl.c
-
-    assert(runningOnMainThread());
-    //excplicitly init OpenSSL on main thread: seems to initialize atomically! But it still might help to avoid issues:
-    [[maybe_unused]] const int rv = ::OPENSSL_init_ssl(OPENSSL_INIT_SSL_DEFAULT | OPENSSL_INIT_NO_LOAD_CONFIG, nullptr);
-    assert(rv == 1); //https://www.openssl.org/docs/man1.1.0/ssl/OPENSSL_init_ssl.html
-
-    warn_static("probably should log")
-}
-
-
-void zen::openSslTearDown() {}
-//OpenSSL 1.1.0+ deprecates all clean up functions
-//=> so much the theory, in practice it leaks, of course: https://github.com/openssl/openssl/issues/6283
-//=> OpenSslThreadCleanUp
-
-namespace
-{
-struct OpenSslThreadCleanUp
-{
-    ~OpenSslThreadCleanUp()
-    {
-        ::OPENSSL_thread_stop();
-    }
-};
-thread_local OpenSslThreadCleanUp tearDownOpenSslThreadData;
+static_assert(OPENSSL_VERSION_NUMBER >= 0x30000000L, "OpenSSL version is too old!");
 
 
 /*  Sign a file using SHA-256:
@@ -80,9 +50,41 @@ std::wstring formatOpenSSLError(const char* functionName, unsigned long ec)
 std::wstring formatLastOpenSSLError(const char* functionName)
 {
     const auto ec = ::ERR_peek_last_error(); //"returns latest error code from the thread's error queue without modifying it" - unlike ERR_get_error()
+    //ERR_get_error: "returns the earliest error code from the thread's error queue and removes the entry.
+    //                This function can be called repeatedly until there are no more error codes to return."
     ::ERR_clear_error(); //clean up for next OpenSSL operation on this thread
     return formatOpenSSLError(functionName, ec);
 }
+}
+
+
+void zen::openSslInit()
+{
+    //official Wiki:           https://wiki.openssl.org/index.php/Library_Initialization
+    //see apps_shutdown():     https://github.com/openssl/openssl/blob/master/apps/openssl.c
+    //see Curl_ossl_cleanup(): https://github.com/curl/curl/blob/master/lib/vtls/openssl.c
+
+    assert(runningOnMainThread());
+    //explicitly init OpenSSL on main thread: seems to initialize atomically! But it still might help to avoid issues:
+    //https://www.openssl.org/docs/manmaster/man3/OPENSSL_init_ssl.html
+    if (::OPENSSL_init_ssl(OPENSSL_INIT_SSL_DEFAULT | OPENSSL_INIT_NO_LOAD_CONFIG, nullptr) != 1)
+        logExtraError(_("Error during process initialization.") + L"\n\n" + formatLastOpenSSLError("OPENSSL_init_ssl"));
+}
+
+
+void zen::openSslTearDown() {}
+//OpenSSL 1.1.0+ deprecates all clean up functions
+//=> so much the theory, in practice it leaks, of course: https://github.com/openssl/openssl/issues/6283
+namespace
+{
+struct OpenSslThreadCleanUp
+{
+    ~OpenSslThreadCleanUp()
+    {
+        ::OPENSSL_thread_stop();
+    }
+};
+thread_local OpenSslThreadCleanUp tearDownOpenSslThreadData;
 
 //================================================================================
 
@@ -217,7 +219,7 @@ std::string keyToStream(const EVP_PKEY* evp, RsaStreamType streamType, bool publ
             if (keyLen < 0)
                 throw SysError(formatLastOpenSSLError("BIO_pending"));
             if (keyLen == 0)
-                throw SysError(formatSystemError("BIO_pending", L"", L"Unexpected failure.")); //no more error details
+                throw SysError(formatSystemError("BIO_pending", L"", L"No more error details.")); //no more error details
 
             std::string keyStream(keyLen, '\0');
 
@@ -281,7 +283,7 @@ std::string createHash(const std::string_view str, const EVP_MD* type) //throw S
 #else //streaming version
     EVP_MD_CTX* mdctx = ::EVP_MD_CTX_new();
     if (!mdctx)
-        throw SysError(formatSystemError("EVP_MD_CTX_new", L"", L"Unexpected failure.")); //no more error details
+        throw SysError(formatSystemError("EVP_MD_CTX_new", L"", L"No more error details.")); //no more error details
     ZEN_ON_SCOPE_EXIT(::EVP_MD_CTX_free(mdctx));
 
     if (::EVP_DigestInit(mdctx,      //EVP_MD_CTX* ctx
@@ -308,7 +310,7 @@ std::string createSignature(const std::string_view message, EVP_PKEY* privateKey
     //https://www.openssl.org/docs/manmaster/man3/EVP_DigestSign.html
     EVP_MD_CTX* mdctx = ::EVP_MD_CTX_new();
     if (!mdctx)
-        throw SysError(formatSystemError("EVP_MD_CTX_new", L"", L"Unexpected failure.")); //no more error details
+        throw SysError(formatSystemError("EVP_MD_CTX_new", L"", L"No more error details.")); //no more error details
     ZEN_ON_SCOPE_EXIT(::EVP_MD_CTX_free(mdctx));
 
     if (::EVP_DigestSignInit(mdctx,            //EVP_MD_CTX* ctx
@@ -347,7 +349,7 @@ void verifySignature(const std::string_view message, const std::string_view sign
     //https://www.openssl.org/docs/manmaster/man3/EVP_DigestVerify.html
     EVP_MD_CTX* mdctx = ::EVP_MD_CTX_new();
     if (!mdctx)
-        throw SysError(formatSystemError("EVP_MD_CTX_new", L"", L"Unexpected failure.")); //no more error details
+        throw SysError(formatSystemError("EVP_MD_CTX_new", L"", L"No more error details.")); //no more error details
     ZEN_ON_SCOPE_EXIT(::EVP_MD_CTX_free(mdctx));
 
     if (::EVP_DigestVerifyInit(mdctx,           //EVP_MD_CTX* ctx
@@ -553,7 +555,7 @@ std::string zen::convertPuttyKeyToPkix(const std::string_view keyStream, const s
 
         EVP_CIPHER_CTX* cipCtx = ::EVP_CIPHER_CTX_new();
         if (!cipCtx)
-            throw SysError(formatSystemError("EVP_CIPHER_CTX_new", L"", L"Unexpected failure.")); //no more error details
+            throw SysError(formatSystemError("EVP_CIPHER_CTX_new", L"", L"No more error details.")); //no more error details
         ZEN_ON_SCOPE_EXIT(::EVP_CIPHER_CTX_free(cipCtx));
 
         if (::EVP_DecryptInit(cipCtx, //EVP_CIPHER_CTX* ctx
@@ -563,7 +565,7 @@ std::string zen::convertPuttyKeyToPkix(const std::string_view keyStream, const s
             throw SysError(formatLastOpenSSLError("EVP_DecryptInit_ex"));
 
         if (::EVP_CIPHER_CTX_set_padding(cipCtx, 0 /*padding*/) != 1)
-            throw SysError(formatSystemError("EVP_CIPHER_CTX_set_padding", L"", L"Unexpected failure.")); //no more error details
+            throw SysError(formatSystemError("EVP_CIPHER_CTX_set_padding", L"", L"No more error details.")); //no more error details
 
         privateBlob.resize(privateBlobEnc.size() + ::EVP_CIPHER_block_size(EVP_aes_256_cbc()));
         //"EVP_DecryptUpdate() should have room for (inl + cipher_block_size) bytes"
@@ -613,7 +615,7 @@ std::string zen::convertPuttyKeyToPkix(const std::string_view keyStream, const s
                 static_cast<int>(macData.size()),           //int n
                 reinterpret_cast<unsigned char*>(md),       //unsigned char* md
                 &mdLen))                                    //unsigned int* md_len
-        throw SysError(formatSystemError("HMAC", L"", L"Unexpected failure.")); //no more error details
+        throw SysError(formatSystemError("HMAC", L"", L"No more error details.")); //no more error details
 
     if (mac != std::string_view(md, mdLen))
         throw SysError(keyEncrypted ? L"Wrong passphrase (or corrupted key)" : L"Validation failed: corrupted key");

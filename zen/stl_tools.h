@@ -187,7 +187,7 @@ void removeDuplicates(std::vector<T, Alloc>& v, CompLess less)
 template <class T, class Alloc> inline
 void removeDuplicates(std::vector<T, Alloc>& v)
 {
-    removeDuplicates(v, std::less(), std::equal_to());
+    removeDuplicates(v, std::less{}, std::equal_to{});
 }
 
 
@@ -196,14 +196,14 @@ void removeDuplicatesStable(std::vector<T, Alloc>& v, CompLess less)
 {
     std::set<T, CompLess> usedItems(less);
     v.erase(std::remove_if(v.begin(), v.end(),
-    [&usedItems](const T& e) { return !usedItems.insert(e).second; }), v.end());
+    /**/[&usedItems](const T& e) { return !usedItems.insert(e).second; }), v.end());
 }
 
 
 template <class T, class Alloc> inline
 void removeDuplicatesStable(std::vector<T, Alloc>& v)
 {
-    removeDuplicatesStable(v, std::less());
+    removeDuplicatesStable(v, std::less{});
 }
 
 
@@ -234,28 +234,26 @@ BidirectionalIterator findLast(const BidirectionalIterator first, const Bidirect
 }
 
 
-template <class RandomAccessIterator1, class RandomAccessIterator2> inline
-RandomAccessIterator1 searchFirst(const RandomAccessIterator1 first,       const RandomAccessIterator1 last,
-                                  const RandomAccessIterator2 needleFirst, const RandomAccessIterator2 needleLast)
-{
-    if (needleLast - needleFirst == 1) //don't use expensive std::search unless required!
-        return std::find(first, last, *needleFirst);
-
-    return std::search(first, last,
-                       needleFirst, needleLast);
-}
-
-
 template <class RandomAccessIterator1, class RandomAccessIterator2, class IsEq> inline
 RandomAccessIterator1 searchFirst(const RandomAccessIterator1 first,       const RandomAccessIterator1 last,
                                   const RandomAccessIterator2 needleFirst, const RandomAccessIterator2 needleLast, IsEq isEqual)
 {
     if (needleLast - needleFirst == 1) //don't use expensive std::search unless required!
         return std::find_if(first, last, [needleFirst, isEqual](const auto c) { return isEqual(*needleFirst, c); });
+    //"*needleFirst" could be improved with value rather than pointer access, at least for built-in types like "char"
 
     return std::search(first, last,
                        needleFirst, needleLast, isEqual);
 }
+
+
+template <class RandomAccessIterator1, class RandomAccessIterator2> inline
+RandomAccessIterator1 searchFirst(const RandomAccessIterator1 first,       const RandomAccessIterator1 last,
+                                  const RandomAccessIterator2 needleFirst, const RandomAccessIterator2 needleLast)
+{
+    return searchFirst(first, last, needleFirst, needleLast, std::equal_to{});
+}
+
 
 
 template <class RandomAccessIterator1, class RandomAccessIterator2> inline
@@ -335,7 +333,7 @@ class FNV1aHash //FNV-1a: https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%8
 {
 public:
     FNV1aHash() {}
-    explicit FNV1aHash(Num startVal) : hashVal_(startVal) { assert(startVal != 0); /*(yes, might be a real hash, but) most likely bad init value*/}
+    explicit FNV1aHash(Num startVal) : hashVal_(startVal) { assert(startVal != 0); /*yes, might be a real hash, but most likely bad init value*/}
 
     void add(Num n)
     {

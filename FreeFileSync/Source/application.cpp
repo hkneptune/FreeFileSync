@@ -11,6 +11,7 @@
 #include <zen/shutdown.h>
 #include <zen/process_exec.h>
 #include <zen/resolve_path.h>
+#include <zen/sys_info.h>
 #include <wx/clipbrd.h>
 #include <wx/tooltip.h>
 #include <wx/log.h>
@@ -88,35 +89,15 @@ void showSyntaxHelp()
                                                  _("global config file:") + L'\n' +
                                                  _("Path to an alternate GlobalSettings.xml file.")));
 }
-}
 
 
-void Application::notifyAppError(const std::wstring& msg, FfsExitCode rc)
+void notifyAppError(const std::wstring& msg)
 {
-    raiseExitCode(exitCode_, rc);
-
-    const std::wstring msgType = [&]
-    {
-        switch (rc)
-        {
-            //*INDENT-OFF*
-            case FfsExitCode::success: break;
-            case FfsExitCode::warning:   return _("Warning");
-            case FfsExitCode::error:     return _("Error");
-            case FfsExitCode::aborted:   return _("Error");
-            case FfsExitCode::exception: return _("An exception occurred");
-            //*INDENT-ON*
-        }
-        assert(false);
-        return std::wstring{};
-    }();
-    //error handling strategy unknown and no sync log output available at this point!
-        std::cerr << utfTo<std::string>(msgType + L": " + msg) + '\n';
+        std::cerr << utfTo<std::string>(_("Error") + L": " + msg) + '\n';
     //alternative0: std::wcerr: cannot display non-ASCII at all, so why does it exist???
     //alternative1: wxSafeShowMessage => NO console output on Debian x86, WTF!
     //alternative2: wxMessageBox() => works, but we probably shouldn't block during command line usage
-
-    warn_static(" show message box on linux/macos, too!?")
+}
 }
 
 //##################################################################################################################
@@ -125,10 +106,23 @@ bool Application::OnInit()
 {
     //do not call wxApp::OnInit() to avoid using wxWidgets command line parser
 
+    const auto now = std::chrono::system_clock::now(); //e.g. "ErrorLog 2023-07-05 105207.073.xml"
+    initExtraLog([logFilePath = appendPath(getConfigDirPath(), Zstr("ErrorLog ") +
+                                           formatTime(Zstr("%Y-%m-%d %H%M%S"), getLocalTime(std::chrono::system_clock::to_time_t(now))) + Zstr('.') +
+                                           printNumber<Zstring>(Zstr("%03d"), //[ms] should yield a fairly unique name
+                                                                static_cast<int>(std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 1000)) +
+                                           Zstr(".xml"))](const ErrorLog& log)
+    {
+        try //don't call functions depending on global state (which might be destroyed already!)
+        {
+            saveErrorLog(log, logFilePath); //throw FileError
+        }
+        catch (const FileError& e) { assert(false); notifyAppError(e.toString()); }
+    });
+
     //parallel xBRZ-scaling! => run as early as possible
     try { imageResourcesInit(appendPath(getResourceDirPath(), Zstr("Icons.zip"))); }
-    catch (const FileError& e) { notifyAppError(e.toString(), FfsExitCode::warning); }
-    //errors are not really critical in this context
+    catch (const FileError& e) { logExtraError(e.toString()); } //not critical in this context
 
     //GTK should already have been initialized by wxWidgets (see \src\gtk\app.cpp:wxApp::Initialize)
 #if GTK_MAJOR_VERSION == 2
@@ -141,7 +135,7 @@ bool Application::OnInit()
     //    std::cerr << utfTo<std::string>(formatSystemError("setenv(GIO_USE_VFS)", errno)) + '\n';
     //
     //=> work around 2:
-    g_vfs_get_default(); //returns unowned GVfs*
+    [[maybe_unused]] GVfs* defaultFs = ::g_vfs_get_default(); //not owned by us!
     //no such issue on GTK3!
 
 #elif GTK_MAJOR_VERSION == 3
@@ -153,8 +147,8 @@ bool Application::OnInit()
         GError* error = nullptr;
         ZEN_ON_SCOPE_EXIT(if (error) ::g_error_free(error));
 
-        ::gtk_css_provider_load_from_path(provider, //GtkCssProvider* css_provider,
-                                          appendPath(getResourceDirPath(), fileName).c_str(), //const gchar* path,
+        ::gtk_css_provider_load_from_path(provider, //GtkCssProvider* css_provider
+                                          appendPath(getResourceDirPath(), fileName).c_str(), //const gchar* path
                                           &error); //GError** error
         if (error)
             throw SysError(formatGlibError("gtk_css_provider_load_from_path", error));
@@ -174,35 +168,31 @@ bool Application::OnInit()
         {
             loadCSS("Gtk3Styles.old.css"); //throw SysError
         }
-        catch (const SysError& e2) { notifyAppError(e2.toString(), FfsExitCode::warning); }
+        catch (const SysError& e2) { logExtraError(_("Error during process initialization.") + L"\n\n" + e2.toString()); }
     }
 #else
 #error unknown GTK version!
 #endif
 
-    try
-    {
-        /* we're a GUI app: ignore SIGHUP when the parent terminal quits! (or process is killed!)
-            => the FFS launcher will still be killed => fine
-            => macOS: apparently not needed! interestingly the FFS launcher does receive SIGHUP and *is* killed  */
-        if (sighandler_t oldHandler = ::signal(SIGHUP, SIG_IGN);
-            oldHandler == SIG_ERR)
-            THROW_LAST_SYS_ERROR("signal(SIGHUP)");
-        else assert(!oldHandler);
-    }
-    catch (const SysError& e) { notifyAppError(e.toString(), FfsExitCode::warning); }
+    /* we're a GUI app: ignore SIGHUP when the parent terminal quits! (or process is killed!)
+        => the FFS launcher will still be killed => fine
+        => macOS: apparently not needed! interestingly the FFS launcher does receive SIGHUP and *is* killed  */
+    if (sighandler_t oldHandler = ::signal(SIGHUP, SIG_IGN);
+        oldHandler == SIG_ERR)
+        logExtraError(_("Error during process initialization.") + L"\n\n" + formatSystemError("signal(SIGHUP)", getLastError()));
+    else assert(!oldHandler);
 
 
     //Windows User Experience Interaction Guidelines: tool tips should have 5s timeout, info tips no timeout => compromise:
     wxToolTip::Enable(true); //wxWidgets screw-up: wxToolTip::SetAutoPop is no-op if global tooltip window is not yet constructed: wxToolTip::Enable creates it
     wxToolTip::SetAutoPop(15'000); //https://docs.microsoft.com/en-us/windows/win32/uxguide/ctrl-tooltips-and-infotips
 
-    SetAppName(L"FreeFileSync"); //if not set, the default is the executable's name!
+    SetAppName(L"FreeFileSync"); //if not set, defaults to executable name
 
 
     //tentatively set program language to OS default until GlobalSettings.xml is read later
     try { localizationInit(appendPath(getResourceDirPath(), Zstr("Languages.zip"))); } //throw FileError
-    catch (const FileError& e) { notifyAppError(e.toString(), FfsExitCode::warning); }
+    catch (const FileError& e) { logExtraError(e.toString()); }
 
     initAfs({getResourceDirPath(), getConfigDirPath()}); //bonus: using FTP Gdrive implicitly inits OpenSSL (used in runSanityChecks() on Linux) already during globals init
 
@@ -214,7 +204,7 @@ bool Application::OnInit()
         //- it's futile to try and clean up while the process is in full swing (CRASH!) => just terminate!
         //- system sends close events to all open dialogs: If one of these calls wxCloseEvent::Veto(),
         //  e.g. user clicking cancel on save prompt, this would cancel the shutdown
-        terminateProcess(static_cast<int>(FfsExitCode::aborted));
+        terminateProcess(static_cast<int>(FfsExitCode::cancelled));
     };
     Bind(wxEVT_QUERY_END_SESSION, [onSystemShutdown](wxCloseEvent& event) { onSystemShutdown(); }); //can veto
     Bind(wxEVT_END_SESSION,       [onSystemShutdown](wxCloseEvent& event) { onSystemShutdown(); }); //can *not* veto
@@ -223,14 +213,10 @@ bool Application::OnInit()
     //- Windows sends WM_QUERYENDSESSION, WM_ENDSESSION during log off, *not* WM_CLOSE https://devblogs.microsoft.com/oldnewthing/20080421-00/?p=22663
     //   => taskkill sending WM_CLOSE (without /f) is a misguided app simulating a button-click on X
     //      -> should send WM_QUERYENDSESSION instead!
-    try
-    {
-        if (auto /*sighandler_t n.a. on macOS*/ oldHandler = ::signal(SIGTERM, onSystemShutdown);//"graceful" exit requested, unlike SIGKILL
-            oldHandler == SIG_ERR)
-            THROW_LAST_SYS_ERROR("signal(SIGTERM)");
-        else assert(!oldHandler);
-    }
-    catch (const SysError& e) { notifyAppError(e.toString(), FfsExitCode::warning); }
+    if (auto /*sighandler_t n.a. on macOS*/ oldHandler = ::signal(SIGTERM, onSystemShutdown);//"graceful" exit requested, unlike SIGKILL
+        oldHandler == SIG_ERR)
+        logExtraError(_("Error during process initialization.") + L"\n\n" + formatSystemError("signal(SIGTERM)", getLastError()));
+    else assert(!oldHandler);
 
     //Note: app start is deferred: batch mode requires the wxApp eventhandler to be established for UI update events. This is not the case at the time of OnInit()!
     CallAfter([&] { onEnterEventLoop(); });
@@ -245,10 +231,7 @@ int Application::OnExit()
     //assert(rv); -> fails if clipboard wasn't used
     localizationCleanup();
     imageResourcesCleanup();
-
-    const std::wstring& warningMsg = teardownAfs();
-    if (!warningMsg.empty())
-        notifyAppError(warningMsg, FfsExitCode::warning);
+    teardownAfs();
 
     return wxApp::OnExit();
 }
@@ -272,7 +255,7 @@ void Application::OnUnhandledException() //handles both wxApp::OnInit() + wxApp:
     }
     catch (const std::bad_alloc& e) //the only kind of exception we don't want crash dumps for
     {
-        notifyAppError(utfTo<std::wstring>(e.what()), FfsExitCode::exception);
+        notifyAppError(utfTo<std::wstring>(e.what()));
         terminateProcess(static_cast<int>(FfsExitCode::exception));
     }
     //catch (...) -> Windows: let it crash and create mini dump!!! Linux/macOS: std::exception::what() logged to console
@@ -488,7 +471,8 @@ void Application::onEnterEventLoop()
     }
     catch (const FileError& e)
     {
-        notifyAppError(e.toString(), FfsExitCode::exception);
+        raiseExitCode(exitCode_, FfsExitCode::exception);
+        notifyAppError(e.toString());
     }
 }
 
@@ -507,6 +491,9 @@ void Application::runGuiMode(const Zstring& globalConfigFilePath,
 
 void Application::runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& batchCfg, const Zstring& cfgFilePath)
 {
+    const bool allowUserInteraction = !batchCfg.batchExCfg.autoCloseSummary ||
+                                      (!batchCfg.guiCfg.mainCfg.ignoreErrors && batchCfg.batchExCfg.batchErrorHandling == BatchErrorHandling::showPopup);
+
     XmlGlobalSettings globalCfg;
     try
     {
@@ -527,7 +514,14 @@ void Application::runBatchMode(const Zstring& globalConfigFilePath, const XmlBat
         }
         catch (const FileError& e3)
         {
-            return notifyAppError(e3.toString(), FfsExitCode::exception);
+            raiseExitCode(exitCode_, FfsExitCode::exception);
+
+            if (allowUserInteraction)
+                showNotificationDialog(nullptr, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e3.toString()));
+            else
+                logExtraError(e3.toString());
+
+            return;
         }
     }
 
@@ -535,11 +529,7 @@ void Application::runBatchMode(const Zstring& globalConfigFilePath, const XmlBat
     {
         setLanguage(globalCfg.programLanguage); //throw FileError
     }
-    catch (const FileError& e)
-    {
-        notifyAppError(e.toString(), FfsExitCode::warning);
-        //continue!
-    }
+    catch (const FileError& e) { logExtraError(e.toString()); }
 
     //all settings have been read successfully...
 
@@ -573,19 +563,16 @@ void Application::runBatchMode(const Zstring& globalConfigFilePath, const XmlBat
                                      globalCfg.soundFileAlertPending,
                                      progressDim,
                                      batchCfg.batchExCfg.autoCloseSummary,
-                                     batchCfg.batchExCfg.postSyncAction,
+                                     batchCfg.batchExCfg.postBatchAction,
                                      batchCfg.batchExCfg.batchErrorHandling);
 
-    const bool allowUserInteraction = !batchCfg.batchExCfg.autoCloseSummary ||
-                                      (!batchCfg.guiCfg.mainCfg.ignoreErrors && batchCfg.batchExCfg.batchErrorHandling == BatchErrorHandling::showPopup);
-
-    AFS::RequestPasswordFun requestPassword; //throw AbortProcess
+    AFS::RequestPasswordFun requestPassword; //throw CancelProcess
     if (allowUserInteraction)
         requestPassword = [&, password = Zstring()](const std::wstring& msg, const std::wstring& lastErrorMsg) mutable
     {
         assert(runningOnMainThread());
         if (showPasswordPrompt(statusHandler.getWindowIfVisible(), msg, lastErrorMsg, password) != ConfirmationButton::accept)
-            statusHandler.abortProcessNow(AbortTrigger::user); //throw AbortProcess
+            statusHandler.cancelProcessNow(CancelReason::user); //throw CancelProcess
 
         return password;
     };
@@ -593,12 +580,11 @@ void Application::runBatchMode(const Zstring& globalConfigFilePath, const XmlBat
     try
     {
         //inform about (important) non-default global settings
-        logNonDefaultSettings(globalCfg, statusHandler); //throw AbortProcess
+        logNonDefaultSettings(globalCfg, statusHandler); //throw CancelProcess
 
         //batch mode: place directory locks on directories during both comparison AND synchronization
         std::unique_ptr<LockHolder> dirLocks;
 
-        //COMPARE DIRECTORIES
         FolderComparison cmpResult = compare(globalCfg.warnDlgs,
                                              globalCfg.fileTimeTolerance,
                                              requestPassword,
@@ -606,8 +592,7 @@ void Application::runBatchMode(const Zstring& globalConfigFilePath, const XmlBat
                                              globalCfg.createLockFile,
                                              dirLocks,
                                              extractCompareCfg(batchCfg.guiCfg.mainCfg),
-                                             statusHandler); //throw AbortProcess
-        //START SYNCHRONIZATION
+                                             statusHandler); //throw CancelProcess
         if (!cmpResult.empty())
             synchronize(syncStartTime,
                         globalCfg.verifyFileCopy,
@@ -618,9 +603,13 @@ void Application::runBatchMode(const Zstring& globalConfigFilePath, const XmlBat
                         extractSyncCfg(batchCfg.guiCfg.mainCfg),
                         cmpResult,
                         globalCfg.warnDlgs,
-                        statusHandler); //throw AbortProcess
+                        statusHandler); //throw CancelProcess
     }
-    catch (AbortProcess&) {} //exit used by statusHandler
+    catch (CancelProcess&) {}
+
+    //-------------------------------------------------------------------
+    BatchStatusHandler::Result r = statusHandler.prepareResult();
+
 
     AbstractPath logFolderPath = createAbstractPath(batchCfg.guiCfg.mainCfg.altLogFolderPathPhrase); //optional
     if (AFS::isNullPath(logFolderPath))
@@ -629,50 +618,127 @@ void Application::runBatchMode(const Zstring& globalConfigFilePath, const XmlBat
     if (AFS::isNullPath(logFolderPath))
         logFolderPath = createAbstractPath(getLogFolderDefaultPath());
 
-    BatchStatusHandler::Result r = statusHandler.reportResults(batchCfg.guiCfg.mainCfg.postSyncCommand, batchCfg.guiCfg.mainCfg.postSyncCondition,
-                                                               logFolderPath, globalCfg.logfilesMaxAgeDays, globalCfg.logFormat, logFilePathsToKeep,
-                                                               batchCfg.guiCfg.mainCfg.emailNotifyAddress, batchCfg.guiCfg.mainCfg.emailNotifyCondition); //noexcept
-    //----------------------------------------------------------------------
-    switch (r.summary.syncResult)
+    AbstractPath logFilePath = AFS::appendRelPath(logFolderPath, generateLogFileName(globalCfg.logFormat, r.summary));
+    //e.g. %AppData%\FreeFileSync\Logs\Backup FreeFileSync 2013-09-15 015052.123 [Error].log
+
+    auto notifyStatusNoThrow = [&](std::wstring&& msg) { try { statusHandler.updateStatus(std::move(msg)); /*throw CancelProcess*/ } catch (CancelProcess&) {} };
+
+
+    if (statusHandler.taskCancelled() && *statusHandler.taskCancelled() == CancelReason::user)
+        ; /* user cancelled => don't run post sync command
+                            => don't send email notification
+                            => don't play sound notification
+                            => don't run post sync action     */
+    else
     {
-        //*INDENT-OFF*
-        case SyncResult::finishedSuccess: raiseExitCode(exitCode_, FfsExitCode::success); break;
-        case SyncResult::finishedWarning: raiseExitCode(exitCode_, FfsExitCode::warning); break;
-        case SyncResult::finishedError:   raiseExitCode(exitCode_, FfsExitCode::error  ); break;
-        case SyncResult::aborted:         raiseExitCode(exitCode_, FfsExitCode::aborted); break;
-        //*INDENT-ON*
+        //--------------------- post sync command ----------------------
+        if (const Zstring cmdLine = trimCpy(expandMacros(batchCfg.guiCfg.mainCfg.postSyncCommand));
+            !cmdLine.empty())
+            if (batchCfg.guiCfg.mainCfg.postSyncCondition == PostSyncCondition::completion ||
+                (batchCfg.guiCfg.mainCfg.postSyncCondition == PostSyncCondition::errors) == (r.summary.result == TaskResult::cancelled ||
+                        r.summary.result == TaskResult::error))
+                try
+                {
+                    //give consoleExecute() some "time to fail", but not too long to hang our process
+                    const int DEFAULT_APP_TIMEOUT_MS = 100;
+
+                    if (const auto& [exitCode, output] = consoleExecute(cmdLine, DEFAULT_APP_TIMEOUT_MS); //throw SysError, SysErrorTimeOut
+                        exitCode != 0)
+                        throw SysError(formatSystemError("", replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), utfTo<std::wstring>(output)));
+
+                    logMsg(r.errorLog.ref(), _("Executing command:") + L' ' + utfTo<std::wstring>(cmdLine) + L" [" + replaceCpy(_("Exit code %x"), L"%x", L"0") + L']', MSG_TYPE_INFO);
+                }
+                catch (SysErrorTimeOut&) //child process not failed yet => probably fine :>
+                {
+                    logMsg(r.errorLog.ref(), _("Executing command:") + L' ' + utfTo<std::wstring>(cmdLine), MSG_TYPE_INFO);
+                }
+                catch (const SysError& e)
+                {
+                    logMsg(r.errorLog.ref(), replaceCpy(_("Command %x failed."), L"%x", fmtPath(cmdLine)) + L"\n\n" + e.toString(), MSG_TYPE_ERROR);
+                }
+
+        //--------------------- email notification ----------------------
+        if (const std::string notifyEmail = trimCpy(batchCfg.guiCfg.mainCfg.emailNotifyAddress);
+            !notifyEmail.empty())
+            if (batchCfg.guiCfg.mainCfg.emailNotifyCondition == ResultsNotification::always ||
+                (batchCfg.guiCfg.mainCfg.emailNotifyCondition == ResultsNotification::errorWarning && (r.summary.result == TaskResult::cancelled ||
+                        r.summary.result == TaskResult::error ||
+                        r.summary.result == TaskResult::warning)) ||
+                (batchCfg.guiCfg.mainCfg.emailNotifyCondition == ResultsNotification::errorOnly && (r.summary.result == TaskResult::cancelled ||
+                        r.summary.result == TaskResult::error)))
+                try
+                {
+                    logMsg(r.errorLog.ref(), replaceCpy(_("Sending email notification to %x"), L"%x", utfTo<std::wstring>(notifyEmail)), MSG_TYPE_INFO);
+                    sendLogAsEmail(notifyEmail, r.summary, r.errorLog.ref(), logFilePath, notifyStatusNoThrow); //throw FileError
+                }
+                catch (const FileError& e) { logMsg(r.errorLog.ref(), e.toString(), MSG_TYPE_ERROR); }
     }
 
-    globalCfg.dpiLayouts[getDpiScalePercent()].progressDlg.size        = r.dlgDim.size; //=> ignore r.dim.pos
-    globalCfg.dpiLayouts[getDpiScalePercent()].progressDlg.isMaximized = r.dlgDim.isMaximized;
+    //--------------------- save log file ----------------------
+    try //create not before destruction: 1. avoid issues with FFS trying to sync open log file 2. include status in log file name without extra rename
+    {
+        //do NOT use tryReportingError()! saving log files should not be cancellable!
+        saveLogFile(logFilePath, r.summary, r.errorLog.ref(), globalCfg.logfilesMaxAgeDays, globalCfg.logFormat, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
+    }
+    catch (const FileError& e)
+    {
+        logMsg(r.errorLog.ref(), e.toString(), MSG_TYPE_ERROR);
 
-    //email sending, or saving log file failed? at least this should affect the exit code:
-    if (r.logStats.error > 0)
-        raiseExitCode(exitCode_, FfsExitCode::error);
-    else if (r.logStats.warning > 0)
-        raiseExitCode(exitCode_, FfsExitCode::warning);
+        const AbstractPath logFileDefaultPath = AFS::appendRelPath(createAbstractPath(getLogFolderDefaultPath()), generateLogFileName(globalCfg.logFormat, r.summary));
+        if (logFilePath != logFileDefaultPath) //fallback: log file *must* be saved no matter what!
+            try
+            {
+                logFilePath = logFileDefaultPath;
+                saveLogFile(logFileDefaultPath, r.summary, r.errorLog.ref(), globalCfg.logfilesMaxAgeDays, globalCfg.logFormat, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
+            }
+            catch (const FileError& e2) { logMsg(r.errorLog.ref(), e2.toString(), MSG_TYPE_ERROR); assert(false); } //should never happen!!!
+    }
 
+    //--------- update last sync stats for the selected cfg files ---------
+    const ErrorLogStats& logStats = getStats(r.errorLog.ref());
 
-    //update last sync stats for the selected cfg file
     for (ConfigFileItem& cfi : globalCfg.mainDlg.config.fileHistory)
         if (equalNativePath(cfi.cfgFilePath, cfgFilePath))
         {
-            assert(!AFS::isNullPath(r.logFilePath));
+            assert(!AFS::isNullPath(logFilePath));
             assert(r.summary.startTime == syncStartTime);
 
             cfi.lastRunStats =
             {
-                r.logFilePath,
+                logFilePath,
                 std::chrono::system_clock::to_time_t(r.summary.startTime),
-                r.summary.syncResult,
+                r.summary.result,
                 r.summary.statsProcessed.items,
                 r.summary.statsProcessed.bytes,
                 r.summary.totalTime,
-                r.logStats.error,
-                r.logStats.warning,
+                logStats.error,
+                logStats.warning,
             };
             break;
         }
+
+    //---------------------------------------------------------------------------
+    const BatchStatusHandler::DlgOptions dlgOpt = statusHandler.showResult();
+
+    globalCfg.dpiLayouts[getDpiScalePercent()].progressDlg.size        = dlgOpt.dim.size; //=> ignore dim.pos
+    globalCfg.dpiLayouts[getDpiScalePercent()].progressDlg.isMaximized = dlgOpt.dim.isMaximized;
+
+    //----------------------------------------------------------------------
+    switch (r.summary.result)
+    {
+        //*INDENT-OFF*
+        case TaskResult::success:   raiseExitCode(exitCode_, FfsExitCode::success); break;
+        case TaskResult::warning:   raiseExitCode(exitCode_, FfsExitCode::warning); break;
+        case TaskResult::error:     raiseExitCode(exitCode_, FfsExitCode::error  ); break;
+        case TaskResult::cancelled: raiseExitCode(exitCode_, FfsExitCode::cancelled); break;
+        //*INDENT-ON*
+    }
+
+    //email sending, or saving log file failed? at least this should affect the exit code:
+    if (logStats.error > 0)
+        raiseExitCode(exitCode_, FfsExitCode::error);
+    else if (logStats.warning > 0)
+        raiseExitCode(exitCode_, FfsExitCode::warning);
 
     //---------------------------------------------------------------------------
     try //save global settings to XML: e.g. ignored warnings, last sync stats
@@ -681,24 +747,39 @@ void Application::runBatchMode(const Zstring& globalConfigFilePath, const XmlBat
     }
     catch (const FileError& e)
     {
-        notifyAppError(e.toString(), FfsExitCode::warning);
+        //raiseExitCode(exitCode_, FfsExitCode::error); -> sync successful
+        if (allowUserInteraction)
+            showNotificationDialog(nullptr, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
+        else
+            logExtraError(e.toString());
     }
 
+    //---------------------------------------------------------------------------
+    //run shutdown *after* saving global config! https://freefilesync.org/forum/viewtopic.php?t=5761
     using FinalRequest = BatchStatusHandler::FinalRequest;
-    switch (r.finalRequest)
+    switch (dlgOpt.finalRequest)
     {
         case FinalRequest::none:
             break;
+
         case FinalRequest::switchGui: //open new top-level window *after* progress dialog is gone => run on main event loop
             MainDialog::create(globalConfigFilePath, &globalCfg, batchCfg.guiCfg, {cfgFilePath}, true /*startComparison*/);
             break;
-        case FinalRequest::shutdown: //run *after* last sync stats were updated and saved! https://freefilesync.org/forum/viewtopic.php?t=5761
+
+        case FinalRequest::shutdown:
             try
             {
                 shutdownSystem(); //throw FileError
-                terminateProcess(static_cast<int>(exitCode_)); //no point in continuing and saving cfg again in onSystemShutdown() while the OS will kill us anytime!
+                terminateProcess(static_cast<int>(exitCode_)); //better exit in a controlled manner rather than letting the OS kill us any time!
             }
-            catch (const FileError& e) { notifyAppError(e.toString(), FfsExitCode::error); }
+            catch (const FileError& e)
+            {
+                //raiseExitCode(exitCode_, FfsExitCode::error); -> no! sync was successful
+                if (allowUserInteraction)
+                    showNotificationDialog(nullptr, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
+                else
+                    logExtraError(e.toString());
+            }
             break;
     }
 }

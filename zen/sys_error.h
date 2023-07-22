@@ -10,6 +10,7 @@
 #include "scope_guard.h" //
 #include "i18n.h"        //not used by this header, but the "rest of the world" needs it!
 #include "zstring.h"     //
+#include "extra_log.h"   //
 
     #include <glib.h>
     #include <cerrno>
@@ -78,7 +79,7 @@ inline bool validateBool(void* b) { return b; }
 bool validateBool(int) = delete; //catch unintended bool conversions, e.g. HRESULT
 }
 #define ASSERT_SYSERROR_IMPL(expr, exprStr) \
-    { if (!impl::validateBool(expr))        \
+    { if (!zen::impl::validateBool(expr))        \
             throw zen::SysError(L"Assertion failed: \"" L ## exprStr L"\""); }
 }
 

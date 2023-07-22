@@ -4,21 +4,17 @@
 // * Copyright (C) Zenju (zenju AT freefilesync DOT org) - All Rights Reserved *
 // *****************************************************************************
 
-#ifndef TRAY_MENU_H_3967857420987534253245
-#define TRAY_MENU_H_3967857420987534253245
+#ifndef RENAME_DLG_H_23487982347324
+#define RENAME_DLG_H_23487982347324
 
-#include <wx/string.h>
-#include "config.h"
+#include <wx+/popup_dlg.h>
 
 
-namespace rts
+namespace fff
 {
-enum class CancelReason
-{
-    requestGui,
-    requestExit
-};
-CancelReason runFolderMonitor(const XmlRealConfig& config, const wxString& jobname); //jobname may be empty
+zen::ConfirmationButton showRenameDialog(wxWindow* parent,
+                                         const std::vector<Zstring>& fileNamesOld,
+                                         std::vector<Zstring>& fileNamesNew);
 }
 
-#endif //TRAY_MENU_H_3967857420987534253245
+#endif //RENAME_DLG_H_23487982347324

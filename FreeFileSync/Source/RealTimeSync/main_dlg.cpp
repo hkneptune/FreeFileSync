@@ -120,7 +120,7 @@ MainDialog::MainDialog(const Zstring& cfgFilePath) :
         try
         {
             std::wstring warningMsg;
-            readRealOrBatchConfig(currentConfigFile, newConfig, warningMsg); //throw FileError
+            std::tie(newConfig, warningMsg) = readRealOrBatchConfig(currentConfigFile); //throw FileError
 
             if (!warningMsg.empty())
                 showNotificationDialog(this, DialogInfoType::warning, PopupDialogCfg().setDetailInstructions(warningMsg));
@@ -176,9 +176,8 @@ MainDialog::~MainDialog()
 
 void MainDialog::onBeforeSystemShutdown()
 {
-    try { writeConfig(getConfiguration(), lastRunConfigPath_); } //throw FileError
-    catch (FileError&) { assert(false); }
-    warn_static("log, maybe?")
+    try { writeConfig(getConfiguration(), lastRunConfigPath_); }
+    catch (const FileError& e) { logExtraError(e.toString()); }
 }
 
 
@@ -225,15 +224,15 @@ void MainDialog::onStart(wxCommandEvent& event)
 
     switch (runFolderMonitor(currentCfg, ::extractJobName(activeCfgFilePath)))
     {
-        case AbortReason::REQUEST_EXIT:
+        case CancelReason::requestExit:
             Close();
             return;
 
-        case AbortReason::REQUEST_GUI:
+        case CancelReason::requestGui:
             break;
     }
 
-    Show(); //don't show for AbortReason::REQUEST_EXIT
+    Show(); //don't show for CancelReason::requestExit
     Raise();
     m_buttonStart->SetFocus();
 }
@@ -283,7 +282,7 @@ void MainDialog::loadConfig(const Zstring& filepath)
         try
         {
             std::wstring warningMsg;
-            readRealOrBatchConfig(filepath, newConfig, warningMsg); //throw FileError
+            std::tie(newConfig, warningMsg) = readRealOrBatchConfig(filepath); //throw FileError
 
             if (!warningMsg.empty())
                 showNotificationDialog(this, DialogInfoType::warning, PopupDialogCfg().setDetailInstructions(warningMsg));

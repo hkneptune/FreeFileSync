@@ -27,7 +27,7 @@ enum class BatchErrorHandling
 };
 
 
-enum class PostSyncAction
+enum class PostBatchAction
 {
     none,
     sleep,
@@ -58,7 +58,7 @@ struct BatchExclusiveConfig
     bool runMinimized = false;
     bool autoCloseSummary = false;
     BatchErrorHandling batchErrorHandling = BatchErrorHandling::showPopup;
-    PostSyncAction postSyncAction = PostSyncAction::none;
+    PostBatchAction postBatchAction = PostBatchAction::none;
 };
 
 
@@ -271,6 +271,9 @@ std::wstring extractJobName(const Zstring& cfgFilePath);
 //human-readable/editable format suitable for clipboard
 std::string serializeFilter(const FilterConfig& filterCfg);
 std::optional<FilterConfig> parseFilterBuf(const std::string& filterBuf);
+
+void saveErrorLog(const zen::ErrorLog& log, const Zstring& filePath); //throw FileError
+zen::ErrorLog loadErrorLog(const Zstring& filePath); //throw FileError
 }
 
 #endif //PROCESS_XML_H_28345825704254262435

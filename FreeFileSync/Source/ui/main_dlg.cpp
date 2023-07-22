@@ -8,6 +8,7 @@
 #include <zen/format_unit.h>
 #include <zen/file_access.h>
 #include <zen/file_io.h>
+#include <zen/file_traverser.h>
 #include <zen/thread.h>
 #include <zen/process_exec.h>
 #include <zen/perf.h>
@@ -34,6 +35,7 @@
 #include "version_check.h"
 #include "gui_status_handler.h"
 #include "small_dlgs.h"
+#include "rename_dlg.h"
 #include "progress_indicator.h"
 #include "folder_pair.h"
 #include "search_grid.h"
@@ -66,23 +68,31 @@ constexpr std::chrono::milliseconds FILE_GRID_POST_UPDATE_DELAY(400);
 
 const ZstringView macroNameItemPath    = Zstr("%item_path%");
 const ZstringView macroNameItemPath2   = Zstr("%item_path2%");
+const ZstringView macroNameItemPaths   = Zstr("%item_paths%");
 const ZstringView macroNameLocalPath   = Zstr("%local_path%");
 const ZstringView macroNameLocalPath2  = Zstr("%local_path2%");
+const ZstringView macroNameLocalPaths  = Zstr("%local_paths%");
 const ZstringView macroNameItemName    = Zstr("%item_name%");
 const ZstringView macroNameItemName2   = Zstr("%item_name2%");
+const ZstringView macroNameItemNames   = Zstr("%item_names%");
 const ZstringView macroNameParentPath  = Zstr("%parent_path%");
 const ZstringView macroNameParentPath2 = Zstr("%parent_path2%");
+const ZstringView macroNameParentPaths = Zstr("%parent_paths%");
 
 bool containsFileItemMacro(const Zstring& commandLinePhrase)
 {
     return contains(commandLinePhrase, macroNameItemPath   ) ||
            contains(commandLinePhrase, macroNameItemPath2  ) ||
+           contains(commandLinePhrase, macroNameItemPaths  ) ||
            contains(commandLinePhrase, macroNameLocalPath  ) ||
            contains(commandLinePhrase, macroNameLocalPath2 ) ||
+           contains(commandLinePhrase, macroNameLocalPaths ) ||
            contains(commandLinePhrase, macroNameItemName   ) ||
            contains(commandLinePhrase, macroNameItemName2  ) ||
+           contains(commandLinePhrase, macroNameItemNames  ) ||
            contains(commandLinePhrase, macroNameParentPath ) ||
-           contains(commandLinePhrase, macroNameParentPath2) ;
+           contains(commandLinePhrase, macroNameParentPath2) ||
+           contains(commandLinePhrase, macroNameParentPaths) ;
 }
 
 //let's NOT create wxWidgets objects statically:
@@ -953,6 +963,42 @@ imgFileManagerSmall_([]
     onResizeLeftFolderWidth(evtDummy); //
 
 
+    onSystemShutdownRegister(onBeforeSystemShutdownCookie_);
+
+    //show and clear "extra" log in case of startup errors:
+    guiQueue_.processAsync([] { std::this_thread::sleep_for(std::chrono::milliseconds(500)); }, [this] //give worker threads some time to (potentially) log extra errors
+    {
+        if (!operationInProgress_ && folderCmp_.empty()) //don't show if main dialog is otherwise busy!
+        {
+            ErrorLog extraLog = fetchExtraLog();
+
+            try //clean up remnant logs from previous FFS runs:
+            {
+                traverseFolder(getConfigDirPath(), [&](const FileInfo& fi) //"ErrorLog 2023-07-05 105207.073.xml"
+                {
+                    if (startsWith(fi.itemName, Zstr("ErrorLog ")) && endsWith(fi.itemName, Zstr(".xml"))) //case-sensitive
+                    {
+                        append(extraLog, loadErrorLog(fi.fullPath)); //throw FileError
+                        removeFilePlain(fi.fullPath); //throw FileError
+                        //yeah, "read + delete" is a bit racy...
+                    }
+                }, nullptr, nullptr); //throw FileError
+            }
+            catch (const FileError& e) { logMsg(extraLog, e.toString(), MessageType::MSG_TYPE_ERROR); }
+
+            std::stable_sort(extraLog.begin(), extraLog.end(), [](const LogEntry& lhs, const LogEntry& rhs) { return lhs.time < rhs.time; });
+
+            if (!extraLog.empty())
+            {
+                const ErrorLogStats logCount = getStats(extraLog);
+                const TaskResult taskResult = logCount.error > 0 ? TaskResult::error : (logCount.warning > 0 ? TaskResult::warning : TaskResult::success);
+                setLastOperationLog({.result = taskResult}, make_shared<const ErrorLog>(std::move(extraLog)));
+                showLogPanel(true);
+            }
+        }
+    });
+
+
     //scroll cfg history to last used position. We cannot do this earlier e.g. in setGlobalCfgOnInit()
     //1. setConfig() indirectly calls cfggrid::addAndSelect() which changes cfg history scroll position
     //2. Grid::makeRowVisible() requires final window height! => do this after window resizing is complete
@@ -969,9 +1015,6 @@ imgFileManagerSmall_([]
     }
     //start up: user most likely wants to change config, or start comparison by pressing ENTER
     m_gridCfgHistory->SetFocus();
-
-
-    onSystemShutdownRegister(onBeforeSystemShutdownCookie_);
 }
 
 
@@ -1007,11 +1050,10 @@ MainDialog::~MainDialog()
 void MainDialog::onBeforeSystemShutdown()
 {
     try { writeConfig(getConfig(), lastRunConfigPath_); }
-    catch (FileError&) { assert(false); }
+    catch (const FileError& e) { logExtraError(e.toString()); }
 
     try { writeConfig(getGlobalCfgBeforeExit(), globalConfigFilePath_); }
-    catch (FileError&) { assert(false); }
-    warn_static("log, maybe?")
+    catch (const FileError& e) { logExtraError(e.toString()); }
 }
 
 
@@ -1457,13 +1499,13 @@ void MainDialog::copyToAlternateFolder(const std::vector<FileSystemObject*>& sel
                                    globalCfg_.mainDlg.copyToCfg.keepRelPaths,
                                    globalCfg_.mainDlg.copyToCfg.overwriteIfExists,
                                    globalCfg_.warnDlgs,
-                                   statusHandler); //throw AbortProcess
+                                   statusHandler); //throw CancelProcess
 
         //"clearSelection" not needed/desired
     }
-    catch (AbortProcess&) {}
+    catch (CancelProcess&) {}
 
-    const StatusHandlerTemporaryPanel::Result r = statusHandler.reportResults(); //noexcept
+    const StatusHandlerTemporaryPanel::Result r = statusHandler.prepareResult(); //noexcept
     setLastOperationLog(r.summary, r.errorLog.ptr());
 
     //updateGui(); -> not needed
@@ -1503,17 +1545,81 @@ void MainDialog::deleteSelectedFiles(const std::vector<FileSystemObject*>& selec
                             extractDirectionCfg(folderCmp_, getConfig().mainCfg),
                             moveToRecycler,
                             globalCfg_.warnDlgs.warnRecyclerMissing,
-                            statusHandler); //throw AbortProcess
+                            statusHandler); //throw CancelProcess
     }
-    catch (AbortProcess&) {}
+    catch (CancelProcess&) {}
 
-    const StatusHandlerTemporaryPanel::Result r = statusHandler.reportResults(); //noexcept
+    const StatusHandlerTemporaryPanel::Result r = statusHandler.prepareResult(); //noexcept
     setLastOperationLog(r.summary, r.errorLog.ptr());
 
-    append(errorLogPrepSync_, r.errorLog.ref());
+    append(fullSyncLog_->log, r.errorLog.ref());
+    fullSyncLog_->totalTime += r.summary.totalTime;
 
     //remove rows that are empty: just a beautification, invalid rows shouldn't cause issues
     filegrid::getDataView(*m_gridMainC).removeInvalidRows();
+
+    updateGui();
+}
+
+
+void MainDialog::renameSelectedFiles(const std::vector<FileSystemObject*>& selectionL,
+                                     const std::vector<FileSystemObject*>& selectionR)
+{
+    warn_static("finish")
+    if (std::all_of(selectionL.begin(), selectionL.end(), [](const FileSystemObject* fsObj) { return fsObj->isEmpty<SelectSide::left >(); }) &&
+    /**/std::all_of(selectionR.begin(), selectionR.end(), [](const FileSystemObject* fsObj) { return fsObj->isEmpty<SelectSide::right>(); }))
+    /**/return; //harmonize with onGridContextRim(): this function should be a no-op iff context menu option is disabled!
+
+    FocusPreserver fp;
+
+    std::vector<Zstring> fileNamesOld
+    {
+        Zstr("Season 1, Episode 21 - The Arsenal of Freedom.mkv"),
+        Zstr("Season 1, Episode 22 - Symbiosis.mkv"),
+        Zstr("Season 1, Episode 23 - Skin of Evil.mkv"),
+        Zstr("Season 1, Episode 24 - We'll Always Have Paris.mkv"),
+        Zstr("Season 1, Episode 25 - Conspiracy.mkv"),
+        Zstr("Season 1, Episode 26 - The Neutral Zone.mkv"),
+        Zstr("Season 2, Episode 01 - The Child.mkv"),
+        Zstr("Season 2, Episode 02 - Where Silence Has Lease.mkv"),
+        Zstr("Season 2, Episode 03 - Elementary, Dear Data.mkv"),
+    };
+    std::vector<Zstring> fileNamesNew;
+
+    if (showRenameDialog(this, fileNamesOld, fileNamesNew) != ConfirmationButton::accept)
+        return;
+
+    disableGuiElements(true /*enableAbort*/); //StatusHandlerTemporaryPanel will internally process Window messages, so avoid unexpected callbacks!
+    auto app = wxTheApp; //fix lambda/wxWigets/VC fuck up
+    ZEN_ON_SCOPE_EXIT(app->Yield(); enableGuiElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
+
+    //wxBusyCursor dummy; -> redundant: progress already shown in status bar!
+    const auto& guiCfg = getConfig();
+
+    StatusHandlerTemporaryPanel statusHandler(*this, std::chrono::system_clock::now() /*startTime*/,
+                                              false /*ignoreErrors*/,
+                                              guiCfg.mainCfg.autoRetryCount,
+                                              guiCfg.mainCfg.autoRetryDelay,
+                                              globalCfg_.soundFileAlertPending);
+    try
+    {
+
+        //deleteFromGridAndHD(selectionL, selectionR,
+        //                    extractDirectionCfg(folderCmp_, getConfig().mainCfg),
+        //                    moveToRecycler,
+        //                    globalCfg_.warnDlgs.warnRecyclerMissing,
+        //                    statusHandler); //throw CancelProcess
+    }
+    catch (CancelProcess&) {}
+
+    const StatusHandlerTemporaryPanel::Result r = statusHandler.prepareResult(); //noexcept
+    setLastOperationLog(r.summary, r.errorLog.ptr());
+
+    append(fullSyncLog_->log, r.errorLog.ref());
+    fullSyncLog_->totalTime += r.summary.totalTime;
+
+    ////remove rows that are empty: just a beautification, invalid rows shouldn't cause issues
+    //filegrid::getDataView(*m_gridMainC).removeInvalidRows();
 
     updateGui();
 }
@@ -1566,12 +1672,23 @@ void collectNonNativeFiles(const std::vector<FileSystemObject*>& selectedRows, c
 }
 
 
+struct ItemPathInfo
+{
+    Zstring itemPath;
+    Zstring itemPath2;
+    Zstring itemName;
+    Zstring itemName2;
+    Zstring parentPath;
+    Zstring parentPath2;
+    Zstring localPath;
+    Zstring localPath2;
+};
 template <SelectSide side>
-void invokeCommandLine(const Zstring& commandLinePhrase, //throw FileError
-                       const std::vector<FileSystemObject*>& selection,
-                       const TempFileBuffer& tempFileBuf)
+std::vector<ItemPathInfo> getItemPathInfo(const std::vector<FileSystemObject*>& selection, const TempFileBuffer& tempFileBuf)
 {
     constexpr SelectSide side2 = getOtherSide<side>;
+
+    std::vector<ItemPathInfo> pathInfos;
 
     for (const FileSystemObject* fsObj : selection) //context menu calls this function only if selection is not empty!
     {
@@ -1604,34 +1721,19 @@ void invokeCommandLine(const Zstring& commandLinePhrase, //throw FileError
         if (localPath .empty()) localPath  = replaceCpy(utfTo<Zstring>(L"<" + _("Local path not available for %x.") + L">"), Zstr("%x"), itemPath );
         if (localPath2.empty()) localPath2 = replaceCpy(utfTo<Zstring>(L"<" + _("Local path not available for %x.") + L">"), Zstr("%x"), itemPath2);
 
-        Zstring cmdLine = expandMacros(commandLinePhrase);
-        replace(cmdLine, macroNameItemPath,    itemPath);
-        replace(cmdLine, macroNameItemPath2,   itemPath2);
-        replace(cmdLine, macroNameLocalPath,   localPath);
-        replace(cmdLine, macroNameLocalPath2,  localPath2);
-        replace(cmdLine, macroNameItemName,    itemName);
-        replace(cmdLine, macroNameItemName2,   itemName2);
-        replace(cmdLine, macroNameParentPath,  parentPath);
-        replace(cmdLine, macroNameParentPath2, parentPath2);
-
-        if (commandLinePhrase == extCommandOpenDefault.cmdLine) //not strictly needed, but: 1. better error reporting (Windows) 2. not async => avoid zombies (Linux/macOS)
-            openWithDefaultApp(localPath); //throw FileError
-        else
-            try
-            {
-                std::optional<int> timeoutMs;
-                if (selection.size() <= EXT_APP_MASS_INVOKE_THRESHOLD)
-                    timeoutMs = EXT_APP_MAX_TOTAL_WAIT_TIME_MS / selection.size(); //run async, but give consoleExecute() some "time to fail"
-                //else: run synchronously
-
-                if (const auto& [exitCode, output] = consoleExecute(cmdLine, timeoutMs); //throw SysError, SysErrorTimeOut
-                    exitCode != 0)
-                    throw SysError(formatSystemError(utfTo<std::string>(commandLinePhrase),
-                                                     replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), utfTo<std::wstring>(output)));
-            }
-            catch (SysErrorTimeOut&) {} //child process not failed yet => probably fine :>
-            catch (const SysError& e) { throw FileError(replaceCpy(_("Command %x failed."), L"%x", fmtPath(cmdLine)), e.toString()); }
+        pathInfos.push_back(
+        {
+            itemPath,
+            itemPath2,
+            itemName,
+            itemName2,
+            parentPath,
+            parentPath2,
+            localPath,
+            localPath2,
+        });
     }
+    return pathInfos;
 }
 }
 
@@ -1642,49 +1744,51 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
 {
     try
     {
-        if (containsFileItemMacro(commandLinePhrase))
+        //support fallback instead of an error in this special case
+        if (commandLinePhrase == extCommandFileManager.cmdLine)
         {
-            //support fallback instead of an error in this special case
-            if (commandLinePhrase == extCommandFileManager.cmdLine)
+            if (selectionL.size() + selectionR.size() > 1) //do not open more than one Explorer instance!
             {
-                if (selectionL.size() + selectionR.size() > 1) //do not open more than one Explorer instance!
-                {
-                    if (( leftSide && !selectionL.empty()) ||
-                        (!leftSide &&  selectionR.empty()))
-                        return openExternalApplication(commandLinePhrase, leftSide, {selectionL[0]}, {});
-                    else
-                        return openExternalApplication(commandLinePhrase, leftSide, {}, {selectionR[0]});
-                }
-
-                //either left or right selection is filled with exactly one item (or no selection at all)
-                AbstractPath itemPath = getNullPath();
-                if (!selectionL.empty())
-                {
-                    if (selectionL[0]->isEmpty<SelectSide::left>())
-                        return openFolderInFileBrowser(getExistingParentFolder<SelectSide::left>(*selectionL[0])); //throw FileError
-
-                    itemPath = selectionL[0]->getAbstractPath<SelectSide::left>();
-                }
-                else if (!selectionR.empty())
-                {
-                    if (selectionR[0]->isEmpty<SelectSide::right>())
-                        return openFolderInFileBrowser(getExistingParentFolder<SelectSide::right>(*selectionR[0])); //throw FileError
-
-                    itemPath = selectionR[0]->getAbstractPath<SelectSide::right>();
-                }
+                if (( leftSide && !selectionL.empty()) ||
+                    (!leftSide &&  selectionR.empty()))
+                    return openExternalApplication(commandLinePhrase, leftSide, {selectionL[0]}, {});
                 else
-                    return openFolderInFileBrowser(leftSide ? //throw FileError
-                                                   createAbstractPath(firstFolderPair_->getValues().folderPathPhraseLeft) :
-                                                   createAbstractPath(firstFolderPair_->getValues().folderPathPhraseRight));
-
-                //itemPath != base folder in this context
-                if (const Zstring& gdriveUrl = getGoogleDriveFolderUrl(*AFS::getParentPath(itemPath)); //throw FileError
-                    !gdriveUrl.empty())
-                    return openWithDefaultApp(gdriveUrl); //throw FileError
+                    return openExternalApplication(commandLinePhrase, leftSide, {}, {selectionR[0]});
             }
 
+            //either left or right selection is filled with exactly one item (or no selection at all)
+            AbstractPath itemPath = getNullPath();
+            if (!selectionL.empty())
+            {
+                if (selectionL[0]->isEmpty<SelectSide::left>())
+                    return openFolderInFileBrowser(getExistingParentFolder<SelectSide::left>(*selectionL[0])); //throw FileError
+
+                itemPath = selectionL[0]->getAbstractPath<SelectSide::left>();
+            }
+            else if (!selectionR.empty())
+            {
+                if (selectionR[0]->isEmpty<SelectSide::right>())
+                    return openFolderInFileBrowser(getExistingParentFolder<SelectSide::right>(*selectionR[0])); //throw FileError
+
+                itemPath = selectionR[0]->getAbstractPath<SelectSide::right>();
+            }
+            else
+                return openFolderInFileBrowser(leftSide ? //throw FileError
+                                               createAbstractPath(firstFolderPair_->getValues().folderPathPhraseLeft) :
+                                               createAbstractPath(firstFolderPair_->getValues().folderPathPhraseRight));
+
+            //itemPath != base folder in this context
+            if (const Zstring& gdriveUrl = getGoogleDriveFolderUrl(*AFS::getParentPath(itemPath)); //throw FileError
+                !gdriveUrl.empty())
+                return openWithDefaultApp(gdriveUrl); //throw FileError
+        }
+
+        std::vector<Zstring> cmdLines;
+        if (containsFileItemMacro(commandLinePhrase))
+        {
             //regular command evaluation:
             const size_t invokeCount = selectionL.size() + selectionR.size();
+            assert(invokeCount > 0);
             if (invokeCount > EXT_APP_MASS_INVOKE_THRESHOLD)
                 if (globalCfg_.confirmDlgs.confirmCommandMassInvoke)
                 {
@@ -1706,12 +1810,13 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
                 }
 
             std::set<FileDescriptor> nonNativeFiles;
-            if (contains(commandLinePhrase, Zstr("%local_path%")))
+            if (contains(commandLinePhrase, macroNameLocalPath) ||
+                contains(commandLinePhrase, macroNameLocalPaths))
             {
                 collectNonNativeFiles<SelectSide::left >(selectionL, tempFileBuf_, nonNativeFiles);
                 collectNonNativeFiles<SelectSide::right>(selectionR, tempFileBuf_, nonNativeFiles);
             }
-            if (contains(commandLinePhrase, Zstr("%local_path2%")))
+            if (contains(commandLinePhrase, macroNameLocalPath2))
             {
                 collectNonNativeFiles<SelectSide::right>(selectionL, tempFileBuf_, nonNativeFiles);
                 collectNonNativeFiles<SelectSide::left >(selectionR, tempFileBuf_, nonNativeFiles);
@@ -1735,37 +1840,101 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
                                                           globalCfg_.soundFileAlertPending);
                 try
                 {
-                    tempFileBuf_.createTempFiles(nonNativeFiles, statusHandler); //throw AbortProcess
+                    tempFileBuf_.createTempFiles(nonNativeFiles, statusHandler); //throw CancelProcess
                     //"clearSelection" not needed/desired
                 }
-                catch (AbortProcess&) {}
+                catch (CancelProcess&) {}
 
-                const StatusHandlerTemporaryPanel::Result r = statusHandler.reportResults(); //noexcept
+                const StatusHandlerTemporaryPanel::Result r = statusHandler.prepareResult(); //noexcept
                 setLastOperationLog(r.summary, r.errorLog.ptr());
 
-                if (r.summary.syncResult == SyncResult::aborted)
+                if (r.summary.result == TaskResult::cancelled)
                     return;
 
                 //updateGui(); -> not needed
             }
             //########################################################################################
 
-            invokeCommandLine<SelectSide::left >(commandLinePhrase, selectionL, tempFileBuf_); //throw FileError
-            invokeCommandLine<SelectSide::right>(commandLinePhrase, selectionR, tempFileBuf_); //
+            std::vector<ItemPathInfo> pathInfos;
+            append(pathInfos, getItemPathInfo<SelectSide::left >(selectionL, tempFileBuf_));
+            append(pathInfos, getItemPathInfo<SelectSide::right>(selectionR, tempFileBuf_));
+
+            Zstring cmdLineTmp = expandMacros(commandLinePhrase);
+
+            //support path lists for a single command line: https://freefilesync.org/forum/viewtopic.php?t=10328#p39305
+            auto replacePathList = [&](const ZstringView macroName, const Zstring ItemPathInfo::*itemPath)
+            {
+                const Zstring& macroNameQuoted = Zstring() + Zstr('"') + macroName + Zstr('"');
+                if (contains(cmdLineTmp, macroNameQuoted))
+                {
+                    Zstring pathList;
+                    for (const ItemPathInfo& pathInfo : pathInfos)
+                    {
+                        if (!pathList.empty())
+                            pathList += Zstr(' ');
+                        pathList += Zstr('"');
+                        pathList += pathInfo.*itemPath;
+                        pathList += Zstr('"');
+                    }
+                    replace(cmdLineTmp, macroNameQuoted, pathList);
+                }
+                if (contains(cmdLineTmp, macroName))
+                {
+                    Zstring pathList;
+                    for (const ItemPathInfo& pathInfo : pathInfos)
+                    {
+                        if (!pathList.empty())
+                            pathList += Zstr(' ');
+                        pathList += pathInfo.*itemPath;
+                    }
+                    replace(cmdLineTmp, macroName, pathList);
+                }
+            };
+            replacePathList(macroNameItemPaths,   &ItemPathInfo::itemPath);
+            replacePathList(macroNameLocalPaths,  &ItemPathInfo::localPath);
+            replacePathList(macroNameItemNames,   &ItemPathInfo::itemName);
+            replacePathList(macroNameParentPaths, &ItemPathInfo::parentPath);
+
+            //generate multiple command lines per each selected item
+            for (const ItemPathInfo& pathInfo : pathInfos)
+                if (commandLinePhrase == extCommandOpenDefault.cmdLine)
+                    //not strictly needed, but: 1. better error reporting (Windows) 2. not async => avoid zombies (Linux/macOS)
+                    openWithDefaultApp(pathInfo.localPath); //throw FileError
+                else
+                {
+                    Zstring cmdLine = cmdLineTmp;
+                    replace(cmdLine, macroNameItemPath,    pathInfo.itemPath);
+                    replace(cmdLine, macroNameItemPath2,   pathInfo.itemPath2);
+                    replace(cmdLine, macroNameLocalPath,   pathInfo.localPath);
+                    replace(cmdLine, macroNameLocalPath2,  pathInfo.localPath2);
+                    replace(cmdLine, macroNameItemName,    pathInfo.itemName);
+                    replace(cmdLine, macroNameItemName2,   pathInfo.itemName2);
+                    replace(cmdLine, macroNameParentPath,  pathInfo.parentPath);
+                    replace(cmdLine, macroNameParentPath2, pathInfo.parentPath2);
+
+                    cmdLines.push_back(std::move(cmdLine));
+                }
+
+            removeDuplicatesStable(cmdLines);
         }
         else
-        {
-            const Zstring cmdLine = expandMacros(commandLinePhrase);
+            cmdLines.push_back(expandMacros(commandLinePhrase)); //add single entry (even if selection is empty!)
+
+        for (const Zstring& cmdLine : cmdLines)
             try
             {
-                if (const auto& [exitCode, output] = consoleExecute(cmdLine, EXT_APP_MAX_TOTAL_WAIT_TIME_MS); //throw SysError, SysErrorTimeOut
+                std::optional<int> timeoutMs;
+                if (cmdLines.size() <= EXT_APP_MASS_INVOKE_THRESHOLD)
+                    timeoutMs = EXT_APP_MAX_TOTAL_WAIT_TIME_MS / cmdLines.size(); //run async, but give consoleExecute() some "time to fail"
+                //else: run synchronously
+
+                if (const auto& [exitCode, output] = consoleExecute(cmdLine, timeoutMs); //throw SysError, SysErrorTimeOut
                     exitCode != 0)
                     throw SysError(formatSystemError(utfTo<std::string>(commandLinePhrase),
                                                      replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), utfTo<std::wstring>(output)));
             }
             catch (SysErrorTimeOut&) {} //child process not failed yet => probably fine :>
             catch (const SysError& e) { throw FileError(replaceCpy(_("Command %x failed."), L"%x", fmtPath(cmdLine)), e.toString()); }
-        }
     }
     catch (const FileError& e) { showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString())); }
 }
@@ -2146,6 +2315,14 @@ void MainDialog::onGridKeyEvent(wxKeyEvent& event, Grid& grid, bool leftSide)
 
         switch (keyCode)
         {
+            case WXK_F2:
+            case WXK_NUMPAD_F2:
+                warn_static("finish")
+#if 0
+                renameSelectedFiles(selectionL, selectionR);
+#endif
+                return;
+
             case WXK_RETURN:
             case WXK_NUMPAD_ENTER:
                 startSyncForSelecction(selection);
@@ -2224,7 +2401,6 @@ void MainDialog::onLocalKeyEvent(wxKeyEvent& event) //process key events without
             //return; //-> swallow event!
 
             case WXK_F11:
-                warn_static("F11 not working at all on macOS!")
                 setGridViewType(m_bpButtonViewType->isActive() ? GridViewType::difference : GridViewType::action);
                 return; //-> swallow event!
 
@@ -2620,6 +2796,12 @@ void MainDialog::onGridContextRim(const std::vector<FileSystemObject*>& selectio
     menu.addItem(_("&Copy to...") + L"\tCtrl+T", [&] { copyToAlternateFolder(selectionL, selectionR); }, wxNullImage, haveItemsSelected);
     //----------------------------------------------------------------------------------------------------
     menu.addSeparator();
+
+    warn_static("finish")
+#if 0
+    menu.addItem(_("&Rename") + L"\tF2", [&] { renameSelectedFiles(selectionL, selectionR); }, loadImage("rename", getDefaultMenuIconSize()), haveItemsSelected);
+#endif
+
     menu.addItem(_("&Delete") + L"\t(Shift+)Del", [&] { deleteSelectedFiles(selectionL, selectionR, true /*moveToRecycler*/); }, imgTrashSmall_, haveItemsSelected);
 
     menu.popup(leftSide ? *m_gridMainL : *m_gridMainR, mousePos);
@@ -3502,11 +3684,11 @@ void MainDialog::removeSelectedCfgHistoryItems(bool deleteFromDisk)
             std::vector<Zstring> deletedPaths;
             try
             {
-                deleteListOfFiles(filePaths, deletedPaths, moveToRecycler, globalCfg_.warnDlgs.warnRecyclerMissing, statusHandler); //throw AbortProcess
+                deleteListOfFiles(filePaths, deletedPaths, moveToRecycler, globalCfg_.warnDlgs.warnRecyclerMissing, statusHandler); //throw CancelProcess
             }
-            catch (AbortProcess&) {}
+            catch (CancelProcess&) {}
 
-            const StatusHandlerTemporaryPanel::Result r = statusHandler.reportResults(); //noexcept
+            const StatusHandlerTemporaryPanel::Result r = statusHandler.prepareResult(); //noexcept
             setLastOperationLog(r.summary, r.errorLog.ptr());
 
             filePaths = deletedPaths;
@@ -4304,11 +4486,11 @@ void MainDialog::onCompare(wxCommandEvent& event)
                                               guiCfg.mainCfg.autoRetryDelay,
                                               globalCfg_.soundFileAlertPending);
 
-    auto requestPassword = [&, password = Zstring()](const std::wstring& msg, const std::wstring& lastErrorMsg) mutable //throw AbortProcess
+    auto requestPassword = [&, password = Zstring()](const std::wstring& msg, const std::wstring& lastErrorMsg) mutable //throw CancelProcess
     {
         assert(runningOnMainThread());
         if (showPasswordPrompt(this, msg, lastErrorMsg, password) != ConfirmationButton::accept)
-            statusHandler.abortProcessNow(AbortTrigger::user); //throw AbortProcess
+            statusHandler.cancelProcessNow(CancelReason::user); //throw CancelProcess
 
         return password;
     };
@@ -4316,7 +4498,6 @@ void MainDialog::onCompare(wxCommandEvent& event)
     {
         //GUI mode: place directory locks on directories isolated(!) during both comparison and synchronization
 
-        //COMPARE DIRECTORIES
         std::unique_ptr<LockHolder> dirLocks;
         folderCmp_ = compare(globalCfg_.warnDlgs,
                              globalCfg_.fileTimeTolerance,
@@ -4325,17 +4506,17 @@ void MainDialog::onCompare(wxCommandEvent& event)
                              globalCfg_.createLockFile,
                              dirLocks,
                              fpCfgList,
-                             statusHandler); //throw AbortProcess
+                             statusHandler); //throw CancelProcess
     }
-    catch (AbortProcess&) {}
+    catch (CancelProcess&) {}
 
-    const StatusHandlerTemporaryPanel::Result r = statusHandler.reportResults(); //noexcept
+    const StatusHandlerTemporaryPanel::Result r = statusHandler.prepareResult(); //noexcept
     //---------------------------------------------------------------------------
     setLastOperationLog(r.summary, r.errorLog.ptr());
 
-    errorLogPrepSync_ = r.errorLog.ref();
+    fullSyncLog_ = {r.errorLog.ref(), r.summary.startTime, r.summary.totalTime};
 
-    if (r.summary.syncResult == SyncResult::aborted)
+    if (r.summary.result == TaskResult::cancelled)
         return updateGui(); //refresh grid in ANY case! (also on abort)
 
 
@@ -4364,7 +4545,7 @@ void MainDialog::onCompare(wxCommandEvent& event)
     }
 
     //mark selected cfg files as "in sync" when there is nothing to do: https://freefilesync.org/forum/viewtopic.php?t=4991
-    if (r.summary.syncResult == SyncResult::finishedSuccess)
+    if (r.summary.result == TaskResult::success)
         if (getCUD(SyncStatistics(folderCmp_)) == 0)
         {
             setStatusInfo(_("No files to synchronize"), true /*highlight*/); //user might be AFK: don't flashStatusInfo()
@@ -4439,7 +4620,7 @@ void MainDialog::clearGrid(ptrdiff_t pos)
     }
 
     if (folderCmp_.empty())
-        errorLogPrepSync_.clear();
+        fullSyncLog_.reset();
 
     filegrid::setData(*m_gridMainC,    folderCmp_);
     treegrid::setData(*m_gridOverview, folderCmp_);
@@ -4545,66 +4726,121 @@ void MainDialog::onStartSync(wxCommandEvent& event)
     };
 
 
-    using FinalRequest = StatusHandlerFloatingDialog::FinalRequest;
-    FinalRequest finalRequest = FinalRequest::none;
+    disableGuiElements(false /*enableAbort*/); //StatusHandlerFloatingDialog will internally process Window messages, so avoid unexpected callbacks!
+    ZEN_ON_SCOPE_EXIT(enableGuiElements()); //run AFTER StatusHandlerFloatingDialog::showResult()
+
+    //class handling status updates and error messages
+    StatusHandlerFloatingDialog statusHandler(this, getJobNames(), syncStartTime,
+                                              guiCfg.mainCfg.ignoreErrors,
+                                              guiCfg.mainCfg.autoRetryCount,
+                                              guiCfg.mainCfg.autoRetryDelay,
+                                              globalCfg_.soundFileSyncFinished,
+                                              globalCfg_.soundFileAlertPending,
+                                              progressDim,
+                                              globalCfg_.progressDlgAutoClose);
+    try
     {
-        disableGuiElements(false /*enableAbort*/); //StatusHandlerFloatingDialog will internally process Window messages, so avoid unexpected callbacks!
-        ZEN_ON_SCOPE_EXIT(enableGuiElements());
-        //run this->enableGuiElements() BEFORE "finalRequest" buf AFTER StatusHandlerFloatingDialog::reportResults()
+        //PERF_START;
 
-        //class handling status updates and error messages
-        StatusHandlerFloatingDialog statusHandler(this, getJobNames(), syncStartTime,
-                                                  guiCfg.mainCfg.ignoreErrors,
-                                                  guiCfg.mainCfg.autoRetryCount,
-                                                  guiCfg.mainCfg.autoRetryDelay,
-                                                  globalCfg_.soundFileSyncFinished,
-                                                  globalCfg_.soundFileAlertPending,
-                                                  progressDim,
-                                                  globalCfg_.progressDlgAutoClose,
-                                                  std::exchange(errorLogPrepSync_, {})); //"consume" comparison's error log during sync
-        try
+        //let's report here rather than before comparison (user might have changed global settings in the meantime!)
+        logNonDefaultSettings(globalCfg_, statusHandler); //throw CancelProcess
+
+        //wxBusyCursor dummy; -> redundant: progress already shown in progress dialog!
+
+        //GUI mode: end directory lock lifetime after comparion and start new locking right before sync
+        std::unique_ptr<LockHolder> dirLocks;
+        if (globalCfg_.createLockFile)
         {
-            //PERF_START;
-
-            //let's report here rather than before comparison (user might have changed global settings in the meantime!)
-            logNonDefaultSettings(globalCfg_, statusHandler); //throw AbortProcess
-
-            //wxBusyCursor dummy; -> redundant: progress already shown in progress dialog!
-
-            //GUI mode: end directory lock lifetime after comparion and start new locking right before sync
-            std::unique_ptr<LockHolder> dirLocks;
-            if (globalCfg_.createLockFile)
+            std::set<Zstring> folderPathsToLock;
+            for (auto it = begin(folderCmp_); it != end(folderCmp_); ++it)
             {
-                std::set<Zstring> folderPathsToLock;
-                for (auto it = begin(folderCmp_); it != end(folderCmp_); ++it)
-                {
-                    if (it->getFolderStatus<SelectSide::left>() == BaseFolderStatus::existing) //do NOT check directory existence again!
-                        if (const Zstring& nativePath = getNativeItemPath(it->getAbstractPath<SelectSide::left>()); //restrict directory locking to native paths until further
-                            !nativePath.empty())
-                            folderPathsToLock.insert(nativePath);
+                if (it->getFolderStatus<SelectSide::left>() == BaseFolderStatus::existing) //do NOT check directory existence again!
+                    if (const Zstring& nativePath = getNativeItemPath(it->getAbstractPath<SelectSide::left>()); //restrict directory locking to native paths until further
+                        !nativePath.empty())
+                        folderPathsToLock.insert(nativePath);
 
-                    if (it->getFolderStatus<SelectSide::right>() == BaseFolderStatus::existing)
-                        if (const Zstring& nativePath = getNativeItemPath(it->getAbstractPath<SelectSide::right>());
-                            !nativePath.empty())
-                            folderPathsToLock.insert(nativePath);
-                }
-                dirLocks = std::make_unique<LockHolder>(folderPathsToLock, globalCfg_.warnDlgs.warnDirectoryLockFailed, statusHandler); //throw AbortProcess
+                if (it->getFolderStatus<SelectSide::right>() == BaseFolderStatus::existing)
+                    if (const Zstring& nativePath = getNativeItemPath(it->getAbstractPath<SelectSide::right>());
+                        !nativePath.empty())
+                        folderPathsToLock.insert(nativePath);
             }
-
-            //START SYNCHRONIZATION
-            synchronize(syncStartTime,
-                        globalCfg_.verifyFileCopy,
-                        globalCfg_.copyLockedFiles,
-                        globalCfg_.copyFilePermissions,
-                        globalCfg_.failSafeFileCopy,
-                        globalCfg_.runWithBackgroundPriority,
-                        extractSyncCfg(guiCfg.mainCfg),
-                        folderCmp_,
-                        globalCfg_.warnDlgs,
-                        statusHandler); //throw AbortProcess
+            dirLocks = std::make_unique<LockHolder>(folderPathsToLock, globalCfg_.warnDlgs.warnDirectoryLockFailed, statusHandler); //throw CancelProcess
         }
-        catch (AbortProcess&) {}
 
+        synchronize(syncStartTime,
+                    globalCfg_.verifyFileCopy,
+                    globalCfg_.copyLockedFiles,
+                    globalCfg_.copyFilePermissions,
+                    globalCfg_.failSafeFileCopy,
+                    globalCfg_.runWithBackgroundPriority,
+                    extractSyncCfg(guiCfg.mainCfg),
+                    folderCmp_,
+                    globalCfg_.warnDlgs,
+                    statusHandler); //throw CancelProcess
+    }
+    catch (CancelProcess&) { assert(statusHandler.taskCancelled() == CancelReason::user); }
+
+    //-------------------------------------------------------------------
+    StatusHandlerFloatingDialog::Result r = statusHandler.prepareResult();
+
+    //merge logs of comparison, manual operations, sync
+    append(fullSyncLog_->log, r.errorLog.ref());
+    fullSyncLog_->totalTime += r.summary.totalTime;
+
+
+    if (statusHandler.taskCancelled())
+        /* user cancelled => don't run post sync command
+                          => don't send email notification
+                          => don't save log file (=> treat sync attempt like a manual operation)
+                          => don't update last sync stats for the selected cfg files
+                          => don't play sound notification
+                          => don't run post sync action          */
+        assert(statusHandler.taskCancelled() == CancelReason::user); //"stop on first error" is only for ffs_batch
+    else
+    {
+        //"consume" fullSyncLog_, but don't reset: there may be items remaining for manual operations or re-sync!
+        ProcessSummary fullSummary = r.summary;
+        fullSummary.startTime = std::exchange(fullSyncLog_->startTime, std::chrono::system_clock::now());
+        fullSummary.totalTime = std::exchange(fullSyncLog_->totalTime, {});
+        //let's *not* redetermine "ProcessSummary::result", even if errors occured during manual operations!
+
+        ErrorLog fullLog = std::exchange(fullSyncLog_->log, {});
+
+        auto logMsg2 =[&](const std::wstring& msg, MessageType type)
+        {
+            logMsg(fullLog,          msg, type);
+            logMsg(r.errorLog.ref(), msg, type);
+        };
+
+        auto notifyStatusNoThrow = [&](std::wstring&& msg) { try { statusHandler.updateStatus(std::move(msg)); /*throw CancelProcess*/ } catch (CancelProcess&) {} };
+
+        //--------------------- post sync command ----------------------
+        if (const Zstring cmdLine = trimCpy(expandMacros(guiCfg.mainCfg.postSyncCommand));
+            !cmdLine.empty())
+            if (guiCfg.mainCfg.postSyncCondition == PostSyncCondition::completion ||
+                (guiCfg.mainCfg.postSyncCondition == PostSyncCondition::errors) == (r.summary.result == TaskResult::cancelled ||
+                                                                                    r.summary.result == TaskResult::error))
+                try
+                {
+                    //give consoleExecute() some "time to fail", but not too long to hang our process
+                    const int DEFAULT_APP_TIMEOUT_MS = 100;
+
+                    if (const auto& [exitCode, output] = consoleExecute(cmdLine, DEFAULT_APP_TIMEOUT_MS); //throw SysError, SysErrorTimeOut
+                        exitCode != 0)
+                        throw SysError(formatSystemError("", replaceCpy(_("Exit code %x"), L"%x", numberTo<std::wstring>(exitCode)), utfTo<std::wstring>(output)));
+
+                    logMsg2(_("Executing command:") + L' ' + utfTo<std::wstring>(cmdLine) + L" [" + replaceCpy(_("Exit code %x"), L"%x", L"0") + L']', MSG_TYPE_INFO);
+                }
+                catch (SysErrorTimeOut&) //child process not failed yet => probably fine :>
+                {
+                    logMsg2(_("Executing command:") + L' ' + utfTo<std::wstring>(cmdLine), MSG_TYPE_INFO);
+                }
+                catch (const SysError& e)
+                {
+                    logMsg2(replaceCpy(_("Command %x failed."), L"%x", fmtPath(cmdLine)) + L"\n\n" + e.toString(), MSG_TYPE_ERROR);
+                }
+
+        //--------------------- email notification ----------------------
         AbstractPath logFolderPath = createAbstractPath(guiCfg.mainCfg.altLogFolderPathPhrase); //optional
         if (AFS::isNullPath(logFolderPath))
             logFolderPath = createAbstractPath(globalCfg_.logFolderPhrase);
@@ -4612,57 +4848,96 @@ void MainDialog::onStartSync(wxCommandEvent& event)
         if (AFS::isNullPath(logFolderPath))
             logFolderPath = createAbstractPath(getLogFolderDefaultPath());
 
-        StatusHandlerFloatingDialog::Result r = statusHandler.reportResults(guiCfg.mainCfg.postSyncCommand, guiCfg.mainCfg.postSyncCondition,
-                                                                            logFolderPath, globalCfg_.logfilesMaxAgeDays, globalCfg_.logFormat, logFilePathsToKeep,
-                                                                            guiCfg.mainCfg.emailNotifyAddress, guiCfg.mainCfg.emailNotifyCondition); //noexcept
-        //---------------------------------------------------------------------------
-        setLastOperationLog(r.summary, r.errorLog.ptr());
+        AbstractPath logFilePath = AFS::appendRelPath(logFolderPath, generateLogFileName(globalCfg_.logFormat, fullSummary));
+        //e.g. %AppData%\FreeFileSync\Logs\Backup FreeFileSync 2013-09-15 015052.123 [Error].log
 
-        globalCfg_.progressDlgAutoClose = r.autoCloseDialog;
-        globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.size        = r.dlgDim.size;
-        globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.isMaximized = r.dlgDim.isMaximized;
+        if (const std::string notifyEmail = trimCpy(guiCfg.mainCfg.emailNotifyAddress);
+            !notifyEmail.empty())
+            if (guiCfg.mainCfg.emailNotifyCondition == ResultsNotification::always ||
+                (guiCfg.mainCfg.emailNotifyCondition == ResultsNotification::errorWarning && (fullSummary.result == TaskResult::cancelled ||
+                        fullSummary.result == TaskResult::error ||
+                        fullSummary.result == TaskResult::warning)) ||
+                (guiCfg.mainCfg.emailNotifyCondition == ResultsNotification::errorOnly && (fullSummary.result == TaskResult::cancelled ||
+                                                                                           fullSummary.result == TaskResult::error)))
+                try
+                {
+                    logMsg2(replaceCpy(_("Sending email notification to %x"), L"%x", utfTo<std::wstring>(notifyEmail)), MSG_TYPE_INFO);
+                    sendLogAsEmail(notifyEmail, fullSummary, fullLog, logFilePath, notifyStatusNoThrow); //throw FileError
+                }
+                catch (const FileError& e) { logMsg2(e.toString(), MSG_TYPE_ERROR); }
 
-        //update last sync stats for the selected cfg files
-        const ErrorLogStats& logStats = getStats(r.errorLog.ref());
+        //--------------------- save log file ----------------------
+        try //create not before destruction: 1. avoid issues with FFS trying to sync open log file 2. include status in log file name without extra rename
+        {
+            //do NOT use tryReportingError()! saving log files should not be cancellable!
+            saveLogFile(logFilePath, fullSummary, fullLog, globalCfg_.logfilesMaxAgeDays, globalCfg_.logFormat, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
+        }
+        catch (const FileError& e)
+        {
+            logMsg2(e.toString(), MSG_TYPE_ERROR);
+
+            const AbstractPath logFileDefaultPath = AFS::appendRelPath(createAbstractPath(getLogFolderDefaultPath()), generateLogFileName(globalCfg_.logFormat, fullSummary));
+            if (logFilePath != logFileDefaultPath) //fallback: log file *must* be saved no matter what!
+                try
+                {
+                    logFilePath = logFileDefaultPath;
+                    saveLogFile(logFileDefaultPath, fullSummary, fullLog, globalCfg_.logfilesMaxAgeDays, globalCfg_.logFormat, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
+                }
+                catch (const FileError& e2) { logMsg2(e2.toString(), MSG_TYPE_ERROR); assert(false); } //should never happen!!!
+        }
+
+        //--------- update last sync stats for the selected cfg files ---------
+        const ErrorLogStats& fullLogStats = getStats(fullLog);
+
         cfggrid::getDataView(*m_gridCfgHistory).setLastRunStats(activeConfigFiles_,
         {
-            r.logFilePath,
-            std::chrono::system_clock::to_time_t(r.summary.startTime),
-            r.summary.syncResult,
-            r.summary.statsProcessed.items,
-            r.summary.statsProcessed.bytes,
-            r.summary.totalTime,
-            logStats.error,
-            logStats.warning,
+            logFilePath,
+            std::chrono::system_clock::to_time_t(fullSummary.startTime),
+            fullSummary.result,
+            fullSummary.statsProcessed.items,
+            fullSummary.statsProcessed.bytes,
+            fullSummary.totalTime,
+            fullLogStats.error,
+            fullLogStats.warning,
         });
         //re-apply selection: sort order changed if sorted by last sync time
         cfggrid::addAndSelect(*m_gridCfgHistory, activeConfigFiles_, false /*scrollToSelection*/);
         //m_gridCfgHistory->Refresh(); <- implicit in last call
-
-
-        //remove empty rows: just a beautification, invalid rows shouldn't cause issues
-        filegrid::getDataView(*m_gridMainC).removeInvalidRows();
-
-        updateGui();
-
-        finalRequest = r.finalRequest;
     }
 
     //---------------------------------------------------------------------------
-    switch (finalRequest)
+    setLastOperationLog(r.summary, r.errorLog.ptr());
+
+    //remove empty rows: just a beautification, invalid rows shouldn't cause issues
+    filegrid::getDataView(*m_gridMainC).removeInvalidRows();
+
+    updateGui();
+
+    //---------------------------------------------------------------------------
+    const StatusHandlerFloatingDialog::DlgOptions dlgOpt = statusHandler.showResult();
+
+    globalCfg_.progressDlgAutoClose = dlgOpt.autoCloseSelected;
+    globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.size        = dlgOpt.dim.size; //=> ignore dim.pos
+    globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.isMaximized = dlgOpt.dim.isMaximized;
+
+    //---------------------------------------------------------------------------
+    //run shutdown *after* last sync stats were updated! they will be saved via onBeforeSystemShutdownCookie_: https://freefilesync.org/forum/viewtopic.php?t=5761
+    using FinalRequest = StatusHandlerFloatingDialog::FinalRequest;
+    switch (dlgOpt.finalRequest)
     {
         case FinalRequest::none:
             break;
+
         case FinalRequest::exit:
-            Destroy(); //don't use Close(): we don't want to show the prompt to save current config in onClose()
+            Destroy(); //don't use Close() which prompts to save current config in onClose()
             break;
-        case FinalRequest::shutdown: //run *after* last sync stats were updated and saved! https://freefilesync.org/forum/viewtopic.php?t=5761
+
+        case FinalRequest::shutdown:
             try
             {
                 shutdownSystem(); //throw FileError
                 terminateProcess(static_cast<int>(FfsExitCode::success));
-                //1. no point in continuing and saving cfg again in ~MainDialog()/onBeforeSystemShutdown() while the OS will kill us anytime!
-                //2. is seems wxEVT_END_SESSION is not implemented on wxGTK anyway!
+                //no point in continuing and saving cfg again in ~MainDialog()/onBeforeSystemShutdown() while the OS will kill us any time!
             }
             catch (const FileError& e) { showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString())); }
             //[!] ignores current error handling setting, BUT this is not a sync error!
@@ -4799,11 +5074,10 @@ void MainDialog::startSyncForSelecction(const std::vector<FileSystemObject*>& se
         try
         {
             //let's report here rather than before comparison (user might have changed global settings in the meantime!)
-            logNonDefaultSettings(globalCfg_, statusHandler); //throw AbortProcess
+            logNonDefaultSettings(globalCfg_, statusHandler); //throw CancelProcess
 
             //LockHolder? => let's go without; same behavior as manual deletion
 
-            //START SYNCHRONIZATION
             synchronize(syncStartTime,
                         globalCfg_.verifyFileCopy,
                         globalCfg_.copyLockedFiles,
@@ -4813,15 +5087,16 @@ void MainDialog::startSyncForSelecction(const std::vector<FileSystemObject*>& se
                         fpCfgSelect,
                         folderCmpSelect,
                         globalCfg_.warnDlgs,
-                        statusHandler); //throw AbortProcess
+                        statusHandler); //throw CancelProcess
         }
-        catch (AbortProcess&) {}
+        catch (CancelProcess&) {}
 
-        const StatusHandlerTemporaryPanel::Result r = statusHandler.reportResults(); //noexcept
+        const StatusHandlerTemporaryPanel::Result r = statusHandler.prepareResult(); //noexcept
 
         setLastOperationLog(r.summary, r.errorLog.ptr());
 
-        append(errorLogPrepSync_, r.errorLog.ref());
+        append(fullSyncLog_->log, r.errorLog.ref());
+        fullSyncLog_->totalTime += r.summary.totalTime;
 
     } //run updateGui() *after* reverting our temporary exclusions
 
@@ -4836,14 +5111,14 @@ void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::s
 {
     const wxImage syncResultImage = [&]
     {
-        switch (summary.syncResult)
+        switch (summary.result)
         {
-            case SyncResult::finishedSuccess:
+            case TaskResult::success:
                 return loadImage("result_success");
-            case SyncResult::finishedWarning:
+            case TaskResult::warning:
                 return loadImage("result_warning");
-            case SyncResult::finishedError:
-            case SyncResult::aborted:
+            case TaskResult::error:
+            case TaskResult::cancelled:
                 return loadImage("result_error");
         }
         assert(false);
@@ -4867,7 +5142,7 @@ void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::s
     }();
 
     setImage(*m_bitmapSyncResult, syncResultImage);
-    m_staticTextSyncResult->SetLabelText(getSyncResultLabel(summary.syncResult));
+    m_staticTextSyncResult->SetLabelText(getSyncResultLabel(summary.result));
 
 
     m_staticTextItemsProcessed->SetLabelText(formatNumber(summary.statsProcessed.items));
@@ -5077,11 +5352,11 @@ void MainDialog::swapSides()
         {
             statusHandler.initNewPhase(-1, -1, ProcessPhase::none);
             swapGrids(getConfig().mainCfg, folderCmp_,
-                      statusHandler); //throw AbortProcess
+                      statusHandler); //throw CancelProcess
         }
-        catch (AbortProcess&) {}
+        catch (CancelProcess&) {}
 
-        const StatusHandlerTemporaryPanel::Result r = statusHandler.reportResults(); //noexcept
+        const StatusHandlerTemporaryPanel::Result r = statusHandler.prepareResult(); //noexcept
         setLastOperationLog(r.summary, r.errorLog.ptr());
     }
 
@@ -5318,11 +5593,11 @@ void MainDialog::applySyncDirections()
         {
             statusHandler.initNewPhase(-1, -1, ProcessPhase::none);
             redetermineSyncDirection(directCfgs,
-                                     statusHandler); //throw AbortProcess
+                                     statusHandler); //throw CancelProcess
         }
-        catch (AbortProcess&) {}
+        catch (CancelProcess&) {}
 
-        const StatusHandlerTemporaryPanel::Result r = statusHandler.reportResults(); //noexcept
+        const StatusHandlerTemporaryPanel::Result r = statusHandler.prepareResult(); //noexcept
         setLastOperationLog(r.summary, r.errorLog.ptr());
     }
 
@@ -5871,7 +6146,7 @@ void MainDialog::onMenuExportFileList(wxCommandEvent& event)
 
             const Zstring shortGuid = printNumber<Zstring>(Zstr("%04x"), static_cast<unsigned int>(getCrc16(generateGUID())));
             const Zstring csvFilePath = appendPath(tempFileBuf_.getAndCreateFolderPath(), //throw FileError
-                                                   title + Zstr("~") + shortGuid + Zstr(".csv"));
+                                                   title + Zstr('~') + shortGuid + Zstr(".csv"));
 
             const Zstring tmpFilePath = getPathWithTempName(csvFilePath);
 
@@ -5899,9 +6174,8 @@ void MainDialog::onMenuExportFileList(wxCommandEvent& event)
 
             tmpFile.finalize(); //throw FileError
             //take over ownership:
-            ZEN_ON_SCOPE_FAIL( try { removeFilePlain(tmpFilePath); /*throw FileError*/ }
-            catch (FileError&) {});
-            warn_static("log it!")
+            ZEN_ON_SCOPE_FAIL( try { removeFilePlain(tmpFilePath); }
+            catch (const FileError& e) { logExtraError(e.toString()); });
 
             //operation finished: move temp file transactionally
             moveAndRenameItem(tmpFilePath, csvFilePath, true /*replaceExisting*/); //throw FileError, (ErrorMoveUnsupported), (ErrorTargetExisting)
@@ -5938,7 +6212,7 @@ void MainDialog::onMenuCheckVersionAutomatically(wxCommandEvent& event)
         flashStatusInfo(_("Searching for program updates..."));
         //synchronous update check is sufficient here:
         automaticUpdateCheckEval(*this, globalCfg_.lastUpdateCheck, globalCfg_.lastOnlineVersion,
-                                 automaticUpdateCheckRunAsync(automaticUpdateCheckPrepare(*this).get()).get());
+                                 automaticUpdateCheckRunAsync(automaticUpdateCheckPrepare(*this).ref()).ref());
     }
 }
 
@@ -5968,13 +6242,13 @@ void MainDialog::onStartupUpdateCheck(wxIdleEvent& event)
     {
         flashStatusInfo(_("Searching for program updates..."));
 
-        std::shared_ptr<const UpdateCheckResultPrep> resultPrep = automaticUpdateCheckPrepare(*this); //run on main thread:
+        SharedRef<const UpdateCheckResultPrep> resultPrep = automaticUpdateCheckPrepare(*this); //run on main thread:
 
-        guiQueue_.processAsync([resultPrep] { return automaticUpdateCheckRunAsync(resultPrep.get()); }, //run on worker thread: (long-running part of the check)
-                               [this, showNewVersionReminder] (std::shared_ptr<const UpdateCheckResult>&& resultAsync)
+        guiQueue_.processAsync([resultPrep] { return automaticUpdateCheckRunAsync(resultPrep.ref()); }, //run on worker thread: (long-running part of the check)
+                               [this, showNewVersionReminder] (SharedRef<const UpdateCheckResult>&& resultAsync)
         {
             automaticUpdateCheckEval(*this, globalCfg_.lastUpdateCheck, globalCfg_.lastOnlineVersion,
-                                     resultAsync.get()); //run on main thread:
+                                     resultAsync.ref()); //run on main thread:
             showNewVersionReminder();
         });
     }

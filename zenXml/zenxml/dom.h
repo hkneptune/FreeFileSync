@@ -82,8 +82,8 @@ public:
             it->second->value = std::move(attrValue);
         else
         {
-            auto itBack = attributes_.insert(attributes_.end(), {name, std::move(attrValue)});
-            attributesByName.emplace(std::move(name), itBack);
+            attributes_.push_back({name, std::move(attrValue)});
+            attributesByName.emplace(std::move(name), --attributes_.end());
         }
         static_assert(std::is_same_v<decltype(attributes_), std::list<Attribute>>); //must NOT invalidate references used in "attributesByName"!
     }
@@ -97,6 +97,7 @@ public:
             attributes_.erase(it->second);
             attributesByName.erase(it);
         }
+        else assert(false);
     }
 
     ///Create a new child element and return a reference to it.
@@ -107,9 +108,9 @@ public:
     {
         childElements_.emplace_back(name, this);
         XmlElement& newElement = childElements_.back();
-        childElementsByName_.emplace(std::move(name), &newElement);
+        childElementByName_.emplace(std::move(name), --childElements_.end());
 
-        static_assert(std::is_same_v<decltype(childElements_), std::list<XmlElement>>); //must NOT invalidate references used in "childElementsByName_"!
+        static_assert(std::is_same_v<decltype(childElements_), std::list<XmlElement>>); //must NOT invalidate references used in "childElementByName_"!
         return newElement;
     }
 
@@ -120,8 +121,8 @@ public:
     */
     const XmlElement* getChild(const std::string& name) const
     {
-        auto it = childElementsByName_.find(name);
-        return it == childElementsByName_.end() ? nullptr : it->second;
+        auto it = childElementByName_.find(name);
+        return it == childElementByName_.end() ? nullptr : &*(it->second);
     }
 
     ///\sa getChild
@@ -130,71 +131,16 @@ public:
         return const_cast<XmlElement*>(static_cast<const XmlElement*>(this)->getChild(name));
     }
 
-    template <class IterTy,        //underlying iterator type
-              class T,             //target object type
-              class AccessPolicy> //access policy: see AccessPtrMap
-    class PtrIter : private AccessPolicy //get rid of shared_ptr indirection
-    {
-    public:
-        using iterator_category = std::input_iterator_tag;
-        using value_type = T;
-        using difference_type = ptrdiff_t;
-        using pointer   = T*;
-        using reference = T&;
-
-        PtrIter(IterTy it) : it_(it) {}
-        //PtrIter(const PtrIter& other) : it_(other.it_) {}
-        PtrIter& operator++() { ++it_; return *this; }
-        PtrIter operator++(int) { PtrIter tmp(*this); operator++(); return tmp; }
-        inline friend bool operator==(const PtrIter& lhs, const PtrIter& rhs) { return lhs.it_ == rhs.it_; }
-        T& operator* () const { return  AccessPolicy::template objectRef<T>(it_); }
-        T* operator->() const { return &AccessPolicy::template objectRef<T>(it_); }
-    private:
-        IterTy it_;
-    };
-
-    struct AccessMapElement
-    {
-        template <class T, class IterTy>
-        T& objectRef(const IterTy& it) const { return *(it->second); }
-    };
-
-    using ChildIter2      = PtrIter<std::multimap<std::string, XmlElement*>::iterator,             XmlElement, AccessMapElement>;
-    using ChildIterConst2 = PtrIter<std::multimap<std::string, XmlElement*>::const_iterator, const XmlElement, AccessMapElement>;
-
-    ///Access all child elements with the given name via STL iterators.
-    /**
-      \code
-      auto itPair = elem.getChildren("Item");
-      std::for_each(iterPair.first, iterPair.second,
-            [](const XmlElement& child) { ... });
-      \endcode
-      \param name The name of the child elements to be retrieved.
-      \return A pair of STL begin/end iterators to access the child elements sequentially.
-    */
-    std::pair<ChildIterConst2, ChildIterConst2> getChildren(const std::string& name) const { return childElementsByName_.equal_range(name); }
-
-    ///\sa getChildren
-    std::pair<ChildIter2, ChildIter2> getChildren(const std::string& name) { return childElementsByName_.equal_range(name); }
-
-    struct AccessListElement
-    {
-        template <class T, class IterTy>
-        T& objectRef(const IterTy& it) const { return *it; }
-    };
-
-    using ChildIter      = PtrIter<std::list<XmlElement>::iterator,             XmlElement, AccessListElement>;
-    using ChildIterConst = PtrIter<std::list<XmlElement>::const_iterator, const XmlElement, AccessListElement>;
+    using ChildIter      = std::list<XmlElement>::iterator;
+    using ChildIterConst = std::list<XmlElement>::const_iterator;
 
     ///Access all child elements sequentially via STL iterators.
     /**
-      \code
-      auto itPair = elem.getChildren();
-      std::for_each(itPair.first, itPair.second,
-            [](const XmlElement& child) { ... });
-      \endcode
-      \return A pair of STL begin/end iterators to access all child elements sequentially.
-    */
+    \code
+        auto [it, itEnd] = elem.getChildren();
+        std::for_each(it, itEnd, [](const XmlElement& child) { ... });
+    \endcode
+    \return A pair of STL begin/end iterators to access all child elements sequentially.   */
     std::pair<ChildIterConst, ChildIterConst> getChildren() const { return {childElements_.begin(), childElements_.end()}; }
 
     ///\sa getChildren
@@ -213,24 +159,24 @@ public:
     using AttrIter = std::list<Attribute>::const_iterator;
 
     /* -> disabled documentation extraction
-      \brief Get all attributes associated with the element.
-      \code
+    \brief Get all attributes associated with the element.
+    \code
         auto itPair = elem.getAttributes();
         for (auto it = itPair.first; it != itPair.second; ++it)
            std::cout << std::string("name: ") + it->name + " value: " + it->value + '\n';
-      \endcode
-      \return A pair of STL begin/end iterators to access all attributes sequentially as a list of name/value pairs of std::string.   */
+    \endcode
+    \return A pair of STL begin/end iterators to access all attributes sequentially as a list of name/value pairs of std::string.   */
     std::pair<AttrIter, AttrIter> getAttributes() const { return {attributes_.begin(), attributes_.end()}; }
 
     //swap two elements while keeping references to parent.  -> disabled documentation extraction
     void swapSubtree(XmlElement& other) noexcept
     {
-        name_               .swap(other.name_);
-        value_              .swap(other.value_);
-        attributes_         .swap(other.attributes_);
-        attributesByName    .swap(other.attributesByName);
-        childElements_      .swap(other.childElements_);
-        childElementsByName_.swap(other.childElementsByName_);
+        name_              .swap(other.name_);
+        value_             .swap(other.value_);
+        attributes_        .swap(other.attributes_);
+        attributesByName   .swap(other.attributesByName);
+        childElements_     .swap(other.childElements_);
+        childElementByName_.swap(other.childElementByName_);
 
         for (XmlElement& child : childElements_)
             child.parent_ = this;
@@ -248,12 +194,10 @@ private:
     std::list<Attribute>                                            attributes_;      //attributes in order of creation
     std::unordered_map<std::string, std::list<Attribute>::iterator> attributesByName; //alternate view for lookup
 
-    std::list<XmlElement>                   childElements_;       //child elements in order of creation
-    std::multimap<std::string, XmlElement*> childElementsByName_; //alternate view for lookup
-    //alternative: std::unordered_map => but let's keep std::map, so which guarantees consistent order of duplicate items!
-    //e.g. std::unordered_map on Linux inserts duplicates in reverse!
+    std::list<XmlElement>                                            childElements_;      //child elements in order of creation
+    std::unordered_map<std::string, std::list<XmlElement>::iterator> childElementByName_; //alternate view for lookup of (*first*) child by name
 
-    XmlElement* parent_ = nullptr;
+    XmlElement* parent_ = nullptr; //currently unused: YAGNI?
 };
 
 

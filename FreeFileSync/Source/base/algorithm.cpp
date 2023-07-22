@@ -1468,7 +1468,7 @@ void fff::deleteFromGridAndHD(const std::vector<FileSystemObject*>& rowsToDelete
     //ensure cleanup: redetermination of sync-directions and removal of invalid rows
     auto updateDirection = [&]
     {
-        //update sync direction: we cannot do a full redetermination since the user may already have entered manual changes
+        //update sync direction: we cannot do a full redetermination since the user may have manual changes applied already 
         std::vector<FileSystemObject*> rowsToDelete;
         append(rowsToDelete, deleteLeft);
         append(rowsToDelete, deleteRight);
@@ -1566,8 +1566,7 @@ TempFileBuffer::~TempFileBuffer()
         {
             removeDirectoryPlainRecursion(tempFolderPath_); //throw FileError
         }
-        catch (FileError&) { assert(false); }
-    warn_static("log, maybe?")
+        catch (const FileError& e) { logExtraError(e.toString()); }
 }
 
 

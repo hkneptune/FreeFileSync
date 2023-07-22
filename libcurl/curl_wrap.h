@@ -72,7 +72,6 @@ private:
 
 
 std::wstring formatCurlStatusCode(CURLcode sc);
-void applyCurlOptions(CURL* easyHandle, const std::vector<CurlOption>& options); //throw SysError
 }
 
 #else

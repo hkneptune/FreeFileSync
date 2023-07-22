@@ -139,9 +139,8 @@ AFS::FileCopyResult AFS::copyFileAsStream(const AfsPath& sourcePath, const Strea
 
     const FinalizeResult finResult = streamOut->finalize(notifyUnbufferedWrite); //throw FileError, X
 
-    ZEN_ON_SCOPE_FAIL(try { removeFilePlain(targetPath); /*throw FileError*/ }
-    catch (FileError&) {}); //after finalize(): not guarded by ~AFS::OutputStream() anymore!
-    warn_static("log it!")
+    ZEN_ON_SCOPE_FAIL(try { removeFilePlain(targetPath); }
+    catch (const FileError& e) { logExtraError(e.toString()); }); //after finalize(): not guarded by ~AFS::OutputStream() anymore!
 
     //catch file I/O bugs + read/write conflicts: (note: different check than inside AFS::OutputStream::finalize() => checks notifyUnbufferedIO()!)
     if (totalBytesWritten != totalBytesRead)
@@ -155,7 +154,7 @@ AFS::FileCopyResult AFS::copyFileAsStream(const AfsPath& sourcePath, const Strea
         .sourceFilePrint = attrSourceNew.filePrint,
         .targetFilePrint = finResult.filePrint,
         .errorModTime    = finResult.errorModTime,
-        /* Failing to set modification time is not a serious problem from synchronization perspective (treat like external update)
+        /* Failing to set modification time is not a fatal error from synchronization perspective (treat like external update)
                 => Support additional scenarios:
                 - GVFS failing to set modTime for FTP: https://freefilesync.org/forum/viewtopic.php?t=2372
                 - GVFS failing to set modTime for MTP: https://freefilesync.org/forum/viewtopic.php?t=2803
@@ -207,15 +206,15 @@ AFS::FileCopyResult AFS::copyFileTransactional(const AbstractPath& sourcePath, c
 
         const Zstring& shortGuid = printNumber<Zstring>(Zstr("%04x"), static_cast<unsigned int>(getCrc16(generateGUID())));
 
-        const AbstractPath targetPathTmp = appendRelPath(*parentPath, tmpName + Zstr('~') + shortGuid + TEMP_FILE_ENDING);
+        const AbstractPath targetPathTmp = appendRelPath(*parentPath, tmpName + Zstr('-') + //don't use '~': some FTP servers *silently* replace it with '_'!
+                                                         shortGuid + TEMP_FILE_ENDING);
         //-------------------------------------------------------------------------------------------
 
         const FileCopyResult result = copyFilePlain(targetPathTmp); //throw FileError, ErrorFileLocked
 
         //transactional behavior: ensure cleanup; not needed before copyFilePlain() which is already transactional
         ZEN_ON_SCOPE_FAIL( try { removeFilePlain(targetPathTmp); }
-        catch (FileError&) {});
-        warn_static("log it!")
+        catch (const FileError& e) { logExtraError(e.toString()); });
 
         //have target file deleted (after read access on source and target has been confirmed) => allow for almost transactional overwrite
         if (onDeleteTargetFile)

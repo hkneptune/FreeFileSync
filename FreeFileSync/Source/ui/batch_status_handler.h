@@ -7,7 +7,7 @@
 #ifndef BATCH_STATUS_HANDLER_H_857390451451234566
 #define BATCH_STATUS_HANDLER_H_857390451451234566
 
-#include <chrono>
+//#include <chrono>
 #include <zen/error_log.h>
 #include "progress_indicator.h"
 #include "../config.h"
@@ -31,13 +31,13 @@ public:
                        const Zstring& soundFileAlertPending,
                        const zen::WindowLayout::Dimensions& dim,
                        bool autoCloseDialog,
-                       PostSyncAction postSyncAction,
+                       PostBatchAction postBatchAction,
                        BatchErrorHandling batchErrorHandling); //noexcept!!
     ~BatchStatusHandler();
 
     void     initNewPhase    (int itemsTotal, int64_t bytesTotal, ProcessPhase phaseID) override; //
     void     logMessage      (const std::wstring& msg, MsgType type)                    override; //
-    void     reportWarning   (const std::wstring& msg, bool& warningActive)             override; //throw AbortProcess
+    void     reportWarning   (const std::wstring& msg, bool& warningActive)             override; //throw CancelProcess
     Response reportError     (const ErrorInfo& errorInfo)                               override; //
     void     reportFatalError(const std::wstring& msg)                                  override; //
     ErrorStats getErrorStats() const override;
@@ -45,23 +45,25 @@ public:
     void updateDataProcessed(int itemsDelta, int64_t bytesDelta) override; //noexcept
     void forceUiUpdateNoThrow()                                  override; //
 
+    struct Result
+    {
+        ProcessSummary summary;
+        zen::SharedRef<zen::ErrorLog> errorLog;
+    };
+    Result prepareResult();
+
     enum class FinalRequest
     {
         none,
         switchGui,
         shutdown
     };
-    struct Result
+    struct DlgOptions
     {
-        ProcessSummary summary;
-        zen::ErrorLogStats logStats;
+        zen::WindowLayout::Dimensions dim;
         FinalRequest finalRequest;
-        AbstractPath logFilePath;
-        zen::WindowLayout::Dimensions dlgDim;
     };
-    Result reportResults(const Zstring& postSyncCommand, PostSyncCondition postSyncCondition,
-                         const AbstractPath& logFolderPath, int logfilesMaxAgeDays, LogFileFormat logFormat, const std::set<AbstractPath>& logFilePathsToKeep,
-                         const std::string& emailNotifyAddress, ResultsNotification emailNotifyCondition); //noexcept!!
+    DlgOptions showResult();
 
     wxWindow* getWindowIfVisible();
 
@@ -79,6 +81,7 @@ private:
     mutable size_t errorStatsRowsChecked_ = 0;
     const BatchErrorHandling batchErrorHandling_;
     bool switchToGuiRequested_ = false;
+    std::optional<TaskResult> syncResult_;
 };
 }
 

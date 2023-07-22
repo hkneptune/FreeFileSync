@@ -566,8 +566,7 @@ private:
 
         //at this point we know we created a new file, so it's fine to delete it for cleanup!
         ZEN_ON_SCOPE_FAIL(try { zen::removeFilePlain(nativePathTarget); }
-        catch (FileError&) {});
-        warn_static("log it!")
+        catch (const FileError& e) { logExtraError(e.toString()); });
 
         if (copyFilePermissions)
             copyItemPermissions(getNativePath(sourcePath), nativePathTarget, ProcSymlink::follow); //throw FileError
@@ -613,9 +612,8 @@ private:
         initComForThread(); //throw FileError
         zen::copySymlink(getNativePath(sourcePath), targetPathNative); //throw FileError
 
-        ZEN_ON_SCOPE_FAIL(try { zen::removeSymlinkPlain(targetPathNative); /*throw FileError*/ }
-        catch (FileError&) {});
-        warn_static("log it!")
+        ZEN_ON_SCOPE_FAIL(try { zen::removeSymlinkPlain(targetPathNative); }
+        catch (const FileError& e) { logExtraError(e.toString()); });
 
         if (copyFilePermissions)
             copyItemPermissions(getNativePath(sourcePath), targetPathNative, ProcSymlink::asLink); //throw FileError

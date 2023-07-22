@@ -82,7 +82,7 @@ const size_t GDRIVE_BLOCK_SIZE_UPLOAD   =  64 * 1024; //libcurl requests blocks 
 const size_t GDRIVE_STREAM_BUFFER_SIZE = 1024 * 1024; //unit: [byte]
 //stream buffer should be big enough to facilitate prefetching during alternating read/write operations => e.g. see serialize.h::unbufferedStreamCopy()
 
-const Zchar gdrivePrefix[] = Zstr("gdrive:");
+constexpr ZstringView gdrivePrefix = Zstr("gdrive:");
 const char gdriveFolderMimeType  [] = "application/vnd.google-apps.folder";
 const char gdriveShortcutMimeType[] = "application/vnd.google-apps.shortcut"; //= symbolic link!
 
@@ -488,7 +488,6 @@ GdriveAccessInfo gdriveAuthorizeAccess(const std::string& gdriveLoginHint, const
         if (testSocket == invalidSocket)
             THROW_LAST_SYS_ERROR_WSA("socket");
         ZEN_ON_SCOPE_FAIL(closeSocket(testSocket));
-        warn_static("log on error!")
 
         if (::bind(testSocket, ai.ai_addr, static_cast<int>(ai.ai_addrlen)) != 0)
             THROW_LAST_SYS_ERROR_WSA("bind");
@@ -893,7 +892,7 @@ std::vector<StarredFolderDetails> getStarredFolders(const GdriveAccess& access) 
                 if (!itemId || itemId->empty() || !itemName || itemName->empty())
                     throw SysError(formatGdriveErrorRaw(serializeJson(childVal)));
 
-                starredFolders.push_back({std::move(*itemId),
+                starredFolders.push_back({*itemId,
                                           utfTo<Zstring>(*itemName),
                                           driveId ? *driveId : ""});
             }
@@ -2884,8 +2883,7 @@ private:
     {
         try //let's not lose Google Drive data due to unexpected system shutdown:
         { saveActiveSessions(); } //throw FileError
-        catch (FileError&) { assert(false); }
-        warn_static("at least log on failure!")
+        catch (const FileError& e) { logExtraError(e.toString()); }
     });
 };
 //==========================================================================================
@@ -3949,23 +3947,20 @@ void fff::gdriveInit(const Zstring& configDirPath, const Zstring& caCertFilePath
 }
 
 
-std::wstring /*warningMsg*/ fff::gdriveTeardown()
+void fff::gdriveTeardown()
 {
-    std::wstring warningMsg;
     try //don't use ~GdrivePersistentSessions() to save! Might never happen, e.g. detached thread waiting for Google Drive authentication; terminated on exit!
     {
         if (const std::shared_ptr<GdrivePersistentSessions> gps = globalGdriveSessions.get())
             gps->saveActiveSessions(); //throw FileError
     }
-    catch (const FileError& e) { warningMsg = e.toString(); }
+    catch (const FileError& e) { logExtraError(e.toString()); }
 
     assert(globalGdriveSessions.get());
     globalGdriveSessions.set(nullptr);
 
     assert(globalHttpSessionManager.get());
     globalHttpSessionManager.set(nullptr);
-
-    return warningMsg;
 }
 
 

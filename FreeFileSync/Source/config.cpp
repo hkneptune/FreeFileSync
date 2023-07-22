@@ -266,32 +266,32 @@ bool readText(const std::string& input, PostSyncCondition& value)
 
 
 template <> inline
-void writeText(const PostSyncAction& value, std::string& output)
+void writeText(const PostBatchAction& value, std::string& output)
 {
     switch (value)
     {
-        case PostSyncAction::none:
+        case PostBatchAction::none:
             output = "None";
             break;
-        case PostSyncAction::sleep:
+        case PostBatchAction::sleep:
             output = "Sleep";
             break;
-        case PostSyncAction::shutdown:
+        case PostBatchAction::shutdown:
             output = "Shutdown";
             break;
     }
 }
 
 template <> inline
-bool readText(const std::string& input, PostSyncAction& value)
+bool readText(const std::string& input, PostBatchAction& value)
 {
     const std::string tmp = trimCpy(input);
     if (tmp == "None")
-        value = PostSyncAction::none;
+        value = PostBatchAction::none;
     else if (tmp == "Sleep")
-        value = PostSyncAction::sleep;
+        value = PostBatchAction::sleep;
     else if (tmp == "Shutdown")
-        value = PostSyncAction::shutdown;
+        value = PostBatchAction::shutdown;
     else
         return false;
     return true;
@@ -820,37 +820,37 @@ bool readStruc(const XmlElement& input, ExternalApp& value)
 
 
 template <> inline
-void writeText(const SyncResult& value, std::string& output)
+void writeText(const TaskResult& value, std::string& output)
 {
     switch (value)
     {
-        case SyncResult::finishedSuccess:
+        case TaskResult::success:
             output = "Success";
             break;
-        case SyncResult::finishedWarning:
+        case TaskResult::warning:
             output = "Warning";
             break;
-        case SyncResult::finishedError:
+        case TaskResult::error:
             output = "Error";
             break;
-        case SyncResult::aborted:
+        case TaskResult::cancelled:
             output = "Stopped";
             break;
     }
 }
 
 template <> inline
-bool readText(const std::string& input, SyncResult& value)
+bool readText(const std::string& input, TaskResult& value)
 {
     const std::string tmp = trimCpy(input);
     if (tmp == "Success")
-        value = SyncResult::finishedSuccess;
+        value = TaskResult::success;
     else if (tmp == "Warning")
-        value = SyncResult::finishedWarning;
+        value = TaskResult::warning;
     else if (tmp == "Error")
-        value = SyncResult::finishedError;
+        value = TaskResult::error;
     else if (tmp == "Stopped")
-        value = SyncResult::aborted;
+        value = TaskResult::cancelled;
     else
         return false;
     return true;
@@ -915,7 +915,7 @@ template <> inline
 bool readStruc(const XmlElement& input, ConfigFileItem& value)
 {
     bool success = true;
-    success = input.getAttribute("LastSync",  value.lastRunStats.syncTime) && success;
+    success = input.getAttribute("LastSync",  value.lastRunStats.startTime) && success;
     success = input.getAttribute("Result",    value.lastRunStats.syncResult) && success;
 
     if (input.hasAttribute("CfgPath")) //TODO: remove after migration! 2020-02-09
@@ -971,18 +971,18 @@ bool readStruc(const XmlElement& input, ConfigFileItem& value)
 template <> inline
 void writeStruc(const ConfigFileItem& value, XmlElement& output)
 {
-    output.setAttribute("LastSync",  value.lastRunStats.syncTime);
+    output.setAttribute("LastSync",  value.lastRunStats.startTime);
     output.setAttribute("Result",    value.lastRunStats.syncResult);
 
     output.setAttribute("Config", makePortablePath(value.cfgFilePath));
-    output.setAttribute("Log", makePortablePath(AFS::getInitPathPhrase(value.lastRunStats.logFilePath)));
+    output.setAttribute("Log",    makePortablePath(AFS::getInitPathPhrase(value.lastRunStats.logFilePath)));
 
     output.setAttribute("Items",     value.lastRunStats.itemsProcessed);
     output.setAttribute("Bytes",     value.lastRunStats.bytesProcessed);
 
     output.setAttribute("TotalTime", value.lastRunStats.totalTime);
 
-    output.setAttribute("Errors", value.lastRunStats.errors);
+    output.setAttribute("Errors",   value.lastRunStats.errors);
     output.setAttribute("Warnings", value.lastRunStats.warnings);
 
     if (value.backColor.IsOk())
@@ -1151,8 +1151,10 @@ void readConfig(const XmlIn& in, MainConfiguration& mainCfg, int formatVer)
     //###########################################################
     //read folder pairs
     bool firstItem = true;
-    for (XmlIn inPair = in["FolderPairs"]["Pair"]; inPair; inPair.next())
+    in["FolderPairs"].visitChildren([&](const XmlIn& inPair)
     {
+        assert(*inPair.getName() == "Pair");
+
         LocalPairConfig lpc;
         readConfig(inPair, lpc, mainCfg.deviceParallelOps, formatVer);
 
@@ -1164,7 +1166,7 @@ void readConfig(const XmlIn& in, MainConfiguration& mainCfg, int formatVer)
         }
         else
             mainCfg.additionalPairs.push_back(lpc);
-    }
+    });
 
     in["Errors"].attribute("Ignore", mainCfg.ignoreErrors);
     in["Errors"].attribute("Retry",  mainCfg.autoRetryCount);
@@ -1230,7 +1232,7 @@ void readConfig(const XmlIn& in, XmlBatchConfig& cfg, int formatVer)
     inBatch["ProgressDialog"].attribute("Minimized", cfg.batchExCfg.runMinimized);
     inBatch["ProgressDialog"].attribute("AutoClose", cfg.batchExCfg.autoCloseSummary);
     inBatch["ErrorDialog"](cfg.batchExCfg.batchErrorHandling);
-    inBatch["PostSyncAction"](cfg.batchExCfg.postSyncAction);
+    inBatch["PostSyncAction"](cfg.batchExCfg.postBatchAction);
 }
 
 
@@ -1669,7 +1671,9 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
 
     //cfg.dpiLayouts.clear(); -> NO: honor migration code above!
 
-    for (XmlIn inLayout = in["DpiLayouts"]["Layout"]; inLayout; inLayout.next())
+    in["DpiLayouts"].visitChildren([&](const XmlIn& inLayout)
+    {
+        assert(*inLayout.getName() == "Layout");
         if (std::string scaleTxt;
             inLayout.attribute("Scale", scaleTxt))
         {
@@ -1741,6 +1745,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
 
             cfg.dpiLayouts.emplace(scalePercent, std::move(layout));
         }
+    });
 }
 
 
@@ -1755,21 +1760,18 @@ std::pair<ConfigType, std::wstring /*warningMsg*/> parseConfig(const XmlDoc& doc
     readConfig(in, cfg, formatVer);
 
     std::wstring warningMsg;
-    try
-    {
-        checkXmlMappingErrors(in); //throw FileError
 
-        //(try to) migrate old configuration if needed
+    if (const std::wstring& errors = in.getErrors();
+        !errors.empty())
+        warningMsg = replaceCpy(_("Configuration file %x is incomplete. The missing elements have been set to their default values."), L"%x", fmtPath(filePath)) + L"\n\n" +
+                     _("The following XML elements could not be read:") + L'\n' + errors;
+    else //(try to) migrate old configuration if needed
         if (formatVer < currentXmlFormatVer)
-            try { fff::writeConfig(cfg, filePath); /*throw FileError*/ }
-            catch (FileError&) { assert(false); } //don't bother user!
-        warn_static("at least log on failure!")
-    }
-    catch (const FileError& e)
-    {
-        warningMsg = replaceCpy(_("Configuration file %x is incomplete. The missing elements have been set to their default values."), L"%x", fmtPath(filePath)) +
-                     L"\n\n" + e.toString();
-    }
+            try
+            {
+                fff::writeConfig(cfg, filePath); //throw FileError
+            }
+            catch (const FileError& e) { warningMsg = e.toString(); }
 
     return {cfg, warningMsg};
 }
@@ -2022,7 +2024,7 @@ void writeConfig(const XmlBatchConfig& cfg, XmlOut& out)
     outBatch["ProgressDialog"].attribute("Minimized", cfg.batchExCfg.runMinimized);
     outBatch["ProgressDialog"].attribute("AutoClose", cfg.batchExCfg.autoCloseSummary);
     outBatch["ErrorDialog"   ](cfg.batchExCfg.batchErrorHandling);
-    outBatch["PostSyncAction"](cfg.batchExCfg.postSyncAction);
+    outBatch["PostSyncAction"](cfg.batchExCfg.postBatchAction);
 }
 
 
@@ -2258,17 +2260,63 @@ std::optional<FilterConfig> fff::parseFilterBuf(const std::string& filterBuf)
     try
     {
         XmlDoc doc = parseXml(filterBuf); //throw XmlParsingError
-
         XmlIn in(doc);
+
         FilterConfig filterCfg;
         ::readConfig(in, filterCfg);
-
-        checkXmlMappingErrors(in); //throw FileError
-
-        return filterCfg;
+        if (in.getErrors().empty())
+            return filterCfg;
     }
     catch (XmlParsingError&) {}
-    catch (FileError&) {}
 
     return std::nullopt;
+}
+
+
+void fff::saveErrorLog(const ErrorLog& log, const Zstring& filePath) //throw FileError
+{
+    XmlDoc doc("Log");
+    doc.setEncoding("");
+
+    XmlOut out(doc);
+
+    for (const LogEntry& e : log)
+    {
+        XmlOut outMsg = out.addChild(e.type == MessageType::MSG_TYPE_ERROR ? "Error" : (e.type == MessageType::MSG_TYPE_WARNING ? "Warning" : "Info"));
+        outMsg.attribute("Time", formatTime(formatIsoDateTimeTag, getLocalTime(e.time)));
+        outMsg(e.message);
+    }
+
+    saveXml(doc, filePath); //throw FileError
+}
+
+
+ErrorLog fff::loadErrorLog(const Zstring& filePath) //throw FileError
+{
+    XmlDoc doc = loadXml(filePath); //throw FileError
+
+    XmlIn in(doc);
+    ErrorLog log;
+
+    in.visitChildren([&](const XmlIn& inMsg)
+    {
+        Zstring timeStr;
+        inMsg.attribute("Time", timeStr);
+
+        Zstringc msg;
+        inMsg(msg);
+
+        log.push_back(
+        {
+            .time = localToTimeT(parseTime(formatIsoDateTimeTag, timeStr)).first,
+            .type = *inMsg.getName() == "Error" ? MessageType::MSG_TYPE_ERROR : (*inMsg.getName() == "Warning" ? MessageType::MSG_TYPE_WARNING : MessageType::MSG_TYPE_INFO),
+            .message = std::move(msg),
+        });
+    });
+
+    if (const std::wstring& errors = in.getErrors();
+        !errors.empty())
+        throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(filePath)),
+                        _("The following XML elements could not be read:") + L'\n' + errors);
+    return log;
 }

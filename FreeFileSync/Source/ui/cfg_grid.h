@@ -19,8 +19,8 @@ namespace fff
 struct LastRunStats
 {
     AbstractPath logFilePath = getNullPath(); //optional
-    time_t syncTime = 0;
-    SyncResult syncResult = SyncResult::aborted;
+    time_t startTime = 0;
+    TaskResult syncResult = TaskResult::cancelled;
     int     itemsProcessed = 0;
     int64_t bytesProcessed = 0;
     std::chrono::milliseconds totalTime{};

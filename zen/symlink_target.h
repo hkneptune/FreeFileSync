@@ -50,7 +50,10 @@ SymlinkRawContent getSymlinkRawContent_impl(const Zstring& linkPath) //throw Sys
     const ssize_t bytesWritten = ::readlink(linkPath.c_str(), buf.data(), bufSize);
     if (bytesWritten < 0)
         THROW_LAST_SYS_ERROR("readlink");
-    if (makeUnsigned(bytesWritten) >= bufSize) //detect truncation; not an error for readlink!
+
+    ASSERT_SYSERROR(makeUnsigned(bytesWritten) <= bufSize); //better safe than sorry
+
+    if (makeUnsigned(bytesWritten) == bufSize) //detect truncation; not an error for readlink!
         throw SysError(formatSystemError("readlink", L"", L"Buffer truncated."));
 
     return {.targetPath = Zstring(buf.data(), bytesWritten)}; //readlink does not append 0-termination!

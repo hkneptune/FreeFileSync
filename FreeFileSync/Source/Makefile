@@ -1,7 +1,7 @@
 CXX ?= g++
 exeName = FreeFileSync_$(shell arch)
 
-CXXFLAGS += -std=c++2b -pipe -DWXINTL_NO_GETTEXT_MACRO -I../.. -I../../zenXml -include "zen/i18n.h" -include "zen/warn_static.h" \
+CXXFLAGS += -std=c++23 -pipe -DWXINTL_NO_GETTEXT_MACRO -I../.. -I../../zenXml -include "zen/i18n.h" -include "zen/warn_static.h" \
            -Wall -Wfatal-errors -Wmissing-include-dirs -Wswitch-enum -Wcast-align -Wnon-virtual-dtor -Wno-unused-function -Wshadow -Wno-maybe-uninitialized \
            -O3 -DNDEBUG `wx-config --cxxflags --debug=no` -pthread
 
@@ -44,6 +44,7 @@ cppFiles+=base/db_file.cpp
 cppFiles+=base/dir_lock.cpp
 cppFiles+=base/file_hierarchy.cpp
 cppFiles+=base/icon_loader.cpp
+cppFiles+=base/multi_rename.cpp
 cppFiles+=base/parallel_scan.cpp
 cppFiles+=base/path_filter.cpp
 cppFiles+=base/speed_test.cpp
@@ -72,6 +73,7 @@ cppFiles+=ui/gui_generated.cpp
 cppFiles+=ui/gui_status_handler.cpp
 cppFiles+=ui/main_dlg.cpp
 cppFiles+=ui/progress_indicator.cpp
+cppFiles+=ui/rename_dlg.cpp
 cppFiles+=ui/search_grid.cpp
 cppFiles+=ui/small_dlgs.cpp
 cppFiles+=ui/sync_cfg.cpp

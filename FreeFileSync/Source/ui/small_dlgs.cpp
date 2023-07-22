@@ -545,10 +545,10 @@ void CloudSetupDlg::onDetectServerChannelLimit(wxCommandEvent& event)
         {
             assert(runningOnMainThread());
             if (showPasswordPrompt(this, msg, lastErrorMsg, password) != ConfirmationButton::accept)
-                throw AbortProcess();
+                throw CancelProcess();
             return password;
         };
-        AFS::authenticateAccess(folderPath.afsDevice, requestPassword); //throw FileError, AbortProcess
+        AFS::authenticateAccess(folderPath.afsDevice, requestPassword); //throw FileError, CancelProcess
         //-------------------------------------------------------------------
 
         const int channelCountMax = getServerMaxChannelsPerConnection(extractSftpLogin(folderPath.afsDevice)); //throw FileError
@@ -557,7 +557,7 @@ void CloudSetupDlg::onDetectServerChannelLimit(wxCommandEvent& event)
         m_spinCtrlChannelCountSftp->SetFocus(); //[!] otherwise selection is lost
         m_spinCtrlChannelCountSftp->SetSelection(-1, -1); //some visual feedback: select all
     }
-    catch (AbortProcess&) { return; }
+    catch (CancelProcess&) { return; }
     catch (const FileError& e)
     {
         showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
@@ -839,10 +839,10 @@ void CloudSetupDlg::onBrowseCloudFolder(wxCommandEvent& event)
         {
             assert(runningOnMainThread());
             if (showPasswordPrompt(this, msg, lastErrorMsg, password) != ConfirmationButton::accept)
-                throw AbortProcess();
+                throw CancelProcess();
             return password;
         };
-        AFS::authenticateAccess(folderPath.afsDevice, requestPassword); //throw FileError, AbortProcess
+        AFS::authenticateAccess(folderPath.afsDevice, requestPassword); //throw FileError, CancelProcess
         //caveat: this could block *indefinitely* for Google Drive, but luckily already authenticated in this context
         //-------------------------------------------------------------------
         //
@@ -856,7 +856,7 @@ void CloudSetupDlg::onBrowseCloudFolder(wxCommandEvent& event)
                 folderPath.afsPath = getFtpHomePath(extractFtpLogin(folderPath.afsDevice)); //throw FileError
         }
     }
-    catch (AbortProcess&) { return; }
+    catch (CancelProcess&) { return; }
     catch (const FileError& e)
     {
         showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
@@ -1420,7 +1420,7 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalCfg) :
     m_checkListHiddenDialogs->Hide();
     m_buttonShowCtxCustomize->Hide();
 
-    //fix wxCheckListBox's stupid "per-item toggle"
+    //fix wxCheckListBox's stupid "per-item toggle" when multiple items are selected
     m_checkListHiddenDialogs->Bind(wxEVT_KEY_DOWN, [&checklist = *m_checkListHiddenDialogs](wxKeyEvent& event)
     {
         switch (event.GetKeyCode())
@@ -1551,7 +1551,7 @@ void OptionsDlg::updateGui()
 
 void OptionsDlg::expandConfigArea(ConfigArea area)
 {
-    //only show one expaned area at a time (wxGTK even crashes when showing both: not worth debugging)
+    //only show one expanded area at a time (wxGTK even crashes when showing both: not worth debugging)
     m_buttonShowHiddenDialogs->Show(area != ConfigArea::hidden);
     m_buttonShowCtxCustomize ->Show(area != ConfigArea::context);
 

@@ -207,7 +207,6 @@ private:
     void cleanup()
     {
         asyncStreamIn_->setReadError(std::make_exception_ptr(ThreadStopRequest()));
-        warn_static("log on error!")
     }
 
     std::shared_ptr<AsyncStreamBuffer> asyncStreamIn_ = std::make_shared<AsyncStreamBuffer>(HTTP_STREAM_BUFFER_SIZE);

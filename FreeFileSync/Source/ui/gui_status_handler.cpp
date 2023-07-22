@@ -5,15 +5,15 @@
 // *****************************************************************************
 
 #include "gui_status_handler.h"
-#include <zen/process_exec.h>
+//#include <zen/process_exec.h>
 #include <zen/shutdown.h>
-#include <zen/resolve_path.h>
+//#include <zen/resolve_path.h>
 #include <wx/app.h>
 #include <wx/sound.h>
 #include <wx/wupdlock.h>
-#include <wx+/popup_dlg.h>
-#include "main_dlg.h"
-#include "../afs/concrete.h"
+//#include <wx+/popup_dlg.h>
+//#include "main_dlg.h"
+//#include "../afs/concrete.h"
 //#include "../log_file.h"
 
 using namespace zen;
@@ -116,7 +116,7 @@ void StatusHandlerTemporaryPanel::showStatsPanel()
 
 StatusHandlerTemporaryPanel::~StatusHandlerTemporaryPanel()
 {
-    if (!errorLog_.empty()) //reportResults() was not called!
+    if (!errorLog_.empty()) //prepareResult() was not called!
         std::abort();
 
     //Workaround wxAuiManager crash when starting panel resizing during comparison and holding button until after comparison has finished:
@@ -140,31 +140,39 @@ StatusHandlerTemporaryPanel::~StatusHandlerTemporaryPanel()
 }
 
 
-StatusHandlerTemporaryPanel::Result StatusHandlerTemporaryPanel::reportResults() //noexcept!!
+StatusHandlerTemporaryPanel::Result StatusHandlerTemporaryPanel::prepareResult() //noexcept!!
 {
     const std::chrono::milliseconds totalTime = mainDlg_.compareStatus_->pauseAndGetTotalTime();
 
-    //determine post-sync status irrespective of further errors during tear-down
-    const SyncResult syncResult = [&]
+    //append "extra" log for sync errors that could not otherwise be reported:
+    if (const ErrorLog extraLog = fetchExtraLog();
+        !extraLog.empty())
     {
-        if (getAbortStatus())
+        append(errorLog_, extraLog);
+        std::stable_sort(errorLog_.begin(), errorLog_.end(), [](const LogEntry& lhs, const LogEntry& rhs) { return lhs.time < rhs.time; });
+    }
+
+    //determine post-sync status irrespective of further errors during tear-down
+    const TaskResult syncResult = [&]
+    {
+        if (taskCancelled())
         {
             logMsg(errorLog_, _("Stopped"), MSG_TYPE_ERROR); //= user cancel
-            return SyncResult::aborted;
+            return TaskResult::cancelled;
         }
 
         const ErrorLogStats logCount = getStats(errorLog_);
         if (logCount.error > 0)
-            return SyncResult::finishedError;
+            return TaskResult::error;
         else if (logCount.warning > 0)
-            return SyncResult::finishedWarning;
+            return TaskResult::warning;
         else
-            return SyncResult::finishedSuccess;
+            return TaskResult::success;
     }();
 
     const ProcessSummary summary
     {
-        startTime_, syncResult, {} /*jobName*/,
+        startTime_, syncResult, {} /*jobNames*/,
         getCurrentStats(),
         getTotalStats  (),
         totalTime
@@ -181,7 +189,7 @@ void StatusHandlerTemporaryPanel::initNewPhase(int itemsTotal, int64_t bytesTota
     mainDlg_.compareStatus_->initNewPhase(); //call after "StatusHandler::initNewPhase"
 
     //macOS needs a full yield to update GUI and get rid of "dummy" texts
-    requestUiUpdate(true /*force*/); //throw AbortProcess
+    requestUiUpdate(true /*force*/); //throw CancelProcess
 }
 
 
@@ -200,7 +208,7 @@ void StatusHandlerTemporaryPanel::logMessage(const std::wstring& msg, MsgType ty
         assert(false);
         return MSG_TYPE_ERROR;
     }());
-    requestUiUpdate(false /*force*/); //throw AbortProcess
+    requestUiUpdate(false /*force*/); //throw CancelProcess
 }
 
 
@@ -228,7 +236,7 @@ void StatusHandlerTemporaryPanel::reportWarning(const std::wstring& msg, bool& w
                 warningActive = !dontWarnAgain;
                 break;
             case ConfirmationButton::cancel:
-                abortProcessNow(AbortTrigger::user); //throw AbortProcess
+                cancelProcessNow(CancelReason::user); //throw CancelProcess
                 break;
         }
     }
@@ -251,7 +259,7 @@ ProcessCallback::Response StatusHandlerTemporaryPanel::reportError(const ErrorIn
                           [&, statusPrefix  = _("Automatic retry") +
                                               (errorInfo.retryNumber == 0 ? L"" : L' ' + formatNumber(errorInfo.retryNumber + 1)) + SPACED_DASH,
                               statusPostfix = SPACED_DASH + _("Error") + L": " + replaceCpy(errorInfo.msg, L'\n', L' ')](const std::wstring& timeRemMsg)
-        { this->updateStatus(statusPrefix + timeRemMsg + statusPostfix); }); //throw AbortProcess
+        { this->updateStatus(statusPrefix + timeRemMsg + statusPostfix); }); //throw CancelProcess
         return ProcessCallback::retry;
     }
 
@@ -281,7 +289,7 @@ ProcessCallback::Response StatusHandlerTemporaryPanel::reportError(const ErrorIn
                 return ProcessCallback::retry;
 
             case ConfirmationButton3::cancel:
-                abortProcessNow(AbortTrigger::user); //throw AbortProcess
+                cancelProcessNow(CancelReason::user); //throw CancelProcess
                 break;
         }
     }
@@ -316,7 +324,7 @@ void StatusHandlerTemporaryPanel::reportFatalError(const std::wstring& msg)
                 break;
 
             case ConfirmationButton2::cancel:
-                abortProcessNow(AbortTrigger::user); //throw AbortProcess
+                cancelProcessNow(CancelReason::user); //throw CancelProcess
                 break;
         }
     }
@@ -349,7 +357,7 @@ Statistics::ErrorStats StatusHandlerTemporaryPanel::getErrorStats() const
 void StatusHandlerTemporaryPanel::forceUiUpdateNoThrow()
 {
     if (!mainDlg_.auiMgr_.GetPane(mainDlg_.compareStatus_->getAsWindow()).IsShown() &&
-        std::chrono::steady_clock::now() > startTimeSteady_ + TEMP_PANEL_DISPLAY_DELAY)
+        std::chrono::steady_clock::now() > panelInitTime_ + TEMP_PANEL_DISPLAY_DELAY)
         showStatsPanel();
 
     mainDlg_.compareStatus_->updateGui();
@@ -360,7 +368,7 @@ void StatusHandlerTemporaryPanel::onLocalKeyEvent(wxKeyEvent& event)
 {
     const int keyCode = event.GetKeyCode();
     if (keyCode == WXK_ESCAPE)
-        return userRequestAbort();
+        return userRequestCancel();
 
     event.Skip();
 }
@@ -368,7 +376,7 @@ void StatusHandlerTemporaryPanel::onLocalKeyEvent(wxKeyEvent& event)
 
 void StatusHandlerTemporaryPanel::onAbortCompare(wxCommandEvent& event)
 {
-    userRequestAbort();
+    userRequestCancel();
 }
 
 //########################################################################################################
@@ -382,150 +390,120 @@ StatusHandlerFloatingDialog::StatusHandlerFloatingDialog(wxFrame* parentDlg,
                                                          const Zstring& soundFileSyncComplete,
                                                          const Zstring& soundFileAlertPending,
                                                          const WindowLayout::Dimensions& dim,
-                                                         bool autoCloseDialog,
-                                                         ErrorLog errorLogPrefix) :
+                                                         bool autoCloseDialog) :
     jobNames_(jobNames),
     startTime_(startTime),
     autoRetryCount_(autoRetryCount),
     autoRetryDelay_(autoRetryDelay),
     soundFileSyncComplete_(soundFileSyncComplete),
-    soundFileAlertPending_(soundFileAlertPending),
-    errorLog_(makeSharedRef<ErrorLog>(std::move(errorLogPrefix)))
+    soundFileAlertPending_(soundFileAlertPending)
 {
     //set *after* initializer list => callbacks during construction to getErrorStats()!
-    progressDlg_ = SyncProgressDialog::create(dim, [this] { userRequestAbort(); }, *this, parentDlg, true /*showProgress*/, autoCloseDialog,
-                                              jobNames, std::chrono::system_clock::to_time_t(startTime), ignoreErrors, autoRetryCount, PostSyncAction2::none);
+    progressDlg_ = SyncProgressDialog::create(dim, [this] { userRequestCancel(); }, *this, parentDlg, true /*showProgress*/, autoCloseDialog,
+                                              jobNames, std::chrono::system_clock::to_time_t(startTime), ignoreErrors, autoRetryCount, PostSyncAction::none);
 }
 
 
 StatusHandlerFloatingDialog::~StatusHandlerFloatingDialog()
 {
-    if (progressDlg_) //reportResults() was not called!
+    if (progressDlg_) //showResults() was not called!
         std::abort();
 }
 
 
-StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(const Zstring& postSyncCommand, PostSyncCondition postSyncCondition,
-                                                                               const AbstractPath& logFolderPath, int logfilesMaxAgeDays, LogFileFormat logFormat,
-                                                                               const std::set<AbstractPath>& logFilePathsToKeep,
-                                                                               const std::string& emailNotifyAddress, ResultsNotification emailNotifyCondition)
+StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::prepareResult()
 {
     //keep correct summary window stats considering count down timer, system sleep
     const std::chrono::milliseconds totalTime = progressDlg_->pauseAndGetTotalTime();
 
-    //determine post-sync status irrespective of further errors during tear-down
-    const SyncResult syncResult = [&]
+    //append "extra" log for sync errors that could not otherwise be reported:
+    if (const ErrorLog extraLog = fetchExtraLog();
+        !extraLog.empty())
     {
-        if (getAbortStatus())
+        append(errorLog_.ref(), extraLog);
+        std::stable_sort(errorLog_.ref().begin(), errorLog_.ref().end(), [](const LogEntry& lhs, const LogEntry& rhs) { return lhs.time < rhs.time; });
+    }
+
+    //determine post-sync status irrespective of further errors during tear-down
+    assert(!syncResult_);
+    syncResult_ = [&]
+    {
+        if (taskCancelled()) //= user cancel
         {
-            logMsg(errorLog_.ref(), _("Stopped"), MSG_TYPE_ERROR); //= user cancel
-            return SyncResult::aborted;
+            assert(*taskCancelled() == CancelReason::user); //"stop on first error" is ffs_batch-only
+            logMsg(errorLog_.ref(), _("Stopped"), MSG_TYPE_ERROR);
+            return TaskResult::cancelled;
         }
 
         const ErrorLogStats logCount = getStats(errorLog_.ref());
         if (logCount.error > 0)
-            return SyncResult::finishedError;
+            return TaskResult::error;
         else if (logCount.warning > 0)
-            return SyncResult::finishedWarning;
+            return TaskResult::warning;
 
         if (getTotalStats() == ProgressStats())
             logMsg(errorLog_.ref(), _("Nothing to synchronize"), MSG_TYPE_INFO);
-        return SyncResult::finishedSuccess;
+        return TaskResult::success;
     }();
 
-    assert(syncResult == SyncResult::aborted || currentPhase() == ProcessPhase::synchronizing);
+    assert(*syncResult_ == TaskResult::cancelled || currentPhase() == ProcessPhase::sync);
 
     const ProcessSummary summary
     {
-        startTime_, syncResult, jobNames_,
+        startTime_, *syncResult_, jobNames_,
         getCurrentStats(),
         getTotalStats  (),
         totalTime
     };
 
-    AbstractPath logFilePath = AFS::appendRelPath(logFolderPath, generateLogFileName(logFormat, summary));
-    //e.g. %AppData%\FreeFileSync\Logs\Backup FreeFileSync 2013-09-15 015052.123 [Error].log
+    return {summary, errorLog_};
+}
 
-    auto notifyStatusNoThrow = [&](std::wstring&& msg) { try { updateStatus(std::move(msg)); /*throw AbortProcess*/ } catch (AbortProcess&) {} };
 
+StatusHandlerFloatingDialog::DlgOptions StatusHandlerFloatingDialog::showResult()
+{
     bool autoClose = false;
-    FinalRequest finalRequest = FinalRequest::none;
     bool suspend = false;
+    FinalRequest finalRequest = FinalRequest::none;
 
-    if (getAbortStatus() && *getAbortStatus() == AbortTrigger::user)
-        ; /* user cancelled => don't run post sync command
-                            => don't send email notification
-                            => don't run post sync action
-                            => don't play sound notification   */
+    if (taskCancelled())
+        assert(*taskCancelled() == CancelReason::user); //"stop on first error" is only for ffs_batch
     else
     {
-        //--------------------- post sync command ----------------------
-        if (const Zstring cmdLine = trimCpy(postSyncCommand);
-            !cmdLine.empty())
-            if (postSyncCondition == PostSyncCondition::completion ||
-                (postSyncCondition == PostSyncCondition::errors) == (syncResult == SyncResult::aborted ||
-                                                                     syncResult == SyncResult::finishedError))
-                ////----------------------------------------------------------------------
-                //::wxSetEnv(L"logfile_path", AFS::getDisplayPath(logFilePath));
-                ////----------------------------------------------------------------------
-                runCommandAndLogErrors(expandMacros(cmdLine), errorLog_.ref());
-
-        //--------------------- email notification ----------------------
-        if (const std::string notifyEmail = trimCpy(emailNotifyAddress);
-            !notifyEmail.empty())
-            if (emailNotifyCondition == ResultsNotification::always ||
-                (emailNotifyCondition == ResultsNotification::errorWarning && (syncResult == SyncResult::aborted       ||
-                                                                               syncResult == SyncResult::finishedError ||
-                                                                               syncResult == SyncResult::finishedWarning)) ||
-                (emailNotifyCondition == ResultsNotification::errorOnly && (syncResult == SyncResult::aborted ||
-                                                                            syncResult == SyncResult::finishedError)))
-                try
-                {
-                    logMsg(errorLog_.ref(), replaceCpy(_("Sending email notification to %x"), L"%x", utfTo<std::wstring>(notifyEmail)), MSG_TYPE_INFO);
-                    sendLogAsEmail(notifyEmail, summary, errorLog_.ref(), logFilePath, notifyStatusNoThrow); //throw FileError
-                }
-                catch (const FileError& e) { logMsg(errorLog_.ref(), e.toString(), MSG_TYPE_ERROR); }
-
         //--------------------- post sync actions ----------------------
+        //give user chance to cancel shutdown; do *not* consider the sync itself cancelled
         auto proceedWithShutdown = [&](const std::wstring& operationName)
         {
             if (progressDlg_->getWindowIfVisible())
                 try
                 {
-                    assert(!zen::endsWith(operationName, L"."));
-                    auto notifyStatusThrowOnCancel = [&](const std::wstring& timeRemMsg)
-                    {
-                        try { updateStatus(operationName + L"... " + timeRemMsg); /*throw AbortProcess*/ }
-                        catch (AbortProcess&)
-                        {
-                            if (getAbortStatus() && *getAbortStatus() == AbortTrigger::user)
-                                throw;
-                        }
-                    };
-                    delayAndCountDown(std::chrono::steady_clock::now() + std::chrono::seconds(10), notifyStatusThrowOnCancel); //throw AbortProcess
+                    assert(!endsWith(operationName, L"."));
+                    auto notifyStatus = [&](const std::wstring& timeRemMsg) { updateStatus(operationName + L"... " + timeRemMsg); /*throw CancelProcess*/ };
+
+                    delayAndCountDown(std::chrono::steady_clock::now() + std::chrono::seconds(10), notifyStatus); //throw CancelProcess
                 }
-                catch (AbortProcess&) { return false; }
+                catch (CancelProcess&) { return false; }
 
             return true;
         };
 
         switch (progressDlg_->getOptionPostSyncAction())
         {
-            case PostSyncAction2::none:
+            case PostSyncAction::none:
                 autoClose = progressDlg_->getOptionAutoCloseDialog();
                 break;
-            case PostSyncAction2::exit:
+            case PostSyncAction::exit:
                 autoClose = true;
                 finalRequest = FinalRequest::exit; //program exit must be handled by calling context!
                 break;
-            case PostSyncAction2::sleep:
+            case PostSyncAction::sleep:
                 if (proceedWithShutdown(_("System: Sleep")))
                 {
                     autoClose = progressDlg_->getOptionAutoCloseDialog();
                     suspend = true;
                 }
                 break;
-            case PostSyncAction2::shutdown:
+            case PostSyncAction::shutdown:
                 if (proceedWithShutdown(_("System: Shut down")))
                 {
                     autoClose = true;
@@ -533,68 +511,46 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::reportResults(c
                 }
                 break;
         }
-
-        //--------------------- sound notification ----------------------
-        if (!autoClose) //only play when showing results dialog
-            if (!soundFileSyncComplete_.empty())
-            {
-                //wxWidgets shows modal error dialog by default => "no, wxWidgets, NO!"
-                wxLog* oldLogTarget = wxLog::SetActiveTarget(new wxLogStderr); //transfer and receive ownership!
-                ZEN_ON_SCOPE_EXIT(delete wxLog::SetActiveTarget(oldLogTarget));
-
-                wxSound::Play(utfTo<wxString>(soundFileSyncComplete_), wxSOUND_ASYNC);
-            }
-        //if (::GetForegroundWindow() != GetHWND())
-        //    RequestUserAttention(); -> probably too much since task bar is already colorized with Taskbar::STATUS_ERROR or STATUS_NORMAL
     }
 
-    //--------------------- save log file ----------------------
-    try //create not before destruction: 1. avoid issues with FFS trying to sync open log file 2. include status in log file name without extra rename
-    {
-        //do NOT use tryReportingError()! saving log files should not be cancellable!
-        saveLogFile(logFilePath, summary, errorLog_.ref(), logfilesMaxAgeDays, logFormat, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
-    }
-    catch (const FileError& e)
-    {
-        logMsg(errorLog_.ref(), e.toString(), MSG_TYPE_ERROR);
-
-        const AbstractPath logFileDefaultPath = AFS::appendRelPath(createAbstractPath(getLogFolderDefaultPath()), generateLogFileName(logFormat, summary));
-        if (logFilePath != logFileDefaultPath) //fallback: log file *must* be saved no matter what!
-            try
-            {
-                logFilePath = logFileDefaultPath;
-                saveLogFile(logFileDefaultPath, summary, errorLog_.ref(), logfilesMaxAgeDays, logFormat, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
-            }
-            catch (const FileError& e2) { logMsg(errorLog_.ref(), e2.toString(), MSG_TYPE_ERROR); }
-    }
-    //----------------------------------------------------------
-
-    if (suspend) //...*before* results dialog is shown
-        try
+    if (suspend) //*before* showing results dialog
+        try 
         {
             suspendSystem(); //throw FileError
         }
         catch (const FileError& e) { logMsg(errorLog_.ref(), e.toString(), MSG_TYPE_ERROR); }
 
+    //--------------------- sound notification ----------------------
+    if (!taskCancelled() && !suspend && !autoClose && //only play when actually showing results dialog
+        !soundFileSyncComplete_.empty())
+    {
+        //wxWidgets shows modal error dialog by default => "no, wxWidgets, NO!"
+        wxLog* oldLogTarget = wxLog::SetActiveTarget(new wxLogStderr); //transfer and receive ownership!
+        ZEN_ON_SCOPE_EXIT(delete wxLog::SetActiveTarget(oldLogTarget));
 
-    const auto [autoCloseFinal, dim] = progressDlg_->destroy(autoClose,
-                                                             finalRequest == FinalRequest::none /*restoreParentFrame*/,
-                                                             syncResult, errorLog_);
-    //caveat: calls back to getErrorStats() => share errorLog_
+        wxSound::Play(utfTo<wxString>(soundFileSyncComplete_), wxSOUND_ASYNC);
+    }
+    //if (::GetForegroundWindow() != GetHWND())
+    //    RequestUserAttention(); -> probably too much since task bar is already colorized with Taskbar::Status::error or Status::normal
+
+    const auto [autoCloseSelected, dim] = progressDlg_->destroy(autoClose,
+                                                                finalRequest == FinalRequest::none /*restoreParentFrame*/,
+                                                                *syncResult_, errorLog_);
+    //caveat: calls back to getErrorStats() => *share* (and not move) errorLog_
     progressDlg_ = nullptr;
 
-    return {summary, errorLog_, finalRequest, logFilePath, dim, autoCloseFinal};
+    return {autoCloseSelected, dim, finalRequest};
 }
 
 
 void StatusHandlerFloatingDialog::initNewPhase(int itemsTotal, int64_t bytesTotal, ProcessPhase phaseID)
 {
-    assert(phaseID == ProcessPhase::synchronizing);
+    assert(phaseID == ProcessPhase::sync);
     StatusHandler::initNewPhase(itemsTotal, bytesTotal, phaseID);
     progressDlg_->initNewPhase(); //call after "StatusHandler::initNewPhase"
 
     //macOS needs a full yield to update GUI and get rid of "dummy" texts
-    requestUiUpdate(true /*force*/); //throw AbortProcess
+    requestUiUpdate(true /*force*/); //throw CancelProcess
 }
 
 
@@ -614,7 +570,7 @@ void StatusHandlerFloatingDialog::logMessage(const std::wstring& msg, MsgType ty
         assert(false);
         return MSG_TYPE_ERROR;
     }());
-    requestUiUpdate(false /*force*/); //throw AbortProcess
+    requestUiUpdate(false /*force*/); //throw CancelProcess
 }
 
 
@@ -642,7 +598,7 @@ void StatusHandlerFloatingDialog::reportWarning(const std::wstring& msg, bool& w
                 warningActive = !dontWarnAgain;
                 break;
             case ConfirmationButton::cancel:
-                abortProcessNow(AbortTrigger::user); //throw AbortProcess
+                cancelProcessNow(CancelReason::user); //throw CancelProcess
                 break;
         }
     }
@@ -665,7 +621,7 @@ ProcessCallback::Response StatusHandlerFloatingDialog::reportError(const ErrorIn
                           [&, statusPrefix  = _("Automatic retry") +
                                               (errorInfo.retryNumber == 0 ? L"" : L' ' + formatNumber(errorInfo.retryNumber + 1)) + SPACED_DASH,
                               statusPostfix = SPACED_DASH + _("Error") + L": " + replaceCpy(errorInfo.msg, L'\n', L' ')](const std::wstring& timeRemMsg)
-        { this->updateStatus(statusPrefix + timeRemMsg + statusPostfix); }); //throw AbortProcess
+        { this->updateStatus(statusPrefix + timeRemMsg + statusPostfix); }); //throw CancelProcess
         return ProcessCallback::retry;
     }
 
@@ -695,7 +651,7 @@ ProcessCallback::Response StatusHandlerFloatingDialog::reportError(const ErrorIn
                 return ProcessCallback::retry;
 
             case ConfirmationButton3::cancel:
-                abortProcessNow(AbortTrigger::user); //throw AbortProcess
+                cancelProcessNow(CancelReason::user); //throw CancelProcess
                 break;
         }
     }
@@ -730,7 +686,7 @@ void StatusHandlerFloatingDialog::reportFatalError(const std::wstring& msg)
                 break;
 
             case ConfirmationButton2::cancel:
-                abortProcessNow(AbortTrigger::user); //throw AbortProcess
+                cancelProcessNow(CancelReason::user); //throw CancelProcess
                 break;
         }
     }

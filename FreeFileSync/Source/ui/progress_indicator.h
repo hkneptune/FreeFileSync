@@ -46,7 +46,7 @@ private:
 
 //StatusHandlerFloatingDialog will internally process Window messages => disable GUI controls to avoid unexpected callbacks!
 
-enum class PostSyncAction2
+enum class PostSyncAction
 {
     none,
     exit,
@@ -57,7 +57,7 @@ enum class PostSyncAction2
 struct SyncProgressDialog
 {
     static SyncProgressDialog* create(const zen::WindowLayout::Dimensions& dim,
-                                      const std::function<void()>& userRequestAbort,
+                                      const std::function<void()>& userRequestCancel,
                                       const Statistics& syncStat,
                                       wxFrame* parentWindow, //may be nullptr
                                       bool showProgress,
@@ -66,13 +66,13 @@ struct SyncProgressDialog
                                       time_t syncStartTime,
                                       bool ignoreErrors,
                                       size_t autoRetryCount,
-                                      PostSyncAction2 postSyncAction);
+                                      PostSyncAction postSyncAction);
     struct Result
     {
         bool autoCloseDialog;
         zen::WindowLayout::Dimensions dim;
     };
-    virtual Result destroy(bool autoClose, bool restoreParentFrame, SyncResult syncResult, const zen::SharedRef<const zen::ErrorLog>& log) = 0;
+    virtual Result destroy(bool autoClose, bool restoreParentFrame, TaskResult syncResult, const zen::SharedRef<const zen::ErrorLog>& log) = 0;
     //---------------------------------------------------------------------------
 
     virtual wxWindow* getWindowIfVisible() = 0; //may be nullptr; don't abuse, use as parent for modal dialogs only!
@@ -84,7 +84,7 @@ struct SyncProgressDialog
     //allow changing a few options dynamically during sync
     virtual bool getOptionIgnoreErrors()           const = 0;
     virtual void setOptionIgnoreErrors(bool ignoreError) = 0;
-    virtual PostSyncAction2 getOptionPostSyncAction() const = 0;
+    virtual PostSyncAction getOptionPostSyncAction() const = 0;
     virtual bool getOptionAutoCloseDialog() const = 0;
 
     virtual void timerSetStatus(bool active) = 0; //start/stop all internal timers!

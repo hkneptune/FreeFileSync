@@ -125,6 +125,9 @@ private:
     void deleteSelectedFiles(const std::vector<FileSystemObject*>& selectionL,
                              const std::vector<FileSystemObject*>& selectionR, bool moveToRecycler);
 
+    void renameSelectedFiles(const std::vector<FileSystemObject*>& selectionL,
+                             const std::vector<FileSystemObject*>& selectionR);
+
     void openExternalApplication(const Zstring& commandLinePhrase, bool leftSide,
                                  const std::vector<FileSystemObject*>& selectionL,
                                  const std::vector<FileSystemObject*>& selectionR); //selection may be empty
@@ -308,9 +311,15 @@ private:
 
     //the prime data structure of this tool *bling*:
     FolderComparison folderCmp_; //optional!: sync button not available if empty
-    zen::ErrorLog errorLogPrepSync_; //prepend to sync log (e.g. comparison, manual interactions)
-    warn_static("errorLogPrepSync_ good idea? What about perf stats!? aggregate as well? https://freefilesync.org/forum/viewtopic.php?t=9022&p=38885#p38885")
-    warn_static("should logged errors impact the overall sync state!?")
+
+    //merge logs of individual steps (comparison, manual operations, sync) into a combined result (just as for ffs_batch jobs)
+    struct FullSyncLog
+    {
+        zen::ErrorLog log;
+        std::chrono::system_clock::time_point startTime;
+        std::chrono::milliseconds totalTime{};
+    };
+    std::optional<FullSyncLog> fullSyncLog_;
 
     //folder pairs:
     std::unique_ptr<FolderPairFirst> firstFolderPair_; //always bound!!!

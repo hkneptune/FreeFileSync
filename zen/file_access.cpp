@@ -622,9 +622,8 @@ void zen::copySymlink(const Zstring& sourcePath, const Zstring& targetPath) //th
     }
 
     //allow only consistent objects to be created -> don't place before ::symlink(); targetPath may already exist!
-    ZEN_ON_SCOPE_FAIL(try { removeSymlinkPlain(targetPath); /*throw FileError*/ }
-    catch (FileError&) {});
-    warn_static("log it!")
+    ZEN_ON_SCOPE_FAIL(try { removeSymlinkPlain(targetPath); }
+    catch (const FileError& e) { logExtraError(e.toString()); });
 
     //file times: essential for syncing a symlink: enforce this! (don't just try!)
     struct stat sourceInfo = {};
@@ -665,7 +664,7 @@ FileCopyResult zen::copyNewFile(const Zstring& sourceFile, const Zstring& target
     }
     FileOutputPlain fileOut(fdTarget, targetFile); //pass ownership
 
-    //preallocate disk space + reduce fragmentation 
+    //preallocate disk space + reduce fragmentation
     fileOut.reserveSpace(sourceInfo.st_size); //throw FileError
 
     unbufferedStreamCopy([&](void* buffer, size_t bytesToRead)
@@ -684,7 +683,7 @@ FileCopyResult zen::copyNewFile(const Zstring& sourceFile, const Zstring& target
     },
     fileOut.getBlockSize() /*throw FileError*/); //throw FileError, X
 
-  //possible improvement: copy_file_range() performs an in-kernel copy: https://github.com/coreutils/coreutils/blob/17479ef60c8edbd2fe8664e31a7f69704f0cd221/src/copy.c#L342
+    //possible improvement: copy_file_range() performs an in-kernel copy: https://github.com/coreutils/coreutils/blob/17479ef60c8edbd2fe8664e31a7f69704f0cd221/src/copy.c#L342
 
 #if 0
     //clean file system cache: needed at all? no user complaints at all so far!!!

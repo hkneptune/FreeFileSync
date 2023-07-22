@@ -87,16 +87,32 @@ public:
                 std::swap(pod_.inst, tmpInst);
             else
                 assert(false);
+
+            pod_.initialized = true;
         }
         delete tmpInst;
     }
 
-    bool wasDestroyed()
+    //for initialization via a frequently-called function (which may be running on parallel threads)
+    template <class Function>
+    void setOnce(Function getInitialValue /*-> std::unique_ptr<T>*/)
     {
         pod_.spinLock.lock();
         ZEN_ON_SCOPE_EXIT(pod_.spinLock.unlock());
 
-        return pod_.destroyed;
+        if (!pod_.initialized)
+        {
+            assert(!pod_.inst);
+            if (!pod_.destroyed)
+            {
+                if (std::unique_ptr<T> newInst = getInitialValue()) //throw ?
+                    pod_.inst = new std::shared_ptr<T>(std::move(newInst));
+            }
+            else
+                assert(false);
+
+            pod_.initialized = true;
+        }
     }
 
 private:
@@ -105,6 +121,7 @@ private:
         PodSpinMutex spinLock; //rely entirely on static zero-initialization! => avoid potential contention with worker thread during Global<> construction!
         //serialize access: can't use std::mutex: has non-trival destructor
         std::shared_ptr<T>* inst = nullptr;
+        bool initialized = false;
         bool destroyed = false;
     } pod_;
 };
@@ -128,26 +145,12 @@ class FunStatGlobal
 public:
     consteval FunStatGlobal() {}; //demand static zero-initialization!
 
-    //No ~FunStatGlobal()!
-
-    void initOnce(std::unique_ptr<T> (*getInitialValue)())
-    {
-        static_assert(std::is_trivially_destructible_v<FunStatGlobal>, "this class must not generate code for magic statics!");
-
-        pod_.spinLock.lock();
-        ZEN_ON_SCOPE_EXIT(pod_.spinLock.unlock());
-
-        if (!pod_.cleanUpEntry.cleanUpFun)
-        {
-            assert(!pod_.inst);
-            if (std::unique_ptr<T> newInst = (*getInitialValue)())
-                pod_.inst = new std::shared_ptr<T>(std::move(newInst));
-            registerDestruction();
-        }
-    }
+    //No ~FunStatGlobal(): required to avoid generation of magic statics code for a function-scope static!
 
     std::shared_ptr<T> get()
     {
+        static_assert(std::is_trivially_destructible_v<FunStatGlobal>, "this class must not generate code for magic statics!");
+
         pod_.spinLock.lock();
         ZEN_ON_SCOPE_EXIT(pod_.spinLock.unlock());
 
@@ -165,13 +168,50 @@ public:
             pod_.spinLock.lock();
             ZEN_ON_SCOPE_EXIT(pod_.spinLock.unlock());
 
-            std::swap(pod_.inst, tmpInst);
+            if (!pod_.destroyed)
+                std::swap(pod_.inst, tmpInst);
+            else
+                assert(false);
+
             registerDestruction();
         }
         delete tmpInst;
     }
 
+    template <class Function>
+    void setOnce(Function getInitialValue /*-> std::unique_ptr<T>*/)
+    {
+        pod_.spinLock.lock();
+        ZEN_ON_SCOPE_EXIT(pod_.spinLock.unlock());
+
+        if (!pod_.cleanUpEntry.cleanUpFun)
+        {
+            assert(!pod_.inst);
+            if (!pod_.destroyed)
+            {
+                if (std::unique_ptr<T> newInst = getInitialValue()) //throw ?
+                    pod_.inst = new std::shared_ptr<T>(std::move(newInst));
+            }
+            else
+                assert(false);
+
+            registerDestruction();
+        }
+    }
+
 private:
+    void destruct()
+    {
+        static_assert(std::is_trivially_destructible_v<Pod>, "this memory needs to live forever");
+
+        pod_.spinLock.lock();
+        std::shared_ptr<T>* oldInst = std::exchange(pod_.inst, nullptr);
+        pod_.destroyed = true;
+        pod_.spinLock.unlock();
+
+        delete oldInst;
+    }
+
     //call while holding pod_.spinLock
     void registerDestruction()
     {
@@ -182,8 +222,7 @@ private:
             pod_.cleanUpEntry.callbackData = this;
             pod_.cleanUpEntry.cleanUpFun = [](void* callbackData)
             {
-                auto thisPtr = static_cast<FunStatGlobal*>(callbackData);
-                thisPtr->set(nullptr);
+                static_cast<FunStatGlobal*>(callbackData)->destruct();
             };
 
             registerGlobalForDestruction(pod_.cleanUpEntry);
@@ -196,6 +235,7 @@ private:
         //serialize access; can't use std::mutex: has non-trival destructor
         std::shared_ptr<T>* inst = nullptr;
         CleanUpEntry cleanUpEntry;
+        bool destroyed = false;
     } pod_;
 };
 

@@ -16,7 +16,7 @@ AbstractPath createItemPathGdrive       (const Zstring& itemPathPhrase); //noexc
 
 void gdriveInit(const Zstring& configDirPath,   //directory to store Google-Drive-specific files
                 const Zstring& caCertFilePath); //cacert.pem
-[[nodiscard]] std::wstring /*warningMsg*/ gdriveTeardown();
+void gdriveTeardown();
 
 //-------------------------------------------------------
 

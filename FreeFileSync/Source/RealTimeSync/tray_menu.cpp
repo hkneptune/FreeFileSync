@@ -69,7 +69,7 @@ public:
 
     //require polling:
     bool resumeIsRequested() const { return resumeRequested_; }
-    bool abortIsRequested () const { return abortRequested_;  }
+    bool abortIsRequested () const { return cancelRequested_;  }
 
     //during TrayMode::error those two functions are available:
     void clearShowErrorRequested()     { assert(mode_ == TrayMode::error); showErrorMsgRequested_ = false; }
@@ -145,7 +145,7 @@ private:
         contextMenu->AppendSeparator();
 
         wxMenuItem* itemAbort = contextMenu->Append(wxID_ANY, _("&Quit"));
-        contextMenu->Bind(wxEVT_COMMAND_MENU_SELECTED, [this](wxCommandEvent& event) { abortRequested_ = true; }, itemAbort->GetId());
+        contextMenu->Bind(wxEVT_COMMAND_MENU_SELECTED, [this](wxCommandEvent& event) { cancelRequested_ = true; }, itemAbort->GetId());
 
         return contextMenu; //ownership transferred to caller
     }
@@ -165,7 +165,7 @@ private:
     }
 
     bool resumeRequested_       = false;
-    bool abortRequested_        = false;
+    bool cancelRequested_        = false;
     bool showErrorMsgRequested_ = false;
 
     TrayMode mode_ = TrayMode::waiting;
@@ -182,8 +182,8 @@ private:
 
 struct AbortMonitoring //exception class
 {
-    AbortMonitoring(AbortReason reasonCode) : reasonCode_(reasonCode) {}
-    AbortReason reasonCode_;
+    AbortMonitoring(CancelReason reasonCode) : reasonCode_(reasonCode) {}
+    CancelReason reasonCode_;
 };
 
 
@@ -208,10 +208,10 @@ public:
 
         //advantage of polling vs callbacks: we can throw exceptions!
         if (trayObj_->resumeIsRequested())
-            throw AbortMonitoring(AbortReason::REQUEST_GUI);
+            throw AbortMonitoring(CancelReason::requestGui);
 
         if (trayObj_->abortIsRequested())
-            throw AbortMonitoring(AbortReason::REQUEST_EXIT);
+            throw AbortMonitoring(CancelReason::requestExit);
     }
 
     void setMode(TrayMode m, const Zstring& missingFolderPath) { trayObj_->setMode(m, missingFolderPath); }
@@ -227,7 +227,7 @@ private:
 }
 
 
-rts::AbortReason rts::runFolderMonitor(const XmlRealConfig& config, const wxString& jobname)
+rts::CancelReason rts::runFolderMonitor(const XmlRealConfig& config, const wxString& jobname)
 {
     std::vector<Zstring> dirNamesNonFmt = config.directories;
     std::erase_if(dirNamesNonFmt, [](const Zstring& str) { return trimCpy(str).empty(); }); //remove empty entries WITHOUT formatting paths yet!
@@ -235,7 +235,7 @@ rts::AbortReason rts::runFolderMonitor(const XmlRealConfig& config, const wxStri
     if (dirNamesNonFmt.empty())
     {
         showNotificationDialog(nullptr, DialogInfoType::error, PopupDialogCfg().setMainInstructions(_("A folder input field is empty.")));
-        return AbortReason::REQUEST_GUI;
+        return CancelReason::requestGui;
     }
 
     const Zstring cmdLine = trimCpy(config.commandline);
@@ -243,7 +243,7 @@ rts::AbortReason rts::runFolderMonitor(const XmlRealConfig& config, const wxStri
     if (cmdLine.empty())
     {
         showNotificationDialog(nullptr, DialogInfoType::error, PopupDialogCfg().setMainInstructions(replaceCpy(_("Command %x failed."), L"%x", fmtPath(cmdLine))));
-        return AbortReason::REQUEST_GUI;
+        return CancelReason::requestGui;
     }
 
 
@@ -251,10 +251,8 @@ rts::AbortReason rts::runFolderMonitor(const XmlRealConfig& config, const wxStri
 
     auto executeExternalCommand = [&](const Zstring& changedItemPath, const std::wstring& actionName) //throw FileError
     {
-        warn_static("maybe not a good idea!? job for execve? https://rachelbythebay.com/w/2017/01/30/env/")
         ::wxSetEnv(L"change_path", utfTo<wxString>(changedItemPath)); //crude way to report changed file
         ::wxSetEnv(L"change_action", actionName);                     //
-        warn_static("caveat: %change_path% is not subsituted 'thanks' to our *static* env variables! luckily there's a workaround") //https://freefilesync.org/forum/viewtopic.php?t=10160
         auto cmdLineExp = expandMacros(cmdLine);
 
         try
@@ -296,7 +294,7 @@ rts::AbortReason rts::runFolderMonitor(const XmlRealConfig& config, const wxStri
                         return;
 
                     case ConfirmationButton::cancel:
-                        throw AbortMonitoring(AbortReason::REQUEST_GUI);
+                        throw AbortMonitoring(CancelReason::requestGui);
                 }
             std::this_thread::sleep_for(UI_UPDATE_INTERVAL);
         }
@@ -310,7 +308,7 @@ rts::AbortReason rts::runFolderMonitor(const XmlRealConfig& config, const wxStri
                            reportError,     //
                            UI_UPDATE_INTERVAL / 2);
         assert(false);
-        return AbortReason::REQUEST_GUI;
+        return CancelReason::requestGui;
     }
     catch (const AbortMonitoring& ab)
     {

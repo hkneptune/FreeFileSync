@@ -28,13 +28,13 @@ void zen::libcurlInit()
     if (++curlInitLevel != 1) //non-atomic => require call from main thread
         return;
 
-
     openSslInit();
 
-    [[maybe_unused]] const CURLcode rc2 = ::curl_global_init(CURL_GLOBAL_NOTHING /*CURL_GLOBAL_DEFAULT = CURL_GLOBAL_SSL|CURL_GLOBAL_WIN32*/);
-    assert(rc2 == CURLE_OK);
-
-    warn_static("log on error")
+    try
+    {
+        ASSERT_SYSERROR(::curl_global_init(CURL_GLOBAL_NOTHING /*CURL_GLOBAL_DEFAULT = CURL_GLOBAL_SSL|CURL_GLOBAL_WIN32*/) == CURLE_OK);
+    }
+    catch (const SysError& e) { logExtraError(_("Error during process initialization.") + L"\n\n" + e.toString()); }
 }
 
 
@@ -78,28 +78,35 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
     else
         ::curl_easy_reset(easyHandle_);
 
-
-    std::vector<CurlOption> options;
+    auto setCurlOption = [easyHandle = easyHandle_](const CurlOption& curlOpt) //throw SysError
+    {
+        if (const CURLcode rc = ::curl_easy_setopt(easyHandle, curlOpt.option, curlOpt.value);
+            rc != CURLE_OK)
+            throw SysError(formatSystemError("curl_easy_setopt(" + numberTo<std::string>(static_cast<int>(curlOpt.option)) + ")",
+                                             formatCurlStatusCode(rc), utfTo<std::wstring>(::curl_easy_strerror(rc))));
+    };
 
     char curlErrorBuf[CURL_ERROR_SIZE] = {};
-    options.emplace_back(CURLOPT_ERRORBUFFER, curlErrorBuf);
+    setCurlOption({CURLOPT_ERRORBUFFER, curlErrorBuf}); //throw SysError
 
-    options.emplace_back(CURLOPT_USERAGENT, "FreeFileSync"); //default value; may be overwritten by caller
+    setCurlOption({CURLOPT_USERAGENT, "FreeFileSync"}); //throw SysError
+    //default value; may be overwritten by caller
 
-    //lifetime: keep alive until after curl_easy_setopt() below
-    const std::string curlPath = serverPrefix_ + serverRelPath;
-    options.emplace_back(CURLOPT_URL, curlPath.c_str());
+    setCurlOption({CURLOPT_URL, (serverPrefix_ + serverRelPath).c_str()}); //throw SysError
 
-    options.emplace_back(CURLOPT_ACCEPT_ENCODING, ""); //libcurl: generate Accept-Encoding header containing all built-in supported encodings
+    setCurlOption({CURLOPT_ACCEPT_ENCODING, ""}); //throw SysError
+    //libcurl: generate Accept-Encoding header containing all built-in supported encodings
     //=> usually generates "Accept-Encoding: deflate, gzip" - note: "gzip" used by Google Drive
 
-    options.emplace_back(CURLOPT_NOSIGNAL, 1); //thread-safety: https://curl.haxx.se/libcurl/c/threadsafe.html
+    setCurlOption({CURLOPT_NOSIGNAL, 1}); //throw SysError
+    //thread-safety: https://curl.haxx.se/libcurl/c/threadsafe.html
 
-    options.emplace_back(CURLOPT_CONNECTTIMEOUT, timeoutSec);
+    setCurlOption({CURLOPT_CONNECTTIMEOUT, timeoutSec}); //throw SysError
 
     //CURLOPT_TIMEOUT: "Since this puts a hard limit for how long time a request is allowed to take, it has limited use in dynamic use cases with varying transfer times."
-    options.emplace_back(CURLOPT_LOW_SPEED_TIME, timeoutSec);
-    options.emplace_back(CURLOPT_LOW_SPEED_LIMIT, 1); //[bytes], can't use "0" which means "inactive", so use some low number
+    setCurlOption({CURLOPT_LOW_SPEED_TIME, timeoutSec}); //throw SysError
+    setCurlOption({CURLOPT_LOW_SPEED_LIMIT, 1}); //throw SysError
+    //[bytes], can't use "0" which means "inactive", so use some low number
 
 
     std::exception_ptr userCallbackException;
@@ -123,18 +130,20 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
         return (*clientp)(curlfd, purpose); //free this poor little C-API from its shackles and redirect to a proper lambda
     };
 
-    options.emplace_back(CURLOPT_SOCKOPTFUNCTION, onSocketCreateWrapper);
-    options.emplace_back(CURLOPT_SOCKOPTDATA, &onSocketCreate);
+    setCurlOption({CURLOPT_SOCKOPTFUNCTION, onSocketCreateWrapper}); //throw SysError
+    setCurlOption({CURLOPT_SOCKOPTDATA, &onSocketCreate}); //throw SysError
 
     //libcurl forwards this char-string to OpenSSL as is, which - thank god - accepts UTF8
     if (caCertFilePath_.empty())
     {
-        options.emplace_back(CURLOPT_CAINFO, 0); //see remarks in ftp.cpp
-        options.emplace_back(CURLOPT_SSL_VERIFYPEER, 0);
-        options.emplace_back(CURLOPT_SSL_VERIFYHOST, 0);
+        setCurlOption({CURLOPT_CAINFO, 0}); //throw SysError
+        setCurlOption({CURLOPT_SSL_VERIFYPEER, 0}); //throw SysError
+        setCurlOption({CURLOPT_SSL_VERIFYHOST, 0}); //throw SysError
+        //see remarks in ftp.cpp
     }
     else
-        options.emplace_back(CURLOPT_CAINFO, caCertFilePath_.c_str()); //hopefully latest version from https://curl.haxx.se/docs/caextract.html
+        setCurlOption({CURLOPT_CAINFO, caCertFilePath_.c_str()}); //throw SysError
+    //hopefully latest version from https://curl.haxx.se/docs/caextract.html
     //CURLOPT_SSL_VERIFYPEER => already active by default
     //CURLOPT_SSL_VERIFYHOST =>
 
@@ -203,22 +212,24 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
     //---------------------------------------------------
     if (receiveHeader)
     {
-        options.emplace_back(CURLOPT_HEADERDATA, &onHeaderReceived);
-        options.emplace_back(CURLOPT_HEADERFUNCTION, onHeaderReceivedWrapper);
+        setCurlOption({CURLOPT_HEADERDATA, &onHeaderReceived}); //throw SysError
+        setCurlOption({CURLOPT_HEADERFUNCTION, onHeaderReceivedWrapper}); //throw SysError
     }
     if (writeResponse)
     {
-        options.emplace_back(CURLOPT_WRITEDATA, &onBytesReceived);
-        options.emplace_back(CURLOPT_WRITEFUNCTION, onBytesReceivedWrapper);
+        setCurlOption({CURLOPT_WRITEDATA, &onBytesReceived}); //throw SysError
+        setCurlOption({CURLOPT_WRITEFUNCTION, onBytesReceivedWrapper}); //throw SysError
         //{CURLOPT_BUFFERSIZE, 256 * 1024} -> defaults is 16 kB which seems to correspond to SSL packet size
         //=> setting larget buffers size does nothing (recv still returns only 16 kB)
     }
     if (readRequest)
     {
         if (std::all_of(extraOptions.begin(), extraOptions.end(), [](const CurlOption& o) { return o.option != CURLOPT_POST; }))
-        /**/options.emplace_back(CURLOPT_UPLOAD, 1); //issues HTTP PUT
-        options.emplace_back(CURLOPT_READDATA, &getBytesToSend);
-        options.emplace_back(CURLOPT_READFUNCTION, getBytesToSendWrapper);
+        /**/setCurlOption({CURLOPT_UPLOAD, 1}); //throw SysError
+        //issues HTTP PUT
+
+        setCurlOption({CURLOPT_READDATA, &getBytesToSend}); //throw SysError
+        setCurlOption({CURLOPT_READFUNCTION, getBytesToSendWrapper}); //throw SysError
         //{CURLOPT_UPLOAD_BUFFERSIZE, 256 * 1024} -> default is 64 kB. apparently no performance improvement for larger buffers like 256 kB
 
         //Contradicting options: CURLOPT_READFUNCTION, CURLOPT_POSTFIELDS:
@@ -240,12 +251,11 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
     headers = ::curl_slist_append(headers, "Expect:"); //guess, what: www.googleapis.com doesn't support it! e.g. gdriveUploadFile()
 
     if (headers)
-        options.emplace_back(CURLOPT_HTTPHEADER, headers);
+        setCurlOption({CURLOPT_HTTPHEADER, headers}); //throw SysError
     //---------------------------------------------------
 
-    append(options, extraOptions);
-
-    applyCurlOptions(easyHandle_, options); //throw SysError
+    for (const CurlOption& option : extraOptions)
+        setCurlOption(option); //throw SysError
 
     //=======================================================================================================
     const CURLcode rcPerf = ::curl_easy_perform(easyHandle_);
@@ -393,14 +403,4 @@ std::wstring zen::formatCurlStatusCode(CURLcode sc)
     static_assert(CURL_LAST == CURLE_UNRECOVERABLE_POLL + 1);
 
     return replaceCpy<std::wstring>(L"Curl status %x", L"%x", numberTo<std::wstring>(static_cast<int>(sc)));
-}
-
-
-void zen::applyCurlOptions(CURL* easyHandle, const std::vector<CurlOption>& options) //throw SysError
-{
-    for (const CurlOption& opt : options)
-        if (const CURLcode rc = ::curl_easy_setopt(easyHandle, opt.option, opt.value);
-            rc != CURLE_OK)
-            throw SysError(formatSystemError("curl_easy_setopt(" + numberTo<std::string>(static_cast<int>(opt.option)) + ")",
-                                             formatCurlStatusCode(rc), utfTo<std::wstring>(::curl_easy_strerror(rc))));
 }

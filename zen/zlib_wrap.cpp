@@ -172,7 +172,6 @@ public:
     {
         [[maybe_unused]] const int rv = ::deflateEnd(&gzipStream_);
         assert(rv == Z_OK);
-        warn_static("log on error")
     }
 
     size_t read(void* buffer, size_t bytesToRead) //throw SysError, X; return "bytesToRead" bytes unless end of stream!

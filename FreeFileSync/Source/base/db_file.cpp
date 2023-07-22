@@ -980,11 +980,10 @@ void fff::saveLastSynchronousState(const BaseFolderPair& baseFolder, bool transa
     ZEN_ON_SCOPE_EXIT
     (
         //*INDENT-OFF*
-        if (dbPathTmpL) try { AFS::removeFilePlain(*dbPathTmpL); } catch (FileError&) {}
-        if (dbPathTmpR) try { AFS::removeFilePlain(*dbPathTmpR); } catch (FileError&) {}
+        if (dbPathTmpL) try { AFS::removeFilePlain(*dbPathTmpL); } catch (const FileError& e) { logExtraError(e.toString()); }
+        if (dbPathTmpR) try { AFS::removeFilePlain(*dbPathTmpR); } catch (const FileError& e) { logExtraError(e.toString()); }
         //*INDENT-ON*
     )
-    warn_static("log it!")
 
     std::vector<std::pair<AbstractPath, ParallelWorkItem>> parallelWorkloadSave, parallelWorkloadMove;
 
@@ -1037,9 +1036,8 @@ void fff::saveLastSynchronousState(const BaseFolderPair& baseFolder, bool transa
 
     massParallelExecute(parallelWorkloadSave,
                         Zstr("Save sync.ffs_db"), callback /*throw X*/); //throw X
-
+    //----------------------------------------------------------------
     if (saveSuccessL && saveSuccessR)
         massParallelExecute(parallelWorkloadMove,
                             Zstr("Move sync.ffs_db"), callback /*throw X*/); //throw X
-    //----------------------------------------------------------------
 }

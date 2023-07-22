@@ -459,7 +459,7 @@ private:
             /**/                         return 4;
         }();
         //const int decPlaces = expectedSteps <= 100 ? 0 : static_cast<int>(std::ceil(std::log10(expectedSteps))) - 2; -> overkill?
-        return zen::formatProgressPercent(fraction,  decPlaces);
+        return zen::formatProgressPercent(fraction, decPlaces);
     }
 
     bool showPercent_ = false;

@@ -156,8 +156,14 @@ std::vector<TranslationInfo> loadTranslations(const Zstring& zipPath) //throw Fi
                 .lngStream      = std::move(stream),
             });
         }
-        catch (lng::ParsingError&) { assert(false); }
-    warn_static("at least log on failure!")
+        catch (const lng::ParsingError& e)
+        {
+            throw FileError(replaceCpy(replaceCpy(replaceCpy(_("Error parsing file %x, row %y, column %z."),
+                                                             L"%x", fmtPath(fileName)),
+                                                  L"%y", formatNumber(e.row + 1)),
+                                       L"%z", formatNumber(e.col + 1))
+                            + L"\n\n" + e.msg);
+        }
 
     std::sort(translations.begin(), translations.end(), [](const TranslationInfo& lhs, const TranslationInfo& rhs)
     {
@@ -376,7 +382,7 @@ void fff::setLanguage(wxLanguage lng) //throw FileError
         {
             setTranslator(std::make_unique<FFSTranslation>(lngStream)); //throw lng::ParsingError, plural::ParsingError
         }
-        catch (lng::ParsingError& e)
+        catch (const lng::ParsingError& e)
         {
             throw FileError(replaceCpy(replaceCpy(replaceCpy(_("Error parsing file %x, row %y, column %z."),
                                                              L"%x", fmtPath(lngFileName)),

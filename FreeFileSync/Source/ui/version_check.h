@@ -7,9 +7,10 @@
 #ifndef VERSION_CHECK_H_324872374893274983275
 #define VERSION_CHECK_H_324872374893274983275
 
-#include <functional>
-#include <memory>
+//#include <functional>
+//#include <memory>
 #include <wx/window.h>
+#include <zen/stl_tools.h>
 
 
 namespace fff
@@ -25,12 +26,11 @@ struct UpdateCheckResultPrep;
 struct UpdateCheckResult;
 
 //run on main thread:
-std::shared_ptr<const UpdateCheckResultPrep> automaticUpdateCheckPrepare(wxWindow& parent);
+zen::SharedRef<const UpdateCheckResultPrep> automaticUpdateCheckPrepare(wxWindow& parent);
 //run on worker thread: (long-running part of the check)
-std::shared_ptr<const UpdateCheckResult> automaticUpdateCheckRunAsync(const UpdateCheckResultPrep* resultPrep);
+zen::SharedRef<const UpdateCheckResult> automaticUpdateCheckRunAsync(const UpdateCheckResultPrep& resultPrep);
 //run on main thread:
-void automaticUpdateCheckEval(wxWindow& parent, time_t& lastUpdateCheck, std::string& lastOnlineVersion,
-                              const UpdateCheckResult* asyncResult);
+void automaticUpdateCheckEval(wxWindow& parent, time_t& lastUpdateCheck, std::string& lastOnlineVersion, const UpdateCheckResult& result);
 //----------------------------------------------------------------------------
 //call from main thread:
 void checkForUpdateNow(wxWindow& parent, std::string& lastOnlineVersion);

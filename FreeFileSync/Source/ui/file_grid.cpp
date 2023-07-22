@@ -986,7 +986,7 @@ private:
                             rectGroupItems.width -= 2 * gapSize_;
 
                             wxDCPenChanger dummy(dc, wxPen(getColorGridLine(), fastFromDIP(1)));
-                            dc.DrawLine(rectGroupItems.GetTopLeft(), rectGroupItems.GetBottomLeft() + wxPoint(0, 1)); //draws half-open range!
+                            dc.DrawLine(rectGroupItems.GetTopLeft(), rectGroupItems.GetBottomLeft() + wxPoint(0, 1)); //doesn't draw last pixel!
 
                             rectGroupItems.x     += fastFromDIP(1);
                             rectGroupItems.width -= fastFromDIP(1);
@@ -1722,13 +1722,13 @@ public:
         gridR_.Bind(EVENT_GRID_MOUSE_LEFT_DOWN, [this](GridClickEvent& event) { onGridClickRim(event, gridR_); });
 
         //clear selection of other grid when selecting on
+        gridL_.Bind(EVENT_GRID_MOUSE_LEFT_DOWN,  [this]( GridClickEvent& event) { onGridLeftClick(event, gridR_); }); //clear immediately,
+        gridL_.Bind(EVENT_GRID_MOUSE_RIGHT_DOWN, [this]( GridClickEvent& event) { onGridRightClick(event, gridR_, gridL_); }); //don't wait for GridSelectEvent
         gridL_.Bind(EVENT_GRID_SELECT_RANGE,     [this](GridSelectEvent& event) { onGridSelection(event, gridR_); });
-        gridL_.Bind(EVENT_GRID_MOUSE_LEFT_DOWN,  [this]( GridClickEvent& event) { onGridSelection(event, gridR_); }); //clear immediately,
-        gridL_.Bind(EVENT_GRID_MOUSE_RIGHT_DOWN, [this]( GridClickEvent& event) { onGridSelection(event, gridR_); }); //don't wait for GridSelectEvent
 
+        gridR_.Bind(EVENT_GRID_MOUSE_LEFT_DOWN,  [this]( GridClickEvent& event) { onGridLeftClick(event, gridL_); });
+        gridR_.Bind(EVENT_GRID_MOUSE_RIGHT_DOWN, [this]( GridClickEvent& event) { onGridRightClick(event, gridL_, gridR_); });
         gridR_.Bind(EVENT_GRID_SELECT_RANGE,     [this](GridSelectEvent& event) { onGridSelection(event, gridL_); });
-        gridR_.Bind(EVENT_GRID_MOUSE_LEFT_DOWN,  [this]( GridClickEvent& event) { onGridSelection(event, gridL_); });
-        gridR_.Bind(EVENT_GRID_MOUSE_RIGHT_DOWN, [this]( GridClickEvent& event) { onGridSelection(event, gridL_); });
 
         //parallel grid scrolling: do NOT use DoPrepareDC() to align grids! GDI resource leak! Use regular paint event instead:
         gridL_.getMainWin().Bind(wxEVT_PAINT, [this](wxPaintEvent& event) { onPaintGrid(gridL_); event.Skip(); });
@@ -1828,9 +1828,28 @@ private:
         event.Skip();
     }
 
-    void onGridSelection(wxEvent& event, Grid& gridOther)
+    void onGridLeftClick(GridClickEvent& event, Grid& gridOther)
     {
-        if (!wxGetKeyState(WXK_CONTROL)) //clear other grid unless user is holding CTRL
+        //see grid.cpp Grid::MainWin::onMouseDown():
+        if (!wxGetKeyState(WXK_CONTROL) && !wxGetKeyState(WXK_SHIFT)) //clear other grid unless user is holding CTRL, or SHIFT
+            gridOther.clearSelection(GridEventPolicy::deny); //don't emit event, prevent recursion!
+        event.Skip();
+    }
+
+    void onGridRightClick(GridClickEvent& event, Grid& gridOther, Grid& gridThis)
+    {
+        const std::vector<size_t>& selectedRows = gridThis.getSelectedRows();
+        const bool rowSelected = std::find(selectedRows.begin(), selectedRows.end(), makeUnsigned(event.row_)) != selectedRows.end();
+
+        //clear other grid unless GridContextMenuEvent is about to happen, or user is holding CTRL, or SHIFT
+        if (!rowSelected && !wxGetKeyState(WXK_CONTROL) && !wxGetKeyState(WXK_SHIFT))
+            gridOther.clearSelection(GridEventPolicy::deny); //don't emit event, prevent recursion!
+        event.Skip();
+    }
+
+    void onGridSelection(GridSelectEvent& event, Grid& gridOther)
+    {
+        if (!event.mouseClick_ && !wxGetKeyState(WXK_SHIFT)) //clear other grid during keyboard selection, unless user is holding SHIFT
             gridOther.clearSelection(GridEventPolicy::deny); //don't emit event, prevent recursion!
         event.Skip();
     }

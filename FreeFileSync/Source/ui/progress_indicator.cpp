@@ -65,18 +65,18 @@ std::wstring getDialogPhaseText(const Statistics& syncStat, bool paused)
     if (paused)
         return _("Paused");
 
-    if (syncStat.getAbortStatus())
+    if (syncStat.taskCancelled())
         return _("Stop requested...");
 
     switch (syncStat.currentPhase())
     {
         case ProcessPhase::none:
             return _("Initializing..."); //dialog is shown *before* sync starts, so this text may be visible!
-        case ProcessPhase::scanning:
+        case ProcessPhase::scan:
             return _("Scanning...");
-        case ProcessPhase::comparingContent:
+        case ProcessPhase::binaryCompare:
             return _("Comparing content...");
-        case ProcessPhase::synchronizing:
+        case ProcessPhase::sync:
             return _("Synchronizing...");
     }
     assert(false);
@@ -198,7 +198,7 @@ CompareProgressPanel::Impl::Impl(wxFrame& parentWindow) :
     setImage(*m_bitmapIgnoreErrors, loadImage("error_ignore_active", getDefaultMenuIconSize()));
     setImage(*m_bitmapRetryErrors,  loadImage("error_retry",         getDefaultMenuIconSize()));
 
-    //make sure standard height matches ProcessPhase::comparingContent statistics layout (== largest)
+    //make sure standard height matches ProcessPhase::binaryCompare statistics layout (== largest)
 
     //init graph
     m_panelProgressGraph->setAttributes(Graph2D::MainAttributes().setMinY(0).setMaxY(2).
@@ -273,7 +273,7 @@ void CompareProgressPanel::Impl::initNewPhase()
 
     const bool haveTotalStats = itemsTotal >= 0 || bytesTotal >= 0;
 
-    if (taskbar_.get()) taskbar_->setStatus(haveTotalStats ? Taskbar::STATUS_NORMAL : Taskbar::STATUS_INDETERMINATE);
+    if (taskbar_.get()) taskbar_->setStatus(haveTotalStats ? Taskbar::Status::normal : Taskbar::Status::indeterminate);
 
     m_staticTextProcessed     ->Show(haveTotalStats);
     m_staticTextRemaining     ->Show(haveTotalStats);
@@ -325,10 +325,10 @@ void CompareProgressPanel::Impl::updateProgressGui()
     if (!haveTotalStats)
     {
         //dialog caption, taskbar
-        setTitle(formatNumber(itemsCurrent) + SPACED_DASH + getDialogPhaseText(*syncStat_, false /*paused*/));
+        setTitle(formatNumber(itemsCurrent) + L' ' + getDialogPhaseText(*syncStat_, false /*paused*/));
 
         //progress indicators
-        //taskbar_ already set to STATUS_INDETERMINATE within initNewPhase()
+        //taskbar_ already set to STATUS_INDETERMINATE by initNewPhase()
     }
     else
     {
@@ -491,7 +491,7 @@ private:
             return {};
         /*
             //report some additional width by 5% elapsed time to make graph recalibrate before hitting the right border
-            //caveat: graph for batch mode binary comparison does NOT start at elapsed time 0!! ProcessPhase::comparingContent and ProcessPhase::synchronizing!
+            //caveat: graph for batch mode binary comparison does NOT start at elapsed time 0!! ProcessPhase::binaryCompare and ProcessPhase::sync!
             //=> consider width of current sample set!
             upperEndMs += 0.05 *(upperEndMs - samples.begin()->first);
         */
@@ -671,7 +671,7 @@ class SyncProgressDialogImpl : public TopLevelDialog, public SyncProgressDialog
 public:
     SyncProgressDialogImpl(long style, //wxFrame/wxDialog style
                            const WindowLayout::Dimensions& dim,
-                           const std::function<void()>& userRequestAbort,
+                           const std::function<void()>& userRequestCancel,
                            const Statistics& syncStat,
                            wxFrame* parentFrame,
                            bool showProgress,
@@ -680,12 +680,12 @@ public:
                            time_t syncStartTime,
                            bool ignoreErrors,
                            size_t autoRetryCount,
-                           PostSyncAction2 postSyncAction);
+                           PostSyncAction postSyncAction);
 
-    Result destroy(bool autoClose, bool restoreParentFrame, SyncResult syncResult, const SharedRef<const zen::ErrorLog>& log) override;
+    Result destroy(bool autoClose, bool restoreParentFrame, TaskResult syncResult, const SharedRef<const zen::ErrorLog>& log) override;
 
     wxWindow* getWindowIfVisible() override { return this->IsShown() ? this : nullptr; }
-    //workaround OS X bug: if "this" is used as parent window for a modal dialog then this dialog will erroneously un-hide its parent!
+    //workaround macOS bug: if "this" is used as parent window for a modal dialog then this dialog will erroneously un-hide its parent!
 
     void initNewPhase        () override;
     void notifyProgressChange() override;
@@ -693,7 +693,7 @@ public:
 
     bool getOptionIgnoreErrors()                 const override { return ignoreErrors_; }
     void setOptionIgnoreErrors(bool ignoreErrors)      override { ignoreErrors_ = ignoreErrors; updateStaticGui(); }
-    PostSyncAction2 getOptionPostSyncAction()    const override { return getEnumVal(enumPostSyncAction_, *pnl_.m_choicePostSyncAction); }
+    PostSyncAction getOptionPostSyncAction()    const override { return getEnumVal(enumPostSyncAction_, *pnl_.m_choicePostSyncAction); }
     bool getOptionAutoCloseDialog()              const override { return pnl_.m_checkBoxAutoClose->GetValue(); }
 
     void timerSetStatus(bool active) override
@@ -721,7 +721,7 @@ private:
     void onIconize(wxIconizeEvent& event);
     //void onToggleIgnoreErrors(wxCommandEvent& event) { updateStaticGui(); }
 
-    void showSummary(SyncResult syncResult, const SharedRef<const ErrorLog>& log);
+    void showSummary(TaskResult syncResult, const SharedRef<const ErrorLog>& log);
 
     void minimizeToTray();
     void resumeFromSystray(bool userRequested);
@@ -769,14 +769,14 @@ private:
     std::unique_ptr<Taskbar> taskbar_;
 
     bool ignoreErrors_ = false;
-    EnumDescrList<PostSyncAction2> enumPostSyncAction_;
+    EnumDescrList<PostSyncAction> enumPostSyncAction_;
 };
 
 
 template <class TopLevelDialog>
 SyncProgressDialogImpl<TopLevelDialog>::SyncProgressDialogImpl(long style, //wxFrame/wxDialog style
                                                                const WindowLayout::Dimensions& dim,
-                                                               const std::function<void()>& userRequestAbort,
+                                                               const std::function<void()>& userRequestCancel,
                                                                const Statistics& syncStat,
                                                                wxFrame* parentFrame,
                                                                bool showProgress,
@@ -785,7 +785,7 @@ SyncProgressDialogImpl<TopLevelDialog>::SyncProgressDialogImpl(long style, //wxF
                                                                time_t syncStartTime,
                                                                bool ignoreErrors,
                                                                size_t autoRetryCount,
-                                                               PostSyncAction2 postSyncAction) :
+                                                               PostSyncAction postSyncAction) :
     TopLevelDialog(parentFrame, wxID_ANY, wxString(), wxDefaultPosition, wxDefaultSize, style), //title is overwritten anyway in setExternalStatus()
     pnl_(*new SyncProgressPanelGenerated(this)), //ownership passed to "this"
     syncStartTime_(getLocalTime(syncStartTime)), //returns TimeComp() on error
@@ -802,7 +802,7 @@ SyncProgressDialogImpl<TopLevelDialog>::SyncProgressDialogImpl(long style, //wxF
 }
 ()),
 parentFrame_(parentFrame),
-userRequestAbort_(userRequestAbort),
+userRequestAbort_(userRequestCancel),
 syncStat_(&syncStat)
 {
     static_assert(std::is_same_v<TopLevelDialog, wxFrame > ||
@@ -833,6 +833,7 @@ syncStat_(&syncStat)
     assert(pnl_.m_buttonClose->GetId() == wxID_OK); //we cannot use wxID_CLOSE else ESC key won't work: yet another wxWidgets bug??
 
     setRelativeFontSize(*pnl_.m_staticTextPhase, 1.5);
+    setRelativeFontSize(*pnl_.m_staticTextPercentTotal, 1.5);
 
     if (parentFrame_)
         parentTitleBackup_ = parentFrame_->GetTitle(); //save old title (will be used as progress indicator)
@@ -905,11 +906,11 @@ syncStat_(&syncStat)
     //allow changing a few options dynamically during sync
     ignoreErrors_ = ignoreErrors;
 
-    enumPostSyncAction_.add(PostSyncAction2::none, L"");
+    enumPostSyncAction_.add(PostSyncAction::none, L"");
     if (parentFrame_) //enable EXIT option for gui mode sync
-        enumPostSyncAction_.add(PostSyncAction2::exit, wxControl::RemoveMnemonics(_("E&xit"))); //reuse label translation
-    enumPostSyncAction_.add(PostSyncAction2::sleep,    _("System: Sleep"));
-    enumPostSyncAction_.add(PostSyncAction2::shutdown, _("System: Shut down"));
+        enumPostSyncAction_.add(PostSyncAction::exit, wxControl::RemoveMnemonics(_("E&xit"))); //reuse label translation
+    enumPostSyncAction_.add(PostSyncAction::sleep,    _("System: Sleep"));
+    enumPostSyncAction_.add(PostSyncAction::shutdown, _("System: Shut down"));
 
     setEnumVal(enumPostSyncAction_, *pnl_.m_choicePostSyncAction, postSyncAction);
 
@@ -917,7 +918,7 @@ syncStat_(&syncStat)
 
     updateStaticGui(); //null-status will be shown while waiting for dir locks
 
-    //make sure that standard height matches ProcessPhase::comparingContent statistics layout (== largest)
+    //make sure that standard height matches ProcessPhase::binaryCompare statistics layout (== largest)
 
     this->GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
 #ifdef __WXGTK3__
@@ -1023,14 +1024,14 @@ namespace
 
 
 template <class TopLevelDialog>
-void SyncProgressDialogImpl<TopLevelDialog>::setExternalStatus(const wxString& statusTxt, const wxString& progress) //progress may be empty!
+void SyncProgressDialogImpl<TopLevelDialog>::setExternalStatus(const wxString& status, const wxString& progress) //progress may be empty!
 {
     //sys tray: order "top-down": jobname, status, progress
     wxString tooltip = L"FreeFileSync";
     if (!jobName_.empty())
         tooltip += SPACED_DASH + jobName_;
 
-    tooltip += L'\n' + statusTxt;
+    tooltip += L'\n' + status;
 
     if (!progress.empty())
         tooltip += L' ' + progress;
@@ -1040,11 +1041,12 @@ void SyncProgressDialogImpl<TopLevelDialog>::setExternalStatus(const wxString& s
     if (!progress.empty())
         title += progress + L' ';
 
-    title += statusTxt;
+    title += status;
 
-    if (!jobName_.empty())
+    if (!jobName_.empty() && !parentFrame_ /*job name already visible in sync config panel, unlike with batch jobs*/)
         title += SPACED_DASH + jobName_;
 
+#if 0 //why again does start time have to be visible in the titel!?
     const Zchar* format = [&tc = syncStartTime_]
     {
         if (const TimeComp& tcNow = getLocalTime();
@@ -1055,7 +1057,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::setExternalStatus(const wxString& s
         return formatDateTimeTag;
     }();
     title += SPACED_DASH + utfTo<std::wstring>(formatTime(format, syncStartTime_));
-
+#endif
     //---------------------------------------------------------------------------
 
     //systray tooltip, if window is minimized
@@ -1082,11 +1084,10 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
 
     //normally we don't update the "static" GUI components here, but we have to make an exception
     //if sync is cancelled (by user or error handling option)
-    if (syncStat_->getAbortStatus())
+    if (syncStat_->taskCancelled())
         updateStaticGui(); //called more than once after cancel... ok
 
 
-    bool layoutChanged = false; //avoid screen flicker by calling layout() only if necessary
     const std::chrono::nanoseconds timeElapsed = stopWatch_.elapsed();
     const double timeElapsedDouble = std::chrono::duration<double>(timeElapsed).count();
 
@@ -1097,6 +1098,8 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
 
     const bool haveTotalStats = itemsTotal >= 0 || bytesTotal >= 0;
 
+    bool headerLayoutChanged = false;
+
     //status texts
     setText(*pnl_.m_staticTextStatus, replaceCpy(syncStat_->currentStatusText(), L'\n', L' ')); //no layout update for status texts!
 
@@ -1106,8 +1109,10 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
         setExternalStatus(getDialogPhaseText(*syncStat_, paused_), formatNumber(itemsCurrent)); //status text may be "paused"!
 
         //progress indicators
-        if (trayIcon_.get()) trayIcon_->setProgress(1); //100% = regular FFS logo
-        //taskbar_ already set to STATUS_INDETERMINATE within initNewPhase()
+        setText(*pnl_.m_staticTextPercentTotal, L"", &headerLayoutChanged);
+
+        if (trayIcon_.get()) trayIcon_->setProgress(1); //100% = fully visible FFS logo
+        //taskbar_ already set to STATUS_INDETERMINATE by initNewPhase()
     }
     else
     {
@@ -1116,9 +1121,13 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
         const double fractionTotal = bytesTotal + itemsTotal == 0 ? 0 : 1.0 * (bytesCurrent + itemsCurrent) / (bytesTotal + itemsTotal);
         //add both data + obj-count, to handle "deletion-only" cases
 
-        setExternalStatus(getDialogPhaseText(*syncStat_, paused_), formatProgressPercent(fractionTotal)); //status text may be "paused"!
+        const std::wstring percentTotal = formatProgressPercent(fractionTotal);
+
+        setExternalStatus(getDialogPhaseText(*syncStat_, paused_), percentTotal); //status text may be "paused"!
 
         //progress indicators
+        setText(*pnl_.m_staticTextPercentTotal, L' ' + percentTotal, &headerLayoutChanged);
+
         if (trayIcon_.get()) trayIcon_->setProgress(fractionTotal);
         if (taskbar_ .get()) taskbar_ ->setProgress(fractionTotal);
 
@@ -1140,6 +1149,16 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
     curveBytes_.ref().addSample(timeElapsedDouble, bytesCurrent);
     curveItems_.ref().addSample(timeElapsedDouble, itemsCurrent);
 
+    bool layoutChanged = false; //avoid screen flicker by calling layout() only if necessary
+    auto showIfNeeded = [&](wxWindow& wnd, bool show)
+    {
+        if (wnd.IsShown() != show)
+        {
+            wnd.Show(show);
+            layoutChanged = true;
+        }
+    };
+
     //item and data stats
     if (!haveTotalStats)
     {
@@ -1159,14 +1178,6 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
         //it's possible data remaining becomes shortly negative if last file synced has ADS data and the bytesTotal was not yet corrected!
     }
 
-    auto showIfNeeded = [&](wxWindow& wnd, bool show)
-    {
-        if (wnd.IsShown() != show)
-        {
-            wnd.Show(show);
-            layoutChanged = true;
-        }
-    };
 
     //errors and warnings (pop up dynamically)
     const Statistics::ErrorStats errorStats = syncStat_->getErrorStats();
@@ -1248,6 +1259,9 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
     pnl_.m_panelGraphItems->Refresh();
 
     //adapt layout after content changes above
+    if (headerLayoutChanged)
+        pnl_.Layout();
+
     if (layoutChanged)
     {
         pnl_.m_panelProgress->Layout();
@@ -1300,17 +1314,17 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateStaticGui() //depends on "syn
         if (paused_)
             return loadImage("status_pause");
 
-        if (syncStat_->getAbortStatus())
+        if (syncStat_->taskCancelled())
             return loadImage("result_error");
 
         switch (syncStat_->currentPhase())
         {
             case ProcessPhase::none:
-            case ProcessPhase::scanning:
+            case ProcessPhase::scan:
                 return loadImage("status_scanning");
-            case ProcessPhase::comparingContent:
+            case ProcessPhase::binaryCompare:
                 return loadImage("status_binary_compare");
-            case ProcessPhase::synchronizing:
+            case ProcessPhase::sync:
                 return loadImage("status_syncing");
         }
         assert(false);
@@ -1322,7 +1336,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateStaticGui() //depends on "syn
     if (taskbar_.get())
     {
         if (paused_)
-            taskbar_->setStatus(Taskbar::STATUS_PAUSED);
+            taskbar_->setStatus(Taskbar::Status::paused);
         else
         {
             const int     itemsTotal = syncStat_->getTotalStats().items;
@@ -1330,7 +1344,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateStaticGui() //depends on "syn
 
             const bool haveTotalStats = itemsTotal >= 0 || bytesTotal >= 0;
 
-            taskbar_->setStatus(haveTotalStats ? Taskbar::STATUS_NORMAL : Taskbar::STATUS_INDETERMINATE);
+            taskbar_->setStatus(haveTotalStats ? Taskbar::Status::normal : Taskbar::Status::indeterminate);
         }
     }
 
@@ -1346,7 +1360,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateStaticGui() //depends on "syn
 
 
 template <class TopLevelDialog>
-void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult syncResult, const SharedRef<const ErrorLog>& log)
+void SyncProgressDialogImpl<TopLevelDialog>::showSummary(TaskResult syncResult, const SharedRef<const ErrorLog>& log)
 {
     assert(syncStat_);
     //at the LATEST(!) to prevent access to currentStatusHandler
@@ -1381,6 +1395,8 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult syncResult, 
         itemsProcessed == itemsTotal &&
         bytesProcessed == bytesTotal)
     {
+        pnl_.m_staticTextPercentTotal->Hide();
+
         pnl_.m_staticTextProcessed     ->Hide();
         pnl_.m_staticTextRemaining     ->Hide();
         pnl_.m_staticTextItemsRemaining->Hide();
@@ -1406,12 +1422,12 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult syncResult, 
     {
         switch (syncResult)
         {
-            case SyncResult::finishedSuccess:
+            case TaskResult::success:
                 return loadImage("result_success");
-            case SyncResult::finishedWarning:
+            case TaskResult::warning:
                 return loadImage("result_warning");
-            case SyncResult::finishedError:
-            case SyncResult::aborted:
+            case TaskResult::error:
+            case TaskResult::cancelled:
                 return loadImage("result_error");
         }
         assert(false);
@@ -1420,23 +1436,24 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult syncResult, 
     setImage(*pnl_.m_bitmapStatus, statusImage);
 
     pnl_.m_staticTextPhase->SetLabelText(getSyncResultLabel(syncResult));
+
     //pnl_.m_bitmapStatus->SetToolTip(); -> redundant
 
     //show status on Windows 7 taskbar
     if (taskbar_.get())
         switch (syncResult)
         {
-            case SyncResult::finishedSuccess:
-                taskbar_->setStatus(Taskbar::STATUS_NORMAL);
+            case TaskResult::success:
+                taskbar_->setStatus(Taskbar::Status::normal);
                 break;
 
-            case SyncResult::finishedWarning:
-                taskbar_->setStatus(Taskbar::STATUS_WARNING);
+            case TaskResult::warning:
+                taskbar_->setStatus(Taskbar::Status::warning);
                 break;
 
-            case SyncResult::finishedError:
-            case SyncResult::aborted:
-                taskbar_->setStatus(Taskbar::STATUS_ERROR);
+            case TaskResult::error:
+            case TaskResult::cancelled:
+                taskbar_->setStatus(Taskbar::Status::error);
                 break;
         }
     //----------------------------------
@@ -1522,7 +1539,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(SyncResult syncResult, 
 
 
 template <class TopLevelDialog>
-auto SyncProgressDialogImpl<TopLevelDialog>::destroy(bool autoClose, bool restoreParentFrame, SyncResult syncResult, const SharedRef<const ErrorLog>& log) -> Result
+auto SyncProgressDialogImpl<TopLevelDialog>::destroy(bool autoClose, bool restoreParentFrame, TaskResult syncResult, const SharedRef<const ErrorLog>& log) -> Result
 {
     assert(stopWatch_.isPaused()); //why wasn't pauseAndGetTotalTime() called?
 
@@ -1694,7 +1711,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::resumeFromSystray(bool userRequeste
 //########################################################################################
 
 SyncProgressDialog* SyncProgressDialog::create(const WindowLayout::Dimensions& dim,
-                                               const std::function<void()>& userRequestAbort,
+                                               const std::function<void()>& userRequestCancel,
                                                const Statistics& syncStat,
                                                wxFrame* parentWindow, //may be nullptr
                                                bool showProgress,
@@ -1703,16 +1720,16 @@ SyncProgressDialog* SyncProgressDialog::create(const WindowLayout::Dimensions& d
                                                time_t syncStartTime,
                                                bool ignoreErrors,
                                                size_t autoRetryCount,
-                                               PostSyncAction2 postSyncAction)
+                                               PostSyncAction postSyncAction)
 {
     if (parentWindow) //FFS GUI sync
         return new SyncProgressDialogImpl<wxDialog>(wxDEFAULT_DIALOG_STYLE | wxMAXIMIZE_BOX | wxMINIMIZE_BOX | wxRESIZE_BORDER,
-                                                    dim, userRequestAbort, syncStat, parentWindow, showProgress,
+                                                    dim, userRequestCancel, syncStat, parentWindow, showProgress,
                                                     autoCloseDialog, jobNames, syncStartTime, ignoreErrors, autoRetryCount, postSyncAction);
     else //FFS batch job
     {
         auto dlg = new SyncProgressDialogImpl<wxFrame>(wxDEFAULT_FRAME_STYLE,
-                                                       dim, userRequestAbort, syncStat, parentWindow, showProgress,
+                                                       dim, userRequestCancel, syncStat, parentWindow, showProgress,
                                                        autoCloseDialog, jobNames, syncStartTime, ignoreErrors, autoRetryCount, postSyncAction);
         dlg->SetIcon(getFfsIcon()); //only top level windows should have an icon
         return dlg;

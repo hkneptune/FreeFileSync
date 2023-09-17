@@ -47,27 +47,28 @@ struct PathDependency
 std::optional<PathDependency> getPathDependency(const AbstractPath& folderPathL, const PathFilter& filterL,
                                                 const AbstractPath& folderPathR, const PathFilter& filterR);
 
-std::pair<std::wstring, int> getSelectedItemsAsString( //returns string with item names and total count of selected(!) items, NOT total files/dirs!
-    std::span<const FileSystemObject* const> selectionLeft,   //all pointers need to be bound!
-    std::span<const FileSystemObject* const> selectionRight); //
-
 //manual copy to alternate folder:
-void copyToAlternateFolder(std::span<const FileSystemObject* const> rowsToCopyOnLeft,  //all pointers need to be bound!
-                           std::span<const FileSystemObject* const> rowsToCopyOnRight, //
+void copyToAlternateFolder(const std::vector<const FileSystemObject*>& selectionL, //all pointers need to be bound and !isEmpty<side>!
+                           const std::vector<const FileSystemObject*>& selectionR, //
                            const Zstring& targetFolderPathPhrase,
-                           bool keepRelPaths,
-                           bool overwriteIfExists,
+                           bool keepRelPaths, bool overwriteIfExists,
                            WarningDialogs& warnings,
                            ProcessCallback& callback /*throw X*/); //throw X
 
 //manual deletion of files on main grid
-void deleteFromGridAndHD(const std::vector<FileSystemObject*>& rowsToDeleteOnLeft,  //refresh GUI grid after deletion to remove invalid rows
-                         const std::vector<FileSystemObject*>& rowsToDeleteOnRight, //all pointers need to be bound!
-                         const std::vector<std::pair<BaseFolderPair*, SyncDirectionConfig>>& directCfgs, //attention: rows will be physically deleted!
-                         bool moveToRecycler,
-                         //global warnings:
-                         bool& warnRecyclerMissing,
-                         ProcessCallback& callback /*throw X*/); //throw X
+void deleteFiles(const std::vector<FileSystemObject*>& selectionL, //all pointers need to be bound and !isEmpty<side>!
+                 const std::vector<FileSystemObject*>& selectionR, //refresh GUI grid after deletion to remove invalid rows
+                 const std::vector<std::pair<BaseFolderPair*, SyncDirectionConfig>>& directCfgs, //attention: rows will be physically deleted!
+                 bool moveToRecycler,
+                 bool& warnRecyclerMissing,
+                 ProcessCallback& callback /*throw X*/); //throw X
+
+void renameItems(const std::vector<FileSystemObject*>& selectionL, //all pointers need to be bound and !isEmpty<side>!
+                 const std::span<const Zstring> newNamesL,
+                 const std::vector<FileSystemObject*>& selectionR, //refresh GUI grid after deletion to remove invalid rows
+                 const std::span<const Zstring> newNamesR,
+                 const std::vector<std::pair<BaseFolderPair*, SyncDirectionConfig>>& directCfgs,
+                 ProcessCallback& callback /*throw X*/); //throw X
 
 void deleteListOfFiles(const std::vector<Zstring>& filesToDeletePaths,
                        std::vector<Zstring>& deletedPaths,

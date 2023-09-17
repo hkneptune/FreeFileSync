@@ -296,8 +296,6 @@ ProcessStatus getProcessStatus(const LockInformation& lockInfo) //throw FileErro
 DEFINE_NEW_FILE_ERROR(ErrorFileNotExisting)
 uint64_t getLockFileSize(const Zstring& filePath) //throw FileError, ErrorFileNotExisting
 {
-    //yes, checking error ERROR_FILE_NOT_FOUND, ENOENT is not 100% reliable (e.g. might indicate missing parent folder)
-    //but good enough for our lock file!
     struct stat fileInfo = {};
     if (::stat(filePath.c_str(), &fileInfo) == 0)
         return fileInfo.st_size;
@@ -401,7 +399,7 @@ void waitOnDirLock(const Zstring& lockFilePath, const DirLockCallback& notifySta
                 if (lastCheckTime >= lastLifeSign + EMIT_LIFE_SIGN_INTERVAL + std::chrono::seconds(1))
                 {
                     const int remainingSeconds = std::max(0, static_cast<int>(std::chrono::duration_cast<std::chrono::seconds>(DETECT_ABANDONED_INTERVAL - (now - lastLifeSign)).count()));
-                    notifyStatus(infoMsg + SPACED_DASH + _("Detecting abandoned lock...") + L' ' + _P("1 sec", "%x sec", remainingSeconds)); //throw X
+                    notifyStatus(infoMsg + SPACED_DASH + _("Lock file apparently abandoned...") + L' ' + _P("1 sec", "%x sec", remainingSeconds)); //throw X
                 }
                 else
                     notifyStatus(std::wstring(infoMsg)); //throw X; emit a message in any case (might clear other one)

@@ -7,20 +7,15 @@
 #ifndef VERSION_CHECK_H_324872374893274983275
 #define VERSION_CHECK_H_324872374893274983275
 
-//#include <functional>
-//#include <memory>
 #include <wx/window.h>
 #include <zen/stl_tools.h>
 
 
 namespace fff
 {
-bool updateCheckActive (time_t  lastUpdateCheck);
-void disableUpdateCheck(time_t& lastUpdateCheck);
 bool haveNewerVersionOnline(const std::string& onlineVersion);
 //----------------------------------------------------------------------------
-//periodic update check:
-bool shouldRunAutomaticUpdateCheck(time_t lastUpdateCheck);
+bool automaticUpdateCheckDue(time_t lastUpdateCheck);
 
 struct UpdateCheckResultPrep;
 struct UpdateCheckResult;

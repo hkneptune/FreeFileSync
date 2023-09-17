@@ -1,3 +1,16 @@
+FreeFileSync 13.0 [2023-09-12]
+------------------------------
+Rename (multiple) files manually (F2 key)
+Configure individual directions for DB-based sync
+Detect moved files with "Update" sync variant (requires sync.ffs_db files)
+Update variant: Do not restore files that were deleted on target
+Distinguish file renames from file moves and simplify grid display
+Fixed ERROR_NOT_SUPPORTED when copying files with NTFS extended attributes
+Fixed error during process initialization while connecting with quick launch
+Avoid redundant file reopen when setting file times during copy
+Set working directory to match FFS configuration file when double-clicking (Linux)
+
+
 FreeFileSync 12.5 [2023-07-21]
 ------------------------------
 Merge logs of individual steps (comparison, manual operation, sync)

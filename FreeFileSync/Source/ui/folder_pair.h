@@ -66,7 +66,7 @@ private:
 
         setImage(*basicPanel_.m_bpButtonLocalSyncCfg, greyScaleIfDisabled(imgSync_, !!localSyncCfg_));
         basicPanel_.m_bpButtonLocalSyncCfg->SetToolTip(localSyncCfg_ ?
-                                                       _("Local synchronization settings") +  L" (" + getVariantName(localSyncCfg_->directionCfg.var) + L')' :
+                                                       _("Local synchronization settings") +  L" (" + getVariantName(getSyncVariant(localSyncCfg_->directionCfg)) + L')' :
                                                        _("Local synchronization settings"));
 
         setImage(*basicPanel_.m_bpButtonLocalFilter, greyScaleIfDisabled(imgFilter_, !isNullFilter(localFilter_)));

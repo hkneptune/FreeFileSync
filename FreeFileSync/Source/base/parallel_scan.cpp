@@ -291,7 +291,13 @@ void DirCallback::onFile(const AFS::FileInfo& fi) //throw ThreadStopRequest
         return;
     //note: sync.ffs_db database and lock files are excluded via path filter!
 
-    output_.addFile(fi.itemName, FileAttributes(fi.modTime, fi.fileSize, fi.filePrint, fi.isFollowedSymlink));
+    output_.addFile(fi.itemName,
+    {
+        .modTime = fi.modTime,
+        .fileSize = fi.fileSize,
+        .filePrint = fi.filePrint,
+        .isFollowedSymlink = fi.isFollowedSymlink,
+    });
 
     cfg_.acb.incItemsScanned(); //add 1 element to the progress indicator
 }
@@ -315,7 +321,7 @@ std::shared_ptr<AFS::TraverserCallback> DirCallback::onFolder(const AFS::FolderI
         return nullptr; //do NOT traverse subdirs
     //else: ensure directory filtering is applied later to exclude actually filtered directories!!!
 
-    FolderContainer& subFolder = output_.addFolder(fi.itemName, FolderAttributes(fi.isFollowedSymlink));
+    FolderContainer& subFolder = output_.addFolder(fi.itemName, {.isFollowedSymlink = fi.isFollowedSymlink});
     if (passFilter)
         cfg_.acb.incItemsScanned(); //add 1 element to the progress indicator
 
@@ -354,7 +360,7 @@ DirCallback::HandleLink DirCallback::onSymlink(const AFS::SymlinkInfo& si) //thr
         case SymLinkHandling::asLink:
             if (cfg_.filter.ref().passFileFilter(relPath)) //always use file filter: Link type may not be "stable" on Linux!
             {
-                output_.addLink(si.itemName, LinkAttributes(si.modTime));
+                output_.addLink(si.itemName, {.modTime = si.modTime});
                 cfg_.acb.incItemsScanned(); //add 1 element to the progress indicator
             }
             return HandleLink::skip;

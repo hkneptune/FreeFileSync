@@ -24,7 +24,7 @@ namespace
 //-------------------------------------------------------------------------------------------------------------------------------
 const char DB_FILE_DESCR[] = "FreeFileSync";
 const int DB_FILE_VERSION   = 11; //2020-02-07
-const int DB_STREAM_VERSION =  4; //2021-02-14
+const int DB_STREAM_VERSION =  5; //2023-07-29
 //-------------------------------------------------------------------------------------------------------------------------------
 
 struct SessionData
@@ -294,7 +294,6 @@ private:
         for (const auto& [itemName, inSyncData] : container.folders)
         {
             writeItemName(itemName.normStr);
-            writeNumber<int32_t>(streamOutSmallNum_, inSyncData.status);
 
             recurse(inSyncData);
         }
@@ -368,7 +367,7 @@ public:
                 const std::string tmpL = readContainer<std::string>(streamInL);
                 const std::string tmpR = readContainer<std::string>(streamInR);
 
-                auto output = makeSharedRef<InSyncFolder>(InSyncFolder::DIR_STATUS_IN_SYNC);
+                auto output = makeSharedRef<InSyncFolder>();
                 StreamParserV2 parser(decompress(tmpL),  //
                                       decompress(tmpR),  //throw SysError
                                       decompress(tmpB)); //
@@ -376,6 +375,7 @@ public:
                 return output;
             }
             else if (streamVersion == 3 || //TODO: remove migration code at some time! 2021-02-14
+                     streamVersion == 4 || //TODO: remove migration code at some time! 2023-07-29
                      streamVersion == DB_STREAM_VERSION)
             {
                 MemoryStreamIn& streamInPart1 = leadStreamLeft ? streamInL : streamInR;
@@ -393,7 +393,7 @@ public:
                 const std::string bufSmallNum = readContainer<std::string>(streamIn); //throw SysErrorUnexpectedEos
                 const std::string bufBigNum   = readContainer<std::string>(streamIn); //
 
-                auto output = makeSharedRef<InSyncFolder>(InSyncFolder::DIR_STATUS_IN_SYNC);
+                auto output = makeSharedRef<InSyncFolder>();
                 StreamParser parser(streamVersion,
                                     decompress(bufText),     //
                                     decompress(bufSmallNum), //throw SysError
@@ -433,12 +433,12 @@ private:
             const auto cmpVar = static_cast<CompareVariant>(readNumber<int32_t>(streamInSmallNum_)); //
             const uint64_t fileSize = readNumber<uint64_t>(streamInSmallNum_); //
 
-            const InSyncDescrFile dataL = readFileDescr(); //throw SysErrorUnexpectedEos
-            const InSyncDescrFile dataT = readFileDescr(); //
+            const InSyncDescrFile descrL = readFileDescr(); //throw SysErrorUnexpectedEos
+            const InSyncDescrFile descrT = readFileDescr(); //
 
             container.addFile(itemName,
-                              selectParam<leadSide>(dataL, dataT),
-                              selectParam<leadSide>(dataT, dataL), cmpVar, fileSize);
+                              selectParam<leadSide>(descrL, descrT),
+                              selectParam<leadSide>(descrT, descrL), cmpVar, fileSize);
         }
 
         size_t linkCount = readNumber<uint32_t>(streamInSmallNum_);
@@ -447,21 +447,23 @@ private:
             const Zstring itemName = readItemName(); //
             const auto cmpVar = static_cast<CompareVariant>(readNumber<int32_t>(streamInSmallNum_)); //
 
-            const InSyncDescrLink dataL{static_cast<time_t>(readNumber<int64_t>(streamInBigNum_))}; //throw SysErrorUnexpectedEos
-            const InSyncDescrLink dataT{static_cast<time_t>(readNumber<int64_t>(streamInBigNum_))}; //
+            const InSyncDescrLink descrL{static_cast<time_t>(readNumber<int64_t>(streamInBigNum_))}; //throw SysErrorUnexpectedEos
+            const InSyncDescrLink descrT{static_cast<time_t>(readNumber<int64_t>(streamInBigNum_))}; //
 
             container.addSymlink(itemName,
-                                 selectParam<leadSide>(dataL, dataT),
-                                 selectParam<leadSide>(dataT, dataL), cmpVar);
+                                 selectParam<leadSide>(descrL, descrT),
+                                 selectParam<leadSide>(descrT, descrL), cmpVar);
         }
 
         size_t dirCount = readNumber<uint32_t>(streamInSmallNum_); //
         while (dirCount-- != 0)
         {
             const Zstring itemName = readItemName(); //
-            const auto status = static_cast<InSyncFolder::InSyncStatus>(readNumber<int32_t>(streamInSmallNum_)); //
 
-            InSyncFolder& dbFolder = container.addFolder(itemName, status);
+            if (streamVersion_ <= 4) //TODO: remove migration code at some time! 2023-07-29
+                /*const auto status = static_cast<InSyncFolder::InSyncStatus>(*/ readNumber<int32_t>(streamInSmallNum_);
+
+            InSyncFolder& dbFolder = container.addFolder(itemName);
             recurse<leadSide>(dbFolder);
         }
     }
@@ -530,9 +532,9 @@ private:
             while (dirCount-- != 0)
             {
                 const Zstring itemName = utfTo<Zstring>(readContainer<std::string>(inputBoth_));
-                const auto status = static_cast<InSyncFolder::InSyncStatus>(readNumber<int32_t>(inputBoth_));
+                /*const auto status = static_cast<InSyncFolder::InSyncStatus>(*/ readNumber<int32_t>(inputBoth_);
 
-                InSyncFolder& dbFolder = container.addFolder(itemName, status);
+                InSyncFolder& dbFolder = container.addFolder(itemName);
                 recurse(dbFolder);
             }
         }
@@ -567,7 +569,7 @@ public:
     static void execute(const BaseFolderPair& baseFolder, InSyncFolder& dbFolder)
     {
         LastSynchronousStateUpdater updater(baseFolder.getCompVariant(), baseFolder.getFilter());
-        updater.recurse(baseFolder, dbFolder);
+        updater.recurse(baseFolder, Zstring(), dbFolder);
     }
 
 private:
@@ -575,11 +577,11 @@ private:
         filter_(filter),
         activeCmpVar_(activeCmpVar) {}
 
-    void recurse(const ContainerObject& hierObj, InSyncFolder& dbFolder)
+    void recurse(const ContainerObject& conObj, const Zstring& relPath, InSyncFolder& dbFolder)
     {
-        process(hierObj.refSubFiles  (), hierObj.getRelativePathAny(), dbFolder.files);
-        process(hierObj.refSubLinks  (), hierObj.getRelativePathAny(), dbFolder.symlinks);
-        process(hierObj.refSubFolders(), hierObj.getRelativePathAny(), dbFolder.folders);
+        process(conObj.refSubFiles  (), relPath, dbFolder.files);
+        process(conObj.refSubLinks  (), relPath, dbFolder.symlinks);
+        process(conObj.refSubFolders(), relPath, dbFolder.folders);
     }
 
     void process(const ContainerObject::FileList& currentFiles, const Zstring& parentRelPath, InSyncFolder::FileList& dbFiles)
@@ -591,20 +593,22 @@ private:
             {
                 if (file.getCategory() == FILE_EQUAL) //data in sync: write current state
                 {
-                    //Caveat: If FILE_EQUAL, we *implicitly* assume equal left and right short names matching case: InSyncFolder's mapping tables use short name as a key!
+                    //Caveat: If FILE_EQUAL, we *implicitly* assume equal left and right file names matching case: InSyncFolder's mapping tables use file name as a key!
                     //This makes us silently dependent from code in algorithm.h!!!
-                    assert(getUnicodeNormalForm(file.getItemName<SelectSide::left>()) == getUnicodeNormalForm(file.getItemName<SelectSide::right>()));
+                    assert(file.hasEquivalentItemNames());
+                    const Zstring& fileName = file.getItemName<SelectSide::left>();
                     assert(file.getFileSize<SelectSide::left>() == file.getFileSize<SelectSide::right>());
 
                     //create or update new "in-sync" state
-                    dbFiles.insert_or_assign(file.getItemNameAny(),
-                                             InSyncFile(InSyncDescrFile{file.getLastWriteTime<SelectSide::left >(),
-                                                                        file.getFilePrint    <SelectSide::left >()},
-                                                        InSyncDescrFile{file.getLastWriteTime<SelectSide::right>(),
-                                                                        file.getFilePrint    <SelectSide::right>()},
-                                                        activeCmpVar_,
-                                                        file.getFileSize<SelectSide::left>()));
-                    toPreserve.insert(file.getItemNameAny());
+                    dbFiles.insert_or_assign(fileName, InSyncFile
+                    {
+                        .left     = InSyncDescrFile{file.getLastWriteTime<SelectSide::left >(), file.getFilePrint<SelectSide::left >()},
+                        .right    = InSyncDescrFile{file.getLastWriteTime<SelectSide::right>(), file.getFilePrint<SelectSide::right>()},
+                        .cmpVar   = activeCmpVar_,
+                        .fileSize = file.getFileSize<SelectSide::left>(),
+                    }
+                                            );
+                    toPreserve.insert(fileName);
                 }
                 else //not in sync: preserve last synchronous state
                 {
@@ -634,14 +638,17 @@ private:
             {
                 if (symlink.getLinkCategory() == SYMLINK_EQUAL) //data in sync: write current state
                 {
-                    assert(getUnicodeNormalForm(symlink.getItemName<SelectSide::left>()) == getUnicodeNormalForm(symlink.getItemName<SelectSide::right>()));
+                    assert(symlink.hasEquivalentItemNames());
+                    const Zstring& linkName = symlink.getItemName<SelectSide::left>();
 
                     //create or update new "in-sync" state
-                    dbSymlinks.insert_or_assign(symlink.getItemNameAny(),
-                                                InSyncSymlink(InSyncDescrLink{symlink.getLastWriteTime<SelectSide::left >()},
-                                                              InSyncDescrLink{symlink.getLastWriteTime<SelectSide::right>()},
-                                                              activeCmpVar_));
-                    toPreserve.insert(symlink.getItemNameAny());
+                    dbSymlinks.insert_or_assign(linkName, InSyncSymlink
+                    {
+                        .left   = InSyncDescrLink{symlink.getLastWriteTime<SelectSide::left >()},
+                        .right  = InSyncDescrLink{symlink.getLastWriteTime<SelectSide::right>()},
+                        .cmpVar = activeCmpVar_,
+                    });
+                    toPreserve.insert(linkName);
                 }
                 else //not in sync: preserve last synchronous state
                 {
@@ -670,35 +677,36 @@ private:
             {
                 if (folder.getDirCategory() == DIR_EQUAL)
                 {
-                    assert(getUnicodeNormalForm(folder.getItemName<SelectSide::left>()) == getUnicodeNormalForm(folder.getItemName<SelectSide::right>()));
+                    assert(folder.hasEquivalentItemNames());
+                    const Zstring& folderName = folder.getItemName<SelectSide::left>();
 
-                    //update directory entry only (shallow), but do *not touch* existing child elements!!!
-                    InSyncFolder& dbFolder = dbFolders.emplace(folder.getItemNameAny(), InSyncFolder(InSyncFolder::DIR_STATUS_IN_SYNC)).first->second; //get or create
-                    dbFolder.status = InSyncFolder::DIR_STATUS_IN_SYNC;
+                    //create directory entry if not existing (but do *not touch* existing child elements!!!)
+                    dbFolders.try_emplace(folderName);
 
-                    toPreserve.emplace(folder.getItemNameAny(), &folder);
+                    toPreserve.emplace(folderName, &folder);
                 }
                 else //not in sync: preserve last synchronous state
                 {
-                    toPreserve.emplace(folder.getItemName<SelectSide::left >(), &folder); //names differing in case? => treat like any other folder rename
+                    toPreserve.emplace(folder.getItemName<SelectSide::left >(), &folder); //names differing (in case)? => treat like any other folder rename
                     toPreserve.emplace(folder.getItemName<SelectSide::right>(), &folder); //=> no *new* database entries even if child items are in sync
+                    //BUT: update existing one: there should be only *one* DB entry after a folder rename (matching either folder name on left or right)
                 }
             }
 
         //delete removed items (= "in-sync") from database
         eraseIf(dbFolders, [&](InSyncFolder::FolderList::value_type& v)
         {
+            const Zstring& itemRelPath = appendPath(parentRelPath, v.first.normStr);
+
             if (auto it = toPreserve.find(v.first); it != toPreserve.end())
             {
-                recurse(*(it->second), v.second); //required even if e.g. DIR_LEFT_SIDE_ONLY:
+                recurse(*(it->second), itemRelPath, v.second); //required even if e.g. DIR_LEFT_ONLY:
                 //existing child-items may not be in sync, but items deleted on both sides *are* in-sync!!!
                 return false;
             }
 
-            const Zstring& itemRelPath = appendPath(parentRelPath, v.first.normStr);
             //if folder is not included in "current folders", it is either not existing anymore, in which case it should be deleted from database
             //or it was excluded via filter and the database entry should be preserved
-
             bool childItemMightMatch = true;
             const bool passFilter = filter_.passDirFilter(itemRelPath, &childItemMightMatch);
             if (!passFilter && childItemMightMatch)
@@ -917,7 +925,7 @@ void fff::saveLastSynchronousState(const BaseFolderPair& baseFolder, bool transa
     //load last synchrounous state
     auto itStreamOldL = streamsL.cend();
     auto itStreamOldR = streamsR.cend();
-    InSyncFolder lastSyncState(InSyncFolder::DIR_STATUS_IN_SYNC);
+    InSyncFolder lastSyncState;
     try
     {
         //find associated session: there can be at most one session within intersection of left and right IDs

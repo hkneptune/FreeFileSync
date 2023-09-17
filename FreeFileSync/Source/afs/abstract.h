@@ -9,7 +9,6 @@
 
 #include <functional>
 #include <chrono>
-//#include <variant>
 #include <zen/file_error.h>
 #include <zen/file_path.h>
 #include <zen/serialize.h> //InputStream/OutputStream support buffered stream concept
@@ -261,6 +260,9 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
     //already existing: undefined behavior! (e.g. fail/overwrite)
     static void moveAndRenameItem(const AbstractPath& pathFrom, const AbstractPath& pathTo); //throw FileError, ErrorMoveUnsupported
 
+    static std::wstring generateMoveErrorMsg(const AbstractPath& pathFrom, const AbstractPath& pathTo) { return pathFrom.afsDevice.ref().generateMoveErrorMsg(pathFrom.afsPath, pathTo); }
+
+
     //Note: it MAY happen that copyFileTransactional() leaves temp files behind, e.g. temporary network drop.
     // => clean them up at an appropriate time (automatically set sync directions to delete them). They have the following ending:
     static inline constexpr ZstringView TEMP_FILE_ENDING = Zstr(".ffs_tmp"); //don't use Zstring as global constant: avoid static initialization order problem in global namespace!
@@ -350,6 +352,21 @@ protected:
     //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
     FileCopyResult copyFileAsStream(const AfsPath& sourcePath, const StreamAttributes& attrSource, //throw FileError, ErrorFileLocked, X
                                     const AbstractPath& targetPath, const zen::IoCallback& notifyUnbufferedIO /*throw X*/) const;
+
+
+    std::wstring generateMoveErrorMsg(const AfsPath& pathFrom, const AbstractPath& pathTo) const
+    {
+        using namespace zen;
+
+        if (getParentPath(pathFrom) == getParentPath(pathTo.afsPath)) //pure "rename"
+            return replaceCpy(replaceCpy(_("Cannot rename %x to %y."),
+                                         L"%x", fmtPath(getDisplayPath(pathFrom))),
+                              L"%y", fmtPath(getItemName(pathTo)));
+        else //"move" or "move + rename"
+            return trimCpy(replaceCpy(replaceCpy(_("Cannot move %x to %y."),
+                                                 L"%x", L'\n' + fmtPath(getDisplayPath(pathFrom))),
+                                      L"%y", L'\n' + fmtPath(getDisplayPath(pathTo))));
+    }
 
 private:
     virtual std::optional<Zstring> getNativeItemPath(const AfsPath& itemPath) const { return {}; };
@@ -532,9 +549,7 @@ void AbstractFileSystem::moveAndRenameItem(const AbstractPath& pathFrom, const A
     using namespace zen;
 
     if (typeid(pathFrom.afsDevice.ref()) != typeid(pathTo.afsDevice.ref()))
-        throw ErrorMoveUnsupported(replaceCpy(replaceCpy(_("Cannot move file %x to %y."),
-                                                         L"%x", L'\n' + fmtPath(getDisplayPath(pathFrom))),
-                                              L"%y", L'\n' + fmtPath(getDisplayPath(pathTo))), _("Operation not supported between different devices."));
+        throw ErrorMoveUnsupported(generateMoveErrorMsg(pathFrom, pathTo), _("Operation not supported between different devices."));
 
     //already existing: undefined behavior! (e.g. fail/overwrite)
     pathFrom.afsDevice.ref().moveAndRenameItemForSameAfsType(pathFrom.afsPath, pathTo); //throw FileError, ErrorMoveUnsupported

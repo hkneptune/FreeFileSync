@@ -31,6 +31,16 @@ const int TREE_GRID_GAP_SIZE_DIP   = 2;
 
 inline wxColor getColorPercentBorder    () { return {198, 198, 198}; }
 inline wxColor getColorPercentBackground() { return {0xf8, 0xf8, 0xf8}; }
+
+
+Zstring getFolderPairName(const FolderPair& folder)
+{
+    if (folder.hasEquivalentItemNames())
+        return folder.getItemName<SelectSide::left>();
+    else
+        return folder.getItemName<SelectSide::left >() + Zstr(" | ") +
+               folder.getItemName<SelectSide::right>();
+}
 }
 
 
@@ -62,31 +72,30 @@ void TreeView::compressNode(Container& cont) //remove single-element sub-trees -
 
 
 template <class Function> //(const FileSystemObject&) -> bool
-void TreeView::extractVisibleSubtree(ContainerObject& hierObj,  //in
+void TreeView::extractVisibleSubtree(ContainerObject& conObj, //in
                                      TreeView::Container& cont, //out
                                      Function pred)
 {
     auto getBytes = [](const FilePair& file) //MSVC screws up miserably if we put this lambda into std::for_each
     {
-        ////give accumulated bytes the semantics of a sync preview!
-        //if (file.isActive())
-        //    switch (file.getSyncDir())
-        //    {
-        //        case SyncDirection::left:
-        //            return file.getFileSize<SelectSide::right>();
-        //        case SyncDirection::right:
-        //            return file.getFileSize<SelectSide::left>();
-        //        case SyncDirection::none:
-        //            break;
-        //    }
-
+#if 0 //give accumulated bytes the semantics of a sync preview?
+        switch (getEffectiveSyncDir(file.getSyncOperation()))
+        {
+            //*INDENT-OFF*
+            case SyncDirection::none: break;
+            case SyncDirection::left:  return file.getFileSize<SelectSide::right>();
+            case SyncDirection::right: return file.getFileSize<SelectSide::left>();
+            //*INDENT-ON*
+        }
+#endif
         //prefer file-browser semantics over sync preview (=> always show useful numbers, even for SyncDirection::none)
         //discussion: https://freefilesync.org/forum/viewtopic.php?t=1595
-        return std::max(file.getFileSize<SelectSide::left>(), file.getFileSize<SelectSide::right>());
+        return std::max(file.isEmpty<SelectSide::left >() ? 0 : file.getFileSize<SelectSide::left>(),
+                        file.isEmpty<SelectSide::right>() ? 0 : file.getFileSize<SelectSide::right>());
     };
 
     cont.firstFileId = nullptr;
-    for (FilePair& file : hierObj.refSubFiles())
+    for (FilePair& file : conObj.refSubFiles())
         if (pred(file))
         {
             cont.bytesNet += getBytes(file);
@@ -96,7 +105,7 @@ void TreeView::extractVisibleSubtree(ContainerObject& hierObj,  //in
                 cont.firstFileId = file.getId();
         }
 
-    for (SymlinkPair& symlink : hierObj.refSubLinks())
+    for (SymlinkPair& symlink : conObj.refSubLinks())
         if (pred(symlink))
         {
             ++cont.itemCountNet;
@@ -108,9 +117,9 @@ void TreeView::extractVisibleSubtree(ContainerObject& hierObj,  //in
     cont.bytesGross     += cont.bytesNet;
     cont.itemCountGross += cont.itemCountNet;
 
-    cont.subDirs.reserve(hierObj.refSubFolders().size()); //avoid expensive reallocations!
+    cont.subDirs.reserve(conObj.refSubFolders().size()); //avoid expensive reallocations!
 
-    for (FolderPair& folder : hierObj.refSubFolders())
+    for (FolderPair& folder : conObj.refSubFolders())
     {
         const bool included = pred(folder);
 
@@ -195,18 +204,17 @@ struct TreeView::LessShortName
                 return makeSortDirection(LessNaturalSort() /*even on Linux*/,
                                          std::bool_constant<ascending>())(utfTo<Zstring>(static_cast<const RootNodeImpl*>(lhs.node)->displayName),
                                                                           utfTo<Zstring>(static_cast<const RootNodeImpl*>(rhs.node)->displayName));
-
             case NodeType::folder:
             {
                 const auto* folderL = dynamic_cast<const FolderPair*>(FileSystemObject::retrieve(static_cast<const DirNodeImpl*>(lhs.node)->objId));
                 const auto* folderR = dynamic_cast<const FolderPair*>(FileSystemObject::retrieve(static_cast<const DirNodeImpl*>(rhs.node)->objId));
 
-                if (!folderL)  //might be pathologic, but it's covered
+                if (!folderL) //might be pathologic, but it's covered
                     return false;
                 else if (!folderR)
                     return true;
 
-                return makeSortDirection(LessNaturalSort(), std::bool_constant<ascending>())(folderL->getItemNameAny(), folderR->getItemNameAny());
+                return makeSortDirection(LessNaturalSort(), std::bool_constant<ascending>())(getFolderPairName(*folderL), getFolderPairName(*folderR));
             }
 
             case NodeType::files:
@@ -321,8 +329,8 @@ void TreeView::applySubView(std::vector<RootNodeImpl>&& newView)
         auto it = flatTree_.begin();
         for (auto itNext = flatTree_.begin() + 1; itNext != flatTree_.end(); ++itNext, ++it)
             if (it->level < itNext->level)
-                if (auto hierObj = getHierAlias(*it))
-                    expandedNodes.insert(hierObj);
+                if (auto conObj = getHierAlias(*it))
+                    expandedNodes.insert(conObj);
     }
 
     //update view on full data
@@ -363,8 +371,8 @@ void TreeView::applySubView(std::vector<RootNodeImpl>&& newView)
     {
         const TreeLine& line = flatTree_[row];
 
-        if (auto hierObj = getHierAlias(line))
-            if (expandedNodes.contains(hierObj))
+        if (auto conObj = getHierAlias(line))
+            if (expandedNodes.contains(conObj))
             {
                 std::vector<TreeLine> newLines;
                 getChildren(*line.node, line.level + 1, newLines);
@@ -525,9 +533,9 @@ void TreeView::applyDifferenceFilter(bool showExcluded,
 
         switch (fsObj.getCategory())
         {
-            case FILE_LEFT_SIDE_ONLY:
+            case FILE_LEFT_ONLY:
                 return leftOnlyFilesActive;
-            case FILE_RIGHT_SIDE_ONLY:
+            case FILE_RIGHT_ONLY:
                 return rightOnlyFilesActive;
             case FILE_LEFT_NEWER:
                 return leftNewerFilesActive;
@@ -536,9 +544,10 @@ void TreeView::applyDifferenceFilter(bool showExcluded,
             case FILE_DIFFERENT_CONTENT:
                 return differentFilesActive;
             case FILE_EQUAL:
-            case FILE_DIFFERENT_METADATA: //= sub-category of equal
                 return equalFilesActive;
+            case FILE_RENAMED:
             case FILE_CONFLICT:
+            case FILE_TIME_INVALID:
                 return conflictFilesActive;
         }
         assert(false);
@@ -574,21 +583,21 @@ void TreeView::applyActionFilter(bool showExcluded,
 
         switch (fsObj.getSyncOperation())
         {
-            case SO_CREATE_NEW_LEFT:
+            case SO_CREATE_LEFT:
                 return syncCreateLeftActive;
-            case SO_CREATE_NEW_RIGHT:
+            case SO_CREATE_RIGHT:
                 return syncCreateRightActive;
             case SO_DELETE_LEFT:
                 return syncDeleteLeftActive;
             case SO_DELETE_RIGHT:
                 return syncDeleteRightActive;
             case SO_OVERWRITE_RIGHT:
-            case SO_COPY_METADATA_TO_RIGHT:
+            case SO_RENAME_RIGHT:
             case SO_MOVE_RIGHT_FROM:
             case SO_MOVE_RIGHT_TO:
                 return syncDirOverwRightActive;
             case SO_OVERWRITE_LEFT:
-            case SO_COPY_METADATA_TO_LEFT:
+            case SO_RENAME_LEFT:
             case SO_MOVE_LEFT_FROM:
             case SO_MOVE_LEFT_TO:
                 return syncDirOverwLeftActive;
@@ -751,7 +760,7 @@ private:
                     if (const TreeView::RootNode* root = dynamic_cast<const TreeView::RootNode*>(node.get()))
                         return root->displayName;
                     else if (const TreeView::DirNode* dir = dynamic_cast<const TreeView::DirNode*>(node.get()))
-                        return utfTo<std::wstring>(dir->folder.getItemNameAny());
+                        return utfTo<std::wstring>(getFolderPairName(dir->folder));
                     else if (dynamic_cast<const TreeView::FilesNode*>(node.get()))
                         return _("Files");
                     break;

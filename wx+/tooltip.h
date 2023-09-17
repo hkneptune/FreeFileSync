@@ -28,6 +28,7 @@ private:
     TooltipDlgGenerated* tipWindow_ = nullptr;
     wxWindow& parent_;
     wxImage lastUsedImg_;
+    wxString lastUsedText_; //needed, considering "SetLabelText(textFixed)"
 };
 }
 

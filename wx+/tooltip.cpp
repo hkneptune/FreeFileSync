@@ -4,6 +4,7 @@
 // * Copyright (C) Zenju (zenju AT freefilesync DOT org) - All Rights Reserved *
 // *****************************************************************************
 #include "tooltip.h"
+#include <zen/zstring.h>
 #include <wx/dialog.h>
 #include <wx/stattext.h>
 #include <wx/sizer.h>
@@ -62,7 +63,7 @@ void Tooltip::show(const wxString& text, wxPoint mousePos, const wxImage* img)
     const wxImage& newImg = img ? *img : wxNullImage;
 
     const bool imgChanged = !newImg.IsSameAs(lastUsedImg_);
-    const bool txtChanged = text != tipWindow_->staticTextMain_->GetLabelText();
+    const bool txtChanged = text != lastUsedText_;
 
     if (imgChanged)
     {
@@ -73,7 +74,8 @@ void Tooltip::show(const wxString& text, wxPoint mousePos, const wxImage* img)
 
     if (txtChanged)
     {
-        tipWindow_->staticTextMain_->SetLabelText(text);
+        lastUsedText_ = text;
+            tipWindow_->staticTextMain_->SetLabelText(text);
         tipWindow_->staticTextMain_->Wrap(fastFromDIP(600));
     }
 

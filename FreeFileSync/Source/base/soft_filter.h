@@ -24,9 +24,9 @@ Semantics of SoftFilter:
 class SoftFilter
 {
 public:
-    SoftFilter(size_t timeSpan, UnitTime unitTimeSpan,
-               size_t sizeMin,  UnitSize unitSizeMin,
-               size_t sizeMax,  UnitSize unitSizeMax);
+    SoftFilter(size_t   timeSpan, UnitTime unitTimeSpan,
+               uint64_t sizeMin,  UnitSize unitSizeMin,
+               uint64_t sizeMax,  UnitSize unitSizeMax);
 
     bool matchTime(time_t writeTime) const { return timeFrom_ <= writeTime; }
     bool matchSize(uint64_t fileSize) const { return sizeMin_ <= fileSize && fileSize <= sizeMax_; }
@@ -63,9 +63,9 @@ private:
 
 // ----------------------- implementation -----------------------
 inline
-SoftFilter::SoftFilter(size_t timeSpan, UnitTime unitTimeSpan,
-                       size_t sizeMin,  UnitSize unitSizeMin,
-                       size_t sizeMax,  UnitSize unitSizeMax) :
+SoftFilter::SoftFilter(size_t   timeSpan, UnitTime unitTimeSpan,
+                       uint64_t sizeMin,  UnitSize unitSizeMin,
+                       uint64_t sizeMax,  UnitSize unitSizeMax) :
     matchesFolder_(unitTimeSpan == UnitTime::none &&
                    unitSizeMin  == UnitSize::none &&
                    unitSizeMax  == UnitSize::none) //exclude folders if size or date filter is active: avoids creating empty folders if not needed!

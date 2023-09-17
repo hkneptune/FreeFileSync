@@ -532,16 +532,16 @@ void massParallelExecute(const std::vector<std::pair<AbstractPath, ParallelWorkI
     std::atomic<size_t> activeDeviceCount(perDeviceWorkload.size()); //
 
     //---------------------------------------------------------------------------------------------------------
-    std::map<AfsDevice, ThreadGroup<std::function<void()>>> deviceThreadGroups; //worker threads live here...
+    std::vector<ThreadGroup<std::function<void()>>> deviceThreadGroups; //worker threads live here...
     //---------------------------------------------------------------------------------------------------------
 
     for (const auto& [afsDevice, wl] : perDeviceWorkload)
     {
         const size_t statusPrio = deviceThreadGroups.size();
 
-        auto& threadGroup = deviceThreadGroups.emplace(afsDevice, ThreadGroup<std::function<void()>>(
-                                                           1,
-                                                           threadGroupName + Zstr(' ') + utfTo<Zstring>(AFS::getDisplayPath(AbstractPath(afsDevice, AfsPath()))))).first->second;
+        const Zstring& deviceGroupName = threadGroupName + Zstr(' ') + utfTo<Zstring>(AFS::getDisplayPath(AbstractPath(afsDevice, AfsPath())));
+        deviceThreadGroups.emplace_back(1, deviceGroupName);
+        auto& threadGroup = deviceThreadGroups.back();
 
         for (const std::pair<AbstractPath, ParallelWorkItem>* item : wl)
             threadGroup.run([&acb, statusPrio, &itemPath = item->first, &task = item->second]

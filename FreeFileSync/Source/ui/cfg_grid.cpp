@@ -337,7 +337,7 @@ public:
 
     static int getRowDefaultHeight(const Grid& grid)
     {
-        return std::max(getDefaultMenuIconSize(), grid.getMainWin().GetCharHeight()) + fastFromDIP(1) /*extra space*/; 
+        return std::max(getDefaultMenuIconSize(), grid.getMainWin().GetCharHeight()) + fastFromDIP(1) /*extra space*/;
     }
 
     int  getSyncOverdueDays() const { return syncOverdueDays_; }

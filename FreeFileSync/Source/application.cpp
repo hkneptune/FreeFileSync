@@ -418,7 +418,7 @@ void Application::onEnterEventLoop()
             else
             {
                 XmlGuiConfig guiCfg;
-                guiCfg.mainCfg.syncCfg.directionCfg.var = SyncVariant::mirror;
+                guiCfg.mainCfg.syncCfg.directionCfg = getDefaultSyncCfg(SyncVariant::mirror);
 
                 replaceDirectories(guiCfg.mainCfg); //throw FileError
 

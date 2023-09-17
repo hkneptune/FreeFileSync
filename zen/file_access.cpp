@@ -273,6 +273,18 @@ void zen::removeDirectoryPlainRecursion(const Zstring& dirPath) //throw FileErro
 
 namespace
 {
+std::wstring generateMoveErrorMsg(const Zstring& pathFrom, const Zstring& pathTo) 
+{
+        if (getParentFolderPath(pathFrom) == getParentFolderPath(pathTo)) //pure "rename"
+            return replaceCpy(replaceCpy(_("Cannot rename %x to %y."),
+                                         L"%x", fmtPath(pathFrom)),
+                              L"%y", fmtPath(getItemName(pathTo)));
+        else //"move" or "move + rename"
+            return trimCpy(replaceCpy(replaceCpy(_("Cannot move %x to %y."),
+                                         L"%x", L'\n' + fmtPath(pathFrom)),
+                              L"%y", L'\n' + fmtPath(pathTo)));    
+}
+
 /* Usage overview: (avoid circular pattern!)
 
   moveAndRenameItem() --> moveAndRenameFileSub()
@@ -283,7 +295,7 @@ namespace
 //wrapper for file system rename function:
 void moveAndRenameFileSub(const Zstring& pathFrom, const Zstring& pathTo, bool replaceExisting) //throw FileError, ErrorMoveUnsupported, ErrorTargetExisting
 {
-    auto getErrorMsg = [&] { return replaceCpy(replaceCpy(_("Cannot move file %x to %y."), L"%x", L'\n' + fmtPath(pathFrom)), L"%y", L'\n' + fmtPath(pathTo)); };
+    auto getErrorMsg = [&] { return generateMoveErrorMsg(pathFrom, pathTo); };
 
     //rename() will never fail with EEXIST, but always (atomically) overwrite!
     //=> equivalent to SetFileInformationByHandle() + FILE_RENAME_INFO::ReplaceIfExists or ::MoveFileEx() + MOVEFILE_REPLACE_EXISTING
@@ -336,6 +348,8 @@ void zen::moveAndRenameItem(const Zstring& pathFrom, const Zstring& pathTo, bool
         throw;
     }
 }
+
+
 
 
 namespace
@@ -714,10 +728,7 @@ FileCopyResult zen::copyNewFile(const Zstring& sourceFile, const Zstring& target
             macOS: https://freefilesync.org/forum/viewtopic.php?t=356             */
         setWriteTimeNative(targetFile, sourceInfo.st_mtim, ProcSymlink::follow); //throw FileError
     }
-    catch (const FileError& e)
-    {
-        errorModTime = FileError(e.toString()); //avoid slicing
-    }
+    catch (const FileError& e) { errorModTime = e; /*might slice derived class?*/ }
 
     return
     {

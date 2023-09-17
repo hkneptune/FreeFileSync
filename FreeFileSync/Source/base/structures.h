@@ -7,6 +7,7 @@
 #ifndef STRUCTURES_H_8210478915019450901745
 #define STRUCTURES_H_8210478915019450901745
 
+#include <variant>
 #include <vector>
 #include <memory>
 #include <chrono>
@@ -45,34 +46,36 @@ enum class SyncDirection : unsigned char //save space for use in FileSystemObjec
 enum CompareFileResult
 {
     FILE_EQUAL,
-    FILE_LEFT_SIDE_ONLY,
-    FILE_RIGHT_SIDE_ONLY,
-    FILE_LEFT_NEWER,  //CompareVariant::timeSize only!
-    FILE_RIGHT_NEWER, //
+    FILE_RENAMED, //both sides equal, except for different file name
+    FILE_LEFT_ONLY,
+    FILE_RIGHT_ONLY,
+    FILE_LEFT_NEWER,   //
+    FILE_RIGHT_NEWER,  //CompareVariant::timeSize only!
+    FILE_TIME_INVALID, //  -> sync dirction can be determined (if leftNewer/rightNewer agree), unlike with FILE_CONFLICT
     FILE_DIFFERENT_CONTENT, //CompareVariant::content, CompareVariant::size only!
-    FILE_DIFFERENT_METADATA, //both sides equal, but different metadata only: short name case
     FILE_CONFLICT
 };
 //attention make sure these /|\  \|/ three enums match!!!
 enum CompareDirResult
 {
-    DIR_EQUAL              = FILE_EQUAL,
-    DIR_LEFT_SIDE_ONLY     = FILE_LEFT_SIDE_ONLY,
-    DIR_RIGHT_SIDE_ONLY    = FILE_RIGHT_SIDE_ONLY,
-    DIR_DIFFERENT_METADATA = FILE_DIFFERENT_METADATA, //both sides equal, but different metadata only: short name case
-    DIR_CONFLICT           = FILE_CONFLICT
+    DIR_EQUAL      = FILE_EQUAL,
+    DIR_RENAMED    = FILE_RENAMED,
+    DIR_LEFT_ONLY  = FILE_LEFT_ONLY,
+    DIR_RIGHT_ONLY = FILE_RIGHT_ONLY,
+    DIR_CONFLICT   = FILE_CONFLICT
 };
 
 enum CompareSymlinkResult
 {
-    SYMLINK_EQUAL           = FILE_EQUAL,
-    SYMLINK_LEFT_SIDE_ONLY  = FILE_LEFT_SIDE_ONLY,
-    SYMLINK_RIGHT_SIDE_ONLY = FILE_RIGHT_SIDE_ONLY,
-    SYMLINK_LEFT_NEWER      = FILE_LEFT_NEWER,
-    SYMLINK_RIGHT_NEWER     = FILE_RIGHT_NEWER,
-    SYMLINK_DIFFERENT_CONTENT  = FILE_DIFFERENT_CONTENT,
-    SYMLINK_DIFFERENT_METADATA = FILE_DIFFERENT_METADATA, //both sides equal, but different metadata only: short name case
-    SYMLINK_CONFLICT        = FILE_CONFLICT
+    SYMLINK_EQUAL             = FILE_EQUAL,
+    SYMLINK_RENAMED           = FILE_RENAMED,
+    SYMLINK_LEFT_ONLY         = FILE_LEFT_ONLY,
+    SYMLINK_RIGHT_ONLY        = FILE_RIGHT_ONLY,
+    SYMLINK_LEFT_NEWER        = FILE_LEFT_NEWER,
+    SYMLINK_RIGHT_NEWER       = FILE_RIGHT_NEWER,
+    SYMLINK_TIME_INVALID      = FILE_TIME_INVALID,
+    SYMLINK_DIFFERENT_CONTENT = FILE_DIFFERENT_CONTENT,
+    SYMLINK_CONFLICT          = FILE_CONFLICT
 };
 
 
@@ -81,21 +84,22 @@ std::wstring getSymbol(CompareFileResult cmpRes);
 
 enum SyncOperation
 {
-    SO_CREATE_NEW_LEFT,
-    SO_CREATE_NEW_RIGHT,
+    SO_CREATE_LEFT,
+    SO_CREATE_RIGHT,
     SO_DELETE_LEFT,
     SO_DELETE_RIGHT,
 
-    SO_MOVE_LEFT_FROM, //SO_DELETE_LEFT    - optimization!
-    SO_MOVE_LEFT_TO, //SO_CREATE_NEW_LEFT
-
-    SO_MOVE_RIGHT_FROM, //SO_DELETE_RIGHT    - optimization!
-    SO_MOVE_RIGHT_TO, //SO_CREATE_NEW_RIGHT
-
     SO_OVERWRITE_LEFT,
     SO_OVERWRITE_RIGHT,
-    SO_COPY_METADATA_TO_LEFT,  //objects are already equal: transfer metadata only - optimization
-    SO_COPY_METADATA_TO_RIGHT, //
+
+    SO_MOVE_LEFT_FROM, //SO_DELETE_LEFT - optimization!
+    SO_MOVE_LEFT_TO,   //SO_CREATE_LEFT
+
+    SO_MOVE_RIGHT_FROM, //SO_DELETE_RIGHT - optimization!
+    SO_MOVE_RIGHT_TO,   //SO_CREATE_RIGHT
+
+    SO_RENAME_LEFT,  //items are otherwise equal
+    SO_RENAME_RIGHT, //
 
     SO_DO_NOTHING, //nothing will be synced: both sides differ
     SO_EQUAL,      //nothing will be synced: both sides are equal
@@ -105,61 +109,70 @@ enum SyncOperation
 std::wstring getSymbol(SyncOperation op); //method used for exporting .csv file only!
 
 
-struct DirectionSet
+enum class CudAction
 {
-    SyncDirection exLeftSideOnly  = SyncDirection::right;
-    SyncDirection exRightSideOnly = SyncDirection::left;
-    SyncDirection leftNewer       = SyncDirection::right; //CompareVariant::timeSize only!
-    SyncDirection rightNewer      = SyncDirection::left;  //
-    SyncDirection different       = SyncDirection::none; //CompareVariant::content, CompareVariant::size only!
-    SyncDirection conflict        = SyncDirection::none;
-
-    bool operator==(const DirectionSet&) const = default;
+    noChange,
+    create,
+    update,
+    delete_, //"delete" is a reserved keyword :(
 };
 
-DirectionSet getTwoWayUpdateSet();
+struct DirectionByDiff
+{
+    SyncDirection leftOnly   = SyncDirection::none;
+    SyncDirection rightOnly  = SyncDirection::none;
+    SyncDirection leftNewer  = SyncDirection::none;
+    SyncDirection rightNewer = SyncDirection::none;
+
+    bool operator==(const DirectionByDiff&) const = default;
+};
+
+
+struct DirectionByChange //=> requires sync.ffs_db
+{
+    struct Changes
+    {
+        SyncDirection create  = SyncDirection::none;
+        SyncDirection update  = SyncDirection::none;
+        SyncDirection delete_ = SyncDirection::none; //"delete" is a reserved keyword :(
+
+        bool operator==(const Changes&) const = default;
+    } left, right;
+
+    bool operator==(const DirectionByChange&) const = default;
+};
+
+
+struct SyncDirectionConfig
+{
+    std::variant<DirectionByDiff, DirectionByChange> dirs;
+
+    bool operator==(const SyncDirectionConfig&) const = default;
+};
+
+
+inline
+bool effectivelyEqual(const SyncDirectionConfig& lhs, const SyncDirectionConfig& rhs) { return lhs == rhs; } //no change in behavior
 
 
 enum class SyncVariant
 {
-    twoWay, //use sync-database to determine directions
-    mirror, //predefined
-    update, //
-    custom, //use custom directions
+    twoWay,
+    mirror,
+    update,
+    custom,
 };
-struct SyncDirectionConfig
-{
-    SyncVariant var = SyncVariant::twoWay;
-    DirectionSet custom; //sync directions for SyncVariant::custom
-    bool detectMovedFiles = false; //variant-dependent: e.g. always active for SyncVariant::twoWay! => use functions below for evaluation!
-};
+SyncVariant getSyncVariant(const SyncDirectionConfig& cfg);
 
-bool detectMovedFilesSelectable(const SyncDirectionConfig& cfg);
-bool detectMovedFilesEnabled   (const SyncDirectionConfig& cfg);
+SyncDirectionConfig getDefaultSyncCfg(SyncVariant syncVar);
 
-DirectionSet extractDirections(const SyncDirectionConfig& cfg); //get sync directions: DON'T call for SyncVariant::twoWay!
+DirectionByDiff getDiffDirDefault(const DirectionByChange& changeDirs); //= when sync.ffs_db not yet available
+DirectionByChange getChangesDirDefault(const DirectionByDiff& diffDirs);
 
 std::wstring getVariantName(std::optional<CompareVariant> var);
 std::wstring getVariantName(std::optional<SyncVariant> var);
 
 std::wstring getVariantNameWithSymbol(SyncVariant var);
-
-inline
-bool operator==(const SyncDirectionConfig& lhs, const SyncDirectionConfig& rhs)
-{
-    return lhs.var == rhs.var &&
-           (lhs.var != SyncVariant::custom || lhs.custom == rhs.custom) && //no need to consider custom directions if var != CUSTOM
-           lhs.detectMovedFiles == rhs.detectMovedFiles; //useful to remember this setting even if the current sync variant does not need it
-    //adapt effectivelyEqual() on changes, too!
-}
-
-inline
-bool effectivelyEqual(const SyncDirectionConfig& lhs, const SyncDirectionConfig& rhs)
-{
-    return (lhs.var == SyncVariant::twoWay) == (rhs.var == SyncVariant::twoWay) && //either both two-way or none
-           (lhs.var == SyncVariant::twoWay || extractDirections(lhs) == extractDirections(rhs)) &&
-           detectMovedFilesEnabled(lhs) == detectMovedFilesEnabled(rhs);
-}
 
 
 struct CompConfig
@@ -192,7 +205,7 @@ enum class VersioningStyle
 struct SyncConfig
 {
     //sync direction settings
-    SyncDirectionConfig directionCfg;
+    SyncDirectionConfig directionCfg = getDefaultSyncCfg(SyncVariant::twoWay);
 
     DeletionVariant deletionVariant = DeletionVariant::recycler; //use Recycle Bin, delete permanently or move to user-defined location
 
@@ -212,7 +225,7 @@ bool operator==(const SyncConfig& lhs, const SyncConfig& rhs)
 {
     return lhs.directionCfg           == rhs.directionCfg      &&
            lhs.deletionVariant        == rhs.deletionVariant   &&      //!= DeletionVariant::versioning => still consider versioningFolderPhrase: e.g. user temporarily
-           lhs.versioningFolderPhrase == rhs.versioningFolderPhrase && //switched to "permanent" deletion and accidentally saved cfg => versioning folder is easily restored
+           lhs.versioningFolderPhrase == rhs.versioningFolderPhrase && //switched to "permanent" deletion and accidentally saved cfg => versioning folder can be restored
            lhs.versioningStyle        == rhs.versioningStyle   &&
            (lhs.versioningStyle == VersioningStyle::replace ||
             (
@@ -264,24 +277,6 @@ enum class UnitTime
 
 struct FilterConfig
 {
-    FilterConfig() {}
-    FilterConfig(const Zstring& include,
-                 const Zstring& exclude,
-                 size_t   timeSpanIn,
-                 UnitTime unitTimeSpanIn,
-                 size_t   sizeMinIn,
-                 UnitSize unitSizeMinIn,
-                 size_t   sizeMaxIn,
-                 UnitSize unitSizeMaxIn) :
-        includeFilter(include),
-        excludeFilter(exclude),
-        timeSpan     (timeSpanIn),
-        unitTimeSpan (unitTimeSpanIn),
-        sizeMin      (sizeMinIn),
-        unitSizeMin  (unitSizeMinIn),
-        sizeMax      (sizeMaxIn),
-        unitSizeMax  (unitSizeMaxIn) {}
-
     /* Semantics of PathFilter:
         1. using it creates a NEW folder hierarchy! -> must be considered by <Two way> variant! (fortunately it turns out, doing nothing already has perfect semantics :)
         2. it applies equally to both sides => it always matches either both sides or none! => can be used while traversing a single folder!    */
@@ -292,13 +287,13 @@ struct FilterConfig
         1. It potentially may match only one side => it MUST NOT be applied while traversing a single folder to avoid mismatches
         2. => it is applied after traversing and just marks rows, (NO deletions after comparison are allowed)
         3. => equivalent to a user temporarily (de-)selecting rows -> not relevant for <Two way> variant! ;)    */
-    size_t timeSpan = 0;
+    unsigned int timeSpan = 0;
     UnitTime unitTimeSpan = UnitTime::none;
 
-    size_t sizeMin = 0;
+    uint64_t sizeMin = 0;
     UnitSize unitSizeMin = UnitSize::none;
 
-    size_t sizeMax = 0;
+    uint64_t sizeMax = 0;
     UnitSize unitSizeMax = UnitSize::none;
 
     bool operator==(const FilterConfig&) const = default;
@@ -306,8 +301,8 @@ struct FilterConfig
 
 
 void resolveUnits(size_t timeSpan, UnitTime unitTimeSpan,
-                  size_t sizeMin,  UnitSize unitSizeMin,
-                  size_t sizeMax,  UnitSize unitSizeMax,
+                  uint64_t sizeMin,  UnitSize unitSizeMin,
+                  uint64_t sizeMax,  UnitSize unitSizeMax,
                   time_t&   timeFrom,   //unit: UTC time, seconds
                   uint64_t& sizeMinBy,  //unit: bytes
                   uint64_t& sizeMaxBy); //unit: bytes
@@ -315,19 +310,6 @@ void resolveUnits(size_t timeSpan, UnitTime unitTimeSpan,
 
 struct LocalPairConfig //enhanced folder pairs with (optional) alternate configuration
 {
-    LocalPairConfig() {}
-
-    LocalPairConfig(const Zstring& phraseLeft,
-                    const Zstring& phraseRight,
-                    const std::optional<CompConfig>& cmpCfg,
-                    const std::optional<SyncConfig>& syncCfg,
-                    const FilterConfig& filter) :
-        folderPathPhraseLeft (phraseLeft),
-        folderPathPhraseRight(phraseRight),
-        localCmpCfg(cmpCfg),
-        localSyncCfg(syncCfg),
-        localFilter(filter) {}
-
     Zstring folderPathPhraseLeft;  //unresolved directory names as entered by user!
     Zstring folderPathPhraseRight; //
 
@@ -390,8 +372,8 @@ size_t getDeviceParallelOps(const std::map<AfsDevice, size_t>& deviceParallelOps
 void   setDeviceParallelOps(      std::map<AfsDevice, size_t>& deviceParallelOps, const Zstring& folderPathPhrase, size_t parallelOps);
 
 
-std::optional<CompareVariant> getCompVariant(const MainConfiguration& mainCfg);
-std::optional<SyncVariant> getSyncVariant(const MainConfiguration& mainCfg);
+std::optional<CompareVariant> getCommonCompVariant(const MainConfiguration& mainCfg);
+std::optional<SyncVariant>    getCommonSyncVariant(const MainConfiguration& mainCfg);
 
 
 struct WarningDialogs

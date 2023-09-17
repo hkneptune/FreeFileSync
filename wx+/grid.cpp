@@ -171,7 +171,7 @@ void GridData::drawCellText(wxDC& dc, const wxRect& rect, const std::wstring& te
     if (extentTrunc.GetWidth() > rect.width)
     {
         //unlike Windows Explorer, we truncate UTF-16 correctly: e.g. CJK-Ideograph encodes to TWO wchar_t: utfTo<std::wstring>("\xf0\xa4\xbd\x9c");
-        size_t low  = 0;                   //number of unicode chars!
+        size_t low  = 0;                   //number of Unicode chars!
         size_t high = unicodeLength(text); //
         if (high > 1)
             for (;;)
@@ -1989,6 +1989,9 @@ void Grid::setRowHeight(int height)
     updateWindowSizes();
     Refresh();
 }
+
+
+int Grid::getRowHeight() const { return rowLabelWin_->getRowHeight(); }
 
 
 void Grid::setColumnConfig(const std::vector<Grid::ColAttributes>& attr)

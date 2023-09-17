@@ -20,8 +20,7 @@ namespace fff
 void showAboutDialog(wxWindow* parent);
 
 zen::ConfirmationButton showCopyToDialog(wxWindow* parent,
-                                         std::span<const FileSystemObject* const> rowsOnLeft,
-                                         std::span<const FileSystemObject* const> rowsOnRight,
+                                         const std::wstring& itemList, int itemCount,
                                          Zstring& targetFolderPath, Zstring& targetFolderLastSelected,
                                          std::vector<Zstring>& folderPathHistory, size_t folderPathHistoryMax,
                                          Zstring& sftpKeyFileLastSelected,

@@ -153,7 +153,7 @@ private:
 
     static void compressNode(Container& cont);
     template <class Function>
-    static void extractVisibleSubtree(ContainerObject& hierObj, Container& cont, Function includeObject);
+    static void extractVisibleSubtree(ContainerObject& conObj, Container& cont, Function includeObject);
     void getChildren(const Container& cont, unsigned int level, std::vector<TreeLine>& output);
     template <class Predicate> void updateView(Predicate pred);
     void applySubView(std::vector<RootNodeImpl>&& newView);

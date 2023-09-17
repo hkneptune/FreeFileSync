@@ -375,20 +375,18 @@ struct OutputStreamNative : public AFS::OutputStreamImpl
     AFS::FinalizeResult finalize(const IoCallback& notifyUnbufferedIO /*throw X*/) override //throw FileError, X
     {
         AFS::FinalizeResult result;
-        if (modTime_)
-            result.filePrint = getNativeFileInfo(fileOut_).filePrint; //throw FileError
+
+        result.filePrint = getNativeFileInfo(fileOut_).filePrint; //throw FileError
 
         fileOut_.close(); //throw FileError
-
+        /* is setting modtime after closing the file handle a pessimization?
+           no, needed for functional correctness, see file_access.cpp::copyNewFile() for macOS/Linux */
         try
         {
             if (modTime_)
                 setFileTime(fileOut_.getFilePath(), *modTime_, ProcSymlink::follow); //throw FileError
-            /* is setting modtime after closing the file handle a pessimization?
-               no, needed for functional correctness, see file_access.cpp */
         }
-        catch (const FileError& e) { result.errorModTime = FileError(e.toString()); /*avoid slicing*/ }
-
+        catch (const FileError& e) { result.errorModTime = e; /*might slice derived class?*/ }
         return result;
     }
 
@@ -626,10 +624,8 @@ private:
         //perf test: detecting different volumes by path is ~30 times faster than having ::MoveFileEx() fail with ERROR_NOT_SAME_DEVICE (6µs vs 190µs)
         //=> maybe we can even save some actual I/O in some cases?
         if (compareDeviceSameAfsType(pathTo.afsDevice.ref()) != std::weak_ordering::equivalent)
-            throw ErrorMoveUnsupported(replaceCpy(replaceCpy(_("Cannot move file %x to %y."),
-                                                             L"%x", L'\n' + fmtPath(getDisplayPath(pathFrom))),
-                                                  L"%y", L'\n' + fmtPath(AFS::getDisplayPath(pathTo))),
-                                       _("Operation not supported between different devices."));
+            throw ErrorMoveUnsupported(generateMoveErrorMsg(pathFrom, pathTo), _("Operation not supported between different devices."));
+
         initComForThread(); //throw FileError
         const Zstring nativePathTarget = static_cast<const NativeFileSystem&>(pathTo.afsDevice.ref()).getNativePath(pathTo.afsPath);
 

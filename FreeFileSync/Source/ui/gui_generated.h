@@ -97,7 +97,6 @@ class MainDialogGenerated : public wxFrame
 		wxMenu* m_menuHelp;
 		wxMenuItem* m_menuItemHelp;
 		wxMenuItem* m_menuItemCheckVersionNow;
-		wxMenuItem* m_menuItemCheckVersionAuto;
 		wxMenuItem* m_menuItemAbout;
 		wxBoxSizer* bSizerPanelHolder;
 		wxPanel* m_panelTopButtons;
@@ -235,7 +234,6 @@ class MainDialogGenerated : public wxFrame
 		virtual void onMenuResetLayout( wxCommandEvent& event ) { event.Skip(); }
 		virtual void onShowHelp( wxCommandEvent& event ) { event.Skip(); }
 		virtual void onMenuCheckVersion( wxCommandEvent& event ) { event.Skip(); }
-		virtual void onMenuCheckVersionAutomatically( wxCommandEvent& event ) { event.Skip(); }
 		virtual void onMenuAbout( wxCommandEvent& event ) { event.Skip(); }
 		virtual void onCompSettingsContextMouse( wxMouseEvent& event ) { event.Skip(); }
 		virtual void onCompSettingsContext( wxCommandEvent& event ) { event.Skip(); }
@@ -420,31 +418,43 @@ class ConfigDlgGenerated : public wxDialog
 		zen::ToggleButton* m_buttonMirror;
 		zen::ToggleButton* m_buttonUpdate;
 		zen::ToggleButton* m_buttonCustom;
+		wxStaticBitmap* m_bitmapDatabase;
+		wxCheckBox* m_checkBoxUseDatabase;
+		wxStaticText* m_staticTextSyncVarDescription;
+		wxStaticLine* m_staticline431;
+		wxStaticLine* m_staticline72;
+		wxStaticBitmap* m_bitmapMoveLeft;
+		wxStaticBitmap* m_bitmapMoveRight;
+		wxStaticText* m_staticTextDetectMove;
+		wxHyperlinkCtrl* m_hyperlink242;
+		wxStaticLine* m_staticline721;
 		wxBoxSizer* bSizerSyncDirHolder;
-		wxBoxSizer* bSizerSyncDirections;
+		wxBoxSizer* bSizerSyncDirsDiff;
 		wxStaticText* m_staticText184;
 		wxFlexGridSizer* ffgSizer11;
 		wxStaticBitmap* m_bitmapLeftOnly;
 		wxStaticBitmap* m_bitmapLeftNewer;
 		wxStaticBitmap* m_bitmapDifferent;
-		wxStaticBitmap* m_bitmapConflict;
 		wxStaticBitmap* m_bitmapRightNewer;
 		wxStaticBitmap* m_bitmapRightOnly;
 		wxBitmapButton* m_bpButtonLeftOnly;
 		wxBitmapButton* m_bpButtonLeftNewer;
 		wxBitmapButton* m_bpButtonDifferent;
-		wxBitmapButton* m_bpButtonConflict;
 		wxBitmapButton* m_bpButtonRightNewer;
 		wxBitmapButton* m_bpButtonRightOnly;
 		wxStaticText* m_staticText120;
-		wxBoxSizer* bSizerDatabase;
-		wxStaticBitmap* m_bitmapDatabase;
-		wxStaticText* m_staticText145;
-		wxStaticText* m_staticTextSyncVarDescription;
-		wxStaticLine* m_staticline431;
-		wxStaticLine* m_staticline72;
-		wxCheckBox* m_checkBoxDetectMove;
-		wxHyperlinkCtrl* m_hyperlink242;
+		wxFlexGridSizer* ffgSizer111;
+		wxStaticText* m_staticText12011;
+		wxBitmapButton* m_bpButtonLeftCreate;
+		wxBitmapButton* m_bpButtonRightCreate;
+		wxStaticText* m_staticText12012;
+		wxBitmapButton* m_bpButtonLeftUpdate;
+		wxBitmapButton* m_bpButtonRightUpdate;
+		wxStaticText* m_staticText12013;
+		wxBitmapButton* m_bpButtonLeftDelete;
+		wxBitmapButton* m_bpButtonRightDelete;
+		wxStaticText* m_staticText1201;
+		wxStaticText* m_staticText1202;
 		wxStaticLine* m_staticline54;
 		wxBoxSizer* bSizer2361;
 		wxStaticText* m_staticText87;
@@ -529,13 +539,18 @@ class ConfigDlgGenerated : public wxDialog
 		virtual void onSyncUpdateDouble( wxMouseEvent& event ) { event.Skip(); }
 		virtual void onSyncCustom( wxCommandEvent& event ) { event.Skip(); }
 		virtual void onSyncCustomDouble( wxMouseEvent& event ) { event.Skip(); }
-		virtual void onExLeftSideOnly( wxCommandEvent& event ) { event.Skip(); }
+		virtual void onToggleUseDatabase( wxCommandEvent& event ) { event.Skip(); }
+		virtual void onLeftOnly( wxCommandEvent& event ) { event.Skip(); }
 		virtual void onLeftNewer( wxCommandEvent& event ) { event.Skip(); }
 		virtual void onDifferent( wxCommandEvent& event ) { event.Skip(); }
-		virtual void onConflict( wxCommandEvent& event ) { event.Skip(); }
 		virtual void onRightNewer( wxCommandEvent& event ) { event.Skip(); }
-		virtual void onExRightSideOnly( wxCommandEvent& event ) { event.Skip(); }
-		virtual void onToggleDetectMovedFiles( wxCommandEvent& event ) { event.Skip(); }
+		virtual void onRightOnly( wxCommandEvent& event ) { event.Skip(); }
+		virtual void onLeftCreate( wxCommandEvent& event ) { event.Skip(); }
+		virtual void onRightCreate( wxCommandEvent& event ) { event.Skip(); }
+		virtual void onLeftUpdate( wxCommandEvent& event ) { event.Skip(); }
+		virtual void onRightUpdate( wxCommandEvent& event ) { event.Skip(); }
+		virtual void onLeftDelete( wxCommandEvent& event ) { event.Skip(); }
+		virtual void onRightDelete( wxCommandEvent& event ) { event.Skip(); }
 		virtual void onDeletionRecycler( wxCommandEvent& event ) { event.Skip(); }
 		virtual void onDeletionPermanent( wxCommandEvent& event ) { event.Skip(); }
 		virtual void onDeletionVersioning( wxCommandEvent& event ) { event.Skip(); }
@@ -555,6 +570,7 @@ class ConfigDlgGenerated : public wxDialog
 	public:
 		wxStaticBitmap* m_bitmapRetryErrors;
 		wxStaticText* m_staticTextFilterDescr;
+		wxBoxSizer* bSizerSyncDirsChanges;
 		wxBitmapButton* m_bpButtonSelectVersioningAltFolder;
 		wxBitmapButton* m_bpButtonShowLogFolder;
 		fff::FolderHistoryBox* m_logFolderPath;
@@ -1059,6 +1075,8 @@ class RenameDlgGenerated : public wxDialog
 		wxStaticLine* m_staticline91;
 		wxPanel* m_panel31;
 		zen::Grid* m_gridRenamePreview;
+		wxStaticLine* m_staticlinePreview;
+		wxStaticText* m_staticTextPlaceholderDescription;
 		wxTextCtrl* m_textCtrlNewName;
 		wxStaticLine* m_staticline9;
 		wxBoxSizer* bSizerStdButtons;
@@ -1067,7 +1085,6 @@ class RenameDlgGenerated : public wxDialog
 
 		// Virtual event handlers, override them in your derived class
 		virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
-		virtual void onTypingName( wxCommandEvent& event ) { event.Skip(); }
 		virtual void onOkay( wxCommandEvent& event ) { event.Skip(); }
 		virtual void onCancel( wxCommandEvent& event ) { event.Skip(); }
 
@@ -1264,7 +1281,7 @@ class AboutDlgGenerated : public wxDialog
 		wxFlexGridSizer* fgSizerTranslators;
 		wxStaticLine* m_staticline36;
 		wxBoxSizer* bSizerStdButtons;
-		wxButton* m_buttonShowDonationDetails;
+		wxButton* m_buttonShowSupporterDetails;
 		zen::BitmapTextButton* m_buttonDonate2;
 		wxButton* m_buttonClose;
 
@@ -1273,7 +1290,7 @@ class AboutDlgGenerated : public wxDialog
 		virtual void onDonate( wxCommandEvent& event ) { event.Skip(); }
 		virtual void onOpenForum( wxCommandEvent& event ) { event.Skip(); }
 		virtual void onSendEmail( wxCommandEvent& event ) { event.Skip(); }
-		virtual void onShowDonationDetails( wxCommandEvent& event ) { event.Skip(); }
+		virtual void onShowSupporterDetails( wxCommandEvent& event ) { event.Skip(); }
 		virtual void onOkay( wxCommandEvent& event ) { event.Skip(); }
 
 

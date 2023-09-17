@@ -151,6 +151,7 @@ public:
     size_t getRowCount() const;
 
     void setRowHeight(int height);
+    int getRowHeight() const;
 
     struct ColAttributes
     {

@@ -1820,13 +1820,8 @@ private:
     //=> actual behavior: fail with obscure LIBSSH2_FX_FAILURE error
     void moveAndRenameItemForSameAfsType(const AfsPath& pathFrom, const AbstractPath& pathTo) const override //throw FileError, ErrorMoveUnsupported
     {
-        auto generateErrorMsg = [&] { return replaceCpy(replaceCpy(_("Cannot move file %x to %y."),
-                                                                   L"%x", L'\n' + fmtPath(getDisplayPath(pathFrom))),
-                                                        L"%y", L'\n' + fmtPath(AFS::getDisplayPath(pathTo)));
-                                    };
-
         if (compareDeviceSameAfsType(pathTo.afsDevice.ref()) != std::weak_ordering::equivalent)
-            throw ErrorMoveUnsupported(generateErrorMsg(), _("Operation not supported between different devices."));
+            throw ErrorMoveUnsupported(generateMoveErrorMsg(pathFrom, pathTo), _("Operation not supported between different devices."));
 
         try
         {
@@ -1849,7 +1844,7 @@ private:
         }
         catch (const SysError& e) //libssh2_sftp_rename_ex reports generic LIBSSH2_FX_FAILURE if target is already existing!
         {
-            throw FileError(generateErrorMsg(), e.toString());
+            throw FileError(generateMoveErrorMsg(pathFrom, pathTo), e.toString());
         }
     }
 

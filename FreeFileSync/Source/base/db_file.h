@@ -32,7 +32,6 @@ struct InSyncDescrLink
 //artificial hierarchy of last synchronous state:
 struct InSyncFile
 {
-    InSyncFile(const InSyncDescrFile& l, const InSyncDescrFile& r, CompareVariant cv, uint64_t fileSizeIn) : left(l), right(r), cmpVar(cv), fileSize(fileSizeIn) {}
     InSyncDescrFile left;  //support flip()!
     InSyncDescrFile right; //
     CompareVariant cmpVar = CompareVariant::timeSize; //the one active while finding "file in sync"
@@ -41,7 +40,6 @@ struct InSyncFile
 
 struct InSyncSymlink
 {
-    InSyncSymlink(const InSyncDescrLink& l, const InSyncDescrLink& r, CompareVariant cv) : left(l), right(r), cmpVar(cv) {}
     InSyncDescrLink left;
     InSyncDescrLink right;
     CompareVariant cmpVar = CompareVariant::timeSize;
@@ -49,17 +47,6 @@ struct InSyncSymlink
 
 struct InSyncFolder
 {
-    //for directories we have a logical problem: we cannot have "not existent" as an indicator for
-    //"no last synchronous state" since this precludes child elements that may be in sync!
-    enum InSyncStatus
-    {
-        DIR_STATUS_IN_SYNC,
-        DIR_STATUS_STRAW_MAN //no last synchronous state, but used as container only
-    };
-    InSyncFolder(InSyncStatus statusIn) : status(statusIn) {}
-
-    InSyncStatus status = DIR_STATUS_STRAW_MAN;
-
     //------------------------------------------------------------------
     using FolderList  = std::unordered_map<ZstringNorm, InSyncFolder >; //
     using FileList    = std::unordered_map<ZstringNorm, InSyncFile   >; // key: file name (ignoring Unicode normal forms)
@@ -71,19 +58,26 @@ struct InSyncFolder
     SymlinkList symlinks; //non-followed symlinks
 
     //convenience
-    InSyncFolder& addFolder(const Zstring& folderName, InSyncStatus st)
+    InSyncFolder& addFolder(const Zstring& folderName)
     {
-        return folders.emplace(folderName, InSyncFolder(st)).first->second;
+        const auto [it, inserted] = folders.try_emplace(folderName);
+        assert(inserted);
+        return it->second;
     }
 
-    void addFile(const Zstring& fileName, const InSyncDescrFile& dataL, const InSyncDescrFile& dataR, CompareVariant cmpVar, uint64_t fileSize)
+    void addFile(const Zstring& fileName, const InSyncDescrFile& descrL, const InSyncDescrFile& descrR, CompareVariant cmpVar, uint64_t fileSize)
     {
-        files.emplace(fileName, InSyncFile(dataL, dataR, cmpVar, fileSize));
+            files.emplace(fileName, InSyncFile {descrL, descrR, cmpVar, fileSize});
+        assert(inserted);
+        warn_static("use try_emplace once mac is up to the task!!!")
+        //"Parenthesized initialization of aggregates" https://en.cppreference.com/w/cpp/compiler_support/20
     }
 
-    void addSymlink(const Zstring& linkName, const InSyncDescrLink& dataL, const InSyncDescrLink& dataR, CompareVariant cmpVar)
+    void addSymlink(const Zstring& linkName, const InSyncDescrLink& descrL, const InSyncDescrLink& descrR, CompareVariant cmpVar)
     {
-        symlinks.emplace(linkName, InSyncSymlink(dataL, dataR, cmpVar));
+            symlinks.emplace(linkName, InSyncSymlink {descrL, descrR, cmpVar});
+        assert(inserted);
+        warn_static("use try_emplace once mac is up to the task!!!")
     }
 };
 

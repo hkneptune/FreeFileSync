@@ -102,43 +102,36 @@ wxColor getDefaultBackgroundColorAlternating(bool wantStandardColor)
 }
 
 
-enum class CudAction
-{
-    doNothing,
-    create,
-    update,
-    destroy,
-};
 std::pair<CudAction, SelectSide> getCudAction(SyncOperation so)
 {
     switch (so)
     {
         //*INDENT-OFF*
-        case SO_CREATE_NEW_LEFT:
+        case SO_CREATE_LEFT:
         case SO_MOVE_LEFT_TO: return {CudAction::create, SelectSide::left};
 
-        case SO_CREATE_NEW_RIGHT:
+        case SO_CREATE_RIGHT:
         case SO_MOVE_RIGHT_TO: return {CudAction::create, SelectSide::right};
 
         case SO_DELETE_LEFT:
-        case SO_MOVE_LEFT_FROM: return {CudAction::destroy, SelectSide::left};
+        case SO_MOVE_LEFT_FROM: return {CudAction::delete_, SelectSide::left};
 
         case SO_DELETE_RIGHT:
-        case SO_MOVE_RIGHT_FROM: return {CudAction::destroy, SelectSide::right};
+        case SO_MOVE_RIGHT_FROM: return {CudAction::delete_, SelectSide::right};
 
         case SO_OVERWRITE_LEFT:
-        case SO_COPY_METADATA_TO_LEFT: return {CudAction::update, SelectSide::left};
+        case SO_RENAME_LEFT: return {CudAction::update, SelectSide::left};
 
         case SO_OVERWRITE_RIGHT:
-        case SO_COPY_METADATA_TO_RIGHT: return {CudAction::update, SelectSide::right};
+        case SO_RENAME_RIGHT: return {CudAction::update, SelectSide::right};
 
         case SO_DO_NOTHING:
         case SO_EQUAL:
-        case SO_UNRESOLVED_CONFLICT: return {CudAction::doNothing, SelectSide::left};
+        case SO_UNRESOLVED_CONFLICT: return {CudAction::noChange, SelectSide::left};
         //*INDENT-ON*
     }
     assert(false);
-    return {CudAction::doNothing, SelectSide::left};
+    return {CudAction::noChange, SelectSide::left};
 }
 
 
@@ -146,20 +139,20 @@ wxColor getBackGroundColorSyncAction(SyncOperation so)
 {
     switch (so)
     {
-        case SO_CREATE_NEW_LEFT:
+        case SO_CREATE_LEFT:
         case SO_OVERWRITE_LEFT:
         case SO_DELETE_LEFT:
         case SO_MOVE_LEFT_FROM:
         case SO_MOVE_LEFT_TO:
-        case SO_COPY_METADATA_TO_LEFT:
+        case SO_RENAME_LEFT:
             return getColorSyncBlue(false /*faint*/);
 
-        case SO_CREATE_NEW_RIGHT:
+        case SO_CREATE_RIGHT:
         case SO_OVERWRITE_RIGHT:
         case SO_DELETE_RIGHT:
         case SO_MOVE_RIGHT_FROM:
         case SO_MOVE_RIGHT_TO:
-        case SO_COPY_METADATA_TO_RIGHT:
+        case SO_RENAME_RIGHT:
             return getColorSyncGreen(false /*faint*/);
 
         case SO_DO_NOTHING:
@@ -178,19 +171,19 @@ wxColor getBackGroundColorCmpDifference(CompareFileResult cmpResult)
     switch (cmpResult)
     {
         //*INDENT-OFF*
-        case FILE_LEFT_SIDE_ONLY: return getColorSyncBlue(false /*faint*/);
+        case FILE_EQUAL:
+            break; //usually white
+        case FILE_LEFT_ONLY: return getColorSyncBlue(false /*faint*/);
         case FILE_LEFT_NEWER:     return getColorSyncBlue(true  /*faint*/);
 
-        case FILE_RIGHT_SIDE_ONLY: return getColorSyncGreen(false /*faint*/);
+        case FILE_RIGHT_ONLY: return getColorSyncGreen(false /*faint*/);
         case FILE_RIGHT_NEWER:     return getColorSyncGreen(true  /*faint*/);
 
         case FILE_DIFFERENT_CONTENT:
             return getColorDifferentBackground(false /*faint*/);
-        case FILE_EQUAL:
-            break; //usually white
-
+        case FILE_RENAMED: //similar to both "equal" and "conflict": give hint via background color
+        case FILE_TIME_INVALID:
         case FILE_CONFLICT:
-        case FILE_DIFFERENT_METADATA: //= sub-category of equal, but hint via background that sync direction follows conflict-setting
             return getColorConflictBackground(false /*faint*/);
         //*INDENT-ON*
     }
@@ -347,8 +340,6 @@ public:
             it = compExtentsBuf.emplace(text, dc.GetTextExtent(text)).first;
         return it->second;
     }
-
-    int getGroupItemNamesWidth(wxDC& dc, const FileView::PathDrawInfo& pdi);
 
 private:
     size_t getRowCount() const override { return getDataView().rowsOnView(); }
@@ -580,6 +571,9 @@ private:
                 itemNamesWidth = std::max(itemNamesWidth, *itPercentile);
             }
             assert(itemNamesWidth >= 0);
+
+            //Note: A better/faster solution would be to get 80th percentile of all std::wstring::size(), then do a *single* getTextExtentBuffered()!
+            //      However, we need all the getTextExtentBuffered(itemName) later anyway, so above is fine.
         }
         return itemNamesWidth;
     }
@@ -784,7 +778,7 @@ private:
                         if (getViewType() == GridViewType::action)
                             if (!enabled || !selected)
                                 if (const auto& [cudAction, cudSide] = getCudAction(syncOp);
-                                    cudAction != CudAction::doNothing && side == cudSide)
+                                    cudAction != CudAction::noChange && side == cudSide)
                                 {
                                     rectCud.width = gapSize_ + IconBuffer::getSize(IconBuffer::IconSize::small);
                                     //fixed-size looks fine for all icon sizes! use same width even if file icons are disabled!
@@ -856,10 +850,10 @@ private:
                                         //too much clutter? => drawIcon(getIconManager().getPlusOverlayIcon(), rectIcon,
                                         //                              true /*drawActive: [!] e.g. disabled folder, exists left only, where child item is copied*/);
                                         break;
-                                    case CudAction::destroy:
+                                    case CudAction::delete_:
                                         drawIcon(getIconManager().getMinusOverlayIcon(), rectIcon, true /*drawActive: [!]*/);
                                         break;
-                                    case CudAction::doNothing:
+                                    case CudAction::noChange:
                                     case CudAction::update:
                                         break;
                                 };
@@ -986,7 +980,7 @@ private:
                             rectGroupItems.width -= 2 * gapSize_;
 
                             wxDCPenChanger dummy(dc, wxPen(getColorGridLine(), fastFromDIP(1)));
-                            dc.DrawLine(rectGroupItems.GetTopLeft(), rectGroupItems.GetBottomLeft() + wxPoint(0, 1)); //doesn't draw last pixel!
+                            dc.DrawLine(rectGroupItems.GetTopLeft(), rectGroupItems.GetBottomLeft() + wxPoint(0, 1)); //DrawLine() doesn't draw last pixel!
 
                             rectGroupItems.x     += fastFromDIP(1);
                             rectGroupItems.width -= fastFromDIP(1);
@@ -1629,14 +1623,15 @@ private:
                     {
                         switch (fsObj->getCategory())
                         {
-                            case FILE_LEFT_SIDE_ONLY:     return "cat_left_only";
-                            case FILE_RIGHT_SIDE_ONLY:    return "cat_right_only";
-                            case FILE_LEFT_NEWER:         return "cat_left_newer";
-                            case FILE_RIGHT_NEWER:        return "cat_right_newer";
-                            case FILE_DIFFERENT_CONTENT:  return "cat_different";
-                            case FILE_EQUAL:
-                            case FILE_DIFFERENT_METADATA: return "cat_equal"; //= sub-category of equal
-                            case FILE_CONFLICT:           return "cat_conflict";
+                            case FILE_RENAMED:  //similar to both "equal" and "conflict"
+                            case FILE_EQUAL:             return "cat_equal";
+                            case FILE_LEFT_ONLY:         return "cat_left_only";
+                            case FILE_RIGHT_ONLY:        return "cat_right_only";
+                            case FILE_LEFT_NEWER:        return "cat_left_newer";
+                            case FILE_RIGHT_NEWER:       return "cat_right_newer";
+                            case FILE_DIFFERENT_CONTENT: return "cat_different";
+                            case FILE_TIME_INVALID: 
+                            case FILE_CONFLICT:          return "cat_conflict";
                         }
                         assert(false);
                         return "";
@@ -1652,21 +1647,21 @@ private:
                     {
                         switch (fsObj->getSyncOperation())
                         {
-                            case SO_CREATE_NEW_LEFT:        return "so_create_left";
-                            case SO_CREATE_NEW_RIGHT:       return "so_create_right";
-                            case SO_DELETE_LEFT:            return "so_delete_left";
-                            case SO_DELETE_RIGHT:           return "so_delete_right";
-                            case SO_MOVE_LEFT_FROM:         return "so_move_left_source";
-                            case SO_MOVE_LEFT_TO:           return "so_move_left_target";
-                            case SO_MOVE_RIGHT_FROM:        return "so_move_right_source";
-                            case SO_MOVE_RIGHT_TO:          return "so_move_right_target";
-                            case SO_OVERWRITE_LEFT:         return "so_update_left";
-                            case SO_OVERWRITE_RIGHT:        return "so_update_right";
-                            case SO_COPY_METADATA_TO_LEFT:  return "so_move_left";
-                            case SO_COPY_METADATA_TO_RIGHT: return "so_move_right";
-                            case SO_DO_NOTHING:             return "so_none";
-                            case SO_EQUAL:                  return "cat_equal";
-                            case SO_UNRESOLVED_CONFLICT:    return "cat_conflict";
+                            case SO_CREATE_LEFT:         return "so_create_left";
+                            case SO_CREATE_RIGHT:        return "so_create_right";
+                            case SO_DELETE_LEFT:         return "so_delete_left";
+                            case SO_DELETE_RIGHT:        return "so_delete_right";
+                            case SO_MOVE_LEFT_FROM:      return "so_move_left_source";
+                            case SO_MOVE_LEFT_TO:        return "so_move_left_target";
+                            case SO_MOVE_RIGHT_FROM:     return "so_move_right_source";
+                            case SO_MOVE_RIGHT_TO:       return "so_move_right_target";
+                            case SO_OVERWRITE_LEFT:      return "so_update_left";
+                            case SO_OVERWRITE_RIGHT:     return "so_update_right";
+                            case SO_RENAME_LEFT:         return "so_move_left";
+                            case SO_RENAME_RIGHT:        return "so_move_right";
+                            case SO_DO_NOTHING:          return "so_none";
+                            case SO_EQUAL:               return "cat_equal";
+                            case SO_UNRESOLVED_CONFLICT: return "cat_conflict";
                         };
                         assert(false);
                         return "";
@@ -2191,21 +2186,21 @@ wxImage fff::getSyncOpImage(SyncOperation syncOp)
     switch (syncOp) //evaluate comparison result and sync direction
     {
         //*INDENT-OFF*
-        case SO_CREATE_NEW_LEFT:        return loadImage("so_create_left_sicon");
-        case SO_CREATE_NEW_RIGHT:       return loadImage("so_create_right_sicon");
-        case SO_DELETE_LEFT:            return loadImage("so_delete_left_sicon");
-        case SO_DELETE_RIGHT:           return loadImage("so_delete_right_sicon");
-        case SO_MOVE_LEFT_FROM:         return loadImage("so_move_left_source_sicon");
-        case SO_MOVE_LEFT_TO:           return loadImage("so_move_left_target_sicon");
-        case SO_MOVE_RIGHT_FROM:        return loadImage("so_move_right_source_sicon");
-        case SO_MOVE_RIGHT_TO:          return loadImage("so_move_right_target_sicon");
-        case SO_OVERWRITE_LEFT:         return loadImage("so_update_left_sicon");
-        case SO_OVERWRITE_RIGHT:        return loadImage("so_update_right_sicon");
-        case SO_COPY_METADATA_TO_LEFT:  return loadImage("so_move_left_sicon");
-        case SO_COPY_METADATA_TO_RIGHT: return loadImage("so_move_right_sicon");
-        case SO_DO_NOTHING:             return loadImage("so_none_sicon");
-        case SO_EQUAL:                  return loadImage("cat_equal_sicon");
-        case SO_UNRESOLVED_CONFLICT:    return loadImage("cat_conflict_small");
+        case SO_CREATE_LEFT:     return loadImage("so_create_left_sicon");
+        case SO_CREATE_RIGHT:    return loadImage("so_create_right_sicon");
+        case SO_DELETE_LEFT:         return loadImage("so_delete_left_sicon");
+        case SO_DELETE_RIGHT:        return loadImage("so_delete_right_sicon");
+        case SO_MOVE_LEFT_FROM:      return loadImage("so_move_left_source_sicon");
+        case SO_MOVE_LEFT_TO:        return loadImage("so_move_left_target_sicon");
+        case SO_MOVE_RIGHT_FROM:     return loadImage("so_move_right_source_sicon");
+        case SO_MOVE_RIGHT_TO:       return loadImage("so_move_right_target_sicon");
+        case SO_OVERWRITE_LEFT:      return loadImage("so_update_left_sicon");
+        case SO_OVERWRITE_RIGHT:     return loadImage("so_update_right_sicon");
+        case SO_RENAME_LEFT:         return loadImage("so_move_left_sicon");
+        case SO_RENAME_RIGHT:        return loadImage("so_move_right_sicon");
+        case SO_DO_NOTHING:          return loadImage("so_none_sicon");
+        case SO_EQUAL:               return loadImage("cat_equal_sicon");
+        case SO_UNRESOLVED_CONFLICT: return loadImage("cat_conflict_small");
         //*INDENT-ON*
     }
     assert(false);
@@ -2218,14 +2213,15 @@ wxImage fff::getCmpResultImage(CompareFileResult cmpResult)
     switch (cmpResult)
     {
         //*INDENT-OFF*
-        case FILE_LEFT_SIDE_ONLY:     return loadImage("cat_left_only_sicon");
-        case FILE_RIGHT_SIDE_ONLY:    return loadImage("cat_right_only_sicon");
-        case FILE_LEFT_NEWER:         return loadImage("cat_left_newer_sicon");
-        case FILE_RIGHT_NEWER:        return loadImage("cat_right_newer_sicon");
-        case FILE_DIFFERENT_CONTENT:  return loadImage("cat_different_sicon");
-        case FILE_EQUAL: 
-        case FILE_DIFFERENT_METADATA: return loadImage("cat_equal_sicon"); //= sub-category of equal
-        case FILE_CONFLICT:           return loadImage("cat_conflict_small");
+        case FILE_RENAMED: //similar to both "equal" and "conflict"
+        case FILE_EQUAL:             return loadImage("cat_equal_sicon"); 
+        case FILE_LEFT_ONLY:         return loadImage("cat_left_only_sicon");
+        case FILE_RIGHT_ONLY:        return loadImage("cat_right_only_sicon");
+        case FILE_LEFT_NEWER:        return loadImage("cat_left_newer_sicon");
+        case FILE_RIGHT_NEWER:       return loadImage("cat_right_newer_sicon");
+        case FILE_DIFFERENT_CONTENT: return loadImage("cat_different_sicon");
+        case FILE_TIME_INVALID:
+        case FILE_CONFLICT:          return loadImage("cat_conflict_small");
         //*INDENT-ON*
     }
     assert(false);

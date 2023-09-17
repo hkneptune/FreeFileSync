@@ -282,8 +282,11 @@ void FileVersioner::revisionFolderImpl(const AbstractPath& folderPath, const Zst
 
         for (const AFS::FileInfo& fileInfo : files)
         {
-            const FileDescriptor fileDescr{AFS::appendRelPath(folderPath, fileInfo.itemName),
-                                           FileAttributes(fileInfo.modTime, fileInfo.fileSize, fileInfo.filePrint, false /*isFollowedSymlink*/)};
+            const FileDescriptor fileDescr
+            {
+                .path = AFS::appendRelPath(folderPath, fileInfo.itemName),
+                .attr = {fileInfo.modTime, fileInfo.fileSize, fileInfo.filePrint, false /*isFollowedSymlink*/},
+            };
 
             revisionFileImpl(fileDescr, appendPath(relPath, fileInfo.itemName), onBeforeFileMove, notifyUnbufferedIO); //throw FileError, X
         }

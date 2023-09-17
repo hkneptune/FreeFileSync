@@ -165,12 +165,12 @@ public:
         std::lock_guard dummy(lockIconList_);
 
         //thread safety: moving ImageHolder is free from side effects, but ~wxImage() is NOT! => do NOT delete items from iconList here!
-        auto rc = iconList.emplace(filePath, IconData());
-        assert(rc.second); //insertion took place
-        if (rc.second)
+        const auto [it, inserted] = iconList.try_emplace(filePath);
+        assert(inserted);
+        if (inserted)
         {
-            refData(rc.first).iconHolder = std::move(ih);
-            priorityListPushBack(rc.first);
+            refData(it).iconHolder = std::move(ih);
+            priorityListPushBack(it);
         }
     }
 

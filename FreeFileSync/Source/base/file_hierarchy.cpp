@@ -50,154 +50,212 @@ std::wstring fff::getShortDisplayNameForFolderPair(const AbstractPath& itemPathL
     else if (AFS::isNullPath(itemPathR))
         return getLastComponent(itemPathL);
     else
-        return getLastComponent(itemPathL) + SPACED_DASH +
+        return getLastComponent(itemPathL) + L" | " +
                getLastComponent(itemPathR);
 }
 
 
-void ContainerObject::removeEmptyRec()
+void ContainerObject::removeDoubleEmpty()
 {
-    bool emptyExisting = false;
-    auto isEmpty = [&](const FileSystemObject& fsObj) -> bool
-    {
-        const bool objEmpty = fsObj.isPairEmpty();
-        if (objEmpty)
-            emptyExisting = true;
-        return objEmpty;
-    };
+    auto isEmpty = [](const FileSystemObject& fsObj) { return fsObj.isPairEmpty(); };
 
     refSubFiles  ().remove_if(isEmpty);
     refSubLinks  ().remove_if(isEmpty);
     refSubFolders().remove_if(isEmpty);
 
-    if (emptyExisting) //notify if actual deletion happened
-        notifySyncCfgChanged(); //mustn't call this in ~FileSystemObject(), since parent, usually a FolderPair, may already be partially destroyed and existing as a pure ContainerObject!
-
     for (FolderPair& folder : refSubFolders())
-        folder.removeEmptyRec(); //recurse
+        folder.removeDoubleEmpty();
 }
 
 
 namespace
 {
-SyncOperation getIsolatedSyncOperation(bool itemExistsLeft,
-                                       bool itemExistsRight,
-                                       CompareFileResult cmpResult,
+SyncOperation getIsolatedSyncOperation(const FileSystemObject& fsObj,
                                        bool selectedForSync,
                                        SyncDirection syncDir,
-                                       bool hasDirectionConflict) //perf: std::wstring was wasteful here
+                                       bool hasDirectionConflict)
 {
-    assert(( itemExistsLeft &&  itemExistsRight && cmpResult != FILE_LEFT_SIDE_ONLY && cmpResult != FILE_RIGHT_SIDE_ONLY) ||
-           ( itemExistsLeft && !itemExistsRight && cmpResult == FILE_LEFT_SIDE_ONLY ) ||
-           (!itemExistsLeft &&  itemExistsRight && cmpResult == FILE_RIGHT_SIDE_ONLY) ||
-           (!itemExistsLeft && !itemExistsRight && cmpResult == FILE_EQUAL && syncDir == SyncDirection::none && !hasDirectionConflict) ||
-           cmpResult == FILE_CONFLICT);
-
     assert(!hasDirectionConflict || syncDir == SyncDirection::none);
 
-    if (!selectedForSync)
-        return cmpResult == FILE_EQUAL ?
-               SO_EQUAL :
-               SO_DO_NOTHING;
-
-    switch (cmpResult)
+    if (fsObj.isEmpty<SelectSide::left>() || fsObj.isEmpty<SelectSide::right>())
     {
-        case FILE_EQUAL:
-            assert(syncDir == SyncDirection::none);
-            return SO_EQUAL;
+        if (!selectedForSync)
+            return SO_DO_NOTHING;
 
-        case FILE_LEFT_SIDE_ONLY:
+        if (hasDirectionConflict)
+            return SO_UNRESOLVED_CONFLICT;
+
+        if (fsObj.isEmpty<SelectSide::left>())
+        {
+            if (fsObj.isEmpty<SelectSide::right>()) //both sides empty: should only occur temporarily, if ever
+                return SO_EQUAL;
+            else //right-only
+                switch (syncDir)
+                {
+                    //*INDENT-OFF*
+                    case SyncDirection::left:  return SO_CREATE_LEFT;
+                    case SyncDirection::right: return SO_DELETE_RIGHT;
+                    case SyncDirection::none:  return SO_DO_NOTHING;
+                    //*INDENT-ON*
+                }
+        }
+        else //left-only
             switch (syncDir)
             {
-                case SyncDirection::left:
-                    return SO_DELETE_LEFT; //delete files on left
-                case SyncDirection::right:
-                    return SO_CREATE_NEW_RIGHT; //copy files to right
-                case SyncDirection::none:
-                    return hasDirectionConflict ? SO_UNRESOLVED_CONFLICT : SO_DO_NOTHING;
+                //*INDENT-OFF*
+                case SyncDirection::left:  return SO_DELETE_LEFT;
+                case SyncDirection::right: return SO_CREATE_RIGHT;
+                case SyncDirection::none:  return SO_DO_NOTHING;
+                //*INDENT-ON*
             }
-            break;
-
-        case FILE_RIGHT_SIDE_ONLY:
-            switch (syncDir)
-            {
-                case SyncDirection::left:
-                    return SO_CREATE_NEW_LEFT; //copy files to left
-                case SyncDirection::right:
-                    return SO_DELETE_RIGHT; //delete files on right
-                case SyncDirection::none:
-                    return hasDirectionConflict ? SO_UNRESOLVED_CONFLICT : SO_DO_NOTHING;
-            }
-            break;
-
-        case FILE_LEFT_NEWER:
-        case FILE_RIGHT_NEWER:
-        case FILE_DIFFERENT_CONTENT:
-            switch (syncDir)
-            {
-                case SyncDirection::left:
-                    return SO_OVERWRITE_LEFT; //copy from right to left
-                case SyncDirection::right:
-                    return SO_OVERWRITE_RIGHT; //copy from left to right
-                case SyncDirection::none:
-                    return hasDirectionConflict ? SO_UNRESOLVED_CONFLICT : SO_DO_NOTHING;
-            }
-            break;
-
-        case FILE_DIFFERENT_METADATA:
-            switch (syncDir)
-            {
-                case SyncDirection::left:
-                    return SO_COPY_METADATA_TO_LEFT;
-                case SyncDirection::right:
-                    return SO_COPY_METADATA_TO_RIGHT;
-                case SyncDirection::none:
-                    return hasDirectionConflict ? SO_UNRESOLVED_CONFLICT : SO_DO_NOTHING;
-            }
-            break;
-
-        case FILE_CONFLICT:
-            switch (syncDir)
-            {
-                case SyncDirection::left:
-                    return itemExistsLeft && itemExistsRight ? SO_OVERWRITE_LEFT : itemExistsLeft ? SO_DELETE_LEFT: SO_CREATE_NEW_LEFT;
-                case SyncDirection::right:
-                    return itemExistsLeft && itemExistsRight ? SO_OVERWRITE_RIGHT : itemExistsLeft ? SO_CREATE_NEW_RIGHT : SO_DELETE_RIGHT;
-                case SyncDirection::none:
-                    return hasDirectionConflict ? SO_UNRESOLVED_CONFLICT : SO_DO_NOTHING;
-            }
-            break;
     }
+    //--------------------------------------------------------------
+    std::optional<SyncOperation> result;
 
-    assert(false);
-    return SO_DO_NOTHING;
+    visitFSObject(fsObj,
+                  [&](const FolderPair& folder) //see FolderPair::getCategory()
+    {
+        if (folder.hasEquivalentItemNames()) //a.k.a. DIR_EQUAL
+        {
+            assert(syncDir == SyncDirection::none);
+            return result = SO_EQUAL; //no matter if "conflict" (e.g. traversal error) or "not selected"
+        }
+
+        if (!selectedForSync)
+            return result = SO_DO_NOTHING;
+
+        if (hasDirectionConflict)
+            return result = SO_UNRESOLVED_CONFLICT;
+
+        switch (syncDir)
+        {
+            //*INDENT-OFF*
+            case SyncDirection::left:  return result = SO_RENAME_LEFT;
+            case SyncDirection::right: return result = SO_RENAME_RIGHT;
+            case SyncDirection::none:  return result = SO_DO_NOTHING;
+            //*INDENT-ON*
+        }
+        throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
+    },
+    //--------------------------------------------------------------
+    [&](const FilePair& file) //see FilePair::getCategory()
+    {
+        if (file.getContentCategory() == FileContentCategory::equal && file.hasEquivalentItemNames()) //a.k.a. FILE_EQUAL
+        {
+            assert(syncDir == SyncDirection::none);
+            return result = SO_EQUAL; //no matter if "conflict" (e.g. traversal error) or "not selected"
+        }
+
+        if (!selectedForSync)
+            return result = SO_DO_NOTHING;
+
+        if (hasDirectionConflict)
+            return result = SO_UNRESOLVED_CONFLICT;
+
+        switch (file.getContentCategory())
+        {
+            case FileContentCategory::unknown:
+            case FileContentCategory::leftNewer:
+            case FileContentCategory::rightNewer:
+            case FileContentCategory::invalidTime:
+            case FileContentCategory::different:
+            case FileContentCategory::conflict:
+                switch (syncDir)
+                {
+                    //*INDENT-OFF*
+                    case SyncDirection::left:  return result = SO_OVERWRITE_LEFT;
+                    case SyncDirection::right: return result = SO_OVERWRITE_RIGHT;
+                    case SyncDirection::none:  return result = SO_DO_NOTHING;
+                    //*INDENT-ON*
+                }
+                break;
+
+            case FileContentCategory::equal:
+                switch (syncDir)
+                {
+                    //*INDENT-OFF*
+                    case SyncDirection::left:  return result = SO_RENAME_LEFT;
+                    case SyncDirection::right: return result = SO_RENAME_RIGHT;
+                    case SyncDirection::none:  return result = SO_DO_NOTHING;
+                    //*INDENT-ON*
+                }
+                break;
+        }
+        throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
+    },
+    //--------------------------------------------------------------
+    [&](const SymlinkPair& symlink) //see SymlinkPair::getCategory()
+    {
+        if (symlink.getContentCategory() == FileContentCategory::equal && symlink.hasEquivalentItemNames()) //a.k.a. SYMLINK_EQUAL
+        {
+            assert(syncDir == SyncDirection::none);
+            return result = SO_EQUAL; //no matter if "conflict" (e.g. traversal error) or "not selected"
+        }
+
+        if (!selectedForSync)
+            return result = SO_DO_NOTHING;
+
+        if (hasDirectionConflict)
+            return result = SO_UNRESOLVED_CONFLICT;
+
+        switch (symlink.getContentCategory())
+        {
+            case FileContentCategory::unknown:
+            case FileContentCategory::leftNewer:
+            case FileContentCategory::rightNewer:
+            case FileContentCategory::invalidTime:
+            case FileContentCategory::different:
+            case FileContentCategory::conflict:
+                switch (syncDir)
+                {
+                    //*INDENT-OFF*
+                    case SyncDirection::left:  return result = SO_OVERWRITE_LEFT;
+                    case SyncDirection::right: return result = SO_OVERWRITE_RIGHT;
+                    case SyncDirection::none:  return result = SO_DO_NOTHING;
+                    //*INDENT-ON*
+                }
+                break;
+
+            case FileContentCategory::equal:
+                switch (syncDir)
+                {
+                    //*INDENT-OFF*
+                    case SyncDirection::left:  return result = SO_RENAME_LEFT;
+                    case SyncDirection::right: return result = SO_RENAME_RIGHT;
+                    case SyncDirection::none:  return result = SO_DO_NOTHING;
+                    //*INDENT-ON*
+                }
+                break;
+        }
+        throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
+    });
+    return *result;
 }
 
 
 template <class Predicate> inline
-bool hasDirectChild(const ContainerObject& hierObj, Predicate p)
+bool hasDirectChild(const ContainerObject& conObj, Predicate p)
 {
-    return std::any_of(hierObj.refSubFiles  ().begin(), hierObj.refSubFiles  ().end(), p) ||
-           std::any_of(hierObj.refSubLinks  ().begin(), hierObj.refSubLinks  ().end(), p) ||
-           std::any_of(hierObj.refSubFolders().begin(), hierObj.refSubFolders().end(), p);
+    return std::any_of(conObj.refSubFiles  ().begin(), conObj.refSubFiles  ().end(), p) ||
+           std::any_of(conObj.refSubLinks  ().begin(), conObj.refSubLinks  ().end(), p) ||
+           std::any_of(conObj.refSubFolders().begin(), conObj.refSubFolders().end(), p);
 }
 }
 
 
 SyncOperation FileSystemObject::testSyncOperation(SyncDirection testSyncDir) const //semantics: "what if"! assumes "active, no conflict, no recursion (directory)!
 {
-    return getIsolatedSyncOperation(!isEmpty<SelectSide::left>(), !isEmpty<SelectSide::right>(), getCategory(), true, testSyncDir, false);
+    return getIsolatedSyncOperation(*this, true, testSyncDir, false);
 }
+
+//SyncOperation FolderPair::testSyncOperation() const -> no recursion: we do NOT consider child elements when testing!
 
 
 SyncOperation FileSystemObject::getSyncOperation() const
 {
-    return getIsolatedSyncOperation(!isEmpty<SelectSide::left>(), !isEmpty<SelectSide::right>(), getCategory(), selectedForSync_, getSyncDir(), !syncDirectionConflict_.empty());
+    return getIsolatedSyncOperation(*this, selectedForSync_, syncDir_, !syncDirectionConflict_.empty());
     //do *not* make a virtual call to testSyncOperation()! See FilePair::testSyncOperation()! <- better not implement one in terms of the other!!!
 }
-
-
-//SyncOperation FolderPair::testSyncOperation() const -> no recursion: we do NOT want to consider child elements when testing!
 
 
 SyncOperation FolderPair::getSyncOperation() const
@@ -210,18 +268,18 @@ SyncOperation FolderPair::getSyncOperation() const
         //action for child elements may occassionally have to overwrite parent task:
         switch (*syncOpBuffered_)
         {
+            case SO_OVERWRITE_LEFT:
+            case SO_OVERWRITE_RIGHT:
             case SO_MOVE_LEFT_FROM:
             case SO_MOVE_LEFT_TO:
             case SO_MOVE_RIGHT_FROM:
             case SO_MOVE_RIGHT_TO:
                 assert(false);
                 [[fallthrough]];
-            case SO_CREATE_NEW_LEFT:
-            case SO_CREATE_NEW_RIGHT:
-            case SO_OVERWRITE_LEFT:
-            case SO_OVERWRITE_RIGHT:
-            case SO_COPY_METADATA_TO_LEFT:
-            case SO_COPY_METADATA_TO_RIGHT:
+            case SO_CREATE_LEFT:
+            case SO_CREATE_RIGHT:
+            case SO_RENAME_LEFT:
+            case SO_RENAME_RIGHT:
             case SO_EQUAL:
                 break; //take over suggestion, no problem for child-elements
             case SO_DELETE_LEFT:
@@ -232,18 +290,17 @@ SyncOperation FolderPair::getSyncOperation() const
                 {
                     //1. if at least one child-element is to be created, make sure parent folder is created also
                     //note: this automatically fulfills "create parent folders even if excluded"
-                    if (hasDirectChild(*this,
-                                       [](const FileSystemObject& fsObj)
+                    if (hasDirectChild(*this, [](const FileSystemObject& fsObj)
                 {
-                    const SyncOperation op = fsObj.getSyncOperation();
-                        return op == SO_CREATE_NEW_LEFT ||
+                    assert(!fsObj.isPairEmpty() || fsObj.getSyncOperation() == SO_DO_NOTHING);
+                        const SyncOperation op = fsObj.getSyncOperation();
+                        return op == SO_CREATE_LEFT ||
                                op == SO_MOVE_LEFT_TO;
                     }))
-                    syncOpBuffered_ = SO_CREATE_NEW_LEFT;
+                    syncOpBuffered_ = SO_CREATE_LEFT;
                     //2. cancel parent deletion if only a single child is not also scheduled for deletion
                     else if (*syncOpBuffered_ == SO_DELETE_RIGHT &&
-                             hasDirectChild(*this,
-                                            [](const FileSystemObject& fsObj)
+                             hasDirectChild(*this, [](const FileSystemObject& fsObj)
                 {
                     if (fsObj.isPairEmpty())
                             return false; //fsObj may already be empty because it once contained a "move source"
@@ -255,17 +312,16 @@ SyncOperation FolderPair::getSyncOperation() const
                 }
                 else if (isEmpty<SelectSide::right>())
                 {
-                    if (hasDirectChild(*this,
-                                       [](const FileSystemObject& fsObj)
+                    if (hasDirectChild(*this, [](const FileSystemObject& fsObj)
                 {
-                    const SyncOperation op = fsObj.getSyncOperation();
-                        return  op == SO_CREATE_NEW_RIGHT ||
+                    assert(!fsObj.isPairEmpty() || fsObj.getSyncOperation() == SO_DO_NOTHING);
+                        const SyncOperation op = fsObj.getSyncOperation();
+                        return  op == SO_CREATE_RIGHT ||
                                 op == SO_MOVE_RIGHT_TO;
                     }))
-                    syncOpBuffered_ = SO_CREATE_NEW_RIGHT;
+                    syncOpBuffered_ = SO_CREATE_RIGHT;
                     else if (*syncOpBuffered_ == SO_DELETE_LEFT &&
-                             hasDirectChild(*this,
-                                            [](const FileSystemObject& fsObj)
+                             hasDirectChild(*this, [](const FileSystemObject& fsObj)
                 {
                     if (fsObj.isPairEmpty())
                             return false;
@@ -288,24 +344,26 @@ SyncOperation FilePair::applyMoveOptimization(SyncOperation op) const
     /* check whether we can optimize "create + delete" via "move":
        note: as long as we consider "create + delete" cases only, detection of renamed files, should be fine even for "binary" comparison variant!       */
     if (moveFileRef_)
-        if (auto refFile = dynamic_cast<const FilePair*>(FileSystemObject::retrieve(moveFileRef_))) //we expect a "FilePair", but only need a "FileSystemObject" here
+        if (auto refFile = dynamic_cast<const FilePair*>(FileSystemObject::retrieve(moveFileRef_)))
+        {
             if (refFile->moveFileRef_ == getId()) //both ends should agree...
             {
                 const SyncOperation opRef = refFile->FileSystemObject::getSyncOperation(); //do *not* make a virtual call!
-
-                if (op    == SO_CREATE_NEW_LEFT &&
+                if (op    == SO_CREATE_LEFT &&
                     opRef == SO_DELETE_LEFT)
                     op = SO_MOVE_LEFT_TO;
                 else if (op    == SO_DELETE_LEFT &&
-                         opRef == SO_CREATE_NEW_LEFT)
+                         opRef == SO_CREATE_LEFT)
                     op = SO_MOVE_LEFT_FROM;
-                else if (op    == SO_CREATE_NEW_RIGHT &&
+                else if (op    == SO_CREATE_RIGHT &&
                          opRef == SO_DELETE_RIGHT)
                     op = SO_MOVE_RIGHT_TO;
                 else if (op    == SO_DELETE_RIGHT &&
-                         opRef == SO_CREATE_NEW_RIGHT)
+                         opRef == SO_CREATE_RIGHT)
                     op = SO_MOVE_RIGHT_FROM;
             }
+            else assert(false); //...and why shouldn't they?
+        }
     return op;
 }
 
@@ -326,9 +384,13 @@ std::wstring fff::getCategoryDescription(CompareFileResult cmpRes)
 {
     switch (cmpRes)
     {
-        case FILE_LEFT_SIDE_ONLY:
+        case FILE_EQUAL:
+            return _("Both sides are equal");
+        case FILE_RENAMED:
+            return _("Items differ in name only");
+        case FILE_LEFT_ONLY:
             return _("Item exists on left side only");
-        case FILE_RIGHT_SIDE_ONLY:
+        case FILE_RIGHT_ONLY:
             return _("Item exists on right side only");
         case FILE_LEFT_NEWER:
             return _("Left side is newer");
@@ -336,10 +398,7 @@ std::wstring fff::getCategoryDescription(CompareFileResult cmpRes)
             return _("Right side is newer");
         case FILE_DIFFERENT_CONTENT:
             return _("Items have different content");
-        case FILE_EQUAL:
-            return _("Both sides are equal");
-        case FILE_DIFFERENT_METADATA:
-            return _("Items differ in attributes only");
+        case FILE_TIME_INVALID:
         case FILE_CONFLICT:
             return _("Conflict/item cannot be categorized");
     }
@@ -352,20 +411,34 @@ namespace
 {
 const wchar_t arrowLeft [] = L"<-";
 const wchar_t arrowRight[] = L"->";
+//const wchar_t arrowRight[] = L"\u2192"; unicode arrows -> too small
 }
 
 
 std::wstring fff::getCategoryDescription(const FileSystemObject& fsObj)
 {
-    const std::wstring footer = L"\n[" + utfTo<std::wstring>(fsObj. getItemNameAny()) + L']';
+    const std::wstring footer = [&]
+    {
+        if (fsObj.hasEquivalentItemNames())
+            return L'\n' + fmtPath(fsObj.getItemName<SelectSide::left>());
+        else
+            return std::wstring(L"\n") +
+            fmtPath(fsObj.getItemName<SelectSide::left >()) + L' ' + arrowLeft + L'\n' +
+            fmtPath(fsObj.getItemName<SelectSide::right>()) + L' ' + arrowRight;
+    }();
+
+    if (const Zstringc descr = fsObj.getCategoryCustomDescription();
+        !descr.empty())
+        return utfTo<std::wstring>(descr) + footer;
 
     const CompareFileResult cmpRes = fsObj.getCategory();
     switch (cmpRes)
     {
-        case FILE_LEFT_SIDE_ONLY:
-        case FILE_RIGHT_SIDE_ONLY:
-        case FILE_DIFFERENT_CONTENT:
         case FILE_EQUAL:
+        case FILE_RENAMED:
+        case FILE_LEFT_ONLY:
+        case FILE_RIGHT_ONLY:
+        case FILE_DIFFERENT_CONTENT:
             return getCategoryDescription(cmpRes) + footer; //use generic description
 
         case FILE_LEFT_NEWER:
@@ -377,21 +450,22 @@ std::wstring fff::getCategoryDescription(const FileSystemObject& fsObj)
             [&](const FilePair& file)
             {
                 descr += std::wstring(L"\n") +
-                         arrowLeft  + L' ' + formatUtcToLocalTime(file.getLastWriteTime<SelectSide::left >()) + L'\n' +
-                         arrowRight + L' ' + formatUtcToLocalTime(file.getLastWriteTime<SelectSide::right>());
+                         formatUtcToLocalTime(file.getLastWriteTime<SelectSide::left >()) + L' ' + arrowLeft + L'\n' +
+                         formatUtcToLocalTime(file.getLastWriteTime<SelectSide::right>()) + L' ' + arrowRight ;
             },
             [&](const SymlinkPair& symlink)
             {
                 descr += std::wstring(L"\n") +
-                         arrowLeft  + L' ' + formatUtcToLocalTime(symlink.getLastWriteTime<SelectSide::left >()) + L'\n' +
-                         arrowRight + L' ' + formatUtcToLocalTime(symlink.getLastWriteTime<SelectSide::right>());
+                         formatUtcToLocalTime(symlink.getLastWriteTime<SelectSide::left >()) + L' ' + arrowLeft + L'\n' +
+                         formatUtcToLocalTime(symlink.getLastWriteTime<SelectSide::right>()) + L' ' + arrowRight ;
             });
             return descr + footer;
         }
 
-        case FILE_DIFFERENT_METADATA:
+        case FILE_TIME_INVALID:
         case FILE_CONFLICT:
-            return utfTo<std::wstring>(fsObj.getCatExtraDescription()) + footer;
+            assert(false); //should have getCategoryDescription()!
+            return _("Error") + footer;
     }
     assert(false);
     return std::wstring();
@@ -402,9 +476,9 @@ std::wstring fff::getSyncOpDescription(SyncOperation op)
 {
     switch (op)
     {
-        case SO_CREATE_NEW_LEFT:
+        case SO_CREATE_LEFT:
             return _("Copy new item to left");
-        case SO_CREATE_NEW_RIGHT:
+        case SO_CREATE_RIGHT:
             return _("Copy new item to right");
         case SO_DELETE_LEFT:
             return _("Delete left item");
@@ -412,10 +486,10 @@ std::wstring fff::getSyncOpDescription(SyncOperation op)
             return _("Delete right item");
         case SO_MOVE_LEFT_FROM:
         case SO_MOVE_LEFT_TO:
-            return _("Move file on left"); //move only supported for files
+            return _("Move left file"); //move only supported for files
         case SO_MOVE_RIGHT_FROM:
         case SO_MOVE_RIGHT_TO:
-            return _("Move file on right");
+            return _("Move right file");
         case SO_OVERWRITE_LEFT:
             return _("Update left item");
         case SO_OVERWRITE_RIGHT:
@@ -424,10 +498,10 @@ std::wstring fff::getSyncOpDescription(SyncOperation op)
             return _("Do nothing");
         case SO_EQUAL:
             return _("Both sides are equal");
-        case SO_COPY_METADATA_TO_LEFT:
-            return _("Update attributes on left");
-        case SO_COPY_METADATA_TO_RIGHT:
-            return _("Update attributes on right");
+        case SO_RENAME_LEFT:
+            return _("Rename left item");
+        case SO_RENAME_RIGHT:
+            return _("Rename right item");
         case SO_UNRESOLVED_CONFLICT: //not used on GUI, but in .csv
             return _("Conflict/item cannot be categorized");
     }
@@ -438,37 +512,43 @@ std::wstring fff::getSyncOpDescription(SyncOperation op)
 
 std::wstring fff::getSyncOpDescription(const FileSystemObject& fsObj)
 {
-    const std::wstring footer = L"\n[" + utfTo<std::wstring>(fsObj. getItemNameAny()) + L']';
-
     const SyncOperation op = fsObj.getSyncOperation();
+
+    auto generateFooter = [&]
+    {
+        if (fsObj.hasEquivalentItemNames())
+            return L'\n' + fmtPath(fsObj.getItemName<SelectSide::left>());
+
+        Zstring itemNameNew = fsObj.getItemName<SelectSide::left >();
+        Zstring itemNameOld = fsObj.getItemName<SelectSide::right>();
+
+        if (const SyncDirection dir = getEffectiveSyncDir(op);
+            dir != SyncDirection::none)
+        {
+            if (dir == SyncDirection::left)
+                std::swap(itemNameNew, itemNameOld);
+
+            return L'\n' + fmtPath(itemNameOld) + L' ' + RIGHT_ARROW_CURV_DOWN + L'\n' + fmtPath(itemNameNew);
+        }
+        else
+            return  L'\n' +
+            fmtPath(itemNameNew) + L' ' + arrowLeft + L'\n' +
+            fmtPath(itemNameOld) + L' ' + arrowRight;
+    };
+
     switch (op)
     {
-        case SO_CREATE_NEW_LEFT:
-        case SO_CREATE_NEW_RIGHT:
+        case SO_CREATE_LEFT:
+        case SO_CREATE_RIGHT:
         case SO_DELETE_LEFT:
         case SO_DELETE_RIGHT:
         case SO_OVERWRITE_LEFT:
         case SO_OVERWRITE_RIGHT:
         case SO_DO_NOTHING:
         case SO_EQUAL:
-            return getSyncOpDescription(op) + footer; //use generic description
-
-        case SO_COPY_METADATA_TO_LEFT:
-        case SO_COPY_METADATA_TO_RIGHT:
-            //harmonize with synchronization.cpp::FolderPairSyncer::synchronizeFileInt, ect!!
-        {
-            Zstring itemNameOld = fsObj.getItemName<SelectSide::right>();
-            Zstring itemNameNew = fsObj.getItemName<SelectSide::left >();
-            if (op == SO_COPY_METADATA_TO_LEFT)
-                std::swap(itemNameOld, itemNameNew);
-
-            if (getUnicodeNormalForm(itemNameOld) !=
-                getUnicodeNormalForm(itemNameNew)) //detected change in case
-                return getSyncOpDescription(op) + L'\n' +
-                       fmtPath(itemNameOld) + L' ' + arrowRight + L'\n' + //show short name only
-                       fmtPath(itemNameNew) /*+ footer -> redundant */;
-        }
-        return getSyncOpDescription(op) + footer; //fallback
+        case SO_RENAME_LEFT:
+        case SO_RENAME_RIGHT:
+            return getSyncOpDescription(op) + generateFooter();
 
         case SO_MOVE_LEFT_FROM:
         case SO_MOVE_LEFT_TO:
@@ -484,26 +564,26 @@ std::wstring fff::getSyncOpDescription(const FileSystemObject& fsObj)
                     if (!isMoveSource)
                         std::swap(fileFrom, fileTo);
 
-                    auto getRelName = [&](const FileSystemObject& fso, bool leftSide) { return leftSide ? fso.getRelativePath<SelectSide::left>() : fso.getRelativePath<SelectSide::right>(); };
+                    auto getRelPath = [&](const FileSystemObject& fso) { return onLeft ? fso.getRelativePath<SelectSide::left>() : fso.getRelativePath<SelectSide::right>(); };
 
-                    const Zstring relPathFrom = getRelName(*fileFrom, onLeft);
-                    const Zstring relPathTo   = getRelName(*fileTo,   onLeft);
+                    const Zstring relPathFrom = getRelPath(*fileFrom);
+                    const Zstring relPathTo   = getRelPath(*fileTo);
 
-                    //attention: ::SetWindowText() doesn't handle tab characters correctly in combination with certain file names, so don't use them
+                    //attention: ::SetWindowText() doesn't handle tab characters correctly in combination with certain file names, so don't use
                     return getSyncOpDescription(op) + L'\n' +
                            (beforeLast(relPathFrom, FILE_NAME_SEPARATOR, IfNotFoundReturn::none) ==
                             beforeLast(relPathTo,   FILE_NAME_SEPARATOR, IfNotFoundReturn::none) ?
                             //detected pure "rename"
-                            fmtPath(getItemName(relPathFrom)) + L' ' + arrowRight + L'\n' + //show short name only
+                            fmtPath(getItemName(relPathFrom)) + L' ' + RIGHT_ARROW_CURV_DOWN + L'\n' + //show file name only
                             fmtPath(getItemName(relPathTo)) :
                             //"move" or "move + rename"
-                            fmtPath(relPathFrom) + L' ' + arrowRight + L'\n' +
-                            fmtPath(relPathTo)) /*+ footer -> redundant */;
+                            fmtPath(relPathFrom) + L' ' + RIGHT_ARROW_CURV_DOWN + L'\n' +
+                            fmtPath(relPathTo));
                 }
             break;
 
         case SO_UNRESOLVED_CONFLICT:
-            return fsObj.getSyncOpConflict() + footer;
+            return fsObj.getSyncOpConflict() + generateFooter();
     }
 
     assert(false);

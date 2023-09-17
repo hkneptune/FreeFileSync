@@ -25,7 +25,7 @@ namespace
 {
 //-------------------------------------------------------------------------------------------------------------------------------
 const int XML_FORMAT_GLOBAL_CFG = 27; //2023-05-13
-const int XML_FORMAT_SYNC_CFG   = 19; //2023-06-09
+const int XML_FORMAT_SYNC_CFG   = 23; //2023-08-24
 //-------------------------------------------------------------------------------------------------------------------------------
 }
 
@@ -703,44 +703,6 @@ bool readText(const std::string& input, VersioningStyle& value)
 
 
 template <> inline
-void writeText(const SyncVariant& value, std::string& output)
-{
-    switch (value)
-    {
-        case SyncVariant::twoWay:
-            output = "TwoWay";
-            break;
-        case SyncVariant::mirror:
-            output = "Mirror";
-            break;
-        case SyncVariant::update:
-            output = "Update";
-            break;
-        case SyncVariant::custom:
-            output = "Custom";
-            break;
-    }
-}
-
-template <> inline
-bool readText(const std::string& input, SyncVariant& value)
-{
-    const std::string tmp = trimCpy(input);
-    if (tmp == "TwoWay")
-        value = SyncVariant::twoWay;
-    else if (tmp == "Mirror")
-        value = SyncVariant::mirror;
-    else if (tmp == "Update")
-        value = SyncVariant::update;
-    else if (tmp == "Custom")
-        value = SyncVariant::custom;
-    else
-        return false;
-    return true;
-}
-
-
-template <> inline
 void writeStruc(const ColAttributesRim& value, XmlElement& output)
 {
     output.setAttribute("Type",    value.type);
@@ -1010,30 +972,100 @@ void readConfig(const XmlIn& in, CompConfig& cmpCfg)
 }
 
 
-void readConfig(const XmlIn& in, SyncDirectionConfig& dirCfg)
+void readConfig(const XmlIn& in, SyncDirectionConfig& dirCfg, int formatVer)
 {
-    in["Variant"](dirCfg.var);
-
-    if (dirCfg.var == SyncVariant::custom)
+    if (formatVer < 21) //TODO: remove if parameter migration after some time! 2023-08-09
     {
-        XmlIn inCustDir = in["CustomDirections"];
-        inCustDir["LeftOnly"  ](dirCfg.custom.exLeftSideOnly);
-        inCustDir["RightOnly" ](dirCfg.custom.exRightSideOnly);
-        inCustDir["LeftNewer" ](dirCfg.custom.leftNewer);
-        inCustDir["RightNewer"](dirCfg.custom.rightNewer);
-        inCustDir["Different" ](dirCfg.custom.different);
-        inCustDir["Conflict"  ](dirCfg.custom.conflict);
-    }
-    //else
-    //    dirCfg.custom = DirectionSet();
+        std::string varName;
+        in["Variant"](varName);
+        trim(varName);
 
-    in["DetectMovedFiles"](dirCfg.detectMovedFiles);
+        if (varName == "TwoWay")
+            dirCfg = getDefaultSyncCfg(SyncVariant::twoWay);
+        else if (varName == "Mirror")
+        {
+            dirCfg = getDefaultSyncCfg(SyncVariant::mirror);
+
+            bool detectMovedFiles = false;
+            in["DetectMovedFiles"](detectMovedFiles);
+            if (detectMovedFiles)
+            {
+                if (const DirectionByDiff* diffDirs = std::get_if<DirectionByDiff>(&dirCfg.dirs))
+                    dirCfg.dirs = getChangesDirDefault(*diffDirs); //convert to "changes"-based mirror, so that move detection is enabled
+                else assert(false);
+            }
+        }
+        else if (varName == "Update")
+            dirCfg.dirs = DirectionByDiff
+        {
+            .leftOnly   = SyncDirection::right,
+            .rightOnly  = SyncDirection::none,
+            .leftNewer  = SyncDirection::right,
+            .rightNewer = SyncDirection::none, //note: will be fixed below for CompareVariant::content/size
+        };
+        else
+        {
+            assert(varName == "Custom");
+
+            dirCfg.dirs = DirectionByDiff();
+
+            XmlIn inCustDir = in["CustomDirections"];
+            inCustDir["LeftOnly"  ](std::get<DirectionByDiff>(dirCfg.dirs).leftOnly);
+            inCustDir["RightOnly" ](std::get<DirectionByDiff>(dirCfg.dirs).rightOnly);
+            inCustDir["LeftNewer" ](std::get<DirectionByDiff>(dirCfg.dirs).leftNewer);  //note: will be fixed below for CompareVariant::content/size
+            inCustDir["RightNewer"](std::get<DirectionByDiff>(dirCfg.dirs).rightNewer); //
+        }
+    }
+    else if (formatVer < 22) //TODO: remove if parameter migration after some time! 2023-08-20
+    {
+        warn_static("formatVer == 21 was development-internal => get rid, once the betas are out of likely use")
+
+        if (XmlIn inDir = in["Differences"])
+        {
+            dirCfg.dirs = DirectionByDiff();
+            inDir["LeftOnly"  ](std::get<DirectionByDiff>(dirCfg.dirs).leftOnly);
+            inDir["RightOnly" ](std::get<DirectionByDiff>(dirCfg.dirs).rightOnly);
+            inDir["LeftNewer" ](std::get<DirectionByDiff>(dirCfg.dirs).leftNewer);
+            inDir["RightNewer"](std::get<DirectionByDiff>(dirCfg.dirs).rightNewer);
+        }
+        else
+        {
+            assert(in["Changes"]);
+            dirCfg = getDefaultSyncCfg(SyncVariant::twoWay);
+        }
+    }
+    else
+    {
+        if (XmlIn inDirs = in["Differences"])
+        {
+            dirCfg.dirs = DirectionByDiff();
+            inDirs.attribute("LeftOnly",   std::get<DirectionByDiff>(dirCfg.dirs).leftOnly);
+            inDirs.attribute("LeftNewer",  std::get<DirectionByDiff>(dirCfg.dirs).leftNewer);
+            inDirs.attribute("RightNewer", std::get<DirectionByDiff>(dirCfg.dirs).rightNewer);
+            inDirs.attribute("RightOnly",  std::get<DirectionByDiff>(dirCfg.dirs).rightOnly);
+        }
+        else
+        {
+            assert(in["Changes"]);
+            dirCfg.dirs = DirectionByChange();
+
+            XmlIn inDirsL = in["Changes"]["Left"];
+            inDirsL.attribute("Create", std::get<DirectionByChange>(dirCfg.dirs).left.create);
+            inDirsL.attribute("Update", std::get<DirectionByChange>(dirCfg.dirs).left.update);
+            inDirsL.attribute("Delete", std::get<DirectionByChange>(dirCfg.dirs).left.delete_);
+
+            XmlIn inDirsR = in["Changes"]["Right"];
+            inDirsR.attribute("Create", std::get<DirectionByChange>(dirCfg.dirs).right.create);
+            inDirsR.attribute("Update", std::get<DirectionByChange>(dirCfg.dirs).right.update);
+            inDirsR.attribute("Delete", std::get<DirectionByChange>(dirCfg.dirs).right.delete_);
+        }
+    }
 }
 
 
 void readConfig(const XmlIn& in, SyncConfig& syncCfg, std::map<AfsDevice, size_t>& deviceParallelOps, int formatVer)
 {
-    readConfig(in, syncCfg.directionCfg);
+    readConfig(in, syncCfg.directionCfg, formatVer);
 
     in["DeletionPolicy"  ](syncCfg.deletionVariant);
     in["VersioningFolder"](syncCfg.versioningFolderPhrase);
@@ -1142,9 +1174,49 @@ void readConfig(const XmlIn& in, MainConfiguration& mainCfg, int formatVer)
     else
         in["Notes"](mainCfg.notes);
 
+
+
+    warn_static("wxwidgets: disable wxUSE_EXCEPTIONS so that we get proper exception stack locations")
+#if 0 //e.g.
+        std::get<DirectionByDiff>(mainCfg.syncCfg.directionCfg.dirs);
+                    warn_static("why is std::bad_variant_access caught somewhere in wxEntry when thrown at this location!? ")
+#endif
+
+
     readConfig(in["Compare"], mainCfg.cmpCfg);
 
     readConfig(in["Synchronize"], mainCfg.syncCfg, mainCfg.deviceParallelOps, formatVer);
+
+    if (formatVer < 20) //TODO: remove if parameter migration after some time! 2023-08-09
+        if (mainCfg.cmpCfg.compareVar == CompareVariant::content ||
+            mainCfg.cmpCfg.compareVar == CompareVariant::size)
+            if (std::string varName;
+                in["Synchronize"]["Variant"](varName))
+            {
+                if (varName == "Update")
+                    std::get<DirectionByDiff>(mainCfg.syncCfg.directionCfg.dirs).rightNewer = SyncDirection::right;
+                else if (varName == "Custom")
+                {
+                    SyncDirection different = SyncDirection::none;
+                    in["Synchronize"]["CustomDirections"]["Different"](different);
+
+                    std::get<DirectionByDiff>(mainCfg.syncCfg.directionCfg.dirs).leftNewer =
+                        std::get<DirectionByDiff>(mainCfg.syncCfg.directionCfg.dirs).rightNewer = different;
+                }
+            }
+
+    if (formatVer < 23) //TODO: remove if parameter migration after some time! 2023-08-24
+    {
+        bool detectMovedFiles = false;
+        in["Synchronize"]["DetectMovedFiles"](detectMovedFiles);
+        if (detectMovedFiles)
+            if (getSyncVariant(mainCfg.syncCfg.directionCfg) == SyncVariant::mirror)
+            {
+                if (const DirectionByDiff* diffDirs = std::get_if<DirectionByDiff>(&mainCfg.syncCfg.directionCfg.dirs))
+                    mainCfg.syncCfg.directionCfg.dirs = getChangesDirDefault(*diffDirs); //convert to "changes"-based mirror, so that move detection is enabled
+                else assert(false);
+            }
+    }
 
     readConfig(in["Filter"], mainCfg.globalFilter);
 
@@ -1157,6 +1229,40 @@ void readConfig(const XmlIn& in, MainConfiguration& mainCfg, int formatVer)
 
         LocalPairConfig lpc;
         readConfig(inPair, lpc, mainCfg.deviceParallelOps, formatVer);
+
+        if (formatVer < 20) //TODO: remove if parameter migration after some time! 2023-08-09
+            if (lpc.localSyncCfg)
+            {
+                const CompConfig& cmpCfg = lpc.localCmpCfg ? *lpc.localCmpCfg : mainCfg.cmpCfg;
+                if (cmpCfg.compareVar == CompareVariant::content ||
+                    cmpCfg.compareVar == CompareVariant::size)
+                    if (std::string varName;
+                        inPair["Synchronize"]["Variant"](varName))
+                        if (varName == "Update")
+                            std::get<DirectionByDiff>(lpc.localSyncCfg->directionCfg.dirs).rightNewer = SyncDirection::right;
+                        else if (varName == "Custom")
+                            if (inPair["Synchronize"]["CustomDirections"]["Different"])
+                            {
+                                SyncDirection different = SyncDirection::none;
+                                inPair["Synchronize"]["CustomDirections"]["Different"](different);
+
+                                std::get<DirectionByDiff>(lpc.localSyncCfg->directionCfg.dirs).leftNewer =
+                                    std::get<DirectionByDiff>(lpc.localSyncCfg->directionCfg.dirs).rightNewer = different;
+                            }
+            }
+        if (formatVer < 23) //TODO: remove if parameter migration after some time! 2023-08-24
+            if (lpc.localSyncCfg)
+            {
+                bool detectMovedFiles = false;
+                inPair["Synchronize"]["DetectMovedFiles"](detectMovedFiles);
+                if (detectMovedFiles)
+                    if (getSyncVariant(lpc.localSyncCfg->directionCfg) == SyncVariant::mirror)
+                    {
+                        if (const DirectionByDiff* diffDirs = std::get_if<DirectionByDiff>(&lpc.localSyncCfg->directionCfg.dirs))
+                            lpc.localSyncCfg->directionCfg.dirs = getChangesDirDefault(*diffDirs); //convert to "changes"-based mirror, so that move detection is enabled
+                        else assert(false);
+                    }
+            }
 
         if (firstItem)
         {
@@ -1875,20 +1981,28 @@ void writeConfig(const CompConfig& cmpCfg, XmlOut& out)
 
 void writeConfig(const SyncDirectionConfig& dirCfg, XmlOut& out)
 {
-    out["Variant"](dirCfg.var);
-
-    if (dirCfg.var == SyncVariant::custom)
+    if (const DirectionByDiff* diffDirs = std::get_if<DirectionByDiff>(&dirCfg.dirs))
     {
-        XmlOut outCustDir = out["CustomDirections"];
-        outCustDir["LeftOnly"  ](dirCfg.custom.exLeftSideOnly);
-        outCustDir["RightOnly" ](dirCfg.custom.exRightSideOnly);
-        outCustDir["LeftNewer" ](dirCfg.custom.leftNewer);
-        outCustDir["RightNewer"](dirCfg.custom.rightNewer);
-        outCustDir["Different" ](dirCfg.custom.different);
-        outCustDir["Conflict"  ](dirCfg.custom.conflict);
+        XmlOut outDirs = out["Differences"];
+        outDirs.attribute("LeftOnly",   diffDirs->leftOnly);
+        outDirs.attribute("LeftNewer",  diffDirs->leftNewer);
+        outDirs.attribute("RightNewer", diffDirs->rightNewer);
+        outDirs.attribute("RightOnly",  diffDirs->rightOnly);
     }
+    else
+    {
+        const DirectionByChange& changeDirs = std::get<DirectionByChange>(dirCfg.dirs);
 
-    out["DetectMovedFiles"](dirCfg.detectMovedFiles);
+        XmlOut outDirsL = out["Changes"]["Left"];
+        outDirsL.attribute("Create", changeDirs.left.create);
+        outDirsL.attribute("Update", changeDirs.left.update);
+        outDirsL.attribute("Delete", changeDirs.left.delete_);
+
+        XmlOut outDirsR = out["Changes"]["Right"];
+        outDirsR.attribute("Create", changeDirs.right.create);
+        outDirsR.attribute("Update", changeDirs.right.update);
+        outDirsR.attribute("Delete", changeDirs.right.delete_);
+    }
 }
 
 

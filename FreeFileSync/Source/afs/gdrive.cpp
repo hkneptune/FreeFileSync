@@ -3774,13 +3774,8 @@ private:
     //=> actual behavior: 1. fails or 2. creates duplicate (unlikely)
     void moveAndRenameItemForSameAfsType(const AfsPath& pathFrom, const AbstractPath& pathTo) const override //throw FileError, ErrorMoveUnsupported
     {
-        auto generateErrorMsg = [&] { return replaceCpy(replaceCpy(_("Cannot move file %x to %y."),
-                                                                   L"%x", L'\n' + fmtPath(getDisplayPath(pathFrom))),
-                                                        L"%y",  L'\n' + fmtPath(AFS::getDisplayPath(pathTo)));
-                                    };
-
         if (compareDeviceSameAfsType(pathTo.afsDevice.ref()) != std::weak_ordering::equivalent)
-            throw ErrorMoveUnsupported(generateErrorMsg(), _("Operation not supported between different devices."));
+            throw ErrorMoveUnsupported(generateMoveErrorMsg(pathFrom, pathTo), _("Operation not supported between different devices."));
         //note: moving files within account works, e.g. between My Drive <-> shared drives
         //      BUT: not supported by our model with separate GdriveFileStates; e.g. how to handle complexity of a moved folder (tree)?
         try
@@ -3837,7 +3832,7 @@ private:
                 fileState.all().notifyMoveAndRename(aai.stateDelta, itemId, parentIdFrom, parentIdTo, itemNameNew);
             });
         }
-        catch (const SysError& e) { throw FileError(generateErrorMsg(), e.toString()); }
+        catch (const SysError& e) { throw FileError(generateMoveErrorMsg(pathFrom, pathTo), e.toString()); }
     }
 
     bool supportsPermissions(const AfsPath& folderPath) const override { return false; } //throw FileError

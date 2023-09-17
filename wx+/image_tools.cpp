@@ -170,7 +170,7 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
 {
     wxMemoryDC dc; //the context used for bitmaps
     setScaleFactor(dc, getDisplayScaleFactor());
-    dc.SetFont(font); //the font parameter of GetMultiLineTextExtent() is not evaluated on OS X, wxWidgets 2.9.5, so apply it to the DC directly!
+    dc.SetFont(font); //the font parameter of GetTextExtent() is not evaluated on OS X, wxWidgets 2.9.5, so apply it to the DC directly!
 
     std::vector<std::pair<wxString, wxSize>> lineInfo; //text + extent
     for (const wxString& line : splitCpy(text, L'\n', SplitOnEmpty::allow))

@@ -119,8 +119,8 @@ public:
     const SortInfo* getSortConfig() const { return zen::get(currentSort_); } //return nullptr if currently not sorted
 
     ptrdiff_t findRowDirect(FileSystemObject::ObjectIdConst objId) const; //find an object's row position on view list directly, return < 0 if not found
-    ptrdiff_t findRowFirstChild(const ContainerObject* hierObj)    const; //find first child of FolderPair or BaseFolderPair *on sorted sub view*
-    //"hierObj" may be invalid, it is NOT dereferenced, return < 0 if not found
+    ptrdiff_t findRowFirstChild(const ContainerObject* conObj)    const; //find first child of FolderPair or BaseFolderPair *on sorted sub view*
+    //"conObj" may be invalid, it is NOT dereferenced, return < 0 if not found
 
     //count non-empty pairs to distinguish single/multiple folder pair cases
     size_t getEffectiveFolderPairCount() const;

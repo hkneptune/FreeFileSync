@@ -202,7 +202,7 @@ public:
         }();
 
         if (drawBottomLine)
-            dc.DrawLine(rect.GetBottomLeft(), rect.GetBottomRight() + wxPoint(1, 0));
+            dc.DrawLine(rect.GetBottomLeft(), rect.GetBottomRight() + wxPoint(1, 0)); //DrawLine() doesn't draw last pixel!
         //--------------------------------------------------------
     }
 

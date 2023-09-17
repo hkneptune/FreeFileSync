@@ -115,6 +115,10 @@ size_t getPlaceholderIndex(wchar_t c)
 }
 }
 
+
+bool fff::isRenamePlaceholderChar(wchar_t c) { return getPlaceholderIndex(c) < std::size(placeholders); }
+
+
 struct fff::RenameBuf
 {
     explicit RenameBuf(const std::vector<std::wstring>& s) : strings(s) {}
@@ -127,7 +131,7 @@ struct fff::RenameBuf
 //e.g. "Season ❶, Episode ❷ - ❸.avi"
 std::pair<std::wstring /*phrase*/, SharedRef<const RenameBuf>> fff::getPlaceholderPhrase(const std::vector<std::wstring>& strings)
 {
-   auto renameBuf = makeSharedRef<const RenameBuf>(strings);
+    auto renameBuf = makeSharedRef<const RenameBuf>(strings);
 
     std::wstring phrase;
     size_t placeIdx = 0;

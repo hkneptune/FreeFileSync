@@ -69,69 +69,128 @@ std::wstring fff::getVariantNameWithSymbol(SyncVariant var)
 }
 
 
-DirectionSet fff::extractDirections(const SyncDirectionConfig& cfg)
+DirectionByDiff fff::getDiffDirDefault(const DirectionByChange& changeDirs)
 {
-    DirectionSet output;
-    switch (cfg.var)
+    return
     {
-        case SyncVariant::twoWay:
-            throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] there are no predefined directions for automatic mode!");
+        .leftOnly   = changeDirs.left.create,
+        .rightOnly  = changeDirs.right.create,
+        .leftNewer  = changeDirs.left.update,
+        .rightNewer = changeDirs.right.update,
+    };
+}
 
-        case SyncVariant::mirror:
-            output.exLeftSideOnly  = SyncDirection::right;
-            output.exRightSideOnly = SyncDirection::right;
-            output.leftNewer       = SyncDirection::right;
-            output.rightNewer      = SyncDirection::right;
-            output.different       = SyncDirection::right;
-            output.conflict        = SyncDirection::right;
-            break;
 
-        case SyncVariant::update:
-            output.exLeftSideOnly  = SyncDirection::right;
-            output.exRightSideOnly = SyncDirection::none;
-            output.leftNewer       = SyncDirection::right;
-            output.rightNewer      = SyncDirection::none;
-            output.different       = SyncDirection::right;
-            output.conflict        = SyncDirection::none;
-            break;
+DirectionByChange fff::getChangesDirDefault(const DirectionByDiff& diffDirs)
+{
+    return
+    {
+        .left
+        {
+            .create  = diffDirs.leftOnly,
+            .update  = diffDirs.leftNewer,
+            .delete_ = diffDirs.rightOnly,
+        },
+        .right
+        {
+            .create  = diffDirs.rightOnly,
+            .update  = diffDirs.rightNewer,
+            .delete_ = diffDirs.leftOnly,
+        }
+    };
+}
 
-        case SyncVariant::custom:
-            output = cfg.custom;
-            break;
+
+namespace
+{
+DirectionByChange getTwoWayDirSet()
+{
+    return
+    {
+        .left
+        {
+            .create  = SyncDirection::right,
+            .update  = SyncDirection::right,
+            .delete_ = SyncDirection::right,
+        },
+        .right
+        {
+            .create  = SyncDirection::left,
+            .update  = SyncDirection::left,
+            .delete_ = SyncDirection::left,
+        }
+    };
+}
+
+
+DirectionByDiff getMirrorDirSet()
+{
+    return
+    {
+        .leftOnly   = SyncDirection::right,
+        .rightOnly  = SyncDirection::right,
+        .leftNewer  = SyncDirection::right,
+        .rightNewer = SyncDirection::right,
+    };
+}
+
+
+DirectionByChange getUpdateDirSet()
+{
+    return
+    {
+        .left
+        {
+            .create  = SyncDirection::right,
+            .update  = SyncDirection::right,
+            .delete_ = SyncDirection::none,
+        },
+        .right
+        {
+            .create  = SyncDirection::none,
+            .update  = SyncDirection::none,
+            .delete_ = SyncDirection::none,
+        }
+    };
+}
+}
+
+
+SyncVariant fff::getSyncVariant(const SyncDirectionConfig& cfg)
+{
+    if (const DirectionByDiff* diffDirs = std::get_if<DirectionByDiff>(&cfg.dirs))
+    {
+        if (*diffDirs == getMirrorDirSet())
+            return SyncVariant::mirror;
+        if (*diffDirs == getDiffDirDefault(getUpdateDirSet())) //poor man's "update", still deserves name on GUI
+            return SyncVariant::update;
     }
-    return output;
+    else
+    {
+        const DirectionByChange& changeDirs = std::get<DirectionByChange>(cfg.dirs);
+        if (changeDirs == getTwoWayDirSet())
+            return SyncVariant::twoWay;
+        if (changeDirs == getChangesDirDefault(getMirrorDirSet())) //equivalent: "mirror" defined in terms of "changes"
+            return SyncVariant::mirror;
+        if (changeDirs == getUpdateDirSet())
+            return SyncVariant::update;
+    }
+    return SyncVariant::custom;
 }
 
 
-bool fff::detectMovedFilesSelectable(const SyncDirectionConfig& cfg)
+SyncDirectionConfig fff::getDefaultSyncCfg(SyncVariant syncVar)
 {
-    if (cfg.var == SyncVariant::twoWay)
-        return false; //moved files are always detected since we have the database file anyway
-
-    const DirectionSet tmp = fff::extractDirections(cfg);
-    return (tmp.exLeftSideOnly  == SyncDirection::right &&
-            tmp.exRightSideOnly == SyncDirection::right) ||
-           (tmp.exLeftSideOnly  == SyncDirection::left &&
-            tmp.exRightSideOnly == SyncDirection::left);
-}
-
-
-bool fff::detectMovedFilesEnabled(const SyncDirectionConfig& cfg)
-{
-    return detectMovedFilesSelectable(cfg) ? cfg.detectMovedFiles : cfg.var == SyncVariant::twoWay;
-}
-
-
-DirectionSet fff::getTwoWayUpdateSet()
-{
-    DirectionSet output;
-    output.exLeftSideOnly  = SyncDirection::right;
-    output.exRightSideOnly = SyncDirection::left;
-    output.leftNewer       = SyncDirection::right;
-    output.rightNewer      = SyncDirection::left;
-    output.different       = SyncDirection::none;
-    output.conflict        = SyncDirection::none;
-    return output;
+    switch (syncVar)
+    {
+        //*INDENT-OFF*
+        case SyncVariant::twoWay: return { .dirs = getTwoWayDirSet() };
+        case SyncVariant::mirror: return { .dirs = getMirrorDirSet() };
+        case SyncVariant::update: return { .dirs = getUpdateDirSet() };
+        case SyncVariant::custom: return { .dirs = getDiffDirDefault(getTwoWayDirSet()) };
+        //*INDENT-ON*
+    }
+    throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
 }
 
 
@@ -172,14 +231,15 @@ std::wstring fff::getSymbol(CompareFileResult cmpRes)
     switch (cmpRes)
     {
         //*INDENT-OFF*
-        case FILE_LEFT_SIDE_ONLY:    return L"only <-";
-        case FILE_RIGHT_SIDE_ONLY:   return L"only ->";
+        case FILE_EQUAL:             return L"'=="; //added quotation mark to avoid error in Excel cell when exporting to *.cvs
+        case FILE_RENAMED:           return L"renamed"; 
+        case FILE_LEFT_ONLY:         return L"only <-";
+        case FILE_RIGHT_ONLY:        return L"only ->";
         case FILE_LEFT_NEWER:        return L"newer <-";
         case FILE_RIGHT_NEWER:       return L"newer ->";
         case FILE_DIFFERENT_CONTENT: return L"!=";
-        case FILE_EQUAL:
-        case FILE_DIFFERENT_METADATA: /*= sub-category of equal!*/ return L"'=="; //added quotation mark to avoid error in Excel cell when exporting to *.cvs
-        case FILE_CONFLICT: return L"conflict";
+        case FILE_TIME_INVALID:
+        case FILE_CONFLICT:          return L"conflict";
         //*INDENT-ON*
     }
     assert(false);
@@ -192,21 +252,21 @@ std::wstring fff::getSymbol(SyncOperation op)
     switch (op)
     {
         //*INDENT-OFF*
-        case SO_CREATE_NEW_LEFT:        return L"create <-";
-        case SO_CREATE_NEW_RIGHT:       return L"create ->";
-        case SO_DELETE_LEFT:            return L"delete <-";
-        case SO_DELETE_RIGHT:           return L"delete ->";
-        case SO_MOVE_LEFT_FROM:         return L"move from <-";
-        case SO_MOVE_LEFT_TO:           return L"move to <-";
-        case SO_MOVE_RIGHT_FROM:        return L"move from ->";
-        case SO_MOVE_RIGHT_TO:          return L"move to ->";
-        case SO_OVERWRITE_LEFT: 
-        case SO_COPY_METADATA_TO_LEFT:  return L"update <-";
-        case SO_OVERWRITE_RIGHT:
-        case SO_COPY_METADATA_TO_RIGHT: return L"update ->";
-        case SO_DO_NOTHING:             return L" -";
-        case SO_EQUAL:                  return L"'=="; //added quotation mark to avoid error in Excel cell when exporting to *.cvs
-        case SO_UNRESOLVED_CONFLICT:    return L"conflict"; //portable Unicode symbol: ⚡
+        case SO_CREATE_LEFT:  return L"create <-";
+        case SO_CREATE_RIGHT: return L"create ->";
+        case SO_DELETE_LEFT:      return L"delete <-";
+        case SO_DELETE_RIGHT:     return L"delete ->";
+        case SO_MOVE_LEFT_FROM:   return L"move from <-";
+        case SO_MOVE_LEFT_TO:     return L"move to <-";
+        case SO_MOVE_RIGHT_FROM:  return L"move from ->";
+        case SO_MOVE_RIGHT_TO:    return L"move to ->";
+        case SO_OVERWRITE_LEFT:   return L"update <-";
+        case SO_OVERWRITE_RIGHT:  return L"update ->";
+        case SO_RENAME_LEFT:      return L"rename <-";
+        case SO_RENAME_RIGHT:     return L"rename ->";
+        case SO_DO_NOTHING:       return L" -";
+        case SO_EQUAL:            return L"'=="; //added quotation mark to avoid error in Excel cell when exporting to *.cvs
+        case SO_UNRESOLVED_CONFLICT: return L"conflict"; //portable Unicode symbol: ⚡
         //*INDENT-ON*
     };
     assert(false);
@@ -261,7 +321,7 @@ time_t resolve(size_t value, UnitTime unit, time_t defaultVal)
 }
 
 
-uint64_t resolve(size_t value, UnitSize unit, uint64_t defaultVal)
+uint64_t resolve(uint64_t value, UnitSize unit, uint64_t defaultVal)
 {
     constexpr uint64_t maxVal = std::numeric_limits<uint64_t>::max();
 
@@ -284,8 +344,8 @@ uint64_t resolve(size_t value, UnitSize unit, uint64_t defaultVal)
 }
 
 void fff::resolveUnits(size_t timeSpan, UnitTime unitTimeSpan,
-                       size_t sizeMin,  UnitSize unitSizeMin,
-                       size_t sizeMax,  UnitSize unitSizeMax,
+                       uint64_t sizeMin,  UnitSize unitSizeMin,
+                       uint64_t sizeMax,  UnitSize unitSizeMax,
                        time_t&   timeFrom,  //unit: UTC time, seconds
                        uint64_t& sizeMinBy, //unit: bytes
                        uint64_t& sizeMaxBy) //unit: bytes
@@ -296,7 +356,7 @@ void fff::resolveUnits(size_t timeSpan, UnitTime unitTimeSpan,
 }
 
 
-std::optional<CompareVariant> fff::getCompVariant(const MainConfiguration& mainCfg)
+std::optional<CompareVariant> fff::getCommonCompVariant(const MainConfiguration& mainCfg)
 {
     const CompareVariant firstVar = mainCfg.firstPair.localCmpCfg ?
                                     mainCfg.firstPair.localCmpCfg->compareVar :
@@ -315,18 +375,18 @@ std::optional<CompareVariant> fff::getCompVariant(const MainConfiguration& mainC
 }
 
 
-std::optional<SyncVariant> fff::getSyncVariant(const MainConfiguration& mainCfg)
+std::optional<SyncVariant> fff::getCommonSyncVariant(const MainConfiguration& mainCfg)
 {
-    const SyncVariant firstVar = mainCfg.firstPair.localSyncCfg ?
-                                 mainCfg.firstPair.localSyncCfg->directionCfg.var :
-                                 mainCfg.syncCfg.directionCfg.var; //fallback to main sync cfg
+    const SyncVariant firstVar = getSyncVariant(mainCfg.firstPair.localSyncCfg ?
+                                                mainCfg.firstPair.localSyncCfg->directionCfg :
+                                                mainCfg.syncCfg.directionCfg); //fallback to main sync cfg
 
     //test if there's a deviating variant within the additional folder pairs
     for (const LocalPairConfig& lpc : mainCfg.additionalPairs)
     {
-        const SyncVariant localVariant = lpc.localSyncCfg ?
-                                         lpc.localSyncCfg->directionCfg.var :
-                                         mainCfg.syncCfg.directionCfg.var;
+        const SyncVariant localVariant = getSyncVariant(lpc.localSyncCfg ?
+                                                        lpc.localSyncCfg->directionCfg:
+                                                        mainCfg.syncCfg.directionCfg);
         if (localVariant != firstVar)
             return std::nullopt;
     }

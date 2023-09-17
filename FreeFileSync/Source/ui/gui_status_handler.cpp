@@ -514,7 +514,7 @@ StatusHandlerFloatingDialog::DlgOptions StatusHandlerFloatingDialog::showResult(
     }
 
     if (suspend) //*before* showing results dialog
-        try 
+        try
         {
             suspendSystem(); //throw FileError
         }

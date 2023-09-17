@@ -53,6 +53,8 @@ FolderStatus getFolderStatusParallel(const std::set<AbstractPath>& folderPaths,
 
     //----------------------------------------------------------------------
     std::vector<ThreadGroup<std::packaged_task<bool()>>> deviceThreadGroups;
+    //----------------------------------------------------------------------
+
     for (const auto& [device, deviceFolderPaths] : perDevicePaths)
     {
         deviceThreadGroups.emplace_back(1,           Zstr("DirExist: ") + utfTo<Zstring>(AFS::getDisplayPath(AbstractPath(device, AfsPath()))));

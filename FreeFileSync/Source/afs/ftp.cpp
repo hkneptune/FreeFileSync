@@ -2119,7 +2119,7 @@ struct OutputStreamFtp : public AFS::OutputStreamImpl
             /* is setting modtime after closing the file handle a pessimization?
                 FTP:    no: could set modtime via CURLOPT_POSTQUOTE (but this would internally trigger an extra round-trip anyway!) */
         }
-        catch (const FileError& e) { result.errorModTime = FileError(e.toString()); /*avoid slicing*/ }
+        catch (const FileError& e) { result.errorModTime = e; /*might slice derived class?*/ }
 
         return result;
     }
@@ -2463,13 +2463,8 @@ private:
     //      FileZilla Server: CURLE_QUOTE_ERROR: QUOT command failed with 553 file exists
     void moveAndRenameItemForSameAfsType(const AfsPath& pathFrom, const AbstractPath& pathTo) const override //throw FileError, ErrorMoveUnsupported
     {
-        auto generateErrorMsg = [&] { return replaceCpy(replaceCpy(_("Cannot move file %x to %y."),
-                                                                   L"%x", L'\n' + fmtPath(getDisplayPath(pathFrom))),
-                                                        L"%y", L'\n' + fmtPath(AFS::getDisplayPath(pathTo)));
-                                    };
-
         if (compareDeviceSameAfsType(pathTo.afsDevice.ref()) != std::weak_ordering::equivalent)
-            throw ErrorMoveUnsupported(generateErrorMsg(), _("Operation not supported between different devices."));
+            throw ErrorMoveUnsupported(generateMoveErrorMsg(pathFrom, pathTo), _("Operation not supported between different devices."));
 
         try
         {
@@ -2489,7 +2484,7 @@ private:
         }
         catch (const SysError& e)
         {
-            throw FileError(generateErrorMsg(), e.toString());
+            throw FileError(generateMoveErrorMsg(pathFrom, pathTo), e.toString());
         }
     }
 

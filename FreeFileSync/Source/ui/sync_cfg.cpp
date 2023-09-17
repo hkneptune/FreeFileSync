@@ -281,13 +281,13 @@ private:
     EnumDescrList<UnitSize> enumSizeDescr_;
 
     //------------- synchronization panel -----------------
-    void onSyncTwoWay(wxCommandEvent& event) override { directionCfg_.var = SyncVariant::twoWay; updateSyncGui(); }
-    void onSyncMirror(wxCommandEvent& event) override { directionCfg_.var = SyncVariant::mirror; updateSyncGui(); }
-    void onSyncUpdate(wxCommandEvent& event) override { directionCfg_.var = SyncVariant::update; updateSyncGui(); }
-    void onSyncCustom(wxCommandEvent& event) override { directionCfg_.var = SyncVariant::custom; updateSyncGui(); }
+    void onSyncTwoWay(wxCommandEvent& event) override { directionsCfg_ = getDefaultSyncCfg(SyncVariant::twoWay); updateSyncGui(); }
+    void onSyncMirror(wxCommandEvent& event) override { directionsCfg_ = getDefaultSyncCfg(SyncVariant::mirror); updateSyncGui(); }
+    void onSyncUpdate(wxCommandEvent& event) override { directionsCfg_ = getDefaultSyncCfg(SyncVariant::update); updateSyncGui(); }
+    void onSyncCustom(wxCommandEvent& event) override { directionsCfg_ = getDefaultSyncCfg(SyncVariant::custom); updateSyncGui(); }
 
     void onToggleLocalSyncSettings(wxCommandEvent& event) override { updateSyncGui(); }
-    void onToggleDetectMovedFiles (wxCommandEvent& event) override { directionCfg_.detectMovedFiles = !directionCfg_.detectMovedFiles; updateSyncGui(); } //parameter NOT owned by checkbox!
+    void onToggleUseDatabase      (wxCommandEvent& event) override;
     void onChanegVersioningStyle  (wxCommandEvent& event) override { updateSyncGui(); }
     void onToggleVersioningLimit  (wxCommandEvent& event) override { updateSyncGui(); }
 
@@ -296,16 +296,24 @@ private:
     void onSyncUpdateDouble(wxMouseEvent& event) override;
     void onSyncCustomDouble(wxMouseEvent& event) override;
 
-    void onExLeftSideOnly (wxCommandEvent& event) override;
-    void onExRightSideOnly(wxCommandEvent& event) override;
-    void onLeftNewer      (wxCommandEvent& event) override;
-    void onRightNewer     (wxCommandEvent& event) override;
-    void onDifferent      (wxCommandEvent& event) override;
-    void onConflict       (wxCommandEvent& event) override;
+    void onLeftOnly  (wxCommandEvent& event) override { toggleSyncDirButton(&DirectionByDiff::leftOnly); }
+    void onRightOnly (wxCommandEvent& event) override { toggleSyncDirButton(&DirectionByDiff::rightOnly); }
+    void onLeftNewer (wxCommandEvent& event) override;
+    void onRightNewer(wxCommandEvent& event) override;
+    void onDifferent (wxCommandEvent& event) override;
+    void toggleSyncDirButton(SyncDirection DirectionByDiff::* dir);
 
-    void onDeletionPermanent  (wxCommandEvent& event) override { deletionVariant_ = DeletionVariant::permanent;  updateSyncGui(); }
-    void onDeletionRecycler   (wxCommandEvent& event) override { deletionVariant_ = DeletionVariant::recycler;   updateSyncGui(); }
-    void onDeletionVersioning (wxCommandEvent& event) override { deletionVariant_ = DeletionVariant::versioning; updateSyncGui(); }
+    void onLeftCreate (wxCommandEvent& event) override { toggleSyncDirButton(&DirectionByChange::left,  &DirectionByChange::Changes::create); }
+    void onLeftUpdate (wxCommandEvent& event) override { toggleSyncDirButton(&DirectionByChange::left,  &DirectionByChange::Changes::update); }
+    void onLeftDelete (wxCommandEvent& event) override { toggleSyncDirButton(&DirectionByChange::left,  &DirectionByChange::Changes::delete_); }
+    void onRightCreate(wxCommandEvent& event) override { toggleSyncDirButton(&DirectionByChange::right, &DirectionByChange::Changes::create); }
+    void onRightUpdate(wxCommandEvent& event) override { toggleSyncDirButton(&DirectionByChange::right, &DirectionByChange::Changes::update); }
+    void onRightDelete(wxCommandEvent& event) override { toggleSyncDirButton(&DirectionByChange::right, &DirectionByChange::Changes::delete_); }
+    void toggleSyncDirButton(DirectionByChange::Changes DirectionByChange::* side, SyncDirection DirectionByChange::Changes::* dir);
+
+    void onDeletionPermanent (wxCommandEvent& event) override { deletionVariant_ = DeletionVariant::permanent;  updateSyncGui(); }
+    void onDeletionRecycler  (wxCommandEvent& event) override { deletionVariant_ = DeletionVariant::recycler;   updateSyncGui(); }
+    void onDeletionVersioning(wxCommandEvent& event) override { deletionVariant_ = DeletionVariant::versioning; updateSyncGui(); }
 
     void onToggleMiscOption(wxCommandEvent& event) override { updateMiscGui(); }
     void onToggleMiscEmail (wxCommandEvent& event) override
@@ -323,11 +331,13 @@ private:
     std::optional<SyncConfig> getSyncConfig() const;
     void setSyncConfig(const SyncConfig* syncCfg);
 
+    bool leftRightNewerCombined() const;
+
     void updateSyncGui();
     //-----------------------------------------------------
 
     //parameters with ownership NOT within GUI controls!
-    SyncDirectionConfig directionCfg_;
+    SyncDirectionConfig directionsCfg_;
     DeletionVariant deletionVariant_ = DeletionVariant::recycler; //use Recycler, delete permanently or move to user-defined location
 
     const std::function<size_t(const Zstring& folderPathPhrase)>                     getDeviceParallelOps_;
@@ -368,7 +378,7 @@ private:
     std::vector<LocalPairConfig> localPairCfg_;
 
     int selectedPairIndexToShow_ = EMPTY_PAIR_INDEX_SELECTED;
-    static const int EMPTY_PAIR_INDEX_SELECTED = -2;
+    static constexpr int EMPTY_PAIR_INDEX_SELECTED = -2;
 
     bool showNotesPanel_ = false;
 
@@ -581,12 +591,12 @@ globalLogFolderPhrase_(globalLogFolderPhrase)
     m_buttonUpdate->SetToolTip(getSyncVariantDescription(SyncVariant::update));
     m_buttonCustom->SetToolTip(getSyncVariantDescription(SyncVariant::custom));
 
-    setImage(*m_bitmapLeftOnly,   mirrorIfRtl(greyScale(loadImage("cat_left_only"  ))));
-    setImage(*m_bitmapRightOnly,  mirrorIfRtl(greyScale(loadImage("cat_right_only" ))));
-    setImage(*m_bitmapLeftNewer,  mirrorIfRtl(greyScale(loadImage("cat_left_newer" ))));
-    setImage(*m_bitmapRightNewer, mirrorIfRtl(greyScale(loadImage("cat_right_newer"))));
-    setImage(*m_bitmapDifferent,  mirrorIfRtl(greyScale(loadImage("cat_different"  ))));
-    setImage(*m_bitmapConflict,   mirrorIfRtl(greyScale(loadImage("cat_conflict"   ))));
+    const int catSizeMax = loadImage("cat_left_only").GetWidth() * 8 / 10;
+    setImage(*m_bitmapLeftOnly,   mirrorIfRtl(greyScale(loadImage("cat_left_only", catSizeMax))));
+    setImage(*m_bitmapRightOnly,  mirrorIfRtl(greyScale(loadImage("cat_right_only", catSizeMax))));
+    setImage(*m_bitmapLeftNewer,  mirrorIfRtl(greyScale(loadImage("cat_left_newer", catSizeMax))));
+    setImage(*m_bitmapRightNewer, mirrorIfRtl(greyScale(loadImage("cat_right_newer", catSizeMax))));
+    setImage(*m_bitmapDifferent,  mirrorIfRtl(greyScale(loadImage("cat_different", catSizeMax))));
 
     setRelativeFontSize(*m_buttonTwoWay, 1.25);
     setRelativeFontSize(*m_buttonMirror, 1.25);
@@ -684,7 +694,7 @@ globalLogFolderPhrase_(globalLogFolderPhrase)
 
     //temporarily set main config as reference for window min size calculations:
     globalPairCfg_ = GlobalPairConfig();
-    globalPairCfg_.syncCfg.directionCfg.var = SyncVariant::mirror;
+    globalPairCfg_.syncCfg.directionCfg = getDefaultSyncCfg(SyncVariant::twoWay);
     globalPairCfg_.syncCfg.deletionVariant = DeletionVariant::versioning;
     globalPairCfg_.syncCfg.versioningFolderPhrase = Zstr("dummy");
     globalPairCfg_.syncCfg.versioningStyle  = VersioningStyle::timestampFile;
@@ -702,8 +712,8 @@ globalLogFolderPhrase_(globalLogFolderPhrase)
 #endif
     Center(); //needs to be re-applied after a dialog size change!
 
-    //keep stable sizer height: "two way" description is smaller than grid of sync directions
-    bSizerSyncDirHolder   ->SetMinSize(-1, bSizerSyncDirections  ->GetSize().y);
+    //keep stable sizer height: change-based directions are taller than difference-based ones => init with SyncVariant::twoWay
+    bSizerSyncDirHolder   ->SetMinSize(-1, bSizerSyncDirsChanges ->GetSize().y);
     bSizerVersioningHolder->SetMinSize(-1, bSizerVersioningHolder->GetSize().y);
 
     unselectFolderPairConfig(false /*validateParams*/);
@@ -934,13 +944,15 @@ FilterConfig ConfigDialog::getFilterConfig() const
     const Zstring& includeFilter = utfTo<Zstring>(m_textCtrlInclude->GetValue());
     const Zstring& exludeFilter  = utfTo<Zstring>(m_textCtrlExclude->GetValue());
 
-    return FilterConfig(includeFilter, exludeFilter,
-                        m_spinCtrlTimespan->GetValue(),
-                        getEnumVal(enumTimeDescr_, *m_choiceUnitTimespan),
-                        m_spinCtrlMinSize->GetValue(),
-                        getEnumVal(enumSizeDescr_, *m_choiceUnitMinSize),
-                        m_spinCtrlMaxSize->GetValue(),
-                        getEnumVal(enumSizeDescr_, *m_choiceUnitMaxSize));
+    return
+    {
+        includeFilter, exludeFilter,
+        makeUnsigned(m_spinCtrlTimespan->GetValue()),
+        getEnumVal(enumTimeDescr_, *m_choiceUnitTimespan),
+        makeUnsigned(m_spinCtrlMinSize->GetValue()),
+        getEnumVal(enumSizeDescr_, *m_choiceUnitMinSize),
+        makeUnsigned(m_spinCtrlMaxSize->GetValue()),
+        getEnumVal(enumSizeDescr_, *m_choiceUnitMaxSize)};
 }
 
 
@@ -979,6 +991,19 @@ void ConfigDialog::updateFilterGui()
 
     m_buttonDefault->Enable(activeCfg != defaultFilterOut_);
     m_buttonClear  ->Enable(activeCfg != FilterConfig());
+}
+
+
+void ConfigDialog::onToggleUseDatabase(wxCommandEvent& event)
+{
+    if (const DirectionByDiff* diffDirs = std::get_if<DirectionByDiff>(&directionsCfg_.dirs))
+        directionsCfg_.dirs = getChangesDirDefault(*diffDirs);
+    else
+    {
+        const DirectionByChange& changeDirs = std::get<DirectionByChange>(directionsCfg_.dirs);
+        directionsCfg_.dirs = getDiffDirDefault(changeDirs);
+    }
+    updateSyncGui();
 }
 
 
@@ -1031,145 +1056,116 @@ void toggleSyncDirection(SyncDirection& current)
 }
 
 
-void toggleCustomSyncConfig(SyncDirectionConfig& directionCfg, SyncDirection& custSyncDir)
+void ConfigDialog::toggleSyncDirButton(SyncDirection DirectionByDiff::* dir)
 {
-    switch (directionCfg.var)
+    if (DirectionByDiff* diffDirs = std::get_if<DirectionByDiff>(&directionsCfg_.dirs))
     {
-        case SyncVariant::twoWay:
-            assert(false);
-            break;
-        case SyncVariant::mirror:
-        case SyncVariant::update:
-            directionCfg.custom = extractDirections(directionCfg);
-            break;
-        case SyncVariant::custom:
-            break;
+        toggleSyncDirection(diffDirs->*dir);
+        updateSyncGui();
     }
-    SyncDirection syncDirOld = custSyncDir;
-    toggleSyncDirection(custSyncDir);
-
-    //some config optimization: if custom settings happen to match "mirror" or "update", just switch variant
-    const DirectionSet mirrorSet = []
-    {
-        SyncDirectionConfig mirrorCfg;
-        mirrorCfg.var = SyncVariant::mirror;
-        return extractDirections(mirrorCfg);
-    }();
-
-    const DirectionSet updateSet = []
-    {
-        SyncDirectionConfig updateCfg;
-        updateCfg.var = SyncVariant::update;
-        return extractDirections(updateCfg);
-    }();
-
-    if (directionCfg.custom == mirrorSet)
-    {
-        directionCfg.var = SyncVariant::mirror;
-        custSyncDir = syncDirOld;
-    }
-    else if (directionCfg.custom == updateSet)
-    {
-        directionCfg.var = SyncVariant::update;
-        custSyncDir = syncDirOld;
-    }
-    else
-        directionCfg.var = SyncVariant::custom;
-}
-
-
-void ConfigDialog::onExLeftSideOnly(wxCommandEvent& event)
-{
-    toggleCustomSyncConfig(directionCfg_, directionCfg_.custom.exLeftSideOnly);
-    updateSyncGui();
-}
-
-
-void ConfigDialog::onExRightSideOnly(wxCommandEvent& event)
-{
-    toggleCustomSyncConfig(directionCfg_, directionCfg_.custom.exRightSideOnly);
-    updateSyncGui();
+    else assert(false);
 }
 
 
 void ConfigDialog::onLeftNewer(wxCommandEvent& event)
 {
-    toggleCustomSyncConfig(directionCfg_, directionCfg_.custom.leftNewer);
-    updateSyncGui();
+    toggleSyncDirButton(&DirectionByDiff::leftNewer);
+    assert(!leftRightNewerCombined());
 }
 
 
 void ConfigDialog::onRightNewer(wxCommandEvent& event)
 {
-    toggleCustomSyncConfig(directionCfg_, directionCfg_.custom.rightNewer);
-    updateSyncGui();
+    toggleSyncDirButton(&DirectionByDiff::rightNewer);
+    assert(!leftRightNewerCombined());
 }
 
 
 void ConfigDialog::onDifferent(wxCommandEvent& event)
 {
-    toggleCustomSyncConfig(directionCfg_, directionCfg_.custom.different);
-    updateSyncGui();
+    toggleSyncDirButton(&DirectionByDiff::leftNewer);
+
+    if (DirectionByDiff* diffDirs = std::get_if<DirectionByDiff>(&directionsCfg_.dirs))
+        //simulate category "different" as leftNewer/rightNewer combined:
+        diffDirs->rightNewer = diffDirs->leftNewer;
+    else assert(false);
+    assert(leftRightNewerCombined());
 }
 
 
-void ConfigDialog::onConflict(wxCommandEvent& event)
+void ConfigDialog::toggleSyncDirButton(DirectionByChange::Changes DirectionByChange::* side, SyncDirection DirectionByChange::Changes::* dir)
 {
-    toggleCustomSyncConfig(directionCfg_, directionCfg_.custom.conflict);
-    updateSyncGui();
-}
-
-
-void updateSyncDirectionIcons(const SyncDirectionConfig& directionCfg,
-                              wxBitmapButton& buttonLeftOnly,
-                              wxBitmapButton& buttonRightOnly,
-                              wxBitmapButton& buttonLeftNewer,
-                              wxBitmapButton& buttonRightNewer,
-                              wxBitmapButton& buttonDifferent,
-                              wxBitmapButton& buttonConflict)
-{
-    if (directionCfg.var != SyncVariant::twoWay) //automatic mode needs no sync-directions
+    if (DirectionByChange* changeDirs = std::get_if<DirectionByChange>(&directionsCfg_.dirs))
     {
-        auto updateButton = [](wxBitmapButton& button, SyncDirection dir,
-                               const char* imgNameLeft, const char* imgNameNone, const char* imgNameRight,
-                               SyncOperation opLeft, SyncOperation opNone, SyncOperation opRight)
-        {
-            const char* imgName = nullptr;
-            switch (dir)
-            {
-                case SyncDirection::left:
-                    imgName = imgNameLeft;
-                    button.SetToolTip(getSyncOpDescription(opLeft));
-                    break;
-                case SyncDirection::none:
-                    imgName = imgNameNone;
-                    button.SetToolTip(getSyncOpDescription(opNone));
-                    break;
-                case SyncDirection::right:
-                    imgName = imgNameRight;
-                    button.SetToolTip(getSyncOpDescription(opRight));
-                    break;
-            }
-            wxImage img = mirrorIfRtl(loadImage(imgName));
-            button.SetBitmapLabel   (toScaledBitmap(          img));
-            button.SetBitmapDisabled(toScaledBitmap(greyScale(img))); //fix wxWidgets' all-too-clever multi-state!
-            //=> the disabled bitmap is generated during first SetBitmapLabel() call but never updated again by wxWidgets!
-        };
-
-        const DirectionSet dirCfg = extractDirections(directionCfg);
-
-        updateButton(buttonLeftOnly,   dirCfg.exLeftSideOnly,  "so_delete_left", "so_none", "so_create_right", SO_DELETE_LEFT,     SO_DO_NOTHING, SO_CREATE_NEW_RIGHT);
-        updateButton(buttonRightOnly,  dirCfg.exRightSideOnly, "so_create_left", "so_none", "so_delete_right", SO_CREATE_NEW_LEFT, SO_DO_NOTHING, SO_DELETE_RIGHT    );
-        updateButton(buttonLeftNewer,  dirCfg.leftNewer,       "so_update_left", "so_none", "so_update_right", SO_OVERWRITE_LEFT,  SO_DO_NOTHING, SO_OVERWRITE_RIGHT );
-        updateButton(buttonRightNewer, dirCfg.rightNewer,      "so_update_left", "so_none", "so_update_right", SO_OVERWRITE_LEFT,  SO_DO_NOTHING, SO_OVERWRITE_RIGHT );
-        updateButton(buttonDifferent,  dirCfg.different,       "so_update_left", "so_none", "so_update_right", SO_OVERWRITE_LEFT,  SO_DO_NOTHING, SO_OVERWRITE_RIGHT );
-
-        updateButton(buttonConflict,   dirCfg.conflict,        "so_update_left", "cat_conflict", "so_update_right", SO_OVERWRITE_LEFT,  SO_DO_NOTHING, SO_OVERWRITE_RIGHT );
-        if (dirCfg.conflict == SyncDirection::none)
-            buttonConflict.SetToolTip(_("Leave as unresolved conflict")); //silent dependency from algorithm.cpp::Redetermine!!!
+        toggleSyncDirection(changeDirs->*side.*dir);
+        updateSyncGui();
     }
+    else assert(false);
 }
 
+
+namespace
+{
+auto updateDirButton(wxBitmapButton& button, SyncDirection dir,
+                     const char* imgNameLeft, const char* imgNameNone, const char* imgNameRight,
+                     SyncOperation opLeft, SyncOperation opNone, SyncOperation opRight)
+{
+    const char* imgName = nullptr;
+    switch (dir)
+    {
+        case SyncDirection::left:
+            imgName = imgNameLeft;
+            button.SetToolTip(getSyncOpDescription(opLeft));
+            break;
+        case SyncDirection::none:
+            imgName = imgNameNone;
+            button.SetToolTip(getSyncOpDescription(opNone));
+            break;
+        case SyncDirection::right:
+            imgName = imgNameRight;
+            button.SetToolTip(getSyncOpDescription(opRight));
+            break;
+    }
+    wxImage img = mirrorIfRtl(loadImage(imgName));
+    button.SetBitmapLabel   (toScaledBitmap(          img));
+    button.SetBitmapDisabled(toScaledBitmap(greyScale(img))); //fix wxWidgets' all-too-clever multi-state!
+    //=> the disabled bitmap is generated during first SetBitmapLabel() call but never updated again by wxWidgets!
+}
+
+
+void updateDiffDirButtons(const DirectionByDiff& diffDirs,
+                          wxBitmapButton& buttonLeftOnly,
+                          wxBitmapButton& buttonRightOnly,
+                          wxBitmapButton& buttonLeftNewer,
+                          wxBitmapButton& buttonRightNewer,
+                          wxBitmapButton& buttonDifferent)
+{
+    updateDirButton(buttonLeftOnly,   diffDirs.leftOnly,   "so_delete_left", "so_none", "so_create_right", SO_DELETE_LEFT,     SO_DO_NOTHING, SO_CREATE_RIGHT);
+    updateDirButton(buttonRightOnly,  diffDirs.rightOnly,  "so_create_left", "so_none", "so_delete_right", SO_CREATE_LEFT, SO_DO_NOTHING, SO_DELETE_RIGHT);
+    updateDirButton(buttonLeftNewer,  diffDirs.leftNewer,  "so_update_left", "so_none", "so_update_right", SO_OVERWRITE_LEFT,  SO_DO_NOTHING, SO_OVERWRITE_RIGHT);
+    updateDirButton(buttonRightNewer, diffDirs.rightNewer, "so_update_left", "so_none", "so_update_right", SO_OVERWRITE_LEFT,  SO_DO_NOTHING, SO_OVERWRITE_RIGHT);
+    //simulate category "different" as leftNewer/rightNewer combined:
+    updateDirButton(buttonDifferent,  diffDirs.leftNewer,  "so_update_left", "so_none", "so_update_right", SO_OVERWRITE_LEFT,  SO_DO_NOTHING, SO_OVERWRITE_RIGHT);
+}
+
+
+void updateChangeDirButtons(const DirectionByChange& changeDirs,
+                            wxBitmapButton& buttonLeftCreate,
+                            wxBitmapButton& buttonLeftUpdate,
+                            wxBitmapButton& buttonLeftDelete,
+                            wxBitmapButton& buttonRightCreate,
+                            wxBitmapButton& buttonRightUpdate,
+                            wxBitmapButton& buttonRightDelete)
+{
+    updateDirButton(buttonLeftCreate, changeDirs.left.create,  "so_delete_left", "so_none", "so_create_right", SO_DELETE_LEFT,     SO_DO_NOTHING, SO_CREATE_RIGHT);
+    updateDirButton(buttonLeftUpdate, changeDirs.left.update,  "so_update_left", "so_none", "so_update_right", SO_OVERWRITE_LEFT,  SO_DO_NOTHING, SO_OVERWRITE_RIGHT);
+    updateDirButton(buttonLeftDelete, changeDirs.left.delete_, "so_create_left", "so_none", "so_delete_right", SO_CREATE_LEFT, SO_DO_NOTHING, SO_DELETE_RIGHT);
+
+    updateDirButton(buttonRightCreate, changeDirs.right.create,  "so_create_left", "so_none", "so_delete_right", SO_CREATE_LEFT, SO_DO_NOTHING, SO_DELETE_RIGHT);
+    updateDirButton(buttonRightUpdate, changeDirs.right.update,  "so_update_left", "so_none", "so_update_right", SO_OVERWRITE_LEFT,  SO_DO_NOTHING, SO_OVERWRITE_RIGHT);
+    updateDirButton(buttonRightDelete, changeDirs.right.delete_, "so_delete_left", "so_none", "so_create_right", SO_DELETE_LEFT,     SO_DO_NOTHING, SO_CREATE_RIGHT);
+}
+}
 
 void ConfigDialog::onShowLogFolder(wxCommandEvent& event)
 {
@@ -1187,13 +1183,21 @@ void ConfigDialog::onShowLogFolder(wxCommandEvent& event)
 }
 
 
+bool ConfigDialog::leftRightNewerCombined() const
+{
+    assert(std::get_if<DirectionByDiff>(&directionsCfg_.dirs));
+    const CompareVariant activeCmpVar = m_checkBoxUseLocalCmpOptions->GetValue() ? localCmpVar_ : globalPairCfg_.cmpCfg.compareVar;
+    return activeCmpVar == CompareVariant::content || activeCmpVar == CompareVariant::size;
+}
+
+
 std::optional<SyncConfig> ConfigDialog::getSyncConfig() const
 {
     if (!m_checkBoxUseLocalSyncOptions->GetValue())
         return {};
 
     SyncConfig syncCfg;
-    syncCfg.directionCfg           = directionCfg_;
+    syncCfg.directionCfg           = directionsCfg_;
     syncCfg.deletionVariant        = deletionVariant_;
     syncCfg.versioningFolderPhrase = versioningFolder_.getPath();
     syncCfg.versioningStyle        = getEnumVal(enumVersioningStyle_, *m_choiceVersioningStyle);
@@ -1203,6 +1207,12 @@ std::optional<SyncConfig> ConfigDialog::getSyncConfig() const
         syncCfg.versionCountMin   = m_checkBoxVersionCountMin->GetValue() && m_checkBoxVersionMaxDays->GetValue() ? m_spinCtrlVersionCountMin->GetValue() : 0;
         syncCfg.versionCountMax   = m_checkBoxVersionCountMax->GetValue() ? m_spinCtrlVersionCountMax->GetValue() : 0;
     }
+
+    //simulate category "different" as leftNewer/rightNewer combined:
+    if (DirectionByDiff* diffDirs = std::get_if<DirectionByDiff>(&syncCfg.directionCfg.dirs))
+        if (leftRightNewerCombined())
+            diffDirs->rightNewer = diffDirs->leftNewer;
+
     return syncCfg;
 }
 
@@ -1214,7 +1224,7 @@ void ConfigDialog::setSyncConfig(const SyncConfig* syncCfg)
     //when local settings are inactive, display (current) global settings instead:
     const SyncConfig tmpCfg = syncCfg ? *syncCfg : globalPairCfg_.syncCfg;
 
-    directionCfg_   = tmpCfg.directionCfg; //make working copy; ownership *not* on GUI
+    directionsCfg_    = tmpCfg.directionCfg; //make working copy; ownership *not* on GUI
     deletionVariant_ = tmpCfg.deletionVariant;
     versioningFolder_.setPath(tmpCfg.versioningFolderPhrase);
     setEnumVal(enumVersioningStyle_, *m_choiceVersioningStyle, tmpCfg.versioningStyle);
@@ -1242,51 +1252,71 @@ void ConfigDialog::updateSyncGui()
     m_notebook->SetPageImage(static_cast<size_t>(SyncConfigPanel::sync),
                              static_cast<int>(syncOptionsEnabled ? ConfigTypeImage::sync: ConfigTypeImage::syncGrey));
 
-    updateSyncDirectionIcons(directionCfg_,
+    const bool setDirsByDifferences = std::get_if<DirectionByDiff>(&directionsCfg_.dirs);
+
+    m_checkBoxUseDatabase->SetValue(!setDirsByDifferences);
+
+    //display only relevant sync options
+    bSizerSyncDirsDiff   ->Show( setDirsByDifferences);
+    bSizerSyncDirsChanges->Show(!setDirsByDifferences);
+
+    if (const DirectionByDiff* diffDirs = std::get_if<DirectionByDiff>(&directionsCfg_.dirs)) //sync directions by differences
+    {
+        updateDiffDirButtons(*diffDirs,
                              *m_bpButtonLeftOnly,
                              *m_bpButtonRightOnly,
                              *m_bpButtonLeftNewer,
                              *m_bpButtonRightNewer,
-                             *m_bpButtonDifferent,
-                             *m_bpButtonConflict);
+                             *m_bpButtonDifferent);
 
-    //selecting "detect move files" does not always make sense:
-    m_checkBoxDetectMove->Enable(detectMovedFilesSelectable(directionCfg_));
-    m_checkBoxDetectMove->SetValue(detectMovedFilesEnabled(directionCfg_)); //parameter NOT owned by checkbox!
+        //simulate category "different" as leftNewer/rightNewer combined:
+        const bool haveLeftRightNewerCombined = leftRightNewerCombined();
+        m_bitmapLeftNewer   ->Show(!haveLeftRightNewerCombined);
+        m_bpButtonLeftNewer ->Show(!haveLeftRightNewerCombined);
+        m_bitmapRightNewer  ->Show(!haveLeftRightNewerCombined);
+        m_bpButtonRightNewer->Show(!haveLeftRightNewerCombined);
 
-    //display only relevant sync options
-    bSizerDatabase      ->Show(directionCfg_.var == SyncVariant::twoWay);
-    bSizerSyncDirections->Show(directionCfg_.var != SyncVariant::twoWay);
-
-    if (directionCfg_.var == SyncVariant::twoWay)
-        setImage(*m_bitmapDatabase, greyScaleIfDisabled(loadImage("database"), syncOptionsEnabled));
-    else
+        m_bitmapDifferent  ->Show(haveLeftRightNewerCombined);
+        m_bpButtonDifferent->Show(haveLeftRightNewerCombined);
+    }
+    else //sync directions by changes
     {
-        const CompareVariant activeCmpVar = m_checkBoxUseLocalCmpOptions->GetValue() ? localCmpVar_ : globalPairCfg_.cmpCfg.compareVar;
+        const DirectionByChange& changeDirs = std::get<DirectionByChange>(directionsCfg_.dirs);
 
-        m_bitmapLeftNewer   ->Show(activeCmpVar == CompareVariant::timeSize);
-        m_bpButtonLeftNewer ->Show(activeCmpVar == CompareVariant::timeSize);
-        m_bitmapRightNewer  ->Show(activeCmpVar == CompareVariant::timeSize);
-        m_bpButtonRightNewer->Show(activeCmpVar == CompareVariant::timeSize);
-
-        m_bitmapDifferent  ->Show(activeCmpVar == CompareVariant::content || activeCmpVar == CompareVariant::size);
-        m_bpButtonDifferent->Show(activeCmpVar == CompareVariant::content || activeCmpVar == CompareVariant::size);
+        updateChangeDirButtons(changeDirs,
+                               *m_bpButtonLeftCreate,
+                               *m_bpButtonLeftUpdate,
+                               *m_bpButtonLeftDelete,
+                               *m_bpButtonRightCreate,
+                               *m_bpButtonRightUpdate,
+                               *m_bpButtonRightDelete);
     }
 
+    const bool useDatabaseFile = std::get_if<DirectionByChange>(&directionsCfg_.dirs);
+
+    setImage(*m_bitmapDatabase, greyScaleIfDisabled(loadImage("database", fastFromDIP(22)), useDatabaseFile && syncOptionsEnabled));
+
+    //"detect move files" is always active iff database is used:
+    setImage(*m_bitmapMoveLeft,  greyScaleIfDisabled(loadImage("so_move_left",  fastFromDIP(20)), useDatabaseFile && syncOptionsEnabled));
+    setImage(*m_bitmapMoveRight, greyScaleIfDisabled(loadImage("so_move_right", fastFromDIP(20)), useDatabaseFile && syncOptionsEnabled));
+    m_staticTextDetectMove->Enable(useDatabaseFile);
+
+    const SyncVariant syncVar = getSyncVariant(directionsCfg_);
+
     //active variant description:
-    setText(*m_staticTextSyncVarDescription, getSyncVariantDescription(directionCfg_.var));
+    setText(*m_staticTextSyncVarDescription, getSyncVariantDescription(syncVar));
     m_staticTextSyncVarDescription->Wrap(fastFromDIP(CFG_DESCRIPTION_WIDTH_DIP)); //needs to be reapplied after SetLabel()
 
     //update toggle buttons -> they have no parameter-ownership at all!
-    m_buttonTwoWay->setActive(SyncVariant::twoWay == directionCfg_.var && syncOptionsEnabled);
-    m_buttonMirror->setActive(SyncVariant::mirror == directionCfg_.var && syncOptionsEnabled);
-    m_buttonUpdate->setActive(SyncVariant::update == directionCfg_.var && syncOptionsEnabled);
-    m_buttonCustom->setActive(SyncVariant::custom == directionCfg_.var && syncOptionsEnabled);
+    m_buttonTwoWay->setActive(SyncVariant::twoWay == syncVar && syncOptionsEnabled);
+    m_buttonMirror->setActive(SyncVariant::mirror == syncVar && syncOptionsEnabled);
+    m_buttonUpdate->setActive(SyncVariant::update == syncVar && syncOptionsEnabled);
+    m_buttonCustom->setActive(SyncVariant::custom == syncVar && syncOptionsEnabled);
     //syncOptionsEnabled: nudge wxWidgets to render inactive config state (needed on Windows, NOT on Linux!)
 
-    m_buttonRecycler  ->setActive(DeletionVariant::recycler    == deletionVariant_ && syncOptionsEnabled);
-    m_buttonPermanent ->setActive(DeletionVariant::permanent   == deletionVariant_ && syncOptionsEnabled);
-    m_buttonVersioning->setActive(DeletionVariant::versioning  == deletionVariant_ && syncOptionsEnabled);
+    m_buttonRecycler  ->setActive(DeletionVariant::recycler   == deletionVariant_ && syncOptionsEnabled);
+    m_buttonPermanent ->setActive(DeletionVariant::permanent  == deletionVariant_ && syncOptionsEnabled);
+    m_buttonVersioning->setActive(DeletionVariant::versioning == deletionVariant_ && syncOptionsEnabled);
 
     switch (deletionVariant_) //unconditionally update image, including "local options off"
     {
@@ -1376,7 +1406,6 @@ void ConfigDialog::updateSyncGui()
 
 MiscSyncConfig ConfigDialog::getMiscSyncOptions() const
 {
-    assert(selectedPairIndexToShow_ == -1);
     MiscSyncConfig miscCfg;
 
     // Avoid "fake" changed configs! =>
@@ -1392,8 +1421,8 @@ MiscSyncConfig ConfigDialog::getMiscSyncOptions() const
         ++i;
     }
     //----------------------------------------------------------------------------
-    miscCfg.ignoreErrors   = m_checkBoxIgnoreErrors  ->GetValue();
-    miscCfg.autoRetryCount = m_checkBoxAutoRetry     ->GetValue() ? m_spinCtrlAutoRetryCount->GetValue() : 0;
+    miscCfg.ignoreErrors   = m_checkBoxIgnoreErrors->GetValue();
+    miscCfg.autoRetryCount = m_checkBoxAutoRetry   ->GetValue() ? m_spinCtrlAutoRetryCount->GetValue() : 0;
     miscCfg.autoRetryDelay = std::chrono::seconds(m_spinCtrlAutoRetryDelay->GetValue());
     //----------------------------------------------------------------------------
     miscCfg.postSyncCommand   = m_comboBoxPostSyncCommand->getValue();
@@ -1418,8 +1447,6 @@ MiscSyncConfig ConfigDialog::getMiscSyncOptions() const
 
 void ConfigDialog::setMiscSyncOptions(const MiscSyncConfig& miscCfg)
 {
-    assert(selectedPairIndexToShow_ == -1);
-
     // Avoid "fake" changed configs! =>
     //- when editting, consider only the deviceParallelOps items corresponding to the currently-used folder paths
     //- keep parallel ops == 1 only temporarily during edit
@@ -1487,70 +1514,72 @@ void ConfigDialog::setMiscSyncOptions(const MiscSyncConfig& miscCfg)
 
 void ConfigDialog::updateMiscGui()
 {
-    const MiscSyncConfig miscCfg = getMiscSyncOptions();
-
-    setImage(*m_bitmapIgnoreErrors, greyScaleIfDisabled(loadImage("error_ignore_active"), miscCfg.ignoreErrors));
-    setImage(*m_bitmapRetryErrors, greyScaleIfDisabled(loadImage("error_retry"), miscCfg.autoRetryCount > 0 ));
-
-    fgSizerAutoRetry->Show(miscCfg.autoRetryCount > 0);
-
-    m_panelComparisonSettings->Layout(); //showing "retry count" can affect bSizerPerformance!
-    //----------------------------------------------------------------------------
-    const bool sendEmailEnabled = m_checkBoxSendEmail->GetValue();
-    setImage(*m_bitmapEmail, greyScaleIfDisabled(loadImage("email"), sendEmailEnabled));
-    m_comboBoxEmail->Show(sendEmailEnabled);
-
-    auto updateButton = [successIcon = loadImage("msg_success", getDefaultMenuIconSize()),
-                                     warningIcon = loadImage("msg_warning", getDefaultMenuIconSize()),
-                                     errorIcon   = loadImage("msg_error",   getDefaultMenuIconSize()),
-                                     sendEmailEnabled, this] (wxBitmapButton& button, ResultsNotification notifyCondition)
+    if (selectedPairIndexToShow_ == -1)
     {
-        button.Show(sendEmailEnabled);
-        if (sendEmailEnabled)
+        const MiscSyncConfig miscCfg = getMiscSyncOptions();
+
+        setImage(*m_bitmapIgnoreErrors, greyScaleIfDisabled(loadImage("error_ignore_active"), miscCfg.ignoreErrors));
+        setImage(*m_bitmapRetryErrors, greyScaleIfDisabled(loadImage("error_retry"), miscCfg.autoRetryCount > 0 ));
+
+        fgSizerAutoRetry->Show(miscCfg.autoRetryCount > 0);
+
+        m_panelComparisonSettings->Layout(); //showing "retry count" can affect bSizerPerformance!
+        //----------------------------------------------------------------------------
+        const bool sendEmailEnabled = m_checkBoxSendEmail->GetValue();
+        setImage(*m_bitmapEmail, greyScaleIfDisabled(loadImage("email"), sendEmailEnabled));
+        m_comboBoxEmail->Show(sendEmailEnabled);
+
+        auto updateButton = [successIcon = loadImage("msg_success", getDefaultMenuIconSize()),
+                                         warningIcon = loadImage("msg_warning", getDefaultMenuIconSize()),
+                                         errorIcon   = loadImage("msg_error",   getDefaultMenuIconSize()),
+                                         sendEmailEnabled, this](wxBitmapButton& button, ResultsNotification notifyCondition)
         {
-            wxString tooltip = _("Error");
-            wxImage label = errorIcon;
-
-            if (notifyCondition == ResultsNotification::always ||
-                notifyCondition == ResultsNotification::errorWarning)
+            button.Show(sendEmailEnabled);
+            if (sendEmailEnabled)
             {
-                tooltip += (L" | ") + _("Warning");
-                label = stackImages(label, warningIcon, ImageStackLayout::horizontal, ImageStackAlignment::center);
+                wxString tooltip = _("Error");
+                wxImage label = errorIcon;
+
+                if (notifyCondition == ResultsNotification::always ||
+                    notifyCondition == ResultsNotification::errorWarning)
+                {
+                    tooltip += (L" | ") + _("Warning");
+                    label = stackImages(label, warningIcon, ImageStackLayout::horizontal, ImageStackAlignment::center);
+                }
+                else
+                    label = resizeCanvas(label, {label.GetWidth() + warningIcon.GetWidth(), label.GetHeight()}, wxALIGN_LEFT);
+
+                if (notifyCondition == ResultsNotification::always)
+                {
+                    tooltip += (L" | ") + _("Success");
+                    label = stackImages(label, successIcon, ImageStackLayout::horizontal, ImageStackAlignment::center);
+                }
+                else
+                    label = resizeCanvas(label, {label.GetWidth() + successIcon.GetWidth(), label.GetHeight()}, wxALIGN_LEFT);
+
+                button.SetToolTip(tooltip);
+                button.SetBitmapLabel   (toScaledBitmap(notifyCondition == emailNotifyCondition_ && sendEmailEnabled ? label : greyScale(label)));
+                button.SetBitmapDisabled(toScaledBitmap(greyScale(label))); //fix wxWidgets' all-too-clever multi-state!
+                //=> the disabled bitmap is generated during first SetBitmapLabel() call but never updated again by wxWidgets!
             }
-            else
-                label = resizeCanvas(label, {label.GetWidth() + warningIcon.GetWidth(), label.GetHeight()}, wxALIGN_LEFT);
+        };
+        updateButton(*m_bpButtonEmailAlways,       ResultsNotification::always);
+        updateButton(*m_bpButtonEmailErrorWarning, ResultsNotification::errorWarning);
+        updateButton(*m_bpButtonEmailErrorOnly,    ResultsNotification::errorOnly);
 
-            if (notifyCondition == ResultsNotification::always)
-            {
-                tooltip += (L" | ") + _("Success");
-                label = stackImages(label, successIcon, ImageStackLayout::horizontal, ImageStackAlignment::center);
-            }
-            else
-                label = resizeCanvas(label, {label.GetWidth() + successIcon.GetWidth(), label.GetHeight()}, wxALIGN_LEFT);
+        m_hyperlinkPerfDeRequired2->Show(!enableExtraFeatures_); //required after each bSizerSyncMisc->Show()
 
-            button.SetToolTip(tooltip);
-            button.SetBitmapLabel   (toScaledBitmap(notifyCondition == emailNotifyCondition_ && sendEmailEnabled ? label : greyScale(label)));
-            button.SetBitmapDisabled(toScaledBitmap(greyScale(label))); //fix wxWidgets' all-too-clever multi-state!
-            //=> the disabled bitmap is generated during first SetBitmapLabel() call but never updated again by wxWidgets!
-        }
-    };
-    updateButton(*m_bpButtonEmailAlways,       ResultsNotification::always);
-    updateButton(*m_bpButtonEmailErrorWarning, ResultsNotification::errorWarning);
-    updateButton(*m_bpButtonEmailErrorOnly,    ResultsNotification::errorOnly);
+        //----------------------------------------------------------------------------
+        setImage(*m_bitmapLogFile, greyScaleIfDisabled(loadImage("log_file", fastFromDIP(20)), m_checkBoxOverrideLogPath->GetValue()));
+        m_logFolderPath             ->Enable(m_checkBoxOverrideLogPath->GetValue()); //
+        m_buttonSelectLogFolder     ->Show(m_checkBoxOverrideLogPath->GetValue()); //enabled status can't be derived from resolved config!
+        m_bpButtonSelectAltLogFolder->Show(m_checkBoxOverrideLogPath->GetValue()); //
 
-    m_hyperlinkPerfDeRequired2->Show(!enableExtraFeatures_); //required after each bSizerSyncMisc->Show()
+        m_panelSyncSettings->Layout(); //after showing/hiding m_buttonSelectLogFolder
 
-    //----------------------------------------------------------------------------
-    setImage(*m_bitmapLogFile, greyScaleIfDisabled(loadImage("log_file", fastFromDIP(20)), m_checkBoxOverrideLogPath->GetValue()));
-    m_logFolderPath             ->Enable(m_checkBoxOverrideLogPath->GetValue()); //
-    m_buttonSelectLogFolder     ->Show(m_checkBoxOverrideLogPath->GetValue()); //enabled status can't be derived from resolved config!
-    m_bpButtonSelectAltLogFolder->Show(m_checkBoxOverrideLogPath->GetValue()); //
-
-    m_panelSyncSettings->Layout(); //after showing/hiding m_buttonSelectLogFolder
-
-    m_panelSyncSettings->Refresh(); //removes a few artifacts when toggling email notifications
-    m_panelLogfile     ->Refresh();//
-
+        m_panelSyncSettings->Refresh(); //removes a few artifacts when toggling email notifications
+        m_panelLogfile     ->Refresh();//
+    }
     //----------------------------------------------------------------------------
     m_buttonAddNotes->Show(!showNotesPanel_);
     m_panelNotes    ->Show(showNotesPanel_);
@@ -1611,10 +1640,9 @@ void ConfigDialog::selectFolderPairConfig(int newPairIndexToShow)
             addDevicePath(globalPairCfg_.syncCfg.versioningFolderPhrase);
         //---------------------------------------------------------------------------------------------------------------
 
-        setCompConfig     (&globalPairCfg_.cmpCfg);
-        setSyncConfig     (&globalPairCfg_.syncCfg);
-        setFilterConfig   (globalPairCfg_.filter);
-        setMiscSyncOptions(globalPairCfg_.miscCfg);
+        setCompConfig  (&globalPairCfg_.cmpCfg);
+        setSyncConfig  (&globalPairCfg_.syncCfg);
+        setFilterConfig(globalPairCfg_.filter);
     }
     else
     {
@@ -1622,6 +1650,7 @@ void ConfigDialog::selectFolderPairConfig(int newPairIndexToShow)
         setSyncConfig(get(localPairCfg_[selectedPairIndexToShow_].localSyncCfg));
         setFilterConfig  (localPairCfg_[selectedPairIndexToShow_].localFilter);
     }
+    setMiscSyncOptions(globalPairCfg_.miscCfg);
 
     m_panelCompSettingsTab  ->Layout(); //fix comp panel glitch on Win 7 125% font size + perf panel
     m_panelFilterSettingsTab->Layout();
@@ -1637,9 +1666,7 @@ bool ConfigDialog::unselectFolderPairConfig(bool validateParams)
     std::optional<SyncConfig> syncCfg =   getSyncConfig();
     FilterConfig            filterCfg = getFilterConfig();
 
-    std::optional<MiscSyncConfig> miscCfg;
-    if (selectedPairIndexToShow_ < 0)
-        miscCfg = getMiscSyncOptions();
+    MiscSyncConfig miscCfg = getMiscSyncOptions(); //some "misc" options are always visible, e.g. "notes"
 
     //------- parameter validation (BEFORE writing output!) -------
     if (validateParams)
@@ -1692,18 +1719,18 @@ bool ConfigDialog::unselectFolderPairConfig(bool validateParams)
 
         if (selectedPairIndexToShow_ < 0)
         {
-            if (AFS::isNullPath(createAbstractPath(miscCfg->altLogFolderPathPhrase)) &&
-                !miscCfg->altLogFolderPathPhrase.empty())
+            if (AFS::isNullPath(createAbstractPath(miscCfg.altLogFolderPathPhrase)) &&
+                !miscCfg.altLogFolderPathPhrase.empty())
             {
                 m_notebook->ChangeSelection(static_cast<size_t>(SyncConfigPanel::sync));
                 showNotificationDialog(this, DialogInfoType::info, PopupDialogCfg().setMainInstructions(_("Please enter a folder path.")));
                 m_logFolderPath->SetFocus();
                 return false;
             }
-            m_logFolderPath->getHistory()->addItem(miscCfg->altLogFolderPathPhrase);
+            m_logFolderPath->getHistory()->addItem(miscCfg.altLogFolderPathPhrase);
 
-            if (!miscCfg->emailNotifyAddress.empty() &&
-                !isValidEmail(trimCpy(miscCfg->emailNotifyAddress)))
+            if (!miscCfg.emailNotifyAddress.empty() &&
+                !isValidEmail(trimCpy(miscCfg.emailNotifyAddress)))
             {
                 m_notebook->ChangeSelection(static_cast<size_t>(SyncConfigPanel::sync));
                 showNotificationDialog(this, DialogInfoType::info, PopupDialogCfg().setMainInstructions(_("Please enter a valid email address.")));
@@ -1721,7 +1748,6 @@ bool ConfigDialog::unselectFolderPairConfig(bool validateParams)
         globalPairCfg_.cmpCfg  = *compCfg;
         globalPairCfg_.syncCfg = *syncCfg;
         globalPairCfg_.filter  = filterCfg;
-        globalPairCfg_.miscCfg = *miscCfg;
     }
     else
     {
@@ -1729,6 +1755,7 @@ bool ConfigDialog::unselectFolderPairConfig(bool validateParams)
         localPairCfg_[selectedPairIndexToShow_].localSyncCfg = syncCfg;
         localPairCfg_[selectedPairIndexToShow_].localFilter  = filterCfg;
     }
+    globalPairCfg_.miscCfg = miscCfg;
 
     selectedPairIndexToShow_ = EMPTY_PAIR_INDEX_SELECTED;
     //m_listBoxFolderPair->SetSelection(wxNOT_FOUND); not needed, selectedPairIndexToShow has parameter ownership

@@ -78,7 +78,6 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
     setBitmapTextLabel(*m_bpButtonEmail, loadImage("ffs_email"), wxString() + L"zenju@" + /*don't leave full email in either source or binary*/ L"freefilesync.org");
     m_bpButtonEmail->SetToolTip(                          wxString() + L"mailto:zenju@" + /*don't leave full email in either source or binary*/ L"freefilesync.org");
 
-
     wxString build = utfTo<wxString>(ffsVersion);
 
     const wchar_t* const SPACED_BULLET = L" \u2022 ";
@@ -108,7 +107,7 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
         setRelativeFontSize(*m_buttonDonate1, 1.25);
         setBitmapTextLabel(*m_buttonDonate1, loadImage("ffs_heart", fastFromDIP(28)), m_buttonDonate1->GetLabelText());
 
-        m_buttonShowDonationDetails->Hide();
+        m_buttonShowSupporterDetails->Hide();
         m_buttonDonate2->Hide();
     }
 
@@ -896,8 +895,7 @@ class CopyToDialog : public CopyToDlgGenerated
 {
 public:
     CopyToDialog(wxWindow* parent,
-                 std::span<const FileSystemObject* const> rowsOnLeft,
-                 std::span<const FileSystemObject* const> rowsOnRight,
+                 const std::wstring& itemList, int itemCount,
                  Zstring& targetFolderPath, Zstring& targetFolderLastSelected,
                  std::vector<Zstring>& folderHistory, size_t folderHistoryMax,
                  Zstring& sftpKeyFileLastSelected,
@@ -922,8 +920,7 @@ private:
 
 
 CopyToDialog::CopyToDialog(wxWindow* parent,
-                           std::span<const FileSystemObject* const> rowsOnLeft,
-                           std::span<const FileSystemObject* const> rowsOnRight,
+                           const std::wstring& itemList, int itemCount,
                            Zstring& targetFolderPath, Zstring& targetFolderLastSelected,
                            std::vector<Zstring>& folderHistory, size_t folderHistoryMax,
                            Zstring& sftpKeyFileLastSelected,
@@ -954,8 +951,6 @@ CopyToDialog::CopyToDialog(wxWindow* parent,
         This only affects Ubuntu/wxGTK! No such issue on Debian/wxGTK or Suse/wxGTK
         => another Unity problem like the following?
         https://github.com/wxWidgets/wxWidgets/issues/14823 "Menu not disabled when showing modal dialogs in wxGTK under Unity"        */
-
-    const auto& [itemList, itemCount] = getSelectedItemsAsString(rowsOnLeft, rowsOnRight);
 
     m_staticTextHeader->SetLabelText(_P("Copy the following item to another folder?",
                                         "Copy the following %x items to another folder?", itemCount));
@@ -1011,15 +1006,14 @@ void CopyToDialog::onOkay(wxCommandEvent& event)
 }
 
 ConfirmationButton fff::showCopyToDialog(wxWindow* parent,
-                                         std::span<const FileSystemObject* const> rowsOnLeft,
-                                         std::span<const FileSystemObject* const> rowsOnRight,
+                                         const std::wstring& itemList, int itemCount,
                                          Zstring& targetFolderPath, Zstring& targetFolderLastSelected,
                                          std::vector<Zstring>& folderHistory, size_t folderHistoryMax,
                                          Zstring& sftpKeyFileLastSelected,
                                          bool& keepRelPaths,
                                          bool& overwriteIfExists)
 {
-    CopyToDialog dlg(parent, rowsOnLeft, rowsOnRight, targetFolderPath, targetFolderLastSelected, folderHistory, folderHistoryMax, sftpKeyFileLastSelected, keepRelPaths, overwriteIfExists);
+    CopyToDialog dlg(parent, itemList, itemCount, targetFolderPath, targetFolderLastSelected, folderHistory, folderHistoryMax, sftpKeyFileLastSelected, keepRelPaths, overwriteIfExists);
     return static_cast<ConfirmationButton>(dlg.ShowModal());
 }
 
@@ -2061,13 +2055,15 @@ ActivationDlg::ActivationDlg(wxWindow* parent,
 {
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setCancel(m_buttonCancel));
 
-    SetTitle(L"FreeFileSync " + utfTo<std::wstring>(ffsVersion) + L" [" + _("Donation Edition") + L']');
+    std::wstring title = L"FreeFileSync " + utfTo<std::wstring>(ffsVersion);
+    SetTitle(title);
+
+    //setMainInstructionFont(*m_staticTextMain);
 
     m_richTextLastError          ->SetMinSize({-1, m_richTextLastError          ->GetCharHeight() * 7});
     m_richTextManualActivationUrl->SetMinSize({-1, m_richTextManualActivationUrl->GetCharHeight() * 4});
     m_textCtrlOfflineActivationKey->SetMinSize({fastFromDIP(260), -1});
-    //setMainInstructionFont(*m_staticTextMain);
-
+    
     setImage(*m_bitmapActivation, loadImage("internet"));
     m_textCtrlOfflineActivationKey->ForceUpper();
 

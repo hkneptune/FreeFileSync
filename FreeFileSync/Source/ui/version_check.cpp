@@ -5,22 +5,22 @@
 // *****************************************************************************
 
 #include "version_check.h"
-#include <ctime>
+//#include <ctime>
 #include <zen/crc.h>
-#include <zen/string_tools.h>
-#include <zen/i18n.h>
-#include <zen/utf.h>
-#include <zen/scope_guard.h>
+//#include <zen/string_tools.h>
+//#include <zen/i18n.h>
+//#include <zen/utf.h>
+//#include <zen/scope_guard.h>
 #include <zen/build_info.h>
-#include <zen/basic_math.h>
+//#include <zen/basic_math.h>
 #include <zen/file_io.h>
-#include <zen/file_error.h>
+//#include <zen/file_error.h>
 #include <zen/http.h>
 #include <zen/process_exec.h>
 #include <zen/sys_version.h>
 #include <zen/sys_info.h>
-#include <zen/thread.h>
-#include <wx+/popup_dlg.h>
+//#include <zen/thread.h>
+//#include <wx+/popup_dlg.h>
 #include <wx+/image_resources.h>
 #include "../ffs_paths.h"
 #include "../version/version.h"
@@ -39,29 +39,6 @@ namespace
 const Zchar ffsUpdateCheckUserAgent[] = Zstr("FFS-Update-Check");
 
 
-time_t getVersionCheckInactiveId()
-{
-    //use current version to calculate a changing number for the inactive state near UTC begin, in order to always check for updates after installing a new version
-    //=> interpret version as 11-based *unique* number (this breaks lexicographical version ordering, but that's irrelevant!)
-    int id = 0;
-    const char* first = ffsVersion;
-    const char* last = first + zen::strLength(ffsVersion);
-    std::for_each(first, last, [&](char c)
-    {
-        id *= 11;
-        if ('0' <= c && c <= '9')
-            id += c - '0';
-        else
-        {
-            assert(c == FFS_VERSION_SEPARATOR);
-            id += 10;
-        }
-    });
-    assert(0 < id && id < 3600 * 24 * 365); //as long as value is within a year after UTC begin (1970) there's no risk to clash with *current* time
-    return id;
-}
-
-
 
 
 time_t getVersionCheckCurrentTime()
@@ -73,21 +50,20 @@ time_t getVersionCheckCurrentTime()
 
 void openBrowserForDownload(wxWindow* parent)
 {
-    wxLaunchDefaultBrowser(L"https://freefilesync.org/get_latest.php");
+        wxLaunchDefaultBrowser(L"https://freefilesync.org/get_latest.php");
 }
 }
 
 
-bool fff::shouldRunAutomaticUpdateCheck(time_t lastUpdateCheck)
+bool fff::automaticUpdateCheckDue(time_t lastUpdateCheck)
 {
-    if (lastUpdateCheck == getVersionCheckInactiveId())
-        return false;
-
     const time_t now = std::time(nullptr);
     return std::abs(now - lastUpdateCheck) >= 7 * 24 * 3600; //check weekly
 }
 
 
+namespace
+{
 std::wstring getIso639Language()
 {
     assert(runningOnMainThread()); //this function is not thread-safe: consider wxWidgets usage
@@ -106,8 +82,6 @@ std::wstring getIso639Language()
 }
 
 
-namespace
-{
 std::wstring getIso3166Country()
 {
     assert(runningOnMainThread()); //this function is not thread-safe, consider wxWidgets usage
@@ -212,6 +186,12 @@ std::string getOnlineVersion(const std::vector<std::pair<std::string, std::strin
 
     return response;
 }
+
+
+std::string getUnknownVersionTag()
+{
+    return '<' + utfTo<std::string>(_("version unknown")) + '>';
+}
 }
 
 
@@ -235,18 +215,6 @@ bool fff::haveNewerVersionOnline(const std::string& onlineVersion)
 }
 
 
-bool fff::updateCheckActive(time_t lastUpdateCheck)
-{
-    return lastUpdateCheck != getVersionCheckInactiveId();
-}
-
-
-void fff::disableUpdateCheck(time_t& lastUpdateCheck)
-{
-    lastUpdateCheck = getVersionCheckInactiveId();
-}
-
-
 void fff::checkForUpdateNow(wxWindow& parent, std::string& lastOnlineVersion)
 {
     try
@@ -266,7 +234,7 @@ void fff::checkForUpdateNow(wxWindow& parent, std::string& lastOnlineVersion)
     {
         if (internetIsAlive())
         {
-            lastOnlineVersion = "Unknown";
+            lastOnlineVersion = getUnknownVersionTag();
 
             switch (showConfirmationDialog(&parent, DialogInfoType::error, PopupDialogCfg().
                                            setTitle(_("Check for Program Updates")).
@@ -323,8 +291,8 @@ SharedRef<const UpdateCheckResultPrep> fff::automaticUpdateCheckPrepare(wxWindow
 struct fff::UpdateCheckResult
 {
     std::string onlineVersion;
-    bool internetIsAlive = false;
     std::optional<SysError> error;
+    bool internetIsAlive = false;
 };
 SharedRef<const UpdateCheckResult> fff::automaticUpdateCheckRunAsync(const UpdateCheckResultPrep& resultPrep)
 {
@@ -353,37 +321,46 @@ void fff::automaticUpdateCheckEval(wxWindow& parent, time_t& lastUpdateCheck, st
 
     if (!result.error)
     {
-        lastUpdateCheck   = getVersionCheckCurrentTime();
-        lastOnlineVersion = result.onlineVersion;
+        lastUpdateCheck = getVersionCheckCurrentTime();
 
-        if (haveNewerVersionOnline(result.onlineVersion))
-            showUpdateAvailableDialog(&parent, result.onlineVersion);
+        if (lastOnlineVersion != result.onlineVersion) //show new version popup only *once*
+        {
+            lastOnlineVersion = result.onlineVersion;
+
+            if (haveNewerVersionOnline(result.onlineVersion)) //beta or development version is newer than online
+                showUpdateAvailableDialog(&parent, result.onlineVersion);
+        }
     }
     else
     {
         if (result.internetIsAlive)
         {
-            lastOnlineVersion = "Unknown";
-
-            switch (showConfirmationDialog(&parent, DialogInfoType::error, PopupDialogCfg().
-                                           setTitle(_("Check for Program Updates")).
-                                           setMainInstructions(_("Cannot find current FreeFileSync version number online. A newer version is likely available. Check manually now?")).
-                                           setDetailInstructions(result.error->toString()),
-                                           _("&Check"), _("&Retry")))
+            if (lastOnlineVersion != getUnknownVersionTag())
             {
-                case ConfirmationButton2::accept:
-                    openBrowserForDownload(&parent);
-                    break;
-                case ConfirmationButton2::accept2: //retry
-                    automaticUpdateCheckEval(parent, lastUpdateCheck, lastOnlineVersion,
-                                             automaticUpdateCheckRunAsync(automaticUpdateCheckPrepare(parent).ref()).ref()); //note: retry via recursion!!!
-                    break;
-                case ConfirmationButton2::cancel:
-                    break;
+                lastOnlineVersion = getUnknownVersionTag();
+
+                switch (showConfirmationDialog(&parent, DialogInfoType::error, PopupDialogCfg().
+                                               setTitle(_("Check for Program Updates")).
+                                               setMainInstructions(_("Cannot find current FreeFileSync version number online. A newer version is likely available. Check manually now?")).
+                                               setDetailInstructions(result.error->toString()),
+                                               _("&Check"), _("&Retry")))
+                {
+                    case ConfirmationButton2::accept:
+                        openBrowserForDownload(&parent);
+                        break;
+                    case ConfirmationButton2::accept2: //retry
+                        automaticUpdateCheckEval(parent, lastUpdateCheck, lastOnlineVersion,
+                                                 automaticUpdateCheckRunAsync(automaticUpdateCheckPrepare(parent).ref()).ref()); //retry via recursion!!!
+                        break;
+                    case ConfirmationButton2::cancel:
+                        break;
+                }
             }
         }
-        //else: ignore this error
+        else //no internet connection
+        {
+            if (lastOnlineVersion.empty())
+                lastOnlineVersion = getUnknownVersionTag();
+        }
     }
 }
-
-

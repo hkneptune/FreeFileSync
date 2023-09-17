@@ -84,8 +84,10 @@ const wchar_t EM_DASH = L'\u2014';
     const wchar_t* const SPACED_DASH = L" \u2014 "; //using 'EM DASH'
 const wchar_t* const ELLIPSIS = L"\u2026"; //"..."
 const wchar_t MULT_SIGN = L'\u00D7'; //fancy "x"
-//const wchar_t NOBREAK_SPACE = L'\u00A0';
+const wchar_t NOBREAK_SPACE = L'\u00A0';
 const wchar_t ZERO_WIDTH_SPACE = L'\u200B';
+
+const wchar_t EN_SPACE = L'\u2002';
 
 const wchar_t LTR_MARK = L'\u200E'; //UTF-8: E2 80 8E
 const wchar_t RTL_MARK = L'\u200F'; //UTF-8: E2 80 8F https://www.w3.org/International/questions/qa-bidi-unicode-controls
@@ -93,6 +95,8 @@ const wchar_t RTL_MARK = L'\u200F'; //UTF-8: E2 80 8F https://www.w3.org/Interna
 //const wchar_t BIDI_POP_DIR_ISOLATE    = L'\u2069'; //=> not working on Win 10
 //const wchar_t BIDI_DIR_EMBEDDING_RTL  = L'\u202B'; //=> not working on Win 10
 //const wchar_t BIDI_POP_DIR_FORMATTING = L'\u202C'; //=> not working on Win 10
+
+const wchar_t RIGHT_ARROW_CURV_DOWN = L'\u2935'; //Right Arrow Curving Down
 
 const wchar_t* const TAB_SPACE = L"    "; //4: the only sensible space count for tabs
 

@@ -306,9 +306,6 @@ wxLayoutDirection globalLayoutDir = wxLayout_Default;
 
 void fff::localizationInit(const Zstring& zipPath) //throw FileError
 {
-    assert(globalTranslations.empty());
-    globalTranslations = loadTranslations(zipPath); //throw FileError
-
     /*                     wxLocale          vs       wxUILocale (since wxWidgets 3.1.6)
         ------------------------------------------|--------------------
         calls setlocale()  Windows, Linux, maCOS  |   Linux only
@@ -335,6 +332,11 @@ void fff::localizationInit(const Zstring& zipPath) //throw FileError
 
     assert(!wxTranslations::Get());
     wxTranslations::Set(new wxTranslations() /*pass ownership*/); //implicitly done by wxLocale, but *not* wxUILocale
+
+    //throw *after* mandatory initialization: setLanguage() requires wxTranslations::Get()!
+
+    assert(globalTranslations.empty());
+    globalTranslations = loadTranslations(zipPath); //throw FileError
 
     setLanguage(getDefaultLanguage()); //throw FileError
 }

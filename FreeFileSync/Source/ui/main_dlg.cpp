@@ -200,7 +200,14 @@ public:
 
     LocalPairConfig getValues() const
     {
-        return LocalPairConfig(folderSelectorLeft_.getPath(), folderSelectorRight_.getPath(), this->getCompConfig(), this->getSyncConfig(), this->getFilterConfig());
+        return
+        {
+            folderSelectorLeft_ .getPath(),
+            folderSelectorRight_.getPath(),
+            this->getCompConfig(),
+            this->getSyncConfig(),
+            this->getFilterConfig()
+        };
     }
 
 private:
@@ -1181,8 +1188,6 @@ void MainDialog::setGlobalCfgOnInit(const XmlGlobalSettings& globalSettings)
     auiMgr_.GetPane(m_panelSearch).Hide(); //no need to show it on startup
     auiMgr_.GetPane(m_panelLog   ).Hide(); //
 
-    m_menuItemCheckVersionAuto->Check(updateCheckActive(globalCfg_.lastUpdateCheck));
-
     auiMgr_.Update();
 }
 
@@ -1288,14 +1293,14 @@ std::vector<FileSystemObject*> expandSelectionForPartialSync(const std::vector<F
                 assert(dynamic_cast<FilePair*>(output.back())->getMoveRef() == file.getId());
                 break;
 
-            case SO_CREATE_NEW_LEFT:
-            case SO_CREATE_NEW_RIGHT:
+            case SO_CREATE_LEFT:
+            case SO_CREATE_RIGHT:
             case SO_DELETE_LEFT:
             case SO_DELETE_RIGHT:
             case SO_OVERWRITE_LEFT:
             case SO_OVERWRITE_RIGHT:
-            case SO_COPY_METADATA_TO_LEFT:
-            case SO_COPY_METADATA_TO_RIGHT:
+            case SO_RENAME_LEFT:
+            case SO_RENAME_RIGHT:
             case SO_UNRESOLVED_CONFLICT:
             case SO_DO_NOTHING:
             case SO_EQUAL:
@@ -1465,14 +1470,34 @@ std::vector<FileSystemObject*> MainDialog::getTreeSelection() const
 void MainDialog::copyToAlternateFolder(const std::vector<FileSystemObject*>& selectionL,
                                        const std::vector<FileSystemObject*>& selectionR)
 {
-    if (std::all_of(selectionL.begin(), selectionL.end(), [](const FileSystemObject* fsObj) { return fsObj->isEmpty<SelectSide::left >(); }) &&
-    /**/std::all_of(selectionR.begin(), selectionR.end(), [](const FileSystemObject* fsObj) { return fsObj->isEmpty<SelectSide::right>(); }))
-    /**/return; //harmonize with onGridContextRim(): this function should be a no-op iff context menu option is disabled!
+    std::vector<const FileSystemObject*> copyLeft;
+    std::vector<const FileSystemObject*> copyRight;
+
+    for (const FileSystemObject* fsObj : selectionL)
+        if (!fsObj->isEmpty<SelectSide::left>())
+            copyLeft.push_back(fsObj);
+
+    for (const FileSystemObject* fsObj : selectionR)
+        if (!fsObj->isEmpty<SelectSide::right>())
+            copyRight.push_back(fsObj);
+
+    if (copyLeft.empty() && copyRight.empty())
+        return; //harmonize with onGridContextRim(): this function should be a no-op iff context menu option is disabled!
+
+    const int itemCount = static_cast<int>(copyLeft.size() + copyRight.size());
+    std::wstring itemList;
+
+    for (const FileSystemObject* fsObj : copyLeft)
+        itemList += AFS::getDisplayPath(fsObj->getAbstractPath<SelectSide::left>()) + L'\n';
+
+    for (const FileSystemObject* fsObj : copyRight)
+        itemList += AFS::getDisplayPath(fsObj->getAbstractPath<SelectSide::right>()) + L'\n';
+    //------------------------------------------------------------------
 
     FocusPreserver fp;
 
     if (showCopyToDialog(this,
-                         selectionL, selectionR,
+                         itemList, itemCount,
                          globalCfg_.mainDlg.copyToCfg.targetFolderPath,
                          globalCfg_.mainDlg.copyToCfg.targetFolderLastSelected,
                          globalCfg_.mainDlg.copyToCfg.folderHistory, globalCfg_.folderHistoryMax,
@@ -1494,7 +1519,7 @@ void MainDialog::copyToAlternateFolder(const std::vector<FileSystemObject*>& sel
                                               globalCfg_.soundFileAlertPending);
     try
     {
-        fff::copyToAlternateFolder(selectionL, selectionR,
+        fff::copyToAlternateFolder(copyLeft, copyRight,
                                    globalCfg_.mainDlg.copyToCfg.targetFolderPath,
                                    globalCfg_.mainDlg.copyToCfg.keepRelPaths,
                                    globalCfg_.mainDlg.copyToCfg.overwriteIfExists,
@@ -1515,13 +1540,26 @@ void MainDialog::copyToAlternateFolder(const std::vector<FileSystemObject*>& sel
 void MainDialog::deleteSelectedFiles(const std::vector<FileSystemObject*>& selectionL,
                                      const std::vector<FileSystemObject*>& selectionR, bool moveToRecycler)
 {
-    if (std::all_of(selectionL.begin(), selectionL.end(), [](const FileSystemObject* fsObj) { return fsObj->isEmpty<SelectSide::left >(); }) &&
-    /**/std::all_of(selectionR.begin(), selectionR.end(), [](const FileSystemObject* fsObj) { return fsObj->isEmpty<SelectSide::right>(); }))
-    /**/return; //harmonize with onGridContextRim(): this function should be a no-op iff context menu option is disabled!
+    std::vector<FileSystemObject*> deleteLeft  = selectionL;
+    std::vector<FileSystemObject*> deleteRight = selectionR;
+
+    std::erase_if(deleteLeft,  [](const FileSystemObject* fsObj) { return fsObj->isEmpty<SelectSide::left >(); });
+    std::erase_if(deleteRight, [](const FileSystemObject* fsObj) { return fsObj->isEmpty<SelectSide::right>(); });
+
+    if (deleteLeft.empty() && deleteRight.empty())
+        return; //harmonize with onGridContextRim(): this function should be a no-op iff context menu option is disabled!
+
+    const int itemCount = static_cast<int>(deleteLeft.size() + deleteRight.size());
+    std::wstring itemList;
+
+    for (const FileSystemObject* fsObj : deleteLeft)
+        itemList += AFS::getDisplayPath(fsObj->getAbstractPath<SelectSide::left>()) + L'\n';
+
+    for (const FileSystemObject* fsObj : deleteRight)
+        itemList += AFS::getDisplayPath(fsObj->getAbstractPath<SelectSide::right>()) + L'\n';
+    //------------------------------------------------------------------
 
     FocusPreserver fp;
-
-    const auto& [itemList, itemCount] = getSelectedItemsAsString(selectionL, selectionR);
 
     if (showDeleteDialog(this, itemList, itemCount,
                          moveToRecycler) != ConfirmationButton::accept)
@@ -1541,11 +1579,11 @@ void MainDialog::deleteSelectedFiles(const std::vector<FileSystemObject*>& selec
                                               globalCfg_.soundFileAlertPending);
     try
     {
-        deleteFromGridAndHD(selectionL, selectionR,
-                            extractDirectionCfg(folderCmp_, getConfig().mainCfg),
-                            moveToRecycler,
-                            globalCfg_.warnDlgs.warnRecyclerMissing,
-                            statusHandler); //throw CancelProcess
+        deleteFiles(deleteLeft, deleteRight,
+                    extractDirectionCfg(folderCmp_, getConfig().mainCfg),
+                    moveToRecycler,
+                    globalCfg_.warnDlgs.warnRecyclerMissing,
+                    statusHandler); //throw CancelProcess
     }
     catch (CancelProcess&) {}
 
@@ -1565,27 +1603,26 @@ void MainDialog::deleteSelectedFiles(const std::vector<FileSystemObject*>& selec
 void MainDialog::renameSelectedFiles(const std::vector<FileSystemObject*>& selectionL,
                                      const std::vector<FileSystemObject*>& selectionR)
 {
-    warn_static("finish")
-    if (std::all_of(selectionL.begin(), selectionL.end(), [](const FileSystemObject* fsObj) { return fsObj->isEmpty<SelectSide::left >(); }) &&
-    /**/std::all_of(selectionR.begin(), selectionR.end(), [](const FileSystemObject* fsObj) { return fsObj->isEmpty<SelectSide::right>(); }))
-    /**/return; //harmonize with onGridContextRim(): this function should be a no-op iff context menu option is disabled!
+    std::vector<FileSystemObject*> renameLeft  = selectionL;
+    std::vector<FileSystemObject*> renameRight = selectionR;
+
+    std::erase_if(renameLeft,  [](const FileSystemObject* fsObj) { return fsObj->isEmpty<SelectSide::left >(); });
+    std::erase_if(renameRight, [](const FileSystemObject* fsObj) { return fsObj->isEmpty<SelectSide::right>(); });
+
+    if (renameLeft.empty() && renameRight.empty())
+        return; //harmonize with onGridContextRim(): this function should be a no-op iff context menu option is disabled!
+    //------------------------------------------------------------------
 
     FocusPreserver fp;
 
-    std::vector<Zstring> fileNamesOld
-    {
-        Zstr("Season 1, Episode 21 - The Arsenal of Freedom.mkv"),
-        Zstr("Season 1, Episode 22 - Symbiosis.mkv"),
-        Zstr("Season 1, Episode 23 - Skin of Evil.mkv"),
-        Zstr("Season 1, Episode 24 - We'll Always Have Paris.mkv"),
-        Zstr("Season 1, Episode 25 - Conspiracy.mkv"),
-        Zstr("Season 1, Episode 26 - The Neutral Zone.mkv"),
-        Zstr("Season 2, Episode 01 - The Child.mkv"),
-        Zstr("Season 2, Episode 02 - Where Silence Has Lease.mkv"),
-        Zstr("Season 2, Episode 03 - Elementary, Dear Data.mkv"),
-    };
-    std::vector<Zstring> fileNamesNew;
+    std::vector<Zstring> fileNamesOld;
+    for (const FileSystemObject* fsObj : renameLeft)
+        fileNamesOld.push_back(fsObj->getItemName<SelectSide::left>());
 
+    for (const FileSystemObject* fsObj : renameRight)
+        fileNamesOld.push_back(fsObj->getItemName<SelectSide::right>());
+
+    std::vector<Zstring> fileNamesNew;
     if (showRenameDialog(this, fileNamesOld, fileNamesNew) != ConfirmationButton::accept)
         return;
 
@@ -1603,12 +1640,10 @@ void MainDialog::renameSelectedFiles(const std::vector<FileSystemObject*>& selec
                                               globalCfg_.soundFileAlertPending);
     try
     {
-
-        //deleteFromGridAndHD(selectionL, selectionR,
-        //                    extractDirectionCfg(folderCmp_, getConfig().mainCfg),
-        //                    moveToRecycler,
-        //                    globalCfg_.warnDlgs.warnRecyclerMissing,
-        //                    statusHandler); //throw CancelProcess
+        renameItems(renameLeft,  {fileNamesNew.data(), renameLeft.size()},
+                    renameRight, {fileNamesNew.data() + renameLeft.size(), fileNamesNew.size() - renameLeft.size()},
+                    extractDirectionCfg(folderCmp_, getConfig().mainCfg),
+                    statusHandler); //throw CancelProcess
     }
     catch (CancelProcess&) {}
 
@@ -1617,9 +1652,6 @@ void MainDialog::renameSelectedFiles(const std::vector<FileSystemObject*>& selec
 
     append(fullSyncLog_->log, r.errorLog.ref());
     fullSyncLog_->totalTime += r.summary.totalTime;
-
-    ////remove rows that are empty: just a beautification, invalid rows shouldn't cause issues
-    //filegrid::getDataView(*m_gridMainC).removeInvalidRows();
 
     updateGui();
 }
@@ -2222,6 +2254,11 @@ void MainDialog::onTreeKeyEvent(wxKeyEvent& event)
     else
         switch (keyCode)
         {
+            case WXK_F2:
+            case WXK_NUMPAD_F2:
+                renameSelectedFiles(selection, selection);
+                return;
+
             case WXK_RETURN:
             case WXK_NUMPAD_ENTER:
                 startSyncForSelecction(selection);
@@ -2317,10 +2354,7 @@ void MainDialog::onGridKeyEvent(wxKeyEvent& event, Grid& grid, bool leftSide)
         {
             case WXK_F2:
             case WXK_NUMPAD_F2:
-                warn_static("finish")
-#if 0
                 renameSelectedFiles(selectionL, selectionR);
-#endif
                 return;
 
             case WXK_RETURN:
@@ -2519,6 +2553,49 @@ void MainDialog::onTreeGridSelection(GridSelectEvent& event)
 }
 
 
+namespace
+{
+template <SelectSide side>
+std::vector<Zstring> getFilterPhrasesRel(const std::vector<FileSystemObject*>& selection)
+{
+    std::vector<Zstring> output;
+    for (const FileSystemObject* fsObj : selection)
+    {
+        //#pragma warning(suppress: 6011) -> fsObj bound in this context!
+        Zstring phrase = FILE_NAME_SEPARATOR + fsObj->getRelativePath<side>();
+
+        const bool isFolder = dynamic_cast<const FolderPair*>(fsObj) != nullptr;
+        if (isFolder)
+            phrase += FILE_NAME_SEPARATOR;
+
+        output.push_back(std::move(phrase));
+    }
+    return output;
+}
+
+
+Zstring getFilterPhraseRel(const std::vector<FileSystemObject*>& selectionL,
+                           const std::vector<FileSystemObject*>& selectionR)
+{
+    std::vector<Zstring> phrases;
+    append(phrases, getFilterPhrasesRel<SelectSide::left >(selectionL));
+    append(phrases, getFilterPhrasesRel<SelectSide::right>(selectionR));
+
+    removeDuplicatesStable(phrases, [](const Zstring& lhs, const Zstring& rhs) { return compareNoCase(lhs, rhs) < 0; });
+    //ignore case, just like path filter
+
+    Zstring relPathPhrase;
+    for (const Zstring& phrase : phrases)
+    {
+        relPathPhrase += phrase;
+        relPathPhrase += Zstr('\n');
+    }
+
+    return trimCpy(relPathPhrase);
+}
+}
+
+
 void MainDialog::onTreeGridContext(GridContextMenuEvent& event)
 {
     const std::vector<FileSystemObject*>& selection = getTreeSelection(); //referenced by lambdas!
@@ -2549,32 +2626,62 @@ void MainDialog::onTreeGridContext(GridContextMenuEvent& event)
     //----------------------------------------------------------------------------------------------------
     auto addFilterMenu = [&](const std::wstring& label, const wxImage& img, bool include)
     {
-
-        if (selection.size() == 1)
+        if (selection.empty())
+            menu.addItem(label, nullptr, img, false /*enabled*/);
+        else if (selection.size() == 1)
         {
             ContextMenu submenu;
 
             const bool isFolder = dynamic_cast<const FolderPair*>(selection[0]) != nullptr;
 
-            //by short name
-            Zstring labelShort = Zstring(Zstr("*")) + FILE_NAME_SEPARATOR + selection[0]->getItemNameAny();
+            const Zstring& relPathL = selection[0]->getRelativePath<SelectSide::left >();
+            const Zstring& relPathR = selection[0]->getRelativePath<SelectSide::right>();
+
+            //by extension
+            const Zstring extensionL = getFileExtension(relPathL);
+            const Zstring extensionR = getFileExtension(relPathR);
+            if (!extensionL.empty())
+                submenu.addItem(L"*." + utfTo<wxString>(extensionL),
+                                [this, extensionL, include] { addFilterPhrase(Zstr("*.") + extensionL, include, false /*requireNewLine*/); });
+
+            if (!extensionR.empty() && !equalNoCase(extensionL, extensionR)) //rare, but possible (e.g. after manual rename)
+                submenu.addItem(L"*." + utfTo<wxString>(extensionR),
+                                [this, extensionR, include] { addFilterPhrase(Zstr("*.") + extensionR, include, false /*requireNewLine*/); });
+
+            //by file name
+            Zstring filterPhraseNameL = Zstring(Zstr("*")) + FILE_NAME_SEPARATOR + getItemName(relPathL);
+            Zstring filterPhraseNameR = Zstring(Zstr("*")) + FILE_NAME_SEPARATOR + getItemName(relPathR);
             if (isFolder)
-                labelShort += FILE_NAME_SEPARATOR;
-            submenu.addItem(utfTo<wxString>(labelShort), [this, &selection, include] { filterShortname(*selection[0], include); });
+            {
+                filterPhraseNameL += FILE_NAME_SEPARATOR;
+                filterPhraseNameR += FILE_NAME_SEPARATOR;
+            }
+
+            submenu.addItem(utfTo<wxString>(filterPhraseNameL),
+                            [this, filterPhraseNameL, include] { addFilterPhrase(filterPhraseNameL, include, true /*requireNewLine*/); });
+
+            if (!equalNoCase(filterPhraseNameL, filterPhraseNameR)) //rare, but possible (ignore case, just like path filter)
+                submenu.addItem(utfTo<wxString>(filterPhraseNameR),
+                                [this, filterPhraseNameR, include] { addFilterPhrase(filterPhraseNameR, include, true /*requireNewLine*/); });
 
             //by relative path
-            Zstring labelRel = FILE_NAME_SEPARATOR + selection[0]->getRelativePathAny();
+            Zstring filterPhraseRelL = FILE_NAME_SEPARATOR + relPathL;
+            Zstring filterPhraseRelR = FILE_NAME_SEPARATOR + relPathR;
             if (isFolder)
-                labelRel += FILE_NAME_SEPARATOR;
-            submenu.addItem(utfTo<wxString>(labelRel), [this, &selection, include] { filterItems(selection, include); });
+            {
+                filterPhraseRelL += FILE_NAME_SEPARATOR;
+                filterPhraseRelR += FILE_NAME_SEPARATOR;
+            }
+            submenu.addItem(utfTo<wxString>(filterPhraseRelL), [this, filterPhraseRelL, include] { addFilterPhrase(filterPhraseRelL, include, true /*requireNewLine*/); });
+
+            if (!equalNoCase(filterPhraseRelL, filterPhraseRelR)) //rare, but possible
+                submenu.addItem(utfTo<wxString>(filterPhraseRelR), [this, filterPhraseRelR, include] { addFilterPhrase(filterPhraseRelR, include, true /*requireNewLine*/); });
 
             menu.addSubmenu(label, submenu, img);
         }
-        else if (selection.size() > 1) //by relative path
+        else  //by relative path
             menu.addItem(label + L" <" + _("multiple selection") + L">",
-                         [this, &selection, include] { filterItems(selection, include); }, img);
-        else
-            menu.addItem(label, nullptr, img, false /*enabled*/);
+                         [this, &selection, include] { addFilterPhrase(getFilterPhraseRel(selection, selection), include, true /*requireNewLine*/); }, img);
     };
     addFilterMenu(_("&Include via filter:"), loadImage("filter_include", getDefaultMenuIconSize()), true);
     addFilterMenu(_("&Exclude via filter:"), loadImage("filter_exclude", getDefaultMenuIconSize()), false);
@@ -2587,38 +2694,26 @@ void MainDialog::onTreeGridContext(GridContextMenuEvent& event)
     const bool selectionContainsItemsToSync = [&]
     {
         for (FileSystemObject* fsObj : expandSelectionForPartialSync(selection))
-            switch (fsObj->getSyncOperation())
-            {
-                case SO_CREATE_NEW_LEFT:
-                case SO_CREATE_NEW_RIGHT:
-                case SO_DELETE_LEFT:
-                case SO_DELETE_RIGHT:
-                case SO_MOVE_LEFT_FROM:
-                case SO_MOVE_LEFT_TO:
-                case SO_MOVE_RIGHT_FROM:
-                case SO_MOVE_RIGHT_TO:
-                case SO_OVERWRITE_LEFT:
-                case SO_OVERWRITE_RIGHT:
-                case SO_COPY_METADATA_TO_LEFT:
-                case SO_COPY_METADATA_TO_RIGHT:
-                    return true;
-
-                case SO_UNRESOLVED_CONFLICT:
-                case SO_DO_NOTHING:
-                case SO_EQUAL:
-                    break;
-            }
+            if (getEffectiveSyncDir(fsObj->getSyncOperation()) != SyncDirection::none)
+                return true;
         return false;
     }();
     menu.addSeparator();
     menu.addItem(_("&Synchronize selection") + L"\tEnter", [&] { startSyncForSelecction(selection); }, loadImage("start_sync_selection", getDefaultMenuIconSize()), selectionContainsItemsToSync);
     //----------------------------------------------------------------------------------------------------
-    const bool haveItemsSelected = std::any_of(selection.begin(), selection.end(), [](const FileSystemObject* fsObj) { return !fsObj->isEmpty<SelectSide::left>() || !fsObj->isEmpty<SelectSide::right>(); });
+    const ptrdiff_t itemsSelected =
+    std::count_if(selection.begin(), selection.end(), [](const FileSystemObject* fsObj) { return !fsObj->isEmpty<SelectSide::left >(); }) +
+    std::count_if(selection.begin(), selection.end(), [](const FileSystemObject* fsObj) { return !fsObj->isEmpty<SelectSide::right>(); });
+
     //menu.addSeparator();
-    //menu.addItem(_("&Copy to...") + L"\tCtrl+T", [&] { copyToAlternateFolder(selection, selection); }, wxNullImage, haveItemsSelected);
+    //menu.addItem(_("&Copy to...") + L"\tCtrl+T", [&] { copyToAlternateFolder(selection, selection); }, wxNullImage, itemsSelected > 0);
     //----------------------------------------------------------------------------------------------------
     menu.addSeparator();
-    menu.addItem(_("&Delete") + L"\t(Shift+)Del", [&] { deleteSelectedFiles(selection, selection, true /*moveToRecycler*/); }, imgTrashSmall_, haveItemsSelected);
+
+    menu.addItem((itemsSelected > 1 ? _("Multi-&Rename") : _("&Rename")) + L"\tF2",
+                 [&] { renameSelectedFiles(selection, selection); }, loadImage("rename", getDefaultMenuIconSize()), itemsSelected > 0);
+
+    menu.addItem(_("&Delete") + L"\t(Shift+)Del", [&] { deleteSelectedFiles(selection, selection, true /*moveToRecycler*/); }, imgTrashSmall_, itemsSelected > 0);
 
     menu.popup(*m_gridOverview, event.mousePos_);
 }
@@ -2690,40 +2785,46 @@ void MainDialog::onGridContextRim(const std::vector<FileSystemObject*>& selectio
     //----------------------------------------------------------------------------------------------------
     auto addFilterMenu = [&](const wxString& label, const wxImage& img, bool include)
     {
-        if (selection.size() == 1)
+        if (selectionL.empty() && selectionR.empty())
+            menu.addItem(label, nullptr, img, false /*enabled*/);
+        else if (selectionL.size() + selectionR.size() == 1)
         {
             ContextMenu submenu;
 
-            const bool isFolder = dynamic_cast<const FolderPair*>(selection[0]) != nullptr;
+            const bool isFolder = dynamic_cast<const FolderPair*>((!selectionL.empty() ? selectionL : selectionR)[0]) != nullptr;
 
+            const Zstring& relPath = !selectionL.empty() ?
+                                     selectionL[0]->getRelativePath<SelectSide::left >() :
+                                     selectionR[0]->getRelativePath<SelectSide::right>();
             //by extension
-            if (!isFolder)
+            if (const Zstring extension = getFileExtension(relPath);
+                !extension.empty())
+                submenu.addItem(L"*." + utfTo<wxString>(extension), [this, extension, include]
             {
-                const Zstring extension = getFileExtension(selection[0]->getItemNameAny());
-                if (!extension.empty())
-                    submenu.addItem(L"*." + utfTo<wxString>(extension),
-                                    [this, extension, include] { filterExtension(extension, include); });
-            }
+                addFilterPhrase(Zstr("*.") + extension, include, false /*requireNewLine*/);
+            });
 
-            //by short name
-            Zstring labelShort = Zstring(Zstr("*")) + FILE_NAME_SEPARATOR + selection[0]->getItemNameAny();
+            //by file name
+            Zstring filterPhraseName = Zstring(Zstr("*")) + FILE_NAME_SEPARATOR + getItemName(relPath);
             if (isFolder)
-                labelShort += FILE_NAME_SEPARATOR;
-            submenu.addItem(utfTo<wxString>(labelShort), [this, &selection, include] { filterShortname(*selection[0], include); });
+                filterPhraseName += FILE_NAME_SEPARATOR;
+
+            submenu.addItem(utfTo<wxString>(filterPhraseName), [this, filterPhraseName, include]
+            {
+                addFilterPhrase(filterPhraseName, include, true /*requireNewLine*/);
+            });
 
             //by relative path
-            Zstring labelRel = FILE_NAME_SEPARATOR + selection[0]->getRelativePathAny();
+            Zstring filterPhraseRel = FILE_NAME_SEPARATOR + relPath;
             if (isFolder)
-                labelRel += FILE_NAME_SEPARATOR;
-            submenu.addItem(utfTo<wxString>(labelRel), [this, &selection, include] { filterItems(selection, include); });
+                filterPhraseRel += FILE_NAME_SEPARATOR;
+            submenu.addItem(utfTo<wxString>(filterPhraseRel), [this, filterPhraseRel, include] { addFilterPhrase(filterPhraseRel, include, true /*requireNewLine*/); });
 
             menu.addSubmenu(label, submenu, img);
         }
-        else if (selection.size() > 1) //by relative path
+        else //by relative path
             menu.addItem(label + L" <" + _("multiple selection") + L">",
-                         [this, &selection, include] { filterItems(selection, include); }, img);
-        else
-            menu.addItem(label, nullptr, img, false /*enabled*/);
+                         [this, &selectionL, &selectionR, include] { addFilterPhrase(getFilterPhraseRel(selectionL, selectionR), include, true /*requireNewLine*/); }, img);
     };
     addFilterMenu(_("&Include via filter:"), loadImage("filter_include", getDefaultMenuIconSize()), true);
     addFilterMenu(_("&Exclude via filter:"), loadImage("filter_exclude", getDefaultMenuIconSize()), false);
@@ -2736,27 +2837,8 @@ void MainDialog::onGridContextRim(const std::vector<FileSystemObject*>& selectio
     const bool selectionContainsItemsToSync = [&]
     {
         for (FileSystemObject* fsObj : expandSelectionForPartialSync(selection))
-            switch (fsObj->getSyncOperation())
-            {
-                case SO_CREATE_NEW_LEFT:
-                case SO_CREATE_NEW_RIGHT:
-                case SO_DELETE_LEFT:
-                case SO_DELETE_RIGHT:
-                case SO_MOVE_LEFT_FROM:
-                case SO_MOVE_LEFT_TO:
-                case SO_MOVE_RIGHT_FROM:
-                case SO_MOVE_RIGHT_TO:
-                case SO_OVERWRITE_LEFT:
-                case SO_OVERWRITE_RIGHT:
-                case SO_COPY_METADATA_TO_LEFT:
-                case SO_COPY_METADATA_TO_RIGHT:
-                    return true;
-
-                case SO_UNRESOLVED_CONFLICT:
-                case SO_DO_NOTHING:
-                case SO_EQUAL:
-                    break;
-            }
+            if (getEffectiveSyncDir(fsObj->getSyncOperation()) != SyncDirection::none)
+                return true;
         return false;
     }();
     menu.addSeparator();
@@ -2788,21 +2870,19 @@ void MainDialog::onGridContextRim(const std::vector<FileSystemObject*>& selectio
         }
     }
     //----------------------------------------------------------------------------------------------------
-    const bool haveItemsSelected =
-    std::any_of(selectionL.begin(), selectionL.end(), [](const FileSystemObject* fsObj) { return !fsObj->isEmpty<SelectSide::left >(); }) ||
-    std::any_of(selectionR.begin(), selectionR.end(), [](const FileSystemObject* fsObj) { return !fsObj->isEmpty<SelectSide::right>(); });
+    const ptrdiff_t itemsSelected =
+    std::count_if(selectionL.begin(), selectionL.end(), [](const FileSystemObject* fsObj) { return !fsObj->isEmpty<SelectSide::left >(); }) +
+    std::count_if(selectionR.begin(), selectionR.end(), [](const FileSystemObject* fsObj) { return !fsObj->isEmpty<SelectSide::right>(); });
 
     menu.addSeparator();
-    menu.addItem(_("&Copy to...") + L"\tCtrl+T", [&] { copyToAlternateFolder(selectionL, selectionR); }, wxNullImage, haveItemsSelected);
+    menu.addItem(_("&Copy to...") + L"\tCtrl+T", [&] { copyToAlternateFolder(selectionL, selectionR); }, wxNullImage, itemsSelected > 0);
     //----------------------------------------------------------------------------------------------------
     menu.addSeparator();
 
-    warn_static("finish")
-#if 0
-    menu.addItem(_("&Rename") + L"\tF2", [&] { renameSelectedFiles(selectionL, selectionR); }, loadImage("rename", getDefaultMenuIconSize()), haveItemsSelected);
-#endif
+    menu.addItem((itemsSelected > 1 ? _("Multi-&Rename") : _("&Rename")) + L"\tF2",
+                 [&] { renameSelectedFiles(selectionL, selectionR); }, loadImage("rename", getDefaultMenuIconSize()), itemsSelected > 0);
 
-    menu.addItem(_("&Delete") + L"\t(Shift+)Del", [&] { deleteSelectedFiles(selectionL, selectionR, true /*moveToRecycler*/); }, imgTrashSmall_, haveItemsSelected);
+    menu.addItem(_("&Delete") + L"\t(Shift+)Del", [&] { deleteSelectedFiles(selectionL, selectionR, true /*moveToRecycler*/); }, imgTrashSmall_, itemsSelected > 0);
 
     menu.popup(leftSide ? *m_gridMainL : *m_gridMainR, mousePos);
 }
@@ -2857,48 +2937,6 @@ void MainDialog::addFilterPhrase(const Zstring& phrase, bool include, bool requi
     {
         std::for_each(begin(folderCmp_), end(folderCmp_), [&](BaseFolderPair& baseFolder) { addHardFiltering(baseFolder, phrase); });
         updateGui();
-    }
-}
-
-
-void MainDialog::filterExtension(const Zstring& extension, bool include)
-{
-    assert(!extension.empty());
-    addFilterPhrase(Zstr("*.") + extension, include, false);
-}
-
-
-void MainDialog::filterShortname(const FileSystemObject& fsObj, bool include)
-{
-    Zstring phrase = Zstring(Zstr("*")) + FILE_NAME_SEPARATOR + fsObj.getItemNameAny();
-    const bool isFolder = dynamic_cast<const FolderPair*>(&fsObj) != nullptr;
-    if (isFolder)
-        phrase += FILE_NAME_SEPARATOR;
-
-    addFilterPhrase(phrase, include, true);
-}
-
-
-void MainDialog::filterItems(const std::vector<FileSystemObject*>& selection, bool include)
-{
-    if (!selection.empty())
-    {
-        Zstring phrase;
-        for (auto it = selection.begin(); it != selection.end(); ++it)
-        {
-            FileSystemObject* fsObj = *it;
-
-            if (it != selection.begin())
-                phrase += Zstr('\n');
-
-            //#pragma warning(suppress: 6011) -> fsObj bound in this context!
-            phrase += FILE_NAME_SEPARATOR + fsObj->getRelativePathAny();
-
-            const bool isFolder = dynamic_cast<const FolderPair*>(fsObj) != nullptr;
-            if (isFolder)
-                phrase += FILE_NAME_SEPARATOR;
-        }
-        addFilterPhrase(phrase, include, true);
     }
 }
 
@@ -3136,11 +3174,11 @@ void MainDialog::onSyncSettingsContext(wxEvent& event)
 
     auto setVariant = [&](SyncVariant var)
     {
-        currentCfg_.mainCfg.syncCfg.directionCfg.var = var;
+        currentCfg_.mainCfg.syncCfg.directionCfg = getDefaultSyncCfg(var);
         applySyncDirections();
     };
 
-    const auto activeSyncVar = getConfig().mainCfg.syncCfg.directionCfg.var;
+    const SyncVariant activeSyncVar = getSyncVariant(getConfig().mainCfg.syncCfg.directionCfg);
 
     auto addVariantItem = [&](SyncVariant syncVar, const char* iconName)
     {
@@ -3151,7 +3189,7 @@ void MainDialog::onSyncSettingsContext(wxEvent& event)
     addVariantItem(SyncVariant::twoWay, "sync_twoway");
     addVariantItem(SyncVariant::mirror, "sync_mirror");
     addVariantItem(SyncVariant::update, "sync_update");
-    addVariantItem(SyncVariant::custom, "sync_custom");
+    //addVariantItem(SyncVariant::custom, "sync_custom"); -> doesn't make sense, does it?
 
     menu.popup(*m_bpButtonSyncContext, {m_bpButtonSyncContext->GetSize().x, 0});
 }
@@ -3759,7 +3797,7 @@ void MainDialog::renameSelectedCfgHistoryItem()
             wxTextEntryDialog cfgRenameDlg(this, _("New name:"), _("Rename Configuration"), utfTo<wxString>(cfgNameOld));
 
             wxTextValidator inputValidator(wxFILTER_EXCLUDE_CHAR_LIST);
-            inputValidator.SetCharExcludes(LR"(<>:"/\|?*)"); //forbidden chars for file names (at least on Windows)
+            inputValidator.SetCharExcludes(LR"(<>:"/\|?*)"); //chars forbidden for file names (at least on Windows)
             //https://docs.microsoft.com/de-de/windows/win32/fileio/naming-a-file#naming-conventions
             cfgRenameDlg.SetTextValidator(inputValidator);
 
@@ -3840,15 +3878,6 @@ void MainDialog::onCfgGridContext(GridContextMenuEvent& event)
         else
             assert(false);
 
-    //--------------------------------------------------------------------------------------------------------
-    const bool renameEnabled = [&]
-    {
-        if (!selectedRows.empty())
-            if (const ConfigView::Details* cfg = cfggrid::getDataView(*m_gridCfgHistory).getItem(selectedRows[0]))
-                return !cfg->isLastRunCfg;
-        return false;
-    }();
-    menu.addItem(_("&Rename...") + L"\tF2",  [this] { renameSelectedCfgHistoryItem (); }, wxNullImage, renameEnabled);
     //--------------------------------------------------------------------------------------------------------
     ContextMenu submenu;
 
@@ -3980,6 +4009,16 @@ void MainDialog::onCfgGridContext(GridContextMenuEvent& event)
     menu.addItem(translate(extCommandFileManager.description), //translate default external apps on the fly: "Show in Explorer"
                  showInFileManager, imgFileManagerSmall_, !selectedRows.empty());
     menu.addSeparator();
+    //--------------------------------------------------------------------------------------------------------
+    const bool renameEnabled = [&]
+    {
+        if (!selectedRows.empty())
+            if (const ConfigView::Details* cfg = cfggrid::getDataView(*m_gridCfgHistory).getItem(selectedRows[0]))
+                return !cfg->isLastRunCfg;
+        return false;
+    }();
+    menu.addItem(_("&Rename") + L"\tF2",  [this] { renameSelectedCfgHistoryItem (); }, loadImage("rename", getDefaultMenuIconSize()), renameEnabled);
+
     //--------------------------------------------------------------------------------------------------------
     menu.addItem(_("&Hide")   + L"\tDel",       [this] { removeSelectedCfgHistoryItems(false /*deleteFromDisk*/); }, wxNullImage,    !selectedRows.empty());
     menu.addItem(_("&Delete") + L"\tShift+Del", [this] { removeSelectedCfgHistoryItems(true  /*deleteFromDisk*/); }, imgTrashSmall_, !selectedRows.empty());
@@ -4456,6 +4495,7 @@ void MainDialog::onCompare(wxCommandEvent& event)
     //wxBusyCursor dummy; -> redundant: progress already shown in progress dialog!
 
     FocusPreserver fp; //e.g. keep focus on config panel after pressing F5
+
     //give nice hint on what's next to do if user manually clicked on compare
     assert(m_buttonCompare->GetId() != wxID_ANY);
     if (fp.getFocusId() == m_buttonCompare->GetId())
@@ -4572,8 +4612,8 @@ void MainDialog::updateGui()
     updateUnsavedCfgStatus();
 
     const auto& mainCfg = getConfig().mainCfg;
-    const std::optional<CompareVariant> cmpVar  = getCompVariant(mainCfg);
-    const std::optional<SyncVariant>    syncVar = getSyncVariant(mainCfg);
+    const std::optional<CompareVariant> cmpVar  = getCommonCompVariant(mainCfg);
+    const std::optional<SyncVariant>    syncVar = getCommonSyncVariant(mainCfg);
 
     const char* cmpVarIconName = nullptr;
     if (cmpVar)
@@ -4705,7 +4745,7 @@ void MainDialog::onStartSync(wxCommandEvent& event)
         bool dontShowAgain = false;
 
         if (showSyncConfirmationDlg(this, false /*syncSelection*/,
-                                    getSyncVariant(guiCfg.mainCfg),
+                                    getCommonSyncVariant(guiCfg.mainCfg),
                                     SyncStatistics(folderCmp_),
                                     dontShowAgain) != ConfirmationButton::accept)
             return;
@@ -4913,6 +4953,12 @@ void MainDialog::onStartSync(wxCommandEvent& event)
 
     updateGui();
 
+    warn_static("fix?")
+        //"The little statistics box in the lower right corner clears right after the sync
+        //completes. It used to clear after you close the progress window. I like to know 
+        //the statistics, but usually I just start the sync and walk away. When I come back,
+        //the statistics are gone."
+
     //---------------------------------------------------------------------------
     const StatusHandlerFloatingDialog::DlgOptions dlgOpt = statusHandler.showResult();
 
@@ -4948,15 +4994,15 @@ void MainDialog::onStartSync(wxCommandEvent& event)
 
 namespace
 {
-void appendInactive(ContainerObject& hierObj, std::vector<FileSystemObject*>& inactiveItems)
+void appendInactive(ContainerObject& conObj, std::vector<FileSystemObject*>& inactiveItems)
 {
-    for (FilePair& file : hierObj.refSubFiles())
+    for (FilePair& file : conObj.refSubFiles())
         if (!file.isActive())
             inactiveItems.push_back(&file);
-    for (SymlinkPair& symlink : hierObj.refSubLinks())
+    for (SymlinkPair& symlink : conObj.refSubLinks())
         if (!symlink.isActive())
             inactiveItems.push_back(&symlink);
-    for (FolderPair& folder : hierObj.refSubFolders())
+    for (FolderPair& folder : conObj.refSubFolders())
     {
         if (!folder.isActive())
             inactiveItems.push_back(&folder);
@@ -4976,8 +5022,8 @@ void MainDialog::startSyncForSelecction(const std::vector<FileSystemObject*>& se
     {
         switch (fsObj->getSyncOperation())
         {
-            case SO_CREATE_NEW_LEFT:
-            case SO_CREATE_NEW_RIGHT:
+            case SO_CREATE_LEFT:
+            case SO_CREATE_RIGHT:
             case SO_DELETE_LEFT:
             case SO_DELETE_RIGHT:
             case SO_MOVE_LEFT_FROM:
@@ -4986,8 +5032,8 @@ void MainDialog::startSyncForSelecction(const std::vector<FileSystemObject*>& se
             case SO_MOVE_RIGHT_TO:
             case SO_OVERWRITE_LEFT:
             case SO_OVERWRITE_RIGHT:
-            case SO_COPY_METADATA_TO_LEFT:
-            case SO_COPY_METADATA_TO_RIGHT:
+            case SO_RENAME_LEFT:
+            case SO_RENAME_RIGHT:
                 basePairsSelect.insert(&fsObj->base());
                 break;
 
@@ -5051,7 +5097,7 @@ void MainDialog::startSyncForSelecction(const std::vector<FileSystemObject*>& se
 
             if (showSyncConfirmationDlg(this,
                                         true /*syncSelection*/,
-                                        getSyncVariant(guiCfg.mainCfg),
+                                        getCommonSyncVariant(guiCfg.mainCfg),
                                         SyncStatistics(folderCmpSelect),
                                         dontShowAgain) != ConfirmationButton::accept)
                 return;
@@ -6198,25 +6244,6 @@ void MainDialog::onMenuCheckVersion(wxCommandEvent& event)
 }
 
 
-void MainDialog::onMenuCheckVersionAutomatically(wxCommandEvent& event)
-{
-    if (updateCheckActive(globalCfg_.lastUpdateCheck))
-        disableUpdateCheck(globalCfg_.lastUpdateCheck);
-    else
-        globalCfg_.lastUpdateCheck = 0; //reset to GlobalSettings.xml default value!
-
-    m_menuItemCheckVersionAuto->Check(updateCheckActive(globalCfg_.lastUpdateCheck));
-
-    if (shouldRunAutomaticUpdateCheck(globalCfg_.lastUpdateCheck))
-    {
-        flashStatusInfo(_("Searching for program updates..."));
-        //synchronous update check is sufficient here:
-        automaticUpdateCheckEval(*this, globalCfg_.lastUpdateCheck, globalCfg_.lastOnlineVersion,
-                                 automaticUpdateCheckRunAsync(automaticUpdateCheckPrepare(*this).ref()).ref());
-    }
-}
-
-
 void MainDialog::onStartupUpdateCheck(wxIdleEvent& event)
 {
     //execute just once per startup!
@@ -6225,12 +6252,12 @@ void MainDialog::onStartupUpdateCheck(wxIdleEvent& event)
 
     auto showNewVersionReminder = [this]
     {
-        if (!globalCfg_.lastOnlineVersion.empty() && haveNewerVersionOnline(globalCfg_.lastOnlineVersion))
+        if (haveNewerVersionOnline(globalCfg_.lastOnlineVersion))
         {
             auto menu = new wxMenu();
             wxMenuItem* newItem = new wxMenuItem(menu, wxID_ANY, _("&Show details"));
             Bind(wxEVT_COMMAND_MENU_SELECTED, [this](wxCommandEvent&) { checkForUpdateNow(*this, globalCfg_.lastOnlineVersion); }, newItem->GetId());
-            //show changelog + handle Donation Edition auto-updater (including expiration)
+            //show changelog + handle Supporter Edition auto-updater (including expiration)
             menu->Append(newItem); //pass ownership
 
             const std::wstring& blackStar = utfTo<std::wstring>("★");
@@ -6238,7 +6265,7 @@ void MainDialog::onStartupUpdateCheck(wxIdleEvent& event)
         }
     };
 
-    if (shouldRunAutomaticUpdateCheck(globalCfg_.lastUpdateCheck))
+    if (automaticUpdateCheckDue(globalCfg_.lastUpdateCheck))
     {
         flashStatusInfo(_("Searching for program updates..."));
 

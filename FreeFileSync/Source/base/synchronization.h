@@ -20,7 +20,7 @@ class SyncStatistics //count *logical* operations, (create, update, delete + byt
     //-> note the fundamental difference compared to counting disk accesses!
 public:
     explicit SyncStatistics(const FolderComparison& folderCmp);
-    explicit SyncStatistics(const ContainerObject& hierObj);
+    explicit SyncStatistics(const ContainerObject& conObj);
     explicit SyncStatistics(const FilePair& file);
 
     template <SelectSide side>
@@ -38,16 +38,12 @@ public:
     int64_t getBytesToProcess() const { return bytesToProcess_; }
     size_t  rowCount         () const { return rowsTotal_; }
 
-    struct ConflictInfo
-    {
-        Zstring relPath;
-        std::wstring msg;
-    };
-    const std::vector<ConflictInfo>& getConflictsPreview() const { return conflictsPreview_; }
+    const std::vector<std::wstring>& getConflictsPreview() const { return conflictsPreview_; }
     int conflictCount() const { return conflictCount_; }
 
 private:
-    void recurse(const ContainerObject& hierObj);
+    void recurse(const ContainerObject& conObj);
+    void logConflict(const FileSystemObject& fsObj);
 
     void processFile  (const FilePair& file);
     void processLink  (const SymlinkPair& symlink);
@@ -64,7 +60,7 @@ private:
     size_t rowsTotal_ = 0;
 
     int conflictCount_ = 0;
-    std::vector<ConflictInfo> conflictsPreview_; //conflict texts to display as a warning message
+    std::vector<std::wstring> conflictsPreview_; //conflict texts to display as a warning message
     //limit conflict count! e.g. there may be hundred thousands of "same date but a different size"
 };
 

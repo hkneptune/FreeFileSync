@@ -265,7 +265,17 @@ std::unique_ptr<HttpInputStream::Impl> sendHttpRequestImpl(const Zstring& url,
         else
         {
             if (httpStatus != 200) //HTTP_STATUS_OK
-                throw SysError(formatHttpError(httpStatus)); //e.g. "HTTP status 404: Not found."
+            {
+#if 0 //beneficial to add error details?
+                std::wstring errorDetails;
+                try
+                {
+                    errorDetails = utfTo<std::wstring>(HttpInputStream(std::move(response)).readAll(nullptr /*notifyUnbufferedIO*/)); //throw SysError
+                }
+                catch (const SysError& e) { errorDetails = e.toString(); }
+#endif
+                throw SysError(formatHttpError(httpStatus) /*+ L' ' + errorDetails*/); //e.g. "HTTP status 404: Not found."
+            }
 
             return response;
         }

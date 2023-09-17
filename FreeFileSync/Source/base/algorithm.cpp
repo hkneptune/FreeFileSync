@@ -34,21 +34,21 @@ void fff::swapGrids(const MainConfiguration& mainCfg, FolderComparison& folderCm
 namespace
 {
 //visitFSObjectRecursively? nope, see premature end of traversal in processFolder()
-class SetSyncDirectionByConfig
+class SetSyncDirViaDifferences
 {
 public:
-    static void execute(const DirectionSet& dirCfgIn, ContainerObject& hierObj) { SetSyncDirectionByConfig(dirCfgIn).recurse(hierObj); }
+    static void execute(const DirectionByDiff& dirs, ContainerObject& conObj) { SetSyncDirViaDifferences(dirs).recurse(conObj); }
 
 private:
-    SetSyncDirectionByConfig(const DirectionSet& dirCfgIn) : dirCfg_(dirCfgIn) {}
+    SetSyncDirViaDifferences(const DirectionByDiff& dirs) : dirs_(dirs) {}
 
-    void recurse(ContainerObject& hierObj) const
+    void recurse(ContainerObject& conObj) const
     {
-        for (FilePair& file : hierObj.refSubFiles())
+        for (FilePair& file : conObj.refSubFiles())
             processFile(file);
-        for (SymlinkPair& link : hierObj.refSubLinks())
+        for (SymlinkPair& link : conObj.refSubLinks())
             processLink(link);
-        for (FolderPair& folder : hierObj.refSubFolders())
+        for (FolderPair& folder : conObj.refSubFolders())
             processFolder(folder);
     }
 
@@ -57,38 +57,49 @@ private:
         const CompareFileResult cat = file.getCategory();
 
         //##################### schedule old temporary files for deletion ####################
-        if (cat == FILE_LEFT_SIDE_ONLY && endsWith(file.getItemName<SelectSide::left>(), AFS::TEMP_FILE_ENDING))
+        if (cat == FILE_LEFT_ONLY && endsWith(file.getItemName<SelectSide::left>(), AFS::TEMP_FILE_ENDING))
             return file.setSyncDir(SyncDirection::left);
-        else if (cat == FILE_RIGHT_SIDE_ONLY && endsWith(file.getItemName<SelectSide::right>(), AFS::TEMP_FILE_ENDING))
+        else if (cat == FILE_RIGHT_ONLY && endsWith(file.getItemName<SelectSide::right>(), AFS::TEMP_FILE_ENDING))
             return file.setSyncDir(SyncDirection::right);
         //####################################################################################
 
         switch (cat)
         {
-            case FILE_LEFT_SIDE_ONLY:
-                file.setSyncDir(dirCfg_.exLeftSideOnly);
+            case FILE_EQUAL:
+                //file.setSyncDir(SyncDirection::none);
                 break;
-            case FILE_RIGHT_SIDE_ONLY:
-                file.setSyncDir(dirCfg_.exRightSideOnly);
+            case FILE_RENAMED:
+                if (dirs_.leftNewer == dirs_.rightNewer)
+                    file.setSyncDir(dirs_.leftNewer); //treat "rename" like a "file update"
+                else
+                    file.setSyncDirConflict(txtDiffName_);
                 break;
-            case FILE_RIGHT_NEWER:
-                file.setSyncDir(dirCfg_.rightNewer);
+            case FILE_LEFT_ONLY:
+                file.setSyncDir(dirs_.leftOnly);
+                break;
+            case FILE_RIGHT_ONLY:
+                file.setSyncDir(dirs_.rightOnly);
                 break;
             case FILE_LEFT_NEWER:
-                file.setSyncDir(dirCfg_.leftNewer);
+                file.setSyncDir(dirs_.leftNewer);
+                break;
+            case FILE_RIGHT_NEWER:
+                file.setSyncDir(dirs_.rightNewer);
+                break;
+            case FILE_TIME_INVALID:
+                if (dirs_.leftNewer == dirs_.rightNewer) //e.g. "Mirror" sync variant
+                    file.setSyncDir(dirs_.leftNewer);
+                else
+                    file.setSyncDirConflict(file.getCategoryCustomDescription());
                 break;
             case FILE_DIFFERENT_CONTENT:
-                file.setSyncDir(dirCfg_.different);
+                if (dirs_.leftNewer == dirs_.rightNewer)
+                    file.setSyncDir(dirs_.leftNewer);
+                else
+                    file.setSyncDirConflict(txtDiffContent_);
                 break;
             case FILE_CONFLICT:
-            case FILE_DIFFERENT_METADATA: //use setting from "conflict/cannot categorize"
-                if (dirCfg_.conflict == SyncDirection::none)
-                    file.setSyncDirConflict(file.getCatExtraDescription()); //take over category conflict
-                else
-                    file.setSyncDir(dirCfg_.conflict);
-                break;
-            case FILE_EQUAL:
-                file.setSyncDir(SyncDirection::none);
+                file.setSyncDirConflict(file.getCategoryCustomDescription()); //take over category conflict: allow *manual* resolution only!
                 break;
         }
     }
@@ -97,30 +108,41 @@ private:
     {
         switch (symlink.getLinkCategory())
         {
-            case SYMLINK_LEFT_SIDE_ONLY:
-                symlink.setSyncDir(dirCfg_.exLeftSideOnly);
+            case SYMLINK_EQUAL:
+                //symlink.setSyncDir(SyncDirection::none);
                 break;
-            case SYMLINK_RIGHT_SIDE_ONLY:
-                symlink.setSyncDir(dirCfg_.exRightSideOnly);
+            case SYMLINK_RENAMED:
+                if (dirs_.leftNewer == dirs_.rightNewer)
+                    symlink.setSyncDir(dirs_.leftNewer);
+                else
+                    symlink.setSyncDirConflict(txtDiffName_);
+                break;
+            case SYMLINK_LEFT_ONLY:
+                symlink.setSyncDir(dirs_.leftOnly);
+                break;
+            case SYMLINK_RIGHT_ONLY:
+                symlink.setSyncDir(dirs_.rightOnly);
                 break;
             case SYMLINK_LEFT_NEWER:
-                symlink.setSyncDir(dirCfg_.leftNewer);
+                symlink.setSyncDir(dirs_.leftNewer);
                 break;
             case SYMLINK_RIGHT_NEWER:
-                symlink.setSyncDir(dirCfg_.rightNewer);
+                symlink.setSyncDir(dirs_.rightNewer);
                 break;
-            case SYMLINK_CONFLICT:
-            case SYMLINK_DIFFERENT_METADATA: //use setting from "conflict/cannot categorize"
-                if (dirCfg_.conflict == SyncDirection::none)
-                    symlink.setSyncDirConflict(symlink.getCatExtraDescription()); //take over category conflict
+            case SYMLINK_TIME_INVALID:
+                if (dirs_.leftNewer == dirs_.rightNewer)
+                    symlink.setSyncDir(dirs_.leftNewer);
                 else
-                    symlink.setSyncDir(dirCfg_.conflict);
+                    symlink.setSyncDirConflict(symlink.getCategoryCustomDescription());
                 break;
             case SYMLINK_DIFFERENT_CONTENT:
-                symlink.setSyncDir(dirCfg_.different);
+                if (dirs_.leftNewer == dirs_.rightNewer)
+                    symlink.setSyncDir(dirs_.leftNewer);
+                else
+                    symlink.setSyncDirConflict(txtDiffContent_);
                 break;
-            case SYMLINK_EQUAL:
-                symlink.setSyncDir(SyncDirection::none);
+            case SYMLINK_CONFLICT:
+                symlink.setSyncDirConflict(symlink.getCategoryCustomDescription()); //take over category conflict: allow *manual* resolution only!
                 break;
         }
     }
@@ -130,50 +152,56 @@ private:
         const CompareDirResult cat = folder.getDirCategory();
 
         //########### schedule abandoned temporary recycle bin directory for deletion  ##########
-        if (cat == DIR_LEFT_SIDE_ONLY && endsWith(folder.getItemName<SelectSide::left>(), AFS::TEMP_FILE_ENDING))
+        if (cat == DIR_LEFT_ONLY && endsWith(folder.getItemName<SelectSide::left>(), AFS::TEMP_FILE_ENDING))
             return setSyncDirectionRec(SyncDirection::left, folder); //
-        else if (cat == DIR_RIGHT_SIDE_ONLY && endsWith(folder.getItemName<SelectSide::right>(), AFS::TEMP_FILE_ENDING))
+        else if (cat == DIR_RIGHT_ONLY && endsWith(folder.getItemName<SelectSide::right>(), AFS::TEMP_FILE_ENDING))
             return setSyncDirectionRec(SyncDirection::right, folder); //don't recurse below!
         //#######################################################################################
 
         switch (cat)
         {
-            case DIR_LEFT_SIDE_ONLY:
-                folder.setSyncDir(dirCfg_.exLeftSideOnly);
-                break;
-            case DIR_RIGHT_SIDE_ONLY:
-                folder.setSyncDir(dirCfg_.exRightSideOnly);
-                break;
             case DIR_EQUAL:
-                folder.setSyncDir(SyncDirection::none);
+                //folder.setSyncDir(SyncDirection::none);
+                break;
+            case DIR_RENAMED:
+                if (dirs_.leftNewer == dirs_.rightNewer)
+                    folder.setSyncDir(dirs_.leftNewer);
+                else
+                    folder.setSyncDirConflict(txtDiffName_);
+                break;
+            case DIR_LEFT_ONLY:
+                folder.setSyncDir(dirs_.leftOnly);
+                break;
+            case DIR_RIGHT_ONLY:
+                folder.setSyncDir(dirs_.rightOnly);
                 break;
             case DIR_CONFLICT:
-            case DIR_DIFFERENT_METADATA: //use setting from "conflict/cannot categorize"
-                if (dirCfg_.conflict == SyncDirection::none)
-                    folder.setSyncDirConflict(folder.getCatExtraDescription()); //take over category conflict
-                else
-                    folder.setSyncDir(dirCfg_.conflict);
+                folder.setSyncDirConflict(folder.getCategoryCustomDescription()); //take over category conflict: allow *manual* resolution only!
                 break;
         }
 
         recurse(folder);
     }
 
-    const DirectionSet dirCfg_;
+    const DirectionByDiff dirs_;
+    const Zstringc txtDiffName_ = utfTo<Zstringc>(_("Cannot determine sync-direction:") + L'\n' + TAB_SPACE +
+                                                  _("The items have different names, but it's unknown which side was renamed."));
+    const Zstringc txtDiffContent_ = utfTo<Zstringc>(_("Cannot determine sync-direction:") + L'\n' + TAB_SPACE +
+                                                     _("The items have different content, but it's unknown which side has changed."));
 };
 
 //---------------------------------------------------------------------------------------------------------------
 
 //test if non-equal items exist in scanned data
-bool allItemsCategoryEqual(const ContainerObject& hierObj)
+bool allItemsCategoryEqual(const ContainerObject& conObj)
 {
-    return std::all_of(hierObj.refSubFiles().begin(), hierObj.refSubFiles().end(),
+    return std::all_of(conObj.refSubFiles().begin(), conObj.refSubFiles().end(),
     [](const FilePair& file) { return file.getCategory() == FILE_EQUAL; })&&
 
-    std::all_of(hierObj.refSubLinks().begin(), hierObj.refSubLinks().end(),
+    std::all_of(conObj.refSubLinks().begin(), conObj.refSubLinks().end(),
     [](const SymlinkPair& symlink) { return symlink.getLinkCategory() == SYMLINK_EQUAL; })&&
 
-    std::all_of(hierObj.refSubFolders().begin(), hierObj.refSubFolders().end(), [](const FolderPair& folder)
+    std::all_of(conObj.refSubFolders().begin(), conObj.refSubFolders().end(), [](const FolderPair& folder)
     {
         return folder.getDirCategory() == DIR_EQUAL && allItemsCategoryEqual(folder); //short-circuit behavior!
     });
@@ -190,19 +218,20 @@ bool fff::allElementsEqual(const FolderComparison& folderCmp)
 namespace
 {
 template <SelectSide side> inline
-bool matchesDbEntry(const FilePair& file, const InSyncFile* dbFile, const std::vector<unsigned int>& ignoreTimeShiftMinutes)
+CudAction compareDbEntry(const FilePair& file, const InSyncFile* dbFile, const std::vector<unsigned int>& ignoreTimeShiftMinutes, bool renamedOrMoved)
 {
     if (file.isEmpty<side>())
-        return !dbFile;
+        return dbFile ? (renamedOrMoved ? CudAction::update: CudAction::delete_) : CudAction::noChange;
     else if (!dbFile)
-        return false;
+        return (renamedOrMoved ? CudAction::update : CudAction::create);
 
     const InSyncDescrFile& descrDb = selectParam<side>(dbFile->left, dbFile->right);
 
-    return //we're not interested in "fileTimeTolerance" here!
-        sameFileTime(file.getLastWriteTime<side>(), descrDb.modTime, FAT_FILE_TIME_PRECISION_SEC, ignoreTimeShiftMinutes) &&
-        file.getFileSize<side>() == dbFile->fileSize;
-    //note: we do *not* consider file ID here, but are only interested in *visual* changes. Consider user moving data to some other medium, this is not a change!
+    return sameFileTime(file.getLastWriteTime<side>(), descrDb.modTime, FAT_FILE_TIME_PRECISION_SEC, ignoreTimeShiftMinutes) &&
+           //- we're not interested in "fileTimeTolerance"!
+           //- we do *not* consider file ID, but only *user-visual* changes. E.g. user moving data to some other medium should not be considered a change!
+           file.getFileSize<side>() == dbFile->fileSize ?
+           CudAction::noChange : CudAction::update;
 }
 
 
@@ -215,15 +244,15 @@ bool stillInSync(const InSyncFile& dbFile, CompareVariant compareVar, int fileTi
         case CompareVariant::timeSize:
             if (dbFile.cmpVar == CompareVariant::content) return true; //special rule: this is certainly "good enough" for CompareVariant::timeSize!
 
-            //case-sensitive short name match is a database invariant!
+            //case-sensitive file name match is a database invariant!
             return sameFileTime(dbFile.left.modTime, dbFile.right.modTime, fileTimeTolerance, ignoreTimeShiftMinutes);
 
         case CompareVariant::content:
-            //case-sensitive short name match is a database invariant!
+            //case-sensitive file name match is a database invariant!
             return dbFile.cmpVar == CompareVariant::content;
         //in contrast to comparison, we don't care about modification time here!
 
-        case CompareVariant::size: //file size/case-sensitive short name always matches on both sides for an "in-sync" database entry
+        case CompareVariant::size: //file size/case-sensitive file name always matches on both sides for an "in-sync" database entry
             return true;
     }
     assert(false);
@@ -234,16 +263,17 @@ bool stillInSync(const InSyncFile& dbFile, CompareVariant compareVar, int fileTi
 
 //check whether database entry and current item match: *irrespective* of current comparison settings
 template <SelectSide side> inline
-bool matchesDbEntry(const SymlinkPair& symlink, const InSyncSymlink* dbSymlink, const std::vector<unsigned int>& ignoreTimeShiftMinutes)
+CudAction compareDbEntry(const SymlinkPair& symlink, const InSyncSymlink* dbSymlink, const std::vector<unsigned int>& ignoreTimeShiftMinutes, bool renamedOrMoved)
 {
     if (symlink.isEmpty<side>())
-        return !dbSymlink;
+        return dbSymlink ? (renamedOrMoved ? CudAction::update: CudAction::delete_) : CudAction::noChange;
     else if (!dbSymlink)
-        return false;
+        return (renamedOrMoved ? CudAction::update : CudAction::create);
 
     const InSyncDescrLink& descrDb = selectParam<side>(dbSymlink->left, dbSymlink->right);
 
-    return sameFileTime(symlink.getLastWriteTime<side>(), descrDb.modTime, FAT_FILE_TIME_PRECISION_SEC, ignoreTimeShiftMinutes);
+    return sameFileTime(symlink.getLastWriteTime<side>(), descrDb.modTime, FAT_FILE_TIME_PRECISION_SEC, ignoreTimeShiftMinutes) ?
+           CudAction::noChange : CudAction::update;
 }
 
 
@@ -257,12 +287,12 @@ bool stillInSync(const InSyncSymlink& dbLink, CompareVariant compareVar, int fil
             if (dbLink.cmpVar == CompareVariant::content || dbLink.cmpVar == CompareVariant::size)
                 return true; //special rule: this is already "good enough" for CompareVariant::timeSize!
 
-            //case-sensitive short name match is a database invariant!
+            //case-sensitive symlink name match is a database invariant!
             return sameFileTime(dbLink.left.modTime, dbLink.right.modTime, fileTimeTolerance, ignoreTimeShiftMinutes);
 
         case CompareVariant::content:
         case CompareVariant::size: //== categorized by content! see comparison.cpp, ComparisonBuffer::compareBySize()
-            //case-sensitive short name match is a database invariant!
+            //case-sensitive symlink name match is a database invariant!
             return dbLink.cmpVar == CompareVariant::content || dbLink.cmpVar == CompareVariant::size;
     }
     assert(false);
@@ -273,18 +303,21 @@ bool stillInSync(const InSyncSymlink& dbLink, CompareVariant compareVar, int fil
 
 //check whether database entry and current item match: *irrespective* of current comparison settings
 template <SelectSide side> inline
-bool matchesDbEntry(const FolderPair& folder, const InSyncFolder* dbFolder)
+CudAction compareDbEntry(const FolderPair& folder, const InSyncFolder* dbFolder, bool renamedOrMoved)
 {
-    const bool haveDbEntry = dbFolder && dbFolder->status != InSyncFolder::DIR_STATUS_STRAW_MAN;
-    return haveDbEntry == !folder.isEmpty<side>();
+    if (folder.isEmpty<side>())
+        return dbFolder ? (renamedOrMoved ? CudAction::update: CudAction::delete_) : CudAction::noChange;
+    else if (!dbFolder)
+        return (renamedOrMoved ? CudAction::update : CudAction::create);
+
+    return CudAction::noChange;
 }
 
 
 inline
 bool stillInSync(const InSyncFolder& dbFolder)
 {
-    //case-sensitive short name match is a database invariant!
-    //InSyncFolder::DIR_STATUS_STRAW_MAN considered
+    //case-sensitive folder name match is a database invariant!
     return true;
 }
 
@@ -293,7 +326,11 @@ bool stillInSync(const InSyncFolder& dbFolder)
 class DetectMovedFiles
 {
 public:
-    static void execute(BaseFolderPair& baseFolder, const InSyncFolder& dbFolder) { DetectMovedFiles(baseFolder, dbFolder); }
+    static void execute(BaseFolderPair& baseFolder, const InSyncFolder& dbFolder)
+    {
+        DetectMovedFiles(baseFolder, dbFolder);
+        baseFolder.removeDoubleEmpty(); //see findAndSetMovePair()
+    }
 
 private:
     DetectMovedFiles(BaseFolderPair& baseFolder, const InSyncFolder& dbFolder) :
@@ -311,12 +348,14 @@ private:
             detectMovePairs(dbFolder);
     }
 
-    void recurse(ContainerObject& hierObj, const InSyncFolder* dbFolderL, const InSyncFolder* dbFolderR)
+    void recurse(ContainerObject& conObj, const InSyncFolder* dbFolderL, const InSyncFolder* dbFolderR)
     {
-        for (FilePair& file : hierObj.refSubFiles())
+        for (FilePair& file : conObj.refSubFiles())
         {
-            const AFS::FingerPrint filePrintL = file.getFilePrint<SelectSide::left >();
-            const AFS::FingerPrint filePrintR = file.getFilePrint<SelectSide::right>();
+            file.setMoveRef(nullptr); //discard remnants from previous move detection and start fresh (e.g. consider manual folder rename)
+
+            const AFS::FingerPrint filePrintL = file.isEmpty<SelectSide::left >() ? 0 : file.getFilePrint<SelectSide::left >();
+            const AFS::FingerPrint filePrintR = file.isEmpty<SelectSide::right>() ? 0 : file.getFilePrint<SelectSide::right>();
 
             if (filePrintL != 0) filesL_.push_back(&file); //collect *all* prints for uniqueness check!
             if (filePrintR != 0) filesR_.push_back(&file); //
@@ -331,19 +370,19 @@ private:
             };
 
             if (const CompareFileResult cat = file.getCategory();
-                cat == FILE_LEFT_SIDE_ONLY)
+                cat == FILE_LEFT_ONLY)
             {
                 if (const InSyncFile* dbEntry = getDbEntry(dbFolderL, file.getItemName<SelectSide::left>()))
                     exLeftOnlyByPath_.emplace(dbEntry, &file);
             }
-            else if (cat == FILE_RIGHT_SIDE_ONLY)
+            else if (cat == FILE_RIGHT_ONLY)
             {
                 if (const InSyncFile* dbEntry = getDbEntry(dbFolderR, file.getItemName<SelectSide::right>()))
                     exRightOnlyByPath_.emplace(dbEntry, &file);
             }
         }
 
-        for (FolderPair& folder : hierObj.refSubFolders())
+        for (FolderPair& folder : conObj.refSubFolders())
         {
             auto getDbEntry = [](const InSyncFolder* dbFolder, const ZstringNorm& folderName) -> const InSyncFolder*
             {
@@ -391,7 +430,7 @@ private:
                 }
 
             //collect unique file prints for files existing on one side only:
-            constexpr CompareFileResult oneSideOnlyTag = side == SelectSide::left ? FILE_LEFT_SIDE_ONLY : FILE_RIGHT_SIDE_ONLY;
+            constexpr CompareFileResult oneSideOnlyTag = side == SelectSide::left ? FILE_LEFT_ONLY : FILE_RIGHT_ONLY;
 
             for (FilePair* file : files)
                 if (file->getCategory() == oneSideOnlyTag)
@@ -455,17 +494,42 @@ private:
                     if (FilePair* fileRightOnly = getAssocFilePair<SelectSide::right>(dbFile))
                         if (sameSizeAndDate<SelectSide::right>(*fileRightOnly, dbFile))
                         {
-                            assert((!fileLeftOnly ->getMoveRef() &&
-                                    !fileRightOnly->getMoveRef()) ||
-                                   (fileLeftOnly ->getMoveRef() == fileRightOnly->getId() &&
-                                    fileRightOnly->getMoveRef() == fileLeftOnly ->getId()));
-
-                            if (fileLeftOnly ->getMoveRef() == nullptr && //needless check!? file prints are unique in this context!
-                                fileRightOnly->getMoveRef() == nullptr)   //
+                            if (fileLeftOnly ->getMoveRef() == nullptr &&              //needless checks? (file prints are unique in this context)
+                                fileRightOnly->getMoveRef() == nullptr &&              //
+                                fileLeftOnly ->getCategory() == FILE_LEFT_ONLY && //is it possible we could get conflicting matches!?
+                                fileRightOnly->getCategory() == FILE_RIGHT_ONLY)  //=> likely 'yes', but only in obscure cases
+                                //--------------- found a match ---------------
                             {
-                                fileLeftOnly ->setMoveRef(fileRightOnly->getId()); //found a pair, mark it!
-                                fileRightOnly->setMoveRef(fileLeftOnly ->getId()); //
+                                //move pair is just a 'rename' => combine:
+                                if (&fileLeftOnly->parent() == &fileRightOnly->parent())
+                                {
+                                    fileLeftOnly->setSyncedTo<SelectSide::right>(fileLeftOnly->getFileSize<SelectSide::left>(),
+                                                                                 fileRightOnly->getLastWriteTime<SelectSide::right>(), //lastWriteTimeTrg
+                                                                                 fileLeftOnly ->getLastWriteTime<SelectSide::left >(), //lastWriteTimeSrc
+
+                                                                                 fileRightOnly->getFilePrint<SelectSide::right>(), //filePrintTrg
+                                                                                 fileLeftOnly ->getFilePrint<SelectSide::left >(), //filePrintSrc
+
+                                                                                 fileRightOnly->isFollowedSymlink<SelectSide::right>(),  //isSymlinkTrg
+                                                                                 fileLeftOnly ->isFollowedSymlink<SelectSide::left >()); //isSymlinkSrc
+
+                                    fileLeftOnly->setItemName<SelectSide::right>(fileRightOnly->getItemName<SelectSide::right>());
+
+                                    assert(fileLeftOnly->isActive() && fileRightOnly->isActive()); //can this fail? excluded files are not added during comparison...
+                                    if (fileLeftOnly->isActive() != fileRightOnly->isActive()) //just in case
+                                        fileLeftOnly->setActive(false);
+
+                                    fileRightOnly->removeObject<SelectSide::right>(); //=> call ContainerObject::removeDoubleEmpty() later!
+                                }
+                                else //regular move pair: mark it!
+                                {
+                                    fileLeftOnly ->setMoveRef(fileRightOnly->getId());
+                                    fileRightOnly->setMoveRef(fileLeftOnly ->getId());
+                                }
                             }
+                            else
+                                assert(fileLeftOnly ->getMoveRef() == fileRightOnly->getId() &&
+                                       fileRightOnly->getMoveRef() == fileLeftOnly ->getId());
                         }
     }
 
@@ -476,10 +540,10 @@ private:
     std::vector<FilePair*> filesL_; //collection of *all* file items (with non-null filePrint)
     std::vector<FilePair*> filesR_; // => detect duplicate file IDs
 
-    std::unordered_map<AFS::FingerPrint, FilePair*>  exLeftOnlyById_; //MSVC: twice as fast as std::map for 1 million items!
+    std::unordered_map<AFS::FingerPrint, FilePair*>  exLeftOnlyById_;
     std::unordered_map<AFS::FingerPrint, FilePair*> exRightOnlyById_;
 
-    std::unordered_map<const InSyncFile*, FilePair*>  exLeftOnlyByPath_; //MSVC: only 4% faster than std::map for 1 million items!
+    std::unordered_map<const InSyncFile*, FilePair*>  exLeftOnlyByPath_;
     std::unordered_map<const InSyncFile*, FilePair*> exRightOnlyByPath_;
 
     /*  Detect Renamed Files:
@@ -487,7 +551,7 @@ private:
          X  ->  |_|      Create right
         |_| ->   Y       Delete right
 
-        resolve as: Rename Y to X on right
+        resolve as: Move/Rename Y to X on right
 
         Algorithm:
         ----------
@@ -507,13 +571,15 @@ private:
 
 //----------------------------------------------------------------------------------------------
 
-class SetSyncDirectionsTwoWay
+class SetSyncDirViaChanges
 {
 public:
-    static void execute(BaseFolderPair& baseFolder, const InSyncFolder& dbFolder) { SetSyncDirectionsTwoWay(baseFolder, dbFolder); }
+    static void execute(BaseFolderPair& baseFolder, const InSyncFolder& dbFolder, const DirectionByChange& dirs)
+    { SetSyncDirViaChanges(baseFolder, dbFolder, dirs); }
 
 private:
-    SetSyncDirectionsTwoWay(BaseFolderPair& baseFolder, const InSyncFolder& dbFolder) :
+    SetSyncDirViaChanges(BaseFolderPair& baseFolder, const InSyncFolder& dbFolder, const DirectionByChange& dirs) :
+        dirs_(dirs),
         cmpVar_                (baseFolder.getCompVariant()),
         fileTimeTolerance_     (baseFolder.getFileTimeTolerance()),
         ignoreTimeShiftMinutes_(baseFolder.getIgnoredTimeShift())
@@ -524,13 +590,13 @@ private:
         recurse(baseFolder, &dbFolder);
     }
 
-    void recurse(ContainerObject& hierObj, const InSyncFolder* dbFolder) const
+    void recurse(ContainerObject& conObj, const InSyncFolder* dbFolder) const
     {
-        for (FilePair& file : hierObj.refSubFiles())
+        for (FilePair& file : conObj.refSubFiles())
             processFile(file, dbFolder);
-        for (SymlinkPair& symlink : hierObj.refSubLinks())
+        for (SymlinkPair& symlink : conObj.refSubLinks())
             processSymlink(symlink, dbFolder);
-        for (FolderPair& folder : hierObj.refSubFolders())
+        for (FolderPair& folder : conObj.refSubFolders())
             processDir(folder, dbFolder);
     }
 
@@ -539,11 +605,13 @@ private:
         const CompareFileResult cat = file.getCategory();
         if (cat == FILE_EQUAL)
             return;
+        else if (cat == FILE_CONFLICT) //take over category conflict: allow *manual* resolution only!
+            return file.setSyncDirConflict(file.getCategoryCustomDescription());
 
         //##################### schedule old temporary files for deletion ####################
-        if (cat == FILE_LEFT_SIDE_ONLY && endsWith(file.getItemName<SelectSide::left>(), AFS::TEMP_FILE_ENDING))
+        if (cat == FILE_LEFT_ONLY && endsWith(file.getItemName<SelectSide::left>(), AFS::TEMP_FILE_ENDING))
             return file.setSyncDir(SyncDirection::left);
-        else if (cat == FILE_RIGHT_SIDE_ONLY && endsWith(file.getItemName<SelectSide::right>(), AFS::TEMP_FILE_ENDING))
+        else if (cat == FILE_RIGHT_ONLY && endsWith(file.getItemName<SelectSide::right>(), AFS::TEMP_FILE_ENDING))
             return file.setSyncDir(SyncDirection::right);
         //####################################################################################
 
@@ -569,13 +637,22 @@ private:
             dbEntry && !stillInSync(*dbEntry, cmpVar_, fileTimeTolerance_, ignoreTimeShiftMinutes_)) //check *before* misleadingly reporting txtNoSideChanged_
             return file.setSyncDirConflict(txtDbNotInSync_);
 
-        const bool changeOnLeft  = !matchesDbEntry<SelectSide::left >(file, dbEntryL, ignoreTimeShiftMinutes_);
-        const bool changeOnRight = !matchesDbEntry<SelectSide::right>(file, dbEntryR, ignoreTimeShiftMinutes_);
+        //consider renamed/moved files as "updated" with regards to "changes"-based sync settings: https://freefilesync.org/forum/viewtopic.php?t=10594
+        const bool renamedOrMoved = cat == FILE_RENAMED || [&file]
+        {
+            if (const FileSystemObject::ObjectId moveFileRef = file.getMoveRef())
+                if (auto refFile = dynamic_cast<const FilePair*>(FileSystemObject::retrieve(moveFileRef)))
+                {
+                    if (refFile->getMoveRef() == file.getId()) //both ends should agree...
+                        return true;
+                    else assert(false); //...and why shouldn't they?
+                }
+            return false;
+        }();
+        const CudAction changeL = compareDbEntry<SelectSide::left >(file, dbEntryL, ignoreTimeShiftMinutes_, renamedOrMoved);
+        const CudAction changeR = compareDbEntry<SelectSide::right>(file, dbEntryR, ignoreTimeShiftMinutes_, renamedOrMoved);
 
-        if (changeOnLeft == changeOnRight)
-            file.setSyncDirConflict(changeOnLeft ? txtBothSidesChanged_ : txtNoSideChanged_);
-        else
-            file.setSyncDir(changeOnLeft ? SyncDirection::right : SyncDirection::left);
+        setSyncDirForChange(file, changeL, changeR);
     }
 
     void processSymlink(SymlinkPair& symlink, const InSyncFolder* dbFolder) const
@@ -583,6 +660,8 @@ private:
         const CompareSymlinkResult cat = symlink.getLinkCategory();
         if (cat == SYMLINK_EQUAL)
             return;
+        else if (cat == SYMLINK_CONFLICT) //take over category conflict: allow *manual* resolution only!
+            return symlink.setSyncDirConflict(symlink.getCategoryCustomDescription());
 
         //try to find corresponding database entry
         auto getDbEntry = [dbFolder](const ZstringNorm& linkName) -> const InSyncSymlink*
@@ -606,13 +685,11 @@ private:
             dbEntry && !stillInSync(*dbEntry, cmpVar_, fileTimeTolerance_, ignoreTimeShiftMinutes_))
             return symlink.setSyncDirConflict(txtDbNotInSync_);
 
-        const bool changeOnLeft  = !matchesDbEntry<SelectSide::left >(symlink, dbEntryL, ignoreTimeShiftMinutes_);
-        const bool changeOnRight = !matchesDbEntry<SelectSide::right>(symlink, dbEntryR, ignoreTimeShiftMinutes_);
+        const bool renamedOrMoved = cat == SYMLINK_RENAMED;
+        const CudAction changeL = compareDbEntry<SelectSide::left >(symlink, dbEntryL, ignoreTimeShiftMinutes_, renamedOrMoved);
+        const CudAction changeR = compareDbEntry<SelectSide::right>(symlink, dbEntryR, ignoreTimeShiftMinutes_, renamedOrMoved);
 
-        if (changeOnLeft == changeOnRight)
-            symlink.setSyncDirConflict(changeOnLeft ? txtBothSidesChanged_ : txtNoSideChanged_);
-        else
-            symlink.setSyncDir(changeOnLeft ? SyncDirection::right : SyncDirection::left);
+        setSyncDirForChange(symlink, changeL, changeR);
     }
 
     void processDir(FolderPair& folder, const InSyncFolder* dbFolder) const
@@ -620,9 +697,9 @@ private:
         const CompareDirResult cat = folder.getDirCategory();
 
         //########### schedule abandoned temporary recycle bin directory for deletion  ##########
-        if (cat == DIR_LEFT_SIDE_ONLY && endsWith(folder.getItemName<SelectSide::left>(), AFS::TEMP_FILE_ENDING))
+        if (cat == DIR_LEFT_ONLY && endsWith(folder.getItemName<SelectSide::left>(), AFS::TEMP_FILE_ENDING))
             return setSyncDirectionRec(SyncDirection::left, folder); //
-        else if (cat == DIR_RIGHT_SIDE_ONLY && endsWith(folder.getItemName<SelectSide::right>(), AFS::TEMP_FILE_ENDING))
+        else if (cat == DIR_RIGHT_ONLY && endsWith(folder.getItemName<SelectSide::right>(), AFS::TEMP_FILE_ENDING))
             return setSyncDirectionRec(SyncDirection::right, folder); //don't recurse below!
         //#######################################################################################
 
@@ -653,23 +730,66 @@ private:
         }
         const InSyncFolder* dbEntry = dbEntryL ? dbEntryL : dbEntryR; //exactly one side nullptr? => change in upper/lower case!
 
-        if (cat != DIR_EQUAL)
+        if (cat == DIR_EQUAL)
+            ;
+        else if (cat == DIR_CONFLICT) //take over category conflict: allow *manual* resolution only!
+            folder.setSyncDirConflict(folder.getCategoryCustomDescription());
+        else
         {
             if (dbEntry && !stillInSync(*dbEntry))
                 folder.setSyncDirConflict(txtDbNotInSync_);
             else
             {
-                const bool changeOnLeft  = !matchesDbEntry<SelectSide::left >(folder, dbEntryL);
-                const bool changeOnRight = !matchesDbEntry<SelectSide::right>(folder, dbEntryR);
+                const bool renamedOrMoved = cat == DIR_RENAMED;
+                const CudAction changeL = compareDbEntry<SelectSide::left >(folder, dbEntryL, renamedOrMoved);
+                const CudAction changeR = compareDbEntry<SelectSide::right>(folder, dbEntryR, renamedOrMoved);
 
-                if (changeOnLeft == changeOnRight)
-                    folder.setSyncDirConflict(changeOnLeft ? txtBothSidesChanged_ : txtNoSideChanged_);
-                else
-                    folder.setSyncDir(changeOnLeft ? SyncDirection::right : SyncDirection::left);
+                setSyncDirForChange(folder, changeL, changeR);
             }
         }
 
         recurse(folder, dbEntry);
+    }
+
+    template <SelectSide side>
+    SyncDirection getSyncDirForChange(CudAction change) const
+    {
+        const auto& changedirs = selectParam<side>(dirs_.left, dirs_.right);
+        switch (change)
+        {
+            //*INDENT-OFF*
+            case CudAction::noChange: return SyncDirection::none;
+            case CudAction::create:  return changedirs.create;
+            case CudAction::update:  return changedirs.update;
+            case CudAction::delete_: return changedirs.delete_;
+            //*INDENT-ON*
+        }
+        throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
+    }
+
+    void setSyncDirForChange(FileSystemObject& fsObj, CudAction changeL, CudAction changeR) const
+    {
+        const SyncDirection dirL = getSyncDirForChange<SelectSide::left >(changeL);
+        const SyncDirection dirR = getSyncDirForChange<SelectSide::right>(changeR);
+        if (changeL != CudAction::noChange)
+        {
+            if (changeR != CudAction::noChange) //both sides changed
+            {
+                if (dirL == dirR) //but luckily agree on direction
+                    fsObj.setSyncDir(dirL);
+                else
+                    fsObj.setSyncDirConflict(txtBothSidesChanged_);
+            }
+            else //change on left
+                fsObj.setSyncDir(dirL);
+        }
+        else
+        {
+            if (changeR != CudAction::noChange) //change on right
+                fsObj.setSyncDir(dirR);
+            else //no change on either side
+                fsObj.setSyncDirConflict(txtNoSideChanged_); //obscure, but possible if user widens "fileTimeTolerance"
+        }
     }
 
     //need ref-counted strings! see FileSystemObject::syncDirectionConflict_
@@ -678,6 +798,7 @@ private:
     const Zstringc txtDbNotInSync_      = utfTo<Zstringc>(_("Cannot determine sync-direction:") + L'\n' + TAB_SPACE + _("The database entry is not in sync, considering current settings."));
     const Zstringc txtDbAmbiguous_      = utfTo<Zstringc>(_("Cannot determine sync-direction:") + L'\n' + TAB_SPACE + _("The database entry is ambiguous."));
 
+    const DirectionByChange dirs_;
     const CompareVariant cmpVar_;
     const int fileTimeTolerance_;
     const std::vector<unsigned int> ignoreTimeShiftMinutes_;
@@ -729,39 +850,38 @@ void fff::redetermineSyncDirection(const std::vector<std::pair<BaseFolderPair*, 
         for (const auto& [baseFolder, dirCfg] : directCfgs)
             if (!allEqualPairs.contains(baseFolder))
             {
-                auto it = lastSyncStates.find(baseFolder);
-                const InSyncFolder* lastSyncState = it != lastSyncStates.end() ? &it->second.ref() : nullptr;
-
-                //set sync directions
-                if (dirCfg.var == SyncVariant::twoWay)
+                if (const DirectionByDiff* diffDirs = std::get_if<DirectionByDiff>(&dirCfg.dirs))
+                    SetSyncDirViaDifferences::execute(*diffDirs, *baseFolder);
+                else
                 {
-                    if (lastSyncState)
-                        SetSyncDirectionsTwoWay::execute(*baseFolder, *lastSyncState);
-                    else //default fallback
-                    {
-                        std::wstring msg = _("Setting directions for first synchronization: Old files will be overwritten with newer files.");
-                        if (directCfgs.size() > 1)
-                            msg += L'\n' + AFS::getDisplayPath(baseFolder->getAbstractPath<SelectSide::left >()) + L' ' + getVariantNameWithSymbol(dirCfg.var) + L' ' +
-                                          AFS::getDisplayPath(baseFolder->getAbstractPath<SelectSide::right>());
+                    const DirectionByChange& changeDirs = std::get<DirectionByChange>(dirCfg.dirs);
 
+                    auto it = lastSyncStates.find(baseFolder);
+                    if (const InSyncFolder* lastSyncState = it != lastSyncStates.end() ? &it->second.ref() : nullptr)
+                    {
+                        //detect moved files (*before* setting sync directions: might combine moved files into single file pairs, wich changes category!)
+                        DetectMovedFiles::execute(*baseFolder, *lastSyncState);                
+
+                        SetSyncDirViaChanges::execute(*baseFolder, *lastSyncState, changeDirs);
+                    }
+                    else //fallback:
+                    {
+                        std::wstring msg = _("Database file is not available: Setting default directions for synchronization.");
+                        if (directCfgs.size() > 1)
+                            msg += SPACED_DASH + getShortDisplayNameForFolderPair(baseFolder->getAbstractPath<SelectSide::left >(),
+                                                                                  baseFolder->getAbstractPath<SelectSide::right>());                        
                         try { callback.logMessage(msg, PhaseCallback::MsgType::warning); /*throw X*/} catch (...) {};
 
-                        SetSyncDirectionByConfig::execute(getTwoWayUpdateSet(), *baseFolder);
+                        SetSyncDirViaDifferences::execute(getDiffDirDefault(changeDirs), *baseFolder);
                     }
                 }
-                else
-                    SetSyncDirectionByConfig::execute(extractDirections(dirCfg), *baseFolder);
-
-                //detect renamed files
-                if (lastSyncState)
-                    DetectMovedFiles::execute(*baseFolder, *lastSyncState);
             }
         //*INDENT-ON*
     );
 
     std::vector<const BaseFolderPair*> baseFoldersForDbLoad;
     for (const auto& [baseFolder, dirCfg] : directCfgs)
-        if (dirCfg.var == SyncVariant::twoWay || detectMovedFilesEnabled(dirCfg))
+        if (std::get_if<DirectionByChange>(&dirCfg.dirs))
         {
             if (allItemsCategoryEqual(*baseFolder)) //nothing to do: don't even try to open DB files
                 allEqualPairs.insert(baseFolder);
@@ -837,45 +957,45 @@ struct Eval<STRATEGY_AND>
 
 
 template <FilterStrategy strategy>
-class ApplyHardFilter
+class ApplyPathFilter
 {
 public:
-    static void execute(ContainerObject& hierObj, const PathFilter& filterProcIn) { ApplyHardFilter(hierObj, filterProcIn); }
+    static void execute(ContainerObject& conObj, const PathFilter& filter) { ApplyPathFilter(conObj, filter); }
 
 private:
-    ApplyHardFilter(ContainerObject& hierObj, const PathFilter& filterProcIn) : filterProc(filterProcIn)  { recurse(hierObj); }
+    ApplyPathFilter(ContainerObject& conObj, const PathFilter& filter) : filter_(filter)  { recurse(conObj); }
 
-    void recurse(ContainerObject& hierObj) const
+    void recurse(ContainerObject& conObj) const
     {
-        for (FilePair& file : hierObj.refSubFiles())
+        for (FilePair& file : conObj.refSubFiles())
             processFile(file);
-        for (SymlinkPair& symlink : hierObj.refSubLinks())
+        for (SymlinkPair& symlink : conObj.refSubLinks())
             processLink(symlink);
-        for (FolderPair& folder : hierObj.refSubFolders())
+        for (FolderPair& folder : conObj.refSubFolders())
             processDir(folder);
     }
 
     void processFile(FilePair& file) const
     {
         if (Eval<strategy>::process(file))
-            file.setActive(filterProc.passFileFilter(file.getRelativePathAny()));
+            file.setActive(file.passFileFilter(filter_));
     }
 
     void processLink(SymlinkPair& symlink) const
     {
         if (Eval<strategy>::process(symlink))
-            symlink.setActive(filterProc.passFileFilter(symlink.getRelativePathAny()));
+            symlink.setActive(symlink.passFileFilter(filter_));
     }
 
     void processDir(FolderPair& folder) const
     {
         bool childItemMightMatch = true;
-        const bool filterPassed = filterProc.passDirFilter(folder.getRelativePathAny(), &childItemMightMatch);
+        const bool filterPassed = folder.passDirFilter(filter_, &childItemMightMatch);
 
         if (Eval<strategy>::process(folder))
             folder.setActive(filterPassed);
 
-        if (!childItemMightMatch) //use same logic like directory traversing here: evaluate filter in subdirs only if objects could match
+        if (!childItemMightMatch) //use same logic like directory traversing: evaluate filter in subdirs only if objects *could* match
         {
             //exclude all files dirs in subfolders => incompatible with STRATEGY_OR!
             auto onFsItem = [](FileSystemObject& fsObj) { fsObj.setActive(false); };
@@ -886,7 +1006,7 @@ private:
         recurse(folder);
     }
 
-    const PathFilter& filterProc;
+    const PathFilter& filter_;
 };
 
 
@@ -894,18 +1014,18 @@ template <FilterStrategy strategy>
 class ApplySoftFilter //falsify only! -> can run directly after "hard/base filter"
 {
 public:
-    static void execute(ContainerObject& hierObj, const SoftFilter& timeSizeFilter) { ApplySoftFilter(hierObj, timeSizeFilter); }
+    static void execute(ContainerObject& conObj, const SoftFilter& timeSizeFilter) { ApplySoftFilter(conObj, timeSizeFilter); }
 
 private:
-    ApplySoftFilter(ContainerObject& hierObj, const SoftFilter& timeSizeFilter) : timeSizeFilter_(timeSizeFilter) { recurse(hierObj); }
+    ApplySoftFilter(ContainerObject& conObj, const SoftFilter& timeSizeFilter) : timeSizeFilter_(timeSizeFilter) { recurse(conObj); }
 
-    void recurse(fff::ContainerObject& hierObj) const
+    void recurse(fff::ContainerObject& conObj) const
     {
-        for (FilePair& file : hierObj.refSubFiles())
+        for (FilePair& file : conObj.refSubFiles())
             processFile(file);
-        for (SymlinkPair& symlink : hierObj.refSubLinks())
+        for (SymlinkPair& symlink : conObj.refSubLinks())
             processLink(symlink);
-        for (FolderPair& folder : hierObj.refSubFolders())
+        for (FolderPair& folder : conObj.refSubFolders())
             processDir(folder);
     }
 
@@ -982,7 +1102,7 @@ private:
 
 void fff::addHardFiltering(BaseFolderPair& baseFolder, const Zstring& excludeFilter)
 {
-    ApplyHardFilter<STRATEGY_AND>::execute(baseFolder, NameFilter(FilterConfig().includeFilter, excludeFilter));
+    ApplyPathFilter<STRATEGY_AND>::execute(baseFolder, NameFilter(FilterConfig().includeFilter, excludeFilter));
 }
 
 
@@ -1014,7 +1134,7 @@ void fff::applyFiltering(FolderComparison& folderCmp, const MainConfiguration& m
         const NormalizedFilter normFilter = normalizeFilters(mainCfg.globalFilter, it->localFilter);
 
         //"set" hard filter
-        ApplyHardFilter<STRATEGY_SET>::execute(baseFolder, normFilter.nameFilter.ref());
+        ApplyPathFilter<STRATEGY_SET>::execute(baseFolder, normFilter.nameFilter.ref());
 
         //"and" soft filter
         addSoftFiltering(baseFolder, normFilter.timeSizeFilter);
@@ -1102,31 +1222,6 @@ std::optional<PathDependency> fff::getPathDependency(const AbstractPath& folderP
 }
 
 //############################################################################################################
-
-std::pair<std::wstring, int> fff::getSelectedItemsAsString(std::span<const FileSystemObject* const> selectionLeft,
-                                                           std::span<const FileSystemObject* const> selectionRight)
-{
-    //don't use wxString! its dumb linear allocation strategy brings perf down to a crawl!
-    std::wstring fileList; //
-    int totalDelCount = 0;
-
-    for (const FileSystemObject* fsObj : selectionLeft)
-        if (!fsObj->isEmpty<SelectSide::left>())
-        {
-            fileList += AFS::getDisplayPath(fsObj->getAbstractPath<SelectSide::left>()) + L'\n';
-            ++totalDelCount;
-        }
-
-    for (const FileSystemObject* fsObj : selectionRight)
-        if (!fsObj->isEmpty<SelectSide::right>())
-        {
-            fileList += AFS::getDisplayPath(fsObj->getAbstractPath<SelectSide::right>()) + L'\n';
-            ++totalDelCount;
-        }
-
-    return {fileList, totalDelCount};
-}
-
 
 namespace
 {
@@ -1254,38 +1349,34 @@ void copyToAlternateFolderFrom(const std::vector<const FileSystemObject*>& rowsT
 }
 
 
-void fff::copyToAlternateFolder(std::span<const FileSystemObject* const> rowsToCopyOnLeft,
-                                std::span<const FileSystemObject* const> rowsToCopyOnRight,
+void fff::copyToAlternateFolder(const std::vector<const FileSystemObject*>& selectionL,
+                                const std::vector<const FileSystemObject*>& selectionR,
                                 const Zstring& targetFolderPathPhrase,
-                                bool keepRelPaths,
-                                bool overwriteIfExists,
+                                bool keepRelPaths, bool overwriteIfExists,
                                 WarningDialogs& warnings,
                                 ProcessCallback& callback /*throw X*/) //throw X
 {
-    std::vector<const FileSystemObject*> itemSelectionLeft (rowsToCopyOnLeft .begin(), rowsToCopyOnLeft .end());
-    std::vector<const FileSystemObject*> itemSelectionRight(rowsToCopyOnRight.begin(), rowsToCopyOnRight.end());
-    std::erase_if(itemSelectionLeft,  [](const FileSystemObject* fsObj) { return fsObj->isEmpty<SelectSide::left >(); }); //needed for correct stats!
-    std::erase_if(itemSelectionRight, [](const FileSystemObject* fsObj) { return fsObj->isEmpty<SelectSide::right>(); }); //
+    assert(std::all_of(selectionL.begin(), selectionL.end(), [](const FileSystemObject* fsObj) { return !fsObj->isEmpty<SelectSide::left >(); }));
+    assert(std::all_of(selectionR.begin(), selectionR.end(), [](const FileSystemObject* fsObj) { return !fsObj->isEmpty<SelectSide::right>(); }));
 
-    const int itemTotal = static_cast<int>(itemSelectionLeft.size() + itemSelectionRight.size());
+    const int itemTotal = static_cast<int>(selectionL.size() + selectionR.size());
     int64_t bytesTotal = 0;
 
-    for (const FileSystemObject* fsObj : itemSelectionLeft)
+    for (const FileSystemObject* fsObj : selectionL)
         visitFSObject(*fsObj, [](const FolderPair& folder) {},
     [&](const FilePair& file) { bytesTotal += static_cast<int64_t>(file.getFileSize<SelectSide::left>()); }, [](const SymlinkPair& symlink) {});
 
-    for (const FileSystemObject* fsObj : itemSelectionRight)
+    for (const FileSystemObject* fsObj : selectionR)
         visitFSObject(*fsObj, [](const FolderPair& folder) {},
     [&](const FilePair& file) { bytesTotal += static_cast<int64_t>(file.getFileSize<SelectSide::right>()); }, [](const SymlinkPair& symlink) {});
 
     callback.initNewPhase(itemTotal, bytesTotal, ProcessPhase::none); //throw X
-
     //------------------------------------------------------------------------------
 
     const AbstractPath targetFolderPath = createAbstractPath(targetFolderPathPhrase);
 
-    copyToAlternateFolderFrom<SelectSide::left >(itemSelectionLeft,  targetFolderPath, keepRelPaths, overwriteIfExists, callback);
-    copyToAlternateFolderFrom<SelectSide::right>(itemSelectionRight, targetFolderPath, keepRelPaths, overwriteIfExists, callback);
+    copyToAlternateFolderFrom<SelectSide::left >(selectionL, targetFolderPath, keepRelPaths, overwriteIfExists, callback);
+    copyToAlternateFolderFrom<SelectSide::right>(selectionR, targetFolderPath, keepRelPaths, overwriteIfExists, callback);
 }
 
 //############################################################################################################
@@ -1293,11 +1384,12 @@ void fff::copyToAlternateFolder(std::span<const FileSystemObject* const> rowsToC
 namespace
 {
 template <SelectSide side>
-void deleteFromGridAndHdOneSide(std::vector<FileSystemObject*>& rowsToDelete,
-                                bool moveToRecycler,
-                                bool& recyclerMissingReportOnce,
-                                bool& warnRecyclerMissing, //WarningDialogs::warnRecyclerMissing
-                                PhaseCallback& callback /*throw X*/) //throw X
+void deleteFilesOneSide(const std::vector<FileSystemObject*>& rowsToDelete,
+                        bool moveToRecycler,
+                        bool& recyclerMissingReportOnce,
+                        bool& warnRecyclerMissing, //WarningDialogs::warnRecyclerMissing
+                        const std::unordered_map<const BaseFolderPair*, SyncDirectionConfig>& baseFolderCfgs,
+                        PhaseCallback& callback /*throw X*/) //throw X
 {
     const std::wstring txtDelFilePermanent_ = _("Deleting file %x");
     const std::wstring txtDelFileRecycler_  = _("Moving file %x to the recycle bin");
@@ -1431,86 +1523,197 @@ void deleteFromGridAndHdOneSide(std::vector<FileSystemObject*>& rowsToDelete,
             {
                 removeSymlink(symlink.getAbstractPath<side>(), statReporter); //throw FileError, X
             });
+            //------- no-throw from here on -------
+            const CompareFileResult catOld = fsObj->getCategory();
 
             fsObj->removeObject<side>(); //if directory: removes recursively!
+
+            //update sync direction: don't call redetermineSyncDirection() because user may have manually changed directions
+            if (catOld == CompareFileResult::FILE_EQUAL)
+            {
+                const SyncDirection newDir = [&]
+                {
+                    const SyncDirectionConfig& dirCfg = baseFolderCfgs.find(&fsObj->base())->second; //not found? let it crash!
+
+                    if (const DirectionByDiff* diffDirs = std::get_if<DirectionByDiff>(&dirCfg.dirs))
+                        return side == SelectSide::left ? diffDirs->rightOnly : diffDirs->leftOnly;
+                    else
+                    {
+                        const DirectionByChange& changeDirs = std::get<DirectionByChange>(dirCfg.dirs);
+                        return side == SelectSide::left ? changeDirs.left.delete_ : changeDirs.right.delete_;
+                    }
+                }();
+
+                setSyncDirectionRec(newDir, *fsObj); //set new direction (recursively)
+            }
+            //else: keep old syncDir_
         }
     }, callback); //throw X
 }
 }
 
 
-void fff::deleteFromGridAndHD(const std::vector<FileSystemObject*>& rowsToDeleteOnLeft,  //refresh GUI grid after deletion to remove invalid rows
-                              const std::vector<FileSystemObject*>& rowsToDeleteOnRight, //all pointers need to be bound!
-                              const std::vector<std::pair<BaseFolderPair*, SyncDirectionConfig>>& directCfgs, //attention: rows will be physically deleted!
-                              bool moveToRecycler,
-                              bool& warnRecyclerMissing,
-                              ProcessCallback& callback /*throw X*/) //throw X
+void fff::deleteFiles(const std::vector<FileSystemObject*>& selectionL,
+                      const std::vector<FileSystemObject*>& selectionR,
+                      const std::vector<std::pair<BaseFolderPair*, SyncDirectionConfig>>& directCfgs,
+                      bool moveToRecycler,
+                      bool& warnRecyclerMissing,
+                      ProcessCallback& callback /*throw X*/) //throw X
 {
-    if (directCfgs.empty())
-        return;
+    assert(std::all_of(selectionL.begin(), selectionL.end(), [](const FileSystemObject* fsObj) { return !fsObj->isEmpty<SelectSide::left >(); }));
+    assert(std::all_of(selectionR.begin(), selectionR.end(), [](const FileSystemObject* fsObj) { return !fsObj->isEmpty<SelectSide::right>(); }));
+
+    const int itemCount = static_cast<int>(selectionL.size() + selectionR.size());
+    callback.initNewPhase(itemCount, 0, ProcessPhase::none); //throw X
+    //------------------------------------------------------------------------------
+
+    ZEN_ON_SCOPE_EXIT
+    (
+        //*INDENT-OFF*
+        for (const auto& [baseFolder, dirCfg] : directCfgs)
+            baseFolder->removeDoubleEmpty();
+        //*INDENT-ON*
+    );
 
     //build up mapping from base directory to corresponding direction config
     std::unordered_map<const BaseFolderPair*, SyncDirectionConfig> baseFolderCfgs;
     for (const auto& [baseFolder, dirCfg] : directCfgs)
         baseFolderCfgs[baseFolder] = dirCfg;
 
-    std::vector<FileSystemObject*> deleteLeft  = rowsToDeleteOnLeft;
-    std::vector<FileSystemObject*> deleteRight = rowsToDeleteOnRight;
-
-    std::erase_if(deleteLeft,  [](const FileSystemObject* fsObj) { return fsObj->isEmpty<SelectSide::left >(); }); //needed?
-    std::erase_if(deleteRight, [](const FileSystemObject* fsObj) { return fsObj->isEmpty<SelectSide::right>(); }); //yes, for correct stats:
-
-    const int itemCount = static_cast<int>(deleteLeft.size() + deleteRight.size());
-    callback.initNewPhase(itemCount, 0, ProcessPhase::none); //throw X
-
-    //------------------------------------------------------------------------------
-
-    //ensure cleanup: redetermination of sync-directions and removal of invalid rows
-    auto updateDirection = [&]
-    {
-        //update sync direction: we cannot do a full redetermination since the user may have manual changes applied already 
-        std::vector<FileSystemObject*> rowsToDelete;
-        append(rowsToDelete, deleteLeft);
-        append(rowsToDelete, deleteRight);
-        removeDuplicates(rowsToDelete);
-
-        for (auto it = rowsToDelete.begin(); it != rowsToDelete.end(); ++it)
-        {
-            FileSystemObject& fsObj = **it; //all pointers are required(!) to be bound
-
-            if (fsObj.isEmpty<SelectSide::left>() != fsObj.isEmpty<SelectSide::right>()) //make sure objects exists on one side only
-            {
-                auto cfgIter = baseFolderCfgs.find(&fsObj.base());
-                assert(cfgIter != baseFolderCfgs.end());
-                if (cfgIter != baseFolderCfgs.end())
-                {
-                    SyncDirection newDir = SyncDirection::none;
-
-                    if (cfgIter->second.var == SyncVariant::twoWay)
-                        newDir = fsObj.isEmpty<SelectSide::left>() ? SyncDirection::right : SyncDirection::left;
-                    else
-                    {
-                        const DirectionSet& dirCfg = extractDirections(cfgIter->second);
-                        newDir = fsObj.isEmpty<SelectSide::left>() ? dirCfg.exRightSideOnly : dirCfg.exLeftSideOnly;
-                    }
-
-                    setSyncDirectionRec(newDir, fsObj); //set new direction (recursively)
-                }
-            }
-        }
-
-        //last step: cleanup empty rows: this one invalidates all pointers!
-        for (const auto& [baseFolder, dirCfg] : directCfgs)
-            BaseFolderPair::removeEmpty(*baseFolder);
-    };
-    ZEN_ON_SCOPE_EXIT(updateDirection()); //MSVC: assert is a macro and it doesn't play nice with ZEN_ON_SCOPE_EXIT, surprise... wasn't there something about macros being "evil"?
-
     bool recyclerMissingReportOnce = false;
-    deleteFromGridAndHdOneSide<SelectSide::left >(deleteLeft,  moveToRecycler, recyclerMissingReportOnce, warnRecyclerMissing, callback); //throw X
-    deleteFromGridAndHdOneSide<SelectSide::right>(deleteRight, moveToRecycler, recyclerMissingReportOnce, warnRecyclerMissing, callback); //
+    deleteFilesOneSide<SelectSide::left >(selectionL, moveToRecycler, recyclerMissingReportOnce, warnRecyclerMissing, baseFolderCfgs, callback); //throw X
+    deleteFilesOneSide<SelectSide::right>(selectionR, moveToRecycler, recyclerMissingReportOnce, warnRecyclerMissing, baseFolderCfgs, callback); //
 }
 
 //############################################################################################################
+
+namespace
+{
+template <SelectSide side>
+void renameItemsOneSide(const std::vector<FileSystemObject*>& selection,
+                        const std::span<const Zstring> newNames,
+                        const std::unordered_map<const BaseFolderPair*, SyncDirectionConfig>& baseFolderCfgs,
+                        PhaseCallback& callback /*throw X*/) //throw X
+{
+    assert(selection.size() == newNames.size());
+
+    const std::wstring txtRenamingFileXtoY_  {_("Renaming file %x to %y")};
+    const std::wstring txtRenamingLinkXtoY_  {_("Renaming symbolic link %x to %y")};
+    const std::wstring txtRenamingFolderXtoY_{_("Renaming folder %x to %y")};
+
+    for (size_t i = 0; i < selection.size(); ++i)
+        tryReportingError([&]
+    {
+        FileSystemObject& fsObj = *selection[i];
+        const Zstring& newName = newNames[i];
+
+        assert(!fsObj.isEmpty<side>());
+
+        auto haveNameClash = [newNameNorm = getUnicodeNormalForm(newName)](const FileSystemObject& fsObj2)
+        {
+            return !fsObj2.isEmpty<side>() && getUnicodeNormalForm(fsObj2.getItemName<side>()) == newNameNorm;
+        };
+
+        const bool nameAlreadyExisting = [&]
+        {
+            for (const FilePair& file : fsObj.parent().refSubFiles())
+                if (haveNameClash(file))
+                    return true;
+
+            for (const SymlinkPair& symlink : fsObj.parent().refSubLinks())
+                if (haveNameClash(symlink))
+                    return true;
+
+            for (const FolderPair& folder : fsObj.parent().refSubFolders())
+                if (haveNameClash(folder))
+                    return true;
+            return false;
+        }();
+
+        //---------------------------------------------------------------
+        ItemStatReporter statReporter(1, 0, callback);
+
+        const std::wstring* txtRenamingXtoY_ = nullptr;
+        visitFSObject(fsObj,
+        [&](const FolderPair&   folder) { txtRenamingXtoY_ = &txtRenamingFolderXtoY_; },
+        [&](const FilePair&       file) { txtRenamingXtoY_ = &txtRenamingFileXtoY_; },
+        [&](const SymlinkPair& symlink) { txtRenamingXtoY_ = &txtRenamingLinkXtoY_; });
+
+        reportInfo(replaceCpy(replaceCpy(*txtRenamingXtoY_, L"%x", fmtPath(AFS::getDisplayPath(fsObj.getAbstractPath<side>()))),
+                              L"%y", fmtPath(newName)), statReporter); //throw X
+
+        if (haveNameClash(fsObj))
+            return assert(false); //theoretically possible, but practically showRenameDialog() won't return until there is an actual name change
+
+        if (nameAlreadyExisting) //avoid inconsistent file model: expecting moveAndRenameItem() to fail (ERROR_ALREADY_EXISTS) is not good enough
+            return callback.reportFatalError(replaceCpy(replaceCpy(_("Cannot rename %x to %y."),
+                                                                   L"%x", fmtPath(AFS::getDisplayPath(fsObj.getAbstractPath<side>()))),
+                                                        L"%y", fmtPath(newName)) + L"\n\n" +
+                                             replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(newName))); //throw X
+
+        AFS::moveAndRenameItem(fsObj.getAbstractPath<side>(),
+                               AFS::appendRelPath(fsObj.parent().getAbstractPath<side>(), newName)); //throw FileError, (ErrorMoveUnsupported)
+        //------- no-throw from here on -------
+        statReporter.reportDelta(1, 0);
+
+        const CompareFileResult catOld = fsObj.getCategory();
+
+        fsObj.setItemName<side>(newName);
+
+        warn_static("TODO: some users want to manually fix renamed folders/files: combine them here, don't require a re-compare!")
+
+        //update sync direction: don't call redetermineSyncDirection() because user may have manually changed directions
+        if (catOld == CompareFileResult::FILE_EQUAL)
+        {
+            const SyncDirection newDir = [&]
+            {
+                const SyncDirectionConfig& dirCfg = baseFolderCfgs.find(&fsObj.base())->second; //not found? let it crash!
+
+                if (const DirectionByDiff* diffDirs = std::get_if<DirectionByDiff>(&dirCfg.dirs))
+                    return side == SelectSide::left ? diffDirs->leftNewer : diffDirs->rightNewer;
+                else
+                {
+                    const DirectionByChange& changeDirs = std::get<DirectionByChange>(dirCfg.dirs);
+                    return side == SelectSide::left ? changeDirs.left.update : changeDirs.right.update;
+                }
+            }();
+
+            fsObj.setSyncDir(newDir); //folder? => do not recurse!
+        }
+        //else: keep old syncDir_
+        else if (fsObj.getCategory() == FILE_EQUAL) //edge-case, but possible
+            fsObj.setSyncDir(SyncDirection::none); //shouldn't matter, but avoids hitting some asserts
+
+    }, callback); //throw X
+}
+}
+
+
+void fff::renameItems(const std::vector<FileSystemObject*>& selectionL,
+                      const std::span<const Zstring> newNamesL,
+                      const std::vector<FileSystemObject*>& selectionR,
+                      const std::span<const Zstring> newNamesR,
+                      const std::vector<std::pair<BaseFolderPair*, SyncDirectionConfig>>& directCfgs,
+                      ProcessCallback& callback /*throw X*/) //throw X
+{
+    assert(std::all_of(selectionL.begin(), selectionL.end(), [](const FileSystemObject* fsObj) { return !fsObj->isEmpty<SelectSide::left >(); }));
+    assert(std::all_of(selectionR.begin(), selectionR.end(), [](const FileSystemObject* fsObj) { return !fsObj->isEmpty<SelectSide::right>(); }));
+
+    const int itemCount = static_cast<int>(selectionL.size() + selectionR.size());
+    callback.initNewPhase(itemCount, 0, ProcessPhase::none); //throw X
+    //------------------------------------------------------------------------------
+
+    //build up mapping from base directory to corresponding direction config
+    std::unordered_map<const BaseFolderPair*, SyncDirectionConfig> baseFolderCfgs;
+    for (const auto& [baseFolder, dirCfg] : directCfgs)
+        baseFolderCfgs[baseFolder] = dirCfg;
+
+    renameItemsOneSide<SelectSide::left >(selectionL, newNamesL, baseFolderCfgs, callback); //throw X
+    renameItemsOneSide<SelectSide::right>(selectionR, newNamesR, baseFolderCfgs, callback); //
+}
+
+//############################################################################################################
+
 void fff::deleteListOfFiles(const std::vector<Zstring>& filesToDeletePaths,
                             std::vector<Zstring>& deletedPaths,
                             bool moveToRecycler,

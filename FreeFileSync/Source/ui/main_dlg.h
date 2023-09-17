@@ -237,9 +237,6 @@ private:
     void setLastOperationLog(const ProcessSummary& summary, const std::shared_ptr<const zen::ErrorLog>& errorLog);
     void showLogPanel(bool show);
 
-    void filterExtension(const Zstring& extension, bool include);
-    void filterShortname(const FileSystemObject& fsObj, bool include);
-    void filterItems(const std::vector<FileSystemObject*>& selection, bool include);
     void addFilterPhrase(const Zstring& phrase, bool include, bool requireNewLine);
 
     void onTopFolderPairAdd   (wxCommandEvent& event) override;
@@ -277,7 +274,6 @@ private:
     void onMenuResetLayout    (wxCommandEvent& event) override { resetLayout(); }
     void onMenuFindItem       (wxCommandEvent& event) override { showFindPanel(true /*show*/); } //CTRL + F
     void onMenuCheckVersion   (wxCommandEvent& event) override;
-    void onMenuCheckVersionAutomatically(wxCommandEvent& event) override;
     void onMenuAbout          (wxCommandEvent& event) override;
     void onShowHelp           (wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://freefilesync.org/manual.php?topic=freefilesync"); }
     void onMenuQuit           (wxCommandEvent& event) override { Close(); }

@@ -66,12 +66,14 @@ enum class TimeResult
 };
 
 
+//number of seconds since Jan 1st 1970 + 1 year (needn't be too precise)
+inline const time_t oneYearFromNow = std::time(nullptr) + 365 * 24 * 3600;
+
+
 inline
 TimeResult compareFileTime(time_t lhs, time_t rhs, int tolerance, const std::vector<unsigned int>& ignoreTimeShiftMinutes)
 {
-    //number of seconds since Jan 1st 1970 + 1 year (needn't be too precise)
-    static const time_t oneYearFromNow = std::time(nullptr) + 365 * 24 * 3600;
-
+    assert(oneYearFromNow != 0);
     if (sameFileTime(lhs, rhs, tolerance, ignoreTimeShiftMinutes)) //last write time may differ by up to 2 seconds (NTFS vs FAT32)
         return TimeResult::equal;
 

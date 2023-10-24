@@ -65,8 +65,7 @@ void setFolderPathPhrase(const Zstring& folderPathPhrase, FolderHistoryBox* comb
 
 namespace fff
 {
-wxDEFINE_EVENT(EVENT_ON_FOLDER_SELECTED,    wxCommandEvent);
-wxDEFINE_EVENT(EVENT_ON_FOLDER_MANUAL_EDIT, wxCommandEvent);
+wxDEFINE_EVENT(EVENT_ON_FOLDER_SELECTED, wxCommandEvent);
 }
 
 
@@ -111,7 +110,8 @@ FolderSelector::FolderSelector(wxWindow*         parent,
     //keep folderSelector and dirpath synchronous
     folderComboBox_       .Bind(wxEVT_MOUSEWHEEL,                &FolderSelector::onMouseWheel,          this);
     folderComboBox_       .Bind(wxEVT_COMMAND_TEXT_UPDATED,      &FolderSelector::onEditFolderPath,      this);
-    folderComboBox_       .Bind(wxEVT_COMMAND_COMBOBOX_SELECTED, &FolderSelector::onHistoryPathSelected, this);
+    //folderComboBox_.Bind(wxEVT_COMMAND_COMBOBOX_SELECTED, &FolderSelector::onHistoryPathSelected, this);
+    // => wxEVT_COMMAND_COMBOBOX_SELECTED implies wxEVT_COMMAND_TEXT_UPDATED
     selectFolderButton_   .Bind(wxEVT_COMMAND_BUTTON_CLICKED,    &FolderSelector::onSelectFolder,        this);
     selectAltFolderButton_.Bind(wxEVT_COMMAND_BUTTON_CLICKED,    &FolderSelector::onSelectAltFolder,     this);
 }
@@ -126,10 +126,11 @@ FolderSelector::~FolderSelector()
 
     [[maybe_unused]] bool ubOk3 = folderComboBox_       .Unbind(wxEVT_MOUSEWHEEL,                &FolderSelector::onMouseWheel,          this);
     [[maybe_unused]] bool ubOk4 = folderComboBox_       .Unbind(wxEVT_COMMAND_TEXT_UPDATED,      &FolderSelector::onEditFolderPath,      this);
-    [[maybe_unused]] bool ubOk5 = folderComboBox_       .Unbind(wxEVT_COMMAND_COMBOBOX_SELECTED, &FolderSelector::onHistoryPathSelected, this);
+    //[[maybe_unused]] bool ubOk5 = folderComboBox_ .Unbind(wxEVT_COMMAND_COMBOBOX_SELECTED, &FolderSelector::onHistoryPathSelected, this);
+    // => wxEVT_COMMAND_COMBOBOX_SELECTED implies wxEVT_COMMAND_TEXT_UPDATED
     [[maybe_unused]] bool ubOk6 = selectFolderButton_   .Unbind(wxEVT_COMMAND_BUTTON_CLICKED,    &FolderSelector::onSelectFolder,        this);
     [[maybe_unused]] bool ubOk7 = selectAltFolderButton_.Unbind(wxEVT_COMMAND_BUTTON_CLICKED,    &FolderSelector::onSelectAltFolder,     this);
-    assert(ubOk1 && ubOk2 && ubOk3 && ubOk4 && ubOk5 && ubOk6 && ubOk7);
+    assert(ubOk1 && ubOk2 && ubOk3 && ubOk4 && /*ubOk5 &&*/ ubOk6 && ubOk7);
 }
 
 
@@ -186,21 +187,11 @@ void FolderSelector::onItemPathDropped(FileDropEvent& event)
 }
 
 
-void FolderSelector::onHistoryPathSelected(wxEvent& event)
-{
-    //setFolderPathPhrase() => already called by onEditFolderPath() (wxEVT_COMMAND_COMBOBOX_SELECTED implies wxEVT_COMMAND_TEXT_UPDATED)
-
-    //notify action invoked by user
-    wxCommandEvent dummy(EVENT_ON_FOLDER_SELECTED);
-    ProcessEvent(dummy);
-}
-
-
 void FolderSelector::onEditFolderPath(wxCommandEvent& event)
 {
     setFolderPathPhrase(utfTo<Zstring>(event.GetString()), nullptr, folderComboBox_, staticText_);
 
-    wxCommandEvent dummy(EVENT_ON_FOLDER_MANUAL_EDIT);
+    wxCommandEvent dummy(EVENT_ON_FOLDER_SELECTED);
     ProcessEvent(dummy);
     event.Skip();
 }
@@ -274,6 +265,8 @@ void FolderSelector::onSelectAltFolder(wxCommandEvent& event)
     Zstring folderPathPhrase = getPath();
     size_t parallelOps = getDeviceParallelOps_ ? getDeviceParallelOps_(folderPathPhrase) : 1;
 
+    const AbstractPath oldPath = createAbstractPath(folderPathPhrase);
+
     if (showCloudSetupDialog(parent_, folderPathPhrase, sftpKeyFileLastSelected_, parallelOps, static_cast<bool>(setDeviceParallelOps_)) != ConfirmationButton::accept)
         return;
 
@@ -283,8 +276,12 @@ void FolderSelector::onSelectAltFolder(wxCommandEvent& event)
         setDeviceParallelOps_(folderPathPhrase, parallelOps);
 
     //notify action invoked by user
-    wxCommandEvent dummy(EVENT_ON_FOLDER_SELECTED);
-    ProcessEvent(dummy);
+    if (createAbstractPath(folderPathPhrase) != oldPath)
+    {
+        wxCommandEvent dummy(EVENT_ON_FOLDER_SELECTED);
+        ProcessEvent(dummy);
+    }
+    //else: don't notify if user only changed connection settings, e.g. parallel Ops
 }
 
 

@@ -108,7 +108,7 @@ inline
 unsigned char demultiply(unsigned char c, unsigned char alpha)
 {
     return static_cast<unsigned char>(alpha == 0 ? 0 :
-                                      std::clamp(uintDivRound(static_cast<unsigned int>(c) * 255, alpha), 0U, 255U));
+                                      std::min(uintDivRound(static_cast<unsigned int>(c) * 255, alpha), 255U));
 }
 
 

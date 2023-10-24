@@ -8,7 +8,6 @@
 #define DIR_WATCHER_348577025748023458
 
 #include <vector>
-//#include <memory>
 #include <chrono>
 #include <functional>
 #include "file_error.h"

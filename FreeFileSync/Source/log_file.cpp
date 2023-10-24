@@ -8,7 +8,6 @@
 #include <zen/file_io.h>
 #include <zen/http.h>
 #include <zen/sys_info.h>
-//#include <wx/datetime.h>
 #include "afs/concrete.h"
 
 using namespace zen;

@@ -32,16 +32,13 @@ namespace std
 //W(hy)TF is this not standard? https://stackoverflow.com/a/47735624
 template <class Char, class Traits, class Alloc> inline
 basic_string<Char, Traits, Alloc> operator+(basic_string<Char, Traits, Alloc>&& lhs, const basic_string_view<Char> rhs)
-{ return move(lhs.append(rhs.begin(), rhs.end())); } //the move *is* needed!!!
+{ return std::move(lhs.append(rhs.begin(), rhs.end())); } //the move *is* needed!!!
 
 //template <class Char> inline
 //basic_string<Char> operator+(const basic_string<Char>& lhs, const basic_string_view<Char>& rhs) { return basic_string<Char>(lhs) + rhs; }
 //-> somewhat inefficient: single memory allocation should suffice!!!
 }
 //---------------------------------------------------------------------------------
-
-//support for std::string::resize_and_overwrite()
-    #define ZEN_HAVE_RESIZE_AND_OVERWRITE 1
 
 namespace zen
 {

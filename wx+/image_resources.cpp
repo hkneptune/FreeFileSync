@@ -7,7 +7,6 @@
 #include "image_resources.h"
 #include <map>
 #include <zen/utf.h>
-//#include <zen/perf.h>
 #include <zen/thread.h>
 #include <zen/file_io.h>
 #include <zen/file_traverser.h>

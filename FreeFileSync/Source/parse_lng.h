@@ -120,7 +120,7 @@ public:
 
 private:
     struct Item { virtual ~Item() {} virtual bool hasTranslation() const = 0; };
-    
+
     struct SingularItem : public Item
     {
         explicit SingularItem(const TranslationMap::value_type& val) : value(val) {}
@@ -746,7 +746,7 @@ std::string generateLng(const TranslationUnorderedList& in, const TransHeader& h
 
 
     std::string topLines; //untranslated items first?
-    std::string mainLines; 
+    std::string mainLines;
 
     in.visitItems([&](const TranslationMap::value_type& trans)
     {

@@ -26,6 +26,30 @@ const int CHILD_WINDOW_MIN_SIZE_DIP = 50; //min. size of managed windows
 }
 
 
+class TripleSplitter::SashMove
+{
+public:
+    SashMove(wxWindow& wnd, int mousePosX, int centerOffset) : wnd_(wnd), mousePosX_(mousePosX), centerOffset_(centerOffset)
+    {
+        wnd_.SetCursor(wxCURSOR_SIZEWE);
+        wnd_.CaptureMouse();
+    }
+    ~SashMove()
+    {
+        wnd_.SetCursor(*wxSTANDARD_CURSOR);
+        if (wnd_.HasCapture())
+            wnd_.ReleaseMouse();
+    }
+    int getMousePosXStart   () const { return mousePosX_; }
+    int getCenterOffsetStart() const { return centerOffset_; }
+
+private:
+    wxWindow& wnd_;
+    const int mousePosX_;
+    const int centerOffset_;
+};
+
+
 TripleSplitter::TripleSplitter(wxWindow* parent,
                                wxWindowID id,
                                const wxPoint& pos,
@@ -71,30 +95,6 @@ void TripleSplitter::updateWindowSizes()
         Refresh(); //repaint sash
     }
 }
-
-
-class TripleSplitter::SashMove
-{
-public:
-    SashMove(wxWindow& wnd, int mousePosX, int centerOffset) : wnd_(wnd), mousePosX_(mousePosX), centerOffset_(centerOffset)
-    {
-        wnd_.SetCursor(wxCURSOR_SIZEWE);
-        wnd_.CaptureMouse();
-    }
-    ~SashMove()
-    {
-        wnd_.SetCursor(*wxSTANDARD_CURSOR);
-        if (wnd_.HasCapture())
-            wnd_.ReleaseMouse();
-    }
-    int getMousePosXStart   () const { return mousePosX_; }
-    int getCenterOffsetStart() const { return centerOffset_; }
-
-private:
-    wxWindow& wnd_;
-    const int mousePosX_;
-    const int centerOffset_;
-};
 
 
 inline

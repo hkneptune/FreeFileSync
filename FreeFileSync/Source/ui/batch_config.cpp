@@ -6,7 +6,6 @@
 
 #include "batch_config.h"
 #include <wx/wupdlock.h>
-//#include <wx+/std_button_layout.h>
 #include <wx+/window_layout.h>
 #include <wx+/image_resources.h>
 #include <wx+/image_tools.h>

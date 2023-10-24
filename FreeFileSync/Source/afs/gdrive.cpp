@@ -469,7 +469,7 @@ GdriveAccessInfo gdriveAuthorizeAccess(const std::string& gdriveLoginHint, const
     addrinfo* servinfo = nullptr;
     ZEN_ON_SCOPE_EXIT(if (servinfo) ::freeaddrinfo(servinfo));
 
-    //ServiceName == "0" => open the next best free port
+    //ServiceName == "0": open the next best free port
     const int rcGai = ::getaddrinfo(nullptr,    //_In_opt_ PCSTR            pNodeName
                                     "0",        //_In_opt_ PCSTR            pServiceName
                                     &hints,     //_In_opt_ const ADDRINFOA* pHints

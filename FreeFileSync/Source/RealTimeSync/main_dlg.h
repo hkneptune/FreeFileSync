@@ -28,13 +28,13 @@ class MainDialog: public MainDlgGenerated
 public:
     static void create(const Zstring& cfgFilePath);
 
+    void loadConfig(const Zstring& filepath);
+
 private:
     MainDialog(const Zstring& cfgFilePath);
     ~MainDialog();
 
     void onBeforeSystemShutdown(); //last chance to do something useful before killing the application!
-
-    void loadConfig(const Zstring& filepath);
 
     void onClose          (wxCloseEvent&  event ) override  { Destroy(); }
     void onShowHelp       (wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://freefilesync.org/manual.php?topic=realtimesync"); }

@@ -24,7 +24,8 @@ public:
                     wxButton&     selectButton,
                     wxTextCtrl&   folderPathCtrl,
                     Zstring& folderLastSelected,
-                    wxStaticText* staticText); //optional
+                    wxStaticText* staticText, //optional
+                    const std::function<bool  (const std::vector<Zstring>& shellItemPaths)>& droppedPathsFilter);    //optional
 
     ~FolderSelector2();
 
@@ -36,6 +37,8 @@ private:
     void onFilesDropped  (zen::FileDropEvent& event);
     void onEditFolderPath(wxCommandEvent& event);
     void onSelectDir     (wxCommandEvent& event);
+
+    const std::function<bool(const std::vector<Zstring>& shellItemPaths)> droppedPathsFilter_;
 
     wxWindow*     parent_;
     wxWindow&     dropWindow_;

@@ -9,6 +9,7 @@
 
 #include <thread>
 #include <future>
+#include <functional>
 #include "ring_buffer.h"
 #include "zstring.h"
 

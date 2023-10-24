@@ -69,15 +69,12 @@ struct InSyncFolder
     {
             files.emplace(fileName, InSyncFile {descrL, descrR, cmpVar, fileSize});
         assert(inserted);
-        warn_static("use try_emplace once mac is up to the task!!!")
-        //"Parenthesized initialization of aggregates" https://en.cppreference.com/w/cpp/compiler_support/20
     }
 
     void addSymlink(const Zstring& linkName, const InSyncDescrLink& descrL, const InSyncDescrLink& descrR, CompareVariant cmpVar)
     {
             symlinks.emplace(linkName, InSyncSymlink {descrL, descrR, cmpVar});
         assert(inserted);
-        warn_static("use try_emplace once mac is up to the task!!!")
     }
 };
 

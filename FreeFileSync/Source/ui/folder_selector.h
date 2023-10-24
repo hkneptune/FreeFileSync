@@ -25,8 +25,7 @@ namespace fff
     - selection dialog remembers size, but NOT position => if user enlarges window, the next time he opens the dialog it may leap out of visible screen
     - hard-codes "Browse" button label                                      */
 
-wxDECLARE_EVENT(EVENT_ON_FOLDER_SELECTED,    wxCommandEvent); //directory is changed by the user (except manual type-in)
-wxDECLARE_EVENT(EVENT_ON_FOLDER_MANUAL_EDIT, wxCommandEvent); //manual type-in
+wxDECLARE_EVENT(EVENT_ON_FOLDER_SELECTED, wxCommandEvent); //directory is changed by the user, including manual type-in
 //example: wnd.Bind(EVENT_ON_FOLDER_SELECTED, [this](wxCommandEvent& event) { onDirSelected(event); });
 
 class FolderSelector: public wxEvtHandler
@@ -54,7 +53,6 @@ public:
 private:
     void onMouseWheel     (wxMouseEvent&   event);
     void onItemPathDropped(zen::FileDropEvent&  event);
-    void onHistoryPathSelected(wxEvent& event);
     void onEditFolderPath (wxCommandEvent& event);
     void onSelectFolder   (wxCommandEvent& event);
     void onSelectAltFolder(wxCommandEvent& event);

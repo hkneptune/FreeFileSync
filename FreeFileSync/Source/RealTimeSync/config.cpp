@@ -8,7 +8,6 @@
 #include <zen/file_access.h>
 #include <zen/process_exec.h>
 #include <zenxml/xml.h>
-//#include <wx/intl.h>
 #include <wx/uilocale.h>
 #include "../ffs_paths.h"
 #include "../localization.h"

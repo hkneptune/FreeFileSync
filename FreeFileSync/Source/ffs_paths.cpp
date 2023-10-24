@@ -8,7 +8,6 @@
 #include <zen/file_access.h>
 #include <zen/thread.h>
 #include <zen/sys_info.h>
-//#include <zen/symlink_target.h>
 
     #include <iostream> //std::cerr
 

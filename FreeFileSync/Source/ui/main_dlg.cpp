@@ -159,7 +159,7 @@ template <class GuiPanel>
 class fff::FolderPairCallback : public FolderPairPanelBasic<GuiPanel> //implements callback functionality to MainDialog as imposed by FolderPairPanelBasic
 {
 public:
-    FolderPairCallback(GuiPanel& basicPanel, MainDialog& mainDialog,
+    FolderPairCallback(GuiPanel& basicPanel, MainDialog& mainDlg,
 
                        wxPanel&          dropWindow1L,
                        wxPanel&          dropWindow1R,
@@ -177,18 +177,15 @@ public:
                        wxWindow*         dropWindow2L,
                        wxWindow*         dropWindow2R) :
         FolderPairPanelBasic<GuiPanel>(basicPanel), //pass FolderPairPanelGenerated part...
-        mainDlg_(mainDialog),
-        folderSelectorLeft_ (&mainDialog, dropWindow1L, selectFolderButtonL, selectSftpButtonL, dirpathL, folderLastSelectedL, sftpKeyFileLastSelected, staticTextL, dropWindow2L, droppedPathsFilter_, getDeviceParallelOps_, setDeviceParallelOps_),
-        folderSelectorRight_(&mainDialog, dropWindow1R, selectFolderButtonR, selectSftpButtonR, dirpathR, folderLastSelectedR, sftpKeyFileLastSelected, staticTextR, dropWindow2R, droppedPathsFilter_, getDeviceParallelOps_, setDeviceParallelOps_)
+        mainDlg_(mainDlg),
+        folderSelectorLeft_ (&mainDlg, dropWindow1L, selectFolderButtonL, selectSftpButtonL, dirpathL, folderLastSelectedL, sftpKeyFileLastSelected, staticTextL, dropWindow2L, droppedPathsFilter_, getDeviceParallelOps_, setDeviceParallelOps_),
+        folderSelectorRight_(&mainDlg, dropWindow1R, selectFolderButtonR, selectSftpButtonR, dirpathR, folderLastSelectedR, sftpKeyFileLastSelected, staticTextR, dropWindow2R, droppedPathsFilter_, getDeviceParallelOps_, setDeviceParallelOps_)
     {
         folderSelectorLeft_ .setSiblingSelector(&folderSelectorRight_);
         folderSelectorRight_.setSiblingSelector(&folderSelectorLeft_);
 
-        folderSelectorLeft_ .Bind(EVENT_ON_FOLDER_SELECTED, [&mainDialog](wxCommandEvent& event) { mainDialog.onDirSelected(event); });
-        folderSelectorRight_.Bind(EVENT_ON_FOLDER_SELECTED, [&mainDialog](wxCommandEvent& event) { mainDialog.onDirSelected(event); });
-
-        folderSelectorLeft_ .Bind(EVENT_ON_FOLDER_MANUAL_EDIT, [&mainDialog](wxCommandEvent& event) { mainDialog.onDirManualCorrection(event); });
-        folderSelectorRight_.Bind(EVENT_ON_FOLDER_MANUAL_EDIT, [&mainDialog](wxCommandEvent& event) { mainDialog.onDirManualCorrection(event); });
+        folderSelectorLeft_ .Bind(EVENT_ON_FOLDER_SELECTED, [&mainDlg](wxCommandEvent& event) { mainDlg.onFolderSelected(event); });
+        folderSelectorRight_.Bind(EVENT_ON_FOLDER_SELECTED, [&mainDlg](wxCommandEvent& event) { mainDlg.onFolderSelected(event); });
     }
 
     void setValues(const LocalPairConfig& lpc)
@@ -306,9 +303,13 @@ public:
 
 namespace
 {
-void updateTopButton(wxBitmapButton& btn, const wxImage& img, const wxString& varName, const char* varIconName /*optional*/, const wxColor& highlightCol /*optional*/)
+void updateTopButton(wxBitmapButton& btn,
+                     const wxImage& img,
+                     const wxString& varName, const char* varIconName /*optional*/,
+                     const char* extraIconName /*optional*/,
+                     const wxColor& highlightCol /*optional*/)
 {
-    wxImage btnIconImg = highlightCol.IsOk() ? img : greyScale(img);
+    wxImage iconImg = highlightCol.IsOk() ? img : greyScale(img);
 
     wxImage btnLabelImg = createImageFromText(btn.GetLabelText(), btn.GetFont(), highlightCol.IsOk() ? *wxBLACK : wxSystemSettings::GetColour(wxSYS_COLOUR_BTNTEXT));
 
@@ -331,8 +332,17 @@ void updateTopButton(wxBitmapButton& btn, const wxImage& img, const wxString& va
     wxImage btnImg = stackImages(btnLabelImg, varImg, ImageStackLayout::vertical, ImageStackAlignment::center);
 
     btnImg = btn.GetLayoutDirection() != wxLayout_RightToLeft ?
-             stackImages(btnIconImg, btnImg, ImageStackLayout::horizontal, ImageStackAlignment::center, fastFromDIP(5)) :
-             stackImages(btnImg, btnIconImg, ImageStackLayout::horizontal, ImageStackAlignment::center, fastFromDIP(5));
+             stackImages(iconImg, btnImg, ImageStackLayout::horizontal, ImageStackAlignment::center, fastFromDIP(5)) :
+             stackImages(btnImg, iconImg, ImageStackLayout::horizontal, ImageStackAlignment::center, fastFromDIP(5));
+
+    if (extraIconName)
+    {
+        const wxImage exImg = loadImage(extraIconName, fastFromDIP(20));
+
+        btnImg = btn.GetLayoutDirection() != wxLayout_RightToLeft ?
+                 stackImages(btnImg, exImg, ImageStackLayout::horizontal, ImageStackAlignment::center, fastFromDIP(5)) :
+                 stackImages(exImg, btnImg, ImageStackLayout::horizontal, ImageStackAlignment::center, fastFromDIP(5));
+    }
 
     wxSize btnSize = btnImg.GetSize() + wxSize(fastFromDIP(10), 0) /*border space*/;
     btnSize.x = std::max(btnSize.x, fastFromDIP(TOP_BUTTON_OPTIMAL_WIDTH_DIP));
@@ -698,7 +708,7 @@ imgFileManagerSmall_([]
                     wxAuiPaneInfo().Name(L"CenterPanel").CenterPane().PaneBorder(false));
 
     //set comparison button label tentatively for m_panelTopButtons to receive final height:
-    updateTopButton(*m_buttonCompare, loadImage("compare"), L"Dummy", nullptr /*varIconName*/, wxNullColour);
+    updateTopButton(*m_buttonCompare, loadImage("compare"), getVariantName(CompareVariant::timeSize), "cmp_time", nullptr /*extraIconName*/, wxNullColour);
     m_panelTopButtons->GetSizer()->SetSizeHints(m_panelTopButtons); //~=Fit() + SetMinSize()
 
     m_buttonCancel->SetMinSize({std::max(m_buttonCancel->GetSize().x, fastFromDIP(TOP_BUTTON_OPTIMAL_WIDTH_DIP)),
@@ -3203,17 +3213,13 @@ void MainDialog::onDialogFilesDropped(FileDropEvent& event)
 }
 
 
-void MainDialog::onDirSelected(wxCommandEvent& event)
+void MainDialog::onFolderSelected(wxCommandEvent& event)
 {
-    //left and right directory text-control and folderSelector are synchronized by MainFolderDragDrop automatically
-    clearGrid(); //disable the sync button
-    event.Skip();
-}
+    if (!folderCmp_.empty())
+        clearGrid(); //+ update GUI!
+    else
+        updateUnsavedCfgStatus();
 
-
-void MainDialog::onDirManualCorrection(wxCommandEvent& event)
-{
-    updateUnsavedCfgStatus();
     event.Skip();
 }
 
@@ -3315,9 +3321,12 @@ void MainDialog::updateUnsavedCfgStatus()
     //update new config button
     const bool allowNew = guiCfg != getDefaultGuiConfig(globalCfg_.defaultFilter);
 
-    setImage(*m_bpButtonNew, allowNew ? loadImage("cfg_new") : makeBrightGrey(loadImage("cfg_new")));
-    m_bpButtonNew->Enable(allowNew);
-    m_menuItemNew->Enable(allowNew);
+    if (m_bpButtonNew->IsEnabled() != allowNew || !m_bpButtonNew->GetBitmap().IsOk()) //support polling
+    {
+        setImage(*m_bpButtonNew, allowNew ? loadImage("cfg_new") : makeBrightGrey(loadImage("cfg_new")));
+        m_bpButtonNew->Enable(allowNew);
+        m_menuItemNew->Enable(allowNew);
+    }
 
     //update save config button
     const bool haveUnsavedCfg = lastSavedCfg_ != guiCfg;
@@ -3325,9 +3334,12 @@ void MainDialog::updateUnsavedCfgStatus()
     const bool allowSave = haveUnsavedCfg ||
                            activeConfigFiles_.size() > 1;
 
-    setImage(*m_bpButtonSave, allowSave ? loadImage("cfg_save") : makeBrightGrey(loadImage("cfg_save")));
-    m_bpButtonSave->Enable(allowSave);
-    m_menuItemSave->Enable(allowSave); //bitmap is automatically greyscaled on Win7 (introducing a crappy looking shift), but not on XP
+    if (m_bpButtonSave->IsEnabled() != allowSave || !m_bpButtonSave->GetBitmap().IsOk()) //support polling
+    {
+        setImage(*m_bpButtonSave, allowSave ? loadImage("cfg_save") : makeBrightGrey(loadImage("cfg_save")));
+        m_bpButtonSave->Enable(allowSave);
+        m_menuItemSave->Enable(allowSave); //bitmap is automatically greyscaled on Win7 (introducing a crappy looking shift), but not on XP
+    }
 
     //set main dialog title
     wxString title;
@@ -4637,8 +4649,23 @@ void MainDialog::updateGui()
             //*INDENT-ON*
         }
 
-    updateTopButton(*m_buttonCompare, loadImage("compare"),    getVariantName(cmpVar),  cmpVarIconName, folderCmp_.empty() ? getColorCompareButtonHighlight() : wxNullColour);
-    updateTopButton(*m_buttonSync,    loadImage("start_sync"), getVariantName(syncVar), syncVarIconName, getCUD(st) != 0   ? getColorSyncButtonHighlight   () : wxNullColour);
+    const bool useDbFile = [&]
+    {
+        for (const FolderPairCfg& fpCfg : extractCompareCfg(mainCfg))
+            if (std::get_if<DirectionByChange>(&fpCfg.directionCfg.dirs))
+                return true;
+        return false;
+    }();
+
+    updateTopButton(*m_buttonCompare, loadImage("compare"),
+                    getVariantName(cmpVar), cmpVarIconName,
+                    nullptr /*extraIconName*/,
+                    folderCmp_.empty() ? getColorCompareButtonHighlight() : wxNullColour);
+
+    updateTopButton(*m_buttonSync, loadImage("start_sync"),
+                    getVariantName(syncVar), syncVarIconName,
+                    useDbFile ? "database" : nullptr,
+                    getCUD(st) != 0 ? getColorSyncButtonHighlight() : wxNullColour);
 
     m_panelTopButtons->Layout();
 
@@ -4951,20 +4978,14 @@ void MainDialog::onStartSync(wxCommandEvent& event)
     //remove empty rows: just a beautification, invalid rows shouldn't cause issues
     filegrid::getDataView(*m_gridMainC).removeInvalidRows();
 
-    updateGui();
-
-    warn_static("fix?")
-        //"The little statistics box in the lower right corner clears right after the sync
-        //completes. It used to clear after you close the progress window. I like to know 
-        //the statistics, but usually I just start the sync and walk away. When I come back,
-        //the statistics are gone."
-
     //---------------------------------------------------------------------------
     const StatusHandlerFloatingDialog::DlgOptions dlgOpt = statusHandler.showResult();
 
     globalCfg_.progressDlgAutoClose = dlgOpt.autoCloseSelected;
     globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.size        = dlgOpt.dim.size; //=> ignore dim.pos
     globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.isMaximized = dlgOpt.dim.isMaximized;
+
+    updateGui(); //let's update *after* showResult(): some users are interested in seeing the old statistics dialog even after sync
 
     //---------------------------------------------------------------------------
     //run shutdown *after* last sync stats were updated! they will be saved via onBeforeSystemShutdownCookie_: https://freefilesync.org/forum/viewtopic.php?t=5761
@@ -6269,14 +6290,18 @@ void MainDialog::onStartupUpdateCheck(wxIdleEvent& event)
     {
         flashStatusInfo(_("Searching for program updates..."));
 
-        SharedRef<const UpdateCheckResultPrep> resultPrep = automaticUpdateCheckPrepare(*this); //run on main thread:
-
-        guiQueue_.processAsync([resultPrep] { return automaticUpdateCheckRunAsync(resultPrep.ref()); }, //run on worker thread: (long-running part of the check)
-                               [this, showNewVersionReminder] (SharedRef<const UpdateCheckResult>&& resultAsync)
+        guiQueue_.processAsync([resultPrep = automaticUpdateCheckPrepare(*this) /*prepare on main thread*/]
+        { return automaticUpdateCheckRunAsync(resultPrep.ref()); }, //run on worker thread: (long-running part of the check)
+        [this, showNewVersionReminder] (SharedRef<const UpdateCheckResult>&& resultAsync)
         {
+            const time_t lastUpdateCheckOld = globalCfg_.lastUpdateCheck;
+
             automaticUpdateCheckEval(*this, globalCfg_.lastUpdateCheck, globalCfg_.lastOnlineVersion,
                                      resultAsync.ref()); //run on main thread:
             showNewVersionReminder();
+
+            if (globalCfg_.lastUpdateCheck == lastUpdateCheckOld)
+                flashStatusInfo(_("Update check failed!"));
         });
     }
     else

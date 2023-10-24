@@ -10,7 +10,6 @@
 #include <wx+/rtl.h>
 #include <wx+/context_menu.h>
 #include <wx+/popup_dlg.h>
-//#include <wx+/std_button_layout.h>
 
 using namespace zen;
 using namespace fff;

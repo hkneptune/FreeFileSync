@@ -244,6 +244,8 @@ RenameDialog::RenameDialog(wxWindow* parent,
     m_buttonOK->SetLabelText(wxControl::RemoveMnemonics(_("&Rename"))); //no access key needed: use ENTER!
 
     auto [renamePhrase, renameBuf] = getPlaceholderPhrase(fileNamesOld);
+    const std::wstring renamePhraseOld = renamePhrase; //save copy *before* trimming
+
     trim(renamePhrase); //leading/trailing whitespace makes no sense for file names
 
 
@@ -318,11 +320,21 @@ RenameDialog::RenameDialog(wxWindow* parent,
     }
     //-----------------------------------------------------------
 
+    m_textCtrlNewName->Bind(wxEVT_COMMAND_TEXT_UPDATED, [this, renamePhraseOld, needPreview = fileNamesOld.size() > 1](wxCommandEvent& event)
+    {
+        if (needPreview)
+            updatePreview(); //(almost?) redundant, considering timer_ is doing the same!?
+
+        //disable OK button, until user changes input
+        const std::wstring renamePhraseNew = trimCpy(copyStringTo<std::wstring>(m_textCtrlNewName->GetValue()));
+        m_buttonOK->Enable(!renamePhraseNew.empty() && renamePhraseNew != renamePhraseOld); //supports polling
+    });
+
     wxTextValidator inputValidator(wxFILTER_EXCLUDE_CHAR_LIST);
     inputValidator.SetCharExcludes(LR"(<>:"/\|?*)"); //chars forbidden for file names (at least on Windows)
     //https://docs.microsoft.com/de-de/windows/win32/fileio/naming-a-file#naming-conventions
     m_textCtrlNewName->SetValidator(inputValidator);
-    m_textCtrlNewName->ChangeValue(renamePhrase);
+    m_textCtrlNewName->SetValue(renamePhrase); //SetValue() generates a text change event, unlike ChangeValue()
 
 
     if (fileNamesOld.size() > 1)
@@ -338,17 +350,6 @@ RenameDialog::RenameDialog(wxWindow* parent,
         });
         timerCursor_.Start(wxCaret::GetBlinkTime() /*unit: [ms]*/);
     }
-
-    m_textCtrlNewName->Bind(wxEVT_COMMAND_TEXT_UPDATED, [this, renamePhraseOld = renamePhrase, needPreview = fileNamesOld.size() > 1](wxCommandEvent& event)
-    {
-        if (needPreview)
-            updatePreview(); //(almost?) redundant, considering timer_ is doing the same!?
-
-        //disable OK button, until user changes input
-        const std::wstring renamePhraseNew = trimCpy(copyStringTo<std::wstring>(m_textCtrlNewName->GetValue()));
-        m_buttonOK->Enable(!renamePhraseNew.empty() && renamePhraseNew != renamePhraseOld); //supports polling
-    });
-    m_buttonOK->Disable();
 
     Bind(wxEVT_CHAR_HOOK, [this](wxKeyEvent& event) { onLocalKeyEvent(event); }); //enable dialog-specific key events
 
@@ -382,7 +383,6 @@ RenameDialog::RenameDialog(wxWindow* parent,
 
         updatePreview(); //consider new selection
     });
-
 }
 
 

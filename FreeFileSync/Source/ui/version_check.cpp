@@ -5,22 +5,13 @@
 // *****************************************************************************
 
 #include "version_check.h"
-//#include <ctime>
 #include <zen/crc.h>
-//#include <zen/string_tools.h>
-//#include <zen/i18n.h>
-//#include <zen/utf.h>
-//#include <zen/scope_guard.h>
 #include <zen/build_info.h>
-//#include <zen/basic_math.h>
 #include <zen/file_io.h>
-//#include <zen/file_error.h>
 #include <zen/http.h>
 #include <zen/process_exec.h>
 #include <zen/sys_version.h>
 #include <zen/sys_info.h>
-//#include <zen/thread.h>
-//#include <wx+/popup_dlg.h>
 #include <wx+/image_resources.h>
 #include "../ffs_paths.h"
 #include "../version/version.h"
@@ -37,8 +28,6 @@ using namespace fff;
 namespace
 {
 const Zchar ffsUpdateCheckUserAgent[] = Zstr("FFS-Update-Check");
-
-
 
 
 time_t getVersionCheckCurrentTime()
@@ -58,7 +47,7 @@ void openBrowserForDownload(wxWindow* parent)
 bool fff::automaticUpdateCheckDue(time_t lastUpdateCheck)
 {
     const time_t now = std::time(nullptr);
-    return std::abs(now - lastUpdateCheck) >= 7 * 24 * 3600; //check weekly
+    return numeric::dist(now, lastUpdateCheck) >= 7 * 24 * 3600; //check weekly
 }
 
 
@@ -336,9 +325,6 @@ void fff::automaticUpdateCheckEval(wxWindow& parent, time_t& lastUpdateCheck, st
         if (result.internetIsAlive)
         {
             if (lastOnlineVersion != getUnknownVersionTag())
-            {
-                lastOnlineVersion = getUnknownVersionTag();
-
                 switch (showConfirmationDialog(&parent, DialogInfoType::error, PopupDialogCfg().
                                                setTitle(_("Check for Program Updates")).
                                                setMainInstructions(_("Cannot find current FreeFileSync version number online. A newer version is likely available. Check manually now?")).
@@ -346,6 +332,7 @@ void fff::automaticUpdateCheckEval(wxWindow& parent, time_t& lastUpdateCheck, st
                                                _("&Check"), _("&Retry")))
                 {
                     case ConfirmationButton2::accept:
+                        lastOnlineVersion = getUnknownVersionTag();
                         openBrowserForDownload(&parent);
                         break;
                     case ConfirmationButton2::accept2: //retry
@@ -353,14 +340,14 @@ void fff::automaticUpdateCheckEval(wxWindow& parent, time_t& lastUpdateCheck, st
                                                  automaticUpdateCheckRunAsync(automaticUpdateCheckPrepare(parent).ref()).ref()); //retry via recursion!!!
                         break;
                     case ConfirmationButton2::cancel:
+                        lastOnlineVersion = getUnknownVersionTag();
                         break;
                 }
-            }
         }
         else //no internet connection
         {
             if (lastOnlineVersion.empty())
-                lastOnlineVersion = getUnknownVersionTag();
+                lastOnlineVersion = ffsVersion;
         }
     }
 }

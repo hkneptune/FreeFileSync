@@ -5,16 +5,10 @@
 // *****************************************************************************
 
 #include "gui_status_handler.h"
-//#include <zen/process_exec.h>
 #include <zen/shutdown.h>
-//#include <zen/resolve_path.h>
 #include <wx/app.h>
 #include <wx/sound.h>
 #include <wx/wupdlock.h>
-//#include <wx+/popup_dlg.h>
-//#include "main_dlg.h"
-//#include "../afs/concrete.h"
-//#include "../log_file.h"
 
 using namespace zen;
 using namespace fff;

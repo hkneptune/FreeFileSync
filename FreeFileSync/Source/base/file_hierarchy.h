@@ -441,8 +441,6 @@ public:
     virtual SyncOperation getSyncOperation() const;
     std::wstring getSyncOpConflict() const; //return conflict when determining sync direction or (still unresolved) conflict during categorization
 
-    template <SelectSide side> void removeObject(); //removes file or directory (recursively!) without physically removing the element: used by manual deletion
-
     const ContainerObject& parent() const { return parent_; }
     /**/  ContainerObject& parent()       { return parent_; }
     const BaseFolderPair& base() const { return parent_.getBase(); }
@@ -476,15 +474,14 @@ protected:
             fsParent->notifySyncCfgChanged(); //propagate!
     }
 
+    template <SelectSide side> void removeFsObject();
+
 private:
     FileSystemObject           (const FileSystemObject&) = delete;
     FileSystemObject& operator=(const FileSystemObject&) = delete;
 
     AbstractPath getAbstractPathL() const override { return AFS::appendRelPath(base().getAbstractPath<SelectSide::left >(), getRelativePath<SelectSide::left >()); }
     AbstractPath getAbstractPathR() const override { return AFS::appendRelPath(base().getAbstractPath<SelectSide::right>(), getRelativePath<SelectSide::right>()); }
-
-    virtual void removeObjectL() = 0;
-    virtual void removeObjectR() = 0;
 
     template <SelectSide side>
     void propagateChangedItemName(); //required after any itemName changes
@@ -536,9 +533,9 @@ public:
     void setCategoryConflict(const Zstringc& description) override;
     Zstringc getCategoryCustomDescription() const override; //optional
 
+    template <SelectSide side> void removeItem();
+
 private:
-    void removeObjectL() override;
-    void removeObjectR() override;
     void notifySyncCfgChanged() override { syncOpBuffered_ = {}; FileSystemObject::notifySyncCfgChanged(); }
 
     mutable std::optional<SyncOperation> syncOpBuffered_; //determining sync-op for directory may be expensive as it depends on child-objects => buffer
@@ -583,8 +580,8 @@ public:
 
     template <SelectSide sideTrg>
     void setSyncedTo(uint64_t fileSize,
-                     int64_t lastWriteTimeTrg,
-                     int64_t lastWriteTimeSrc,
+                     time_t lastWriteTimeTrg,
+                     time_t lastWriteTimeSrc,
                      AFS::FingerPrint filePrintTrg,
                      AFS::FingerPrint filePrintSrc,
                      bool isSymlinkTrg,
@@ -599,14 +596,13 @@ public:
     void setContentCategory(FileContentCategory category);
     FileContentCategory getContentCategory() const;
 
+    template <SelectSide side> void removeItem();
+
 private:
     Zstring getRelativePathL() const override { return appendPath(parent().getRelativePath<SelectSide::left >(), getItemName<SelectSide::left >()); }
     Zstring getRelativePathR() const override { return appendPath(parent().getRelativePath<SelectSide::right>(), getItemName<SelectSide::right>()); }
 
     SyncOperation applyMoveOptimization(SyncOperation op) const;
-
-    void removeObjectL() override { attrL_ = FileAttributes(); contentCategory_ = FileContentCategory::unknown; }
-    void removeObjectR() override { attrR_ = FileAttributes(); contentCategory_ = FileContentCategory::unknown; }
 
     FileAttributes attrL_;
     FileAttributes attrR_;
@@ -639,8 +635,8 @@ public:
     template <SelectSide side> time_t getLastWriteTime() const; //write time of the link, NOT target!
 
     template <SelectSide sideTrg>
-    void setSyncedTo(int64_t lastWriteTimeTrg,
-                     int64_t lastWriteTimeSrc); //call after successful sync
+    void setSyncedTo(time_t lastWriteTimeTrg,
+                     time_t lastWriteTimeSrc); //call after successful sync
 
     void flip() override;
 
@@ -651,12 +647,11 @@ public:
     void setContentCategory(FileContentCategory category);
     FileContentCategory getContentCategory() const;
 
+    template <SelectSide side> void removeItem();
+
 private:
     Zstring getRelativePathL() const override { return appendPath(parent().getRelativePath<SelectSide::left >(), getItemName<SelectSide::left >()); }
     Zstring getRelativePathR() const override { return appendPath(parent().getRelativePath<SelectSide::right>(), getItemName<SelectSide::right>()); }
-
-    void removeObjectL() override { attrL_ = LinkAttributes(); contentCategory_ = FileContentCategory::unknown; }
-    void removeObjectR() override { attrR_ = LinkAttributes(); contentCategory_ = FileContentCategory::unknown; }
 
     LinkAttributes attrL_;
     LinkAttributes attrR_;
@@ -702,6 +697,16 @@ void visitFSObject(const FileSystemObject& fsObj, Function1 onFolder, Function2 
 {
     impl::FSObjectLambdaVisitor<Function1, Function2, Function3> visitor(onFolder, onFile, onSymlink);
     fsObj.accept(visitor);
+}
+
+
+template <class Function1, class Function2, class Function3> inline
+void visitFSObject(FileSystemObject& fsObj, Function1 onFolder, Function2 onFile, Function3 onSymlink)
+{
+    visitFSObject(static_cast<const FileSystemObject&>(fsObj),
+    [onFolder ](const FolderPair&   folder) { onFolder (const_cast<FolderPair& >(folder));  },  //
+    [onFile   ](const FilePair&       file) { onFile   (const_cast<FilePair&   >(file   )); },  //physical object is not const anyway
+    [onSymlink](const SymlinkPair& symlink) { onSymlink(const_cast<SymlinkPair&>(symlink)); }); //
 }
 
 //------------------------------------------------------------------
@@ -757,13 +762,11 @@ void visitFSObjectRecursively(FileSystemObject& fsObj, //consider item and conta
                               Function2 onFile,
                               Function3 onSymlink)
 {
-    visitFSObject(fsObj, [onFolder, onFile, onSymlink](const FolderPair& folder)
+    visitFSObject(fsObj, [onFolder, onFile, onSymlink](FolderPair& folder)
     {
-        onFolder(const_cast<FolderPair&>(folder));
+        onFolder(folder);
         impl::RecursiveObjectVisitor(onFolder, onFile, onSymlink).execute(const_cast<FolderPair&>(folder));
-    },
-    [onFile   ](const FilePair&       file) { onFile   (const_cast<FilePair&   >(file   )); },  //physical object is not const anyway
-    [onSymlink](const SymlinkPair& symlink) { onSymlink(const_cast<SymlinkPair&>(symlink)); }); //
+    }, onFile, onSymlink);
 }
 
 
@@ -867,17 +870,12 @@ bool FileSystemObject::hasEquivalentItemNames() const
 
 
 template <SelectSide side> inline
-void FileSystemObject::removeObject()
+void FileSystemObject::removeFsObject()
 {
     if (isEmpty<getOtherSide<side>>())
         itemNameL_ = itemNameR_ = Zstring(); //ensure (c_str) class invariant!
     else
         selectParam<side>(itemNameL_, itemNameR_).clear();
-
-    if constexpr (side == SelectSide::left)
-        removeObjectL();
-    else
-        removeObjectR();
 
     if (isPairEmpty())
         setSyncDir(SyncDirection::none); //calls notifySyncCfgChanged()
@@ -885,6 +883,52 @@ void FileSystemObject::removeObject()
         notifySyncCfgChanged(); //needed!?
 
     propagateChangedItemName<side>();
+}
+
+
+template <SelectSide side> inline
+void FilePair::removeItem()
+{
+    selectParam<side>(attrL_, attrR_) = FileAttributes();
+    contentCategory_ = FileContentCategory::unknown;
+    removeFsObject<side>();
+
+    //cut ties between "move" pairs
+    if (isPairEmpty())
+    {
+        if (moveFileRef_)
+            if (auto refFile = dynamic_cast<FilePair*>(FileSystemObject::retrieve(moveFileRef_)))
+            {
+                if (refFile->moveFileRef_ == getId()) //both ends should agree...
+                    refFile->moveFileRef_ = nullptr;
+                else assert(false); //...and why shouldn't they?
+            }
+        moveFileRef_ = nullptr;
+    }
+}
+
+
+template <SelectSide side> inline
+void SymlinkPair::removeItem()
+{
+    selectParam<side>(attrL_, attrR_) = LinkAttributes();
+    contentCategory_ = FileContentCategory::unknown;
+    removeFsObject<side>();
+}
+
+
+template <SelectSide side> inline
+void FolderPair::removeItem()
+{
+    for (FilePair& file : refSubFiles())
+        file.removeItem<side>();
+    for (SymlinkPair& symlink : refSubLinks())
+        symlink.removeItem<side>();
+    for (FolderPair& folder : refSubFolders())
+        folder.removeItem<side>();
+
+    selectParam<side>(attrL_, attrR_) = FolderAttributes();
+    removeFsObject<side>();
 }
 
 
@@ -908,7 +952,7 @@ void FileSystemObject::setItemName(const Zstring& itemName)
 template <SelectSide side> inline
 void FileSystemObject::propagateChangedItemName()
 {
-    if (itemNameL_.empty() && itemNameR_.empty()) return; //both sides might just have been deleted by removeObject<>
+    if (itemNameL_.empty() && itemNameR_.empty()) return; //both sides might just have been deleted by removeItem<>
 
     if (auto conObj = dynamic_cast<ContainerObject*>(this))
     {
@@ -1123,34 +1167,6 @@ void SymlinkPair::flip()
         case FileContentCategory::rightNewer: contentCategory_ = FileContentCategory::leftNewer; break;
         //*INDENT-ON*
     }
-}
-
-
-inline
-void FolderPair::removeObjectL()
-{
-    for (FilePair& file : refSubFiles())
-        file.removeObject<SelectSide::left>();
-    for (SymlinkPair& symlink : refSubLinks())
-        symlink.removeObject<SelectSide::left>();
-    for (FolderPair& folder : refSubFolders())
-        folder.removeObject<SelectSide::left>();
-
-    attrL_ = FolderAttributes();
-}
-
-
-inline
-void FolderPair::removeObjectR()
-{
-    for (FilePair& file : refSubFiles())
-        file.removeObject<SelectSide::right>();
-    for (SymlinkPair& symlink : refSubLinks())
-        symlink.removeObject<SelectSide::right>();
-    for (FolderPair& folder : refSubFolders())
-        folder.removeObject<SelectSide::right>();
-
-    attrR_ = FolderAttributes();
 }
 
 
@@ -1436,8 +1452,8 @@ void FolderPair::setSyncedTo(bool isSymlinkTrg,
 
 template <SelectSide sideTrg> inline
 void FilePair::setSyncedTo(uint64_t fileSize,
-                           int64_t lastWriteTimeTrg,
-                           int64_t lastWriteTimeSrc,
+                           time_t lastWriteTimeTrg,
+                           time_t lastWriteTimeSrc,
                            AFS::FingerPrint filePrintTrg,
                            AFS::FingerPrint filePrintSrc,
                            bool isSymlinkTrg,
@@ -1446,8 +1462,7 @@ void FilePair::setSyncedTo(uint64_t fileSize,
     selectParam<             sideTrg >(attrL_, attrR_) = {lastWriteTimeTrg, fileSize, filePrintTrg, isSymlinkTrg};
     selectParam<getOtherSide<sideTrg>>(attrL_, attrR_) = {lastWriteTimeSrc, fileSize, filePrintSrc, isSymlinkSrc};
 
-    warn_static("same thing for delete!?")
-        //cut ties between "move" pairs
+    //cut ties between "move" pairs
     if (moveFileRef_)
         if (auto refFile = dynamic_cast<FilePair*>(FileSystemObject::retrieve(moveFileRef_)))
         {
@@ -1466,8 +1481,8 @@ void FilePair::setSyncedTo(uint64_t fileSize,
 
 
 template <SelectSide sideTrg> inline
-void SymlinkPair::setSyncedTo(int64_t lastWriteTimeTrg,
-                              int64_t lastWriteTimeSrc)
+void SymlinkPair::setSyncedTo(time_t lastWriteTimeTrg,
+                              time_t lastWriteTimeSrc)
 {
     selectParam<             sideTrg >(attrL_, attrR_) = {.modTime = lastWriteTimeTrg};
     selectParam<getOtherSide<sideTrg>>(attrL_, attrR_) = {.modTime = lastWriteTimeSrc};

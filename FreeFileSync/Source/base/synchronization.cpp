@@ -1826,7 +1826,7 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
 
                     statReporter.reportDelta(1, 0);
                     //even if the source item does not exist anymore, significant I/O work was done => report
-                    file.removeObject<sideSrc>(); //source deleted meanwhile...nothing was done (logical point of view!)
+                    file.removeItem<sideSrc>(); //source deleted meanwhile...nothing was done (logical point of view!)
                     //remove only *after* evaluating "file, sideSrc"!
                 }
                 else
@@ -1847,7 +1847,7 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
                 delHandlerTrg.removeFileWithCallback({file.getAbstractPath<sideTrg>(), file.getAttributes<sideTrg>()}, file.getRelativePath<sideTrg>(),
                                                      false /*beforeOverwrite*/, statReporter, singleThread_); //throw FileError, ThreadStopRequest
 
-            file.removeObject<sideTrg>(); //update FilePair
+            file.removeItem<sideTrg>(); //update FilePair
         }
         break;
 
@@ -1882,7 +1882,7 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
                                              fileTo  ->getFilePrint<sideSrc>(),
                                              fileFrom->isFollowedSymlink<sideTrg>(),
                                              fileTo  ->isFollowedSymlink<sideSrc>());
-                fileFrom->removeObject<sideTrg>(); //remove only *after* evaluating "fileFrom, sideTrg"!
+                fileFrom->removeItem<sideTrg>(); //remove only *after* evaluating "fileFrom, sideTrg"!
             }
             else (assert(false));
             break;
@@ -1921,7 +1921,7 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
                     delHandlerTrg.removeFileWithCallback({targetPathResolvedOld, followedTargetAttr}, file.getRelativePath<sideTrg>(),
                 true /*beforeOverwrite*/, statReporter, singleThread_); //throw FileError, ThreadStopRequest
 
-                //file.removeObject<sideTrg>(); -> doesn't make sense for isFollowedSymlink(); "file, sideTrg" evaluated below!
+                //file.removeItem<sideTrg>(); -> doesn't make sense for isFollowedSymlink(); "file, sideTrg" evaluated below!
             };
 
             const AFS::FileCopyResult result = copyFileWithCallback({file.getAbstractPath<sideSrc>(), file.getAttributes<sideSrc>()},
@@ -2054,7 +2054,7 @@ void FolderPairSyncer::synchronizeLinkInt(SymlinkPair& symlink, SyncOperation sy
 
                     //even if the source item does not exist anymore, significant I/O work was done => report
                     statReporter.reportDelta(1, 0);
-                    symlink.removeObject<sideSrc>(); //source deleted meanwhile...nothing was done (logical point of view!)
+                    symlink.removeItem<sideSrc>(); //source deleted meanwhile...nothing was done (logical point of view!)
                 }
                 else
                     throw;
@@ -2070,7 +2070,7 @@ void FolderPairSyncer::synchronizeLinkInt(SymlinkPair& symlink, SyncOperation sy
             delHandlerTrg.removeLinkWithCallback(symlink.getAbstractPath<sideTrg>(), symlink.getRelativePath<sideTrg>(),
                                                  false /*beforeOverwrite*/, statReporter, singleThread_); //throw FileError, ThreadStopRequest
 
-            symlink.removeObject<sideTrg>(); //update SymlinkPair
+            symlink.removeItem<sideTrg>(); //update SymlinkPair
         }
         break;
 
@@ -2084,7 +2084,7 @@ void FolderPairSyncer::synchronizeLinkInt(SymlinkPair& symlink, SyncOperation sy
             delHandlerTrg.removeLinkWithCallback(symlink.getAbstractPath<sideTrg>(), symlink.getRelativePath<sideTrg>(),
                                                  true /*beforeOverwrite*/, statReporter, singleThread_); //throw FileError, ThreadStopRequest
 
-            //symlink.removeObject<sideTrg>(); -> "symlink, sideTrg" evaluated below!
+            //symlink.removeItem<sideTrg>(); -> "symlink, sideTrg" evaluated below!
 
             parallel::copySymlink(symlink.getAbstractPath<sideSrc>(),
                                   AFS::appendRelPath(symlink.parent().getAbstractPath<sideTrg>(), symlink.getItemName<sideSrc>()), //respect differences in case of source object
@@ -2205,7 +2205,7 @@ void FolderPairSyncer::synchronizeFolderInt(FolderPair& folder, SyncOperation sy
                 folder.refSubFiles  ().clear(); //
                 folder.refSubLinks  ().clear(); //update FolderPair
                 folder.refSubFolders().clear(); //
-                folder.removeObject<sideSrc>(); //
+                folder.removeItem<sideSrc>(); //
                 const SyncStatistics statsAfter(folder.base());
 
                 acb_.updateDataProcessed(1, 0); //even if the source item does not exist anymore, significant I/O work was done => report
@@ -2232,7 +2232,7 @@ void FolderPairSyncer::synchronizeFolderInt(FolderPair& folder, SyncOperation sy
             folder.refSubFiles  ().clear(); //
             folder.refSubLinks  ().clear(); //update FolderPair
             folder.refSubFolders().clear(); //
-            folder.removeObject<sideTrg>(); //
+            folder.removeItem<sideTrg>();   //
         }
         break;
 

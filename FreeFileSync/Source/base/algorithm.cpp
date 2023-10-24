@@ -519,7 +519,7 @@ private:
                                     if (fileLeftOnly->isActive() != fileRightOnly->isActive()) //just in case
                                         fileLeftOnly->setActive(false);
 
-                                    fileRightOnly->removeObject<SelectSide::right>(); //=> call ContainerObject::removeDoubleEmpty() later!
+                                    fileRightOnly->removeItem<SelectSide::right>(); //=> call ContainerObject::removeDoubleEmpty() later!
                                 }
                                 else //regular move pair: mark it!
                                 {
@@ -1503,30 +1503,33 @@ void deleteFilesOneSide(const std::vector<FileSystemObject*>& rowsToDelete,
 
         if (!fsObj->isEmpty<side>()) //element may be implicitly deleted, e.g. if parent folder was deleted first
         {
-            visitFSObject(*fsObj, [&](const FolderPair& folder)
+            visitFSObject(*fsObj, [&](FolderPair& folder)
             {
                 if (folder.isFollowedSymlink<side>())
                     removeSymlink(folder.getAbstractPath<side>(), statReporter); //throw FileError, X
                 else
                     removeFolder(folder.getAbstractPath<side>(), statReporter); //throw FileError, X
+
+                folder.removeItem<side>(); //removes recursively!
             },
 
-            [&](const FilePair& file)
+            [&](FilePair& file)
             {
                 if (file.isFollowedSymlink<side>())
                     removeSymlink(file.getAbstractPath<side>(), statReporter); //throw FileError, X
                 else
                     removeFile(file.getAbstractPath<side>(), statReporter); //throw FileError, X
+
+                file.removeItem<side>();
             },
 
-            [&](const SymlinkPair& symlink)
+            [&](SymlinkPair& symlink)
             {
                 removeSymlink(symlink.getAbstractPath<side>(), statReporter); //throw FileError, X
+                symlink.removeItem<side>();
             });
             //------- no-throw from here on -------
             const CompareFileResult catOld = fsObj->getCategory();
-
-            fsObj->removeObject<side>(); //if directory: removes recursively!
 
             //update sync direction: don't call redetermineSyncDirection() because user may have manually changed directions
             if (catOld == CompareFileResult::FILE_EQUAL)

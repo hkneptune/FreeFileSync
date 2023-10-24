@@ -38,6 +38,8 @@ void setFolderPath(const Zstring& dirpath, wxTextCtrl* txtCtrl, wxWindow& toolti
         staticText->SetLabel(equalNativePath(appendSeparator(trimCpy(dirpath)), appendSeparator(folderPathFmt)) ?
                              wxString(_("Drag && drop")) : utfTo<wxString>(folderPathFmt));
 }
+
+
 }
 
 //##############################################################################################################
@@ -47,7 +49,9 @@ FolderSelector2::FolderSelector2(wxWindow*     parent,
                                  wxButton&     selectButton,
                                  wxTextCtrl&   folderPathCtrl,
                                  Zstring& folderLastSelected,
-                                 wxStaticText* staticText) :
+                                 wxStaticText* staticText,
+                                 const std::function<bool  (const std::vector<Zstring>& shellItemPaths)>& droppedPathsFilter) :
+    droppedPathsFilter_  (droppedPathsFilter),
     parent_(parent),
     dropWindow_(dropWindow),
     selectButton_(selectButton),
@@ -59,7 +63,6 @@ FolderSelector2::FolderSelector2(wxWindow*     parent,
     if (GtkWidget* widget = folderPathCtrl.GetConnectWidget())
         ::gtk_drag_dest_unset(widget);
 
-    //prepare drag & drop
     setupFileDrop(dropWindow_);
     dropWindow_.Bind(EVENT_DROP_FILE, &FolderSelector2::onFilesDropped, this);
 
@@ -100,20 +103,22 @@ void FolderSelector2::onFilesDropped(FileDropEvent& event)
     if (event.itemPaths_.empty())
         return;
 
-    Zstring itemPath = event.itemPaths_[0];
-    try
+    if (!droppedPathsFilter_ || droppedPathsFilter_(event.itemPaths_))
     {
-        if (getItemType(itemPath) == ItemType::file) //throw FileError
-            if (const std::optional<Zstring>& parentPath = getParentFolderPath(itemPath))
-                itemPath = *parentPath;
+        Zstring itemPath = event.itemPaths_[0];
+        try
+        {
+            if (getItemType(itemPath) == ItemType::file) //throw FileError
+                if (const std::optional<Zstring>& parentPath = getParentFolderPath(itemPath))
+                    itemPath = *parentPath;
+        }
+        catch (FileError&) {} //e.g. good for inactive mapped network shares, not so nice for C:\pagefile.sys
+
+        if (endsWith(itemPath, Zstr(' '))) //prevent getResolvedFilePath() from trimming legit trailing blank!
+            itemPath += FILE_NAME_SEPARATOR;
+
+        setPath(itemPath);
     }
-    catch (FileError&) {} //e.g. good for inactive mapped network shares, not so nice for C:\pagefile.sys
-
-    if (endsWith(itemPath, Zstr(' '))) //prevent getResolvedFilePath() from trimming legit trailing blank!
-        itemPath += FILE_NAME_SEPARATOR;
-
-    setPath(itemPath);
-
     //event.Skip();
 }
 
@@ -123,8 +128,6 @@ void FolderSelector2::onEditFolderPath(wxCommandEvent& event)
     setFolderPath(utfTo<Zstring>(event.GetString()), nullptr, folderPathCtrl_, staticText_);
     event.Skip();
 }
-
-
 
 
 void FolderSelector2::onSelectDir(wxCommandEvent& event)

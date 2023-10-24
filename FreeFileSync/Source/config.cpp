@@ -10,7 +10,6 @@
 #include <zen/file_io.h>
 #include <zen/time.h>
 #include <zen/process_exec.h>
-//#include <wx/intl.h>
 #include <wx/uilocale.h>
 #include "ffs_paths.h"
 #include "base_tools.h"
@@ -1174,15 +1173,6 @@ void readConfig(const XmlIn& in, MainConfiguration& mainCfg, int formatVer)
     else
         in["Notes"](mainCfg.notes);
 
-
-
-    warn_static("wxwidgets: disable wxUSE_EXCEPTIONS so that we get proper exception stack locations")
-#if 0 //e.g.
-        std::get<DirectionByDiff>(mainCfg.syncCfg.directionCfg.dirs);
-                    warn_static("why is std::bad_variant_access caught somewhere in wxEntry when thrown at this location!? ")
-#endif
-
-
     readConfig(in["Compare"], mainCfg.cmpCfg);
 
     readConfig(in["Synchronize"], mainCfg.syncCfg, mainCfg.deviceParallelOps, formatVer);
@@ -1238,6 +1228,7 @@ void readConfig(const XmlIn& in, MainConfiguration& mainCfg, int formatVer)
                     cmpCfg.compareVar == CompareVariant::size)
                     if (std::string varName;
                         inPair["Synchronize"]["Variant"](varName))
+                    {
                         if (varName == "Update")
                             std::get<DirectionByDiff>(lpc.localSyncCfg->directionCfg.dirs).rightNewer = SyncDirection::right;
                         else if (varName == "Custom")
@@ -1249,6 +1240,7 @@ void readConfig(const XmlIn& in, MainConfiguration& mainCfg, int formatVer)
                                 std::get<DirectionByDiff>(lpc.localSyncCfg->directionCfg.dirs).leftNewer =
                                     std::get<DirectionByDiff>(lpc.localSyncCfg->directionCfg.dirs).rightNewer = different;
                             }
+                    }
             }
         if (formatVer < 23) //TODO: remove if parameter migration after some time! 2023-08-24
             if (lpc.localSyncCfg)

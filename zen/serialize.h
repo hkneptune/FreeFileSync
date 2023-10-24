@@ -7,7 +7,6 @@
 #ifndef SERIALIZE_H_839405783574356
 #define SERIALIZE_H_839405783574356
 
-//#include <bit>
 #include <functional>
 #include "sys_error.h"
 //keep header clean from specific stream implementations! (e.g.file_io.h)! used by abstract.h!
@@ -261,21 +260,13 @@ BinContainer unbufferedLoad(Function tryRead /*(void* buffer, size_t bytesToRead
     BinContainer buf;
     for (;;)
     {
-#ifndef ZEN_HAVE_RESIZE_AND_OVERWRITE
-#error include legacy_compiler.h!
-#endif
-#if ZEN_HAVE_RESIZE_AND_OVERWRITE //permature(?) perf optimization; avoid needless zero-initialization:
         size_t bytesRead = 0;
         buf.resize_and_overwrite(buf.size() + blockSize, [&, bufSizeOld = buf.size()](char* rawBuf, size_t /*rawBufSize: caveat: may be larger than what's requested*/)
+                                 //permature(?) perf optimization; avoid needless zero-initialization:
         {
             bytesRead = tryRead(rawBuf + bufSizeOld, blockSize); //throw X; may return short; only 0 means EOF
             return bufSizeOld + bytesRead;
         });
-#else
-        buf.resize(buf.size() + blockSize); //needless zero-initialization!
-        const size_t bytesRead = tryRead(buf.data() + buf.size() - blockSize, blockSize); //throw X; may return short; only 0 means EOF
-        buf.resize(buf.size() - blockSize + bytesRead); //caveat: unsigned arithmetics
-#endif
         if (bytesRead == 0) //end of file
         {
             //caveat: memory consumption of returned string!

@@ -1,3 +1,12 @@
+FreeFileSync 13.1 [2023-10-23]
+------------------------------
+Keep comparison results when only changing cloud connection settings
+Sync button: indicate if database will be used
+Remove leading/trailing space during manual file rename
+Set environment variable "DISPLAY=:0" if missing (Linux)
+Support dropping ffs_gui/ffs_real config on RealTimeSync directory input field
+
+
 FreeFileSync 13.0 [2023-09-12]
 ------------------------------
 Rename (multiple) files manually (F2 key)

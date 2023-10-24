@@ -133,7 +133,8 @@ bool Application::OnInit()
     //                  drawback: missing MTP and network links in folder picker: https://freefilesync.org/forum/viewtopic.php?t=6871
     //if (::setenv("GIO_USE_VFS", "local", true /*overwrite*/) != 0)
     //    std::cerr << utfTo<std::string>(formatSystemError("setenv(GIO_USE_VFS)", errno)) + '\n';
-    //
+    //    //BUGZ!?: "Modifications of environment variables are not allowed in multi-threaded programs" - https://rachelbythebay.com/w/2017/01/30/env/
+
     //=> work around 2:
     [[maybe_unused]] GVfs* defaultFs = ::g_vfs_get_default(); //not owned by us!
     //no such issue on GTK3!
@@ -242,16 +243,12 @@ wxLayoutDirection Application::GetLayoutDirection() const { return getLayoutDire
 
 int Application::OnRun()
 {
-    [[maybe_unused]] const int rc = wxApp::OnRun();
-    return static_cast<int>(exitCode_);
-}
-
-
-void Application::OnUnhandledException() //handles both wxApp::OnInit() + wxApp::OnRun()
-{
     try
     {
-        throw; //just re-throw
+#if wxUSE_EXCEPTIONS
+#error why is wxWidgets uncaught exception handling enabled!?
+#endif
+        [[maybe_unused]] const int rc = wxApp::OnRun();
     }
     catch (const std::bad_alloc& e) //the only kind of exception we don't want crash dumps for
     {
@@ -259,6 +256,7 @@ void Application::OnUnhandledException() //handles both wxApp::OnInit() + wxApp:
         terminateProcess(static_cast<int>(FfsExitCode::exception));
     }
     //catch (...) -> Windows: let it crash and create mini dump!!! Linux/macOS: std::exception::what() logged to console
+    return static_cast<int>(exitCode_);
 }
 
 

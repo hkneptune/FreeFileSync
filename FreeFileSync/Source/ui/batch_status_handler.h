@@ -7,12 +7,10 @@
 #ifndef BATCH_STATUS_HANDLER_H_857390451451234566
 #define BATCH_STATUS_HANDLER_H_857390451451234566
 
-//#include <chrono>
 #include <zen/error_log.h>
 #include "progress_indicator.h"
 #include "../config.h"
 #include "../status_handler.h"
-//#include "../afs/abstract.h"
 
 
 namespace fff

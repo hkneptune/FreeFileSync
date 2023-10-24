@@ -273,16 +273,16 @@ void zen::removeDirectoryPlainRecursion(const Zstring& dirPath) //throw FileErro
 
 namespace
 {
-std::wstring generateMoveErrorMsg(const Zstring& pathFrom, const Zstring& pathTo) 
+std::wstring generateMoveErrorMsg(const Zstring& pathFrom, const Zstring& pathTo)
 {
-        if (getParentFolderPath(pathFrom) == getParentFolderPath(pathTo)) //pure "rename"
-            return replaceCpy(replaceCpy(_("Cannot rename %x to %y."),
-                                         L"%x", fmtPath(pathFrom)),
-                              L"%y", fmtPath(getItemName(pathTo)));
-        else //"move" or "move + rename"
-            return trimCpy(replaceCpy(replaceCpy(_("Cannot move %x to %y."),
-                                         L"%x", L'\n' + fmtPath(pathFrom)),
-                              L"%y", L'\n' + fmtPath(pathTo)));    
+    if (getParentFolderPath(pathFrom) == getParentFolderPath(pathTo)) //pure "rename"
+        return replaceCpy(replaceCpy(_("Cannot rename %x to %y."),
+                                     L"%x", fmtPath(pathFrom)),
+                          L"%y", fmtPath(getItemName(pathTo)));
+    else //"move" or "move + rename"
+        return trimCpy(replaceCpy(replaceCpy(_("Cannot move %x to %y."),
+                                             L"%x", L'\n' + fmtPath(pathFrom)),
+                                  L"%y", L'\n' + fmtPath(pathTo)));
 }
 
 /* Usage overview: (avoid circular pattern!)
@@ -732,11 +732,11 @@ FileCopyResult zen::copyNewFile(const Zstring& sourceFile, const Zstring& target
 
     return
     {
-        .fileSize = makeUnsigned(sourceInfo.st_size),
+        .fileSize      = makeUnsigned(sourceInfo.st_size),
         .sourceModTime = sourceInfo.st_mtim,
         .sourceFileIdx = sourceInfo.st_ino,
         .targetFileIdx = targetFileIdx,
-        .errorModTime = errorModTime,
+        .errorModTime  = errorModTime,
     };
 }
 

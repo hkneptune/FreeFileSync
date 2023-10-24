@@ -162,8 +162,7 @@ private:
 
     void onDialogFilesDropped(zen::FileDropEvent& event);
 
-    void onDirSelected(wxCommandEvent& event);
-    void onDirManualCorrection(wxCommandEvent& event);
+    void onFolderSelected(wxCommandEvent& event);
 
     void onCheckRows       (CheckRowsEvent&     event);
     void onSetSyncDirection(SyncDirectionEvent& event);

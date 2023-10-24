@@ -2063,7 +2063,7 @@ ActivationDlg::ActivationDlg(wxWindow* parent,
     m_richTextLastError          ->SetMinSize({-1, m_richTextLastError          ->GetCharHeight() * 7});
     m_richTextManualActivationUrl->SetMinSize({-1, m_richTextManualActivationUrl->GetCharHeight() * 4});
     m_textCtrlOfflineActivationKey->SetMinSize({fastFromDIP(260), -1});
-    
+
     setImage(*m_bitmapActivation, loadImage("internet"));
     m_textCtrlOfflineActivationKey->ForceUpper();
 

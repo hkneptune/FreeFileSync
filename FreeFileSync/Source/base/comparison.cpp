@@ -240,7 +240,6 @@ FolderComparison ComparisonBuffer::execute(const std::vector<std::pair<ResolvedF
                 foldersToRead.emplace(DirectoryKey{folderPair.folderPathLeft,  fpCfg.filter.nameFilter, fpCfg.handleSymlinks});
             if (getBaseFolderStatus(folderPair.folderPathRight) == BaseFolderStatus::existing)
                 foldersToRead.emplace(DirectoryKey{folderPair.folderPathRight, fpCfg.filter.nameFilter, fpCfg.handleSymlinks});
-            warn_static("remove DirectoryKey{} prefix once mac supports it")
         }
 
     //------------------------------------------------------------------
@@ -653,7 +652,7 @@ public:
     static void execute(const FolderContainer& lhs, const FolderContainer& rhs,
                         const std::unordered_map<Zstring, Zstringc>& errorsByRelPathL,
                         const std::unordered_map<Zstring, Zstringc>& errorsByRelPathR,
-                         ContainerObject& output,
+                        ContainerObject& output,
                         std::vector<FilePair*>& undefinedFilesOut,
                         std::vector<SymlinkPair*>& undefinedSymlinksOut)
     {
@@ -1033,7 +1032,7 @@ SharedRef<BaseFolderPair> ComparisonBuffer::performComparison(const ResolvedFold
                                                                      fileTimeTolerance_,
                                                                      fpCfg.ignoreTimeShiftMinutes);
     //PERF_START;
-    MergeSides::execute(*folderContL, *folderContR, failedReadsL, failedReadsR, 
+    MergeSides::execute(*folderContL, *folderContR, failedReadsL, failedReadsR,
                         output.ref(), undefinedFiles, undefinedSymlinks);
     //PERF_STOP;
 

@@ -42,15 +42,39 @@ std::wstring extractJobName(const Zstring& cfgFilePath)
 }
 
 
+bool acceptDialogFileDrop(const std::vector<Zstring>& shellItemPaths)
+{
+    if (shellItemPaths.empty())
+        return false;
+
+    const Zstring ext = getFileExtension(shellItemPaths[0]);
+    return equalAsciiNoCase(ext, "ffs_real") ||
+           equalAsciiNoCase(ext, "ffs_batch");
+}
+}
+
+
+std::function<bool(const std::vector<Zstring>& shellItemPaths)> getDroppedPathsFilter(MainDialog& mainDlg)
+{
+    return [&mainDlg](const std::vector<Zstring>& shellItemPaths)
+    {
+        if (acceptDialogFileDrop(shellItemPaths))
+        {
+            assert(!shellItemPaths.empty());
+            mainDlg.loadConfig(shellItemPaths[0]);
+            return false; //don't set dropped paths
+        }
+        return true; //do set dropped paths
+    };
 }
 
 
 class rts::DirectoryPanel : public FolderGenerated
 {
 public:
-    DirectoryPanel(wxWindow* parent, Zstring& folderLastSelected) :
+    DirectoryPanel(wxWindow* parent, MainDialog& mainDlg, Zstring& folderLastSelected) :
         FolderGenerated(parent),
-        folderSelector_(parent, *this, *m_buttonSelectFolder, *m_txtCtrlDirectory, folderLastSelected, nullptr /*staticText*/)
+        folderSelector_(parent, *this, *m_buttonSelectFolder, *m_txtCtrlDirectory, folderLastSelected, nullptr /*staticText*/, getDroppedPathsFilter(mainDlg))
     {
         setImage(*m_bpButtonRemoveFolder, loadImage("item_remove"));
     }
@@ -101,7 +125,8 @@ MainDialog::MainDialog(const Zstring& cfgFilePath) :
     setGlobalWindow(this);
 
     //prepare drag & drop
-    firstFolderPanel_ = std::make_unique<FolderSelector2>(this, *m_panelMainFolder, *m_buttonSelectFolderMain, *m_txtCtrlDirectoryMain, folderLastSelected_, nullptr /*staticText*/);
+    firstFolderPanel_ = std::make_unique<FolderSelector2>(this, *m_panelMainFolder, *m_buttonSelectFolderMain, *m_txtCtrlDirectoryMain, folderLastSelected_,
+                                                          nullptr /*staticText*/, getDroppedPathsFilter(*this));
 
     //--------------------------- load config values ------------------------------------
     XmlRealConfig newConfig;
@@ -412,7 +437,7 @@ void MainDialog::insertAddFolder(const std::vector<Zstring>& newFolders, size_t 
     for (size_t i = 0; i < newFolders.size(); ++i)
     {
         //add new folder pair
-        DirectoryPanel* newFolder = new DirectoryPanel(m_scrolledWinFolders, folderLastSelected_);
+        DirectoryPanel* newFolder = new DirectoryPanel(m_scrolledWinFolders, *this, folderLastSelected_);
 
         bSizerFolders->Insert(pos + i, newFolder, 0, wxEXPAND);
         additionalFolderPanels_.insert(additionalFolderPanels_.begin() + pos + i, newFolder);

@@ -191,10 +191,32 @@ wxColor getBackGroundColorCmpDifference(CompareFileResult cmpResult)
 }
 
 
-class IconUpdater;
 class GridEventManager;
 class GridDataLeft;
 class GridDataRight;
+
+class IconUpdater : private wxEvtHandler //update file icons periodically: use SINGLE instance to coordinate left and right grids in parallel
+{
+public:
+    IconUpdater(GridDataLeft& provLeft, GridDataRight& provRight, IconBuffer& iconBuffer) : provLeft_(provLeft), provRight_(provRight), iconBuffer_(iconBuffer)
+    {
+        timer_.Bind(wxEVT_TIMER, [this](wxTimerEvent& event) { loadIconsAsynchronously(event); });
+    }
+
+    void start() { if (!timer_.IsRunning()) timer_.Start(100); } //timer interval in [ms]
+    //don't check too often! give worker thread some time to fetch data
+
+private:
+    void stop() { if (timer_.IsRunning()) timer_.Stop(); }
+
+    void loadIconsAsynchronously(wxEvent& event); //loads all (not yet) drawn icons
+
+    GridDataLeft&  provLeft_;
+    GridDataRight& provRight_;
+    IconBuffer& iconBuffer_;
+    wxTimer timer_;
+};
+
 
 struct IconManager
 {
@@ -217,7 +239,7 @@ struct IconManager
     int getIconSize() const { return iconBuffer_ ? iconBuffer_->getSize() : IconBuffer::getSize(IconBuffer::IconSize::small); }
 
     IconBuffer* getIconBuffer() { return iconBuffer_.get(); }
-    void startIconUpdater();
+    void startIconUpdater() { assert(iconUpdater_); if (iconUpdater_) iconUpdater_->start(); }
 
     const wxImage& getGenericFileIcon () const { return fileIcon_;         }
     const wxImage& getGenericDirIcon  () const { return dirIcon_;          }
@@ -2053,54 +2075,30 @@ FileView& filegrid::getDataView(Grid& grid)
 
 namespace
 {
-class IconUpdater : private wxEvtHandler //update file icons periodically: use SINGLE instance to coordinate left and right grids in parallel
-{
-public:
-    IconUpdater(GridDataLeft& provLeft, GridDataRight& provRight, IconBuffer& iconBuffer) : provLeft_(provLeft), provRight_(provRight), iconBuffer_(iconBuffer)
-    {
-        timer_.Bind(wxEVT_TIMER, [this](wxTimerEvent& event) { loadIconsAsynchronously(event); });
-    }
-
-    void start() { if (!timer_.IsRunning()) timer_.Start(100); } //timer interval in [ms]
-    //don't check too often! give worker thread some time to fetch data
-
-private:
-    void stop() { if (timer_.IsRunning()) timer_.Stop(); }
-
-    void loadIconsAsynchronously(wxEvent& event) //loads all (not yet) drawn icons
-    {
-        std::vector<std::pair<ptrdiff_t, AbstractPath>> prefetchLoad;
-        provLeft_ .getUnbufferedIconsForPreload(prefetchLoad);
-        provRight_.getUnbufferedIconsForPreload(prefetchLoad);
-
-        //make sure least-important prefetch rows are inserted first into workload (=> processed last)
-        //priority index nicely considers both grids at the same time!
-        std::sort(prefetchLoad.begin(), prefetchLoad.end(), [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; });
-
-        //last inserted items are processed first in icon buffer:
-        std::vector<AbstractPath> newLoad;
-        for (const auto& [priority, filePath] : prefetchLoad)
-            newLoad.push_back(filePath);
-
-        provRight_.updateNewAndGetUnbufferedIcons(newLoad);
-        provLeft_ .updateNewAndGetUnbufferedIcons(newLoad);
-
-        iconBuffer_.setWorkload(newLoad);
-
-        if (newLoad.empty()) //let's only pay for IconUpdater while needed
-            stop();
-    }
-
-    GridDataLeft&  provLeft_;
-    GridDataRight& provRight_;
-    IconBuffer& iconBuffer_;
-    wxTimer timer_;
-};
-
-
 //resolve circular linker dependencies
-inline
-void IconManager::startIconUpdater() { assert(iconUpdater_); if (iconUpdater_) iconUpdater_->start(); }
+void IconUpdater::loadIconsAsynchronously(wxEvent& event) //loads all (not yet) drawn icons
+{
+    std::vector<std::pair<ptrdiff_t, AbstractPath>> prefetchLoad;
+    provLeft_ .getUnbufferedIconsForPreload(prefetchLoad);
+    provRight_.getUnbufferedIconsForPreload(prefetchLoad);
+
+    //make sure least-important prefetch rows are inserted first into workload (=> processed last)
+    //priority index nicely considers both grids at the same time!
+    std::sort(prefetchLoad.begin(), prefetchLoad.end(), [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; });
+
+    //last inserted items are processed first in icon buffer:
+    std::vector<AbstractPath> newLoad;
+    for (const auto& [priority, filePath] : prefetchLoad)
+        newLoad.push_back(filePath);
+
+    provRight_.updateNewAndGetUnbufferedIcons(newLoad);
+    provLeft_ .updateNewAndGetUnbufferedIcons(newLoad);
+
+    iconBuffer_.setWorkload(newLoad);
+
+    if (newLoad.empty()) //let's only pay for IconUpdater while needed
+        stop();
+}
 }
 
 

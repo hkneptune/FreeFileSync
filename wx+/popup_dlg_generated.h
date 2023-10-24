@@ -38,35 +38,35 @@
 ///////////////////////////////////////////////////////////////////////////////
 class PopupDialogGenerated : public wxDialog
 {
-	private:
+private:
 
-	protected:
-		wxPanel* m_panel33;
-		wxStaticBitmap* m_bitmapMsgType;
-		wxStaticText* m_staticTextMain;
-		wxRichTextCtrl* m_richTextDetail;
-		wxStaticLine* m_staticline6;
-		wxCheckBox* m_checkBoxCustom;
-		wxBoxSizer* bSizerStdButtons;
-		wxButton* m_buttonAccept;
-		wxButton* m_buttonAccept2;
-		wxButton* m_buttonDecline;
-		wxButton* m_buttonCancel;
+protected:
+    wxPanel* m_panel33;
+    wxStaticBitmap* m_bitmapMsgType;
+    wxStaticText* m_staticTextMain;
+    wxRichTextCtrl* m_richTextDetail;
+    wxStaticLine* m_staticline6;
+    wxCheckBox* m_checkBoxCustom;
+    wxBoxSizer* bSizerStdButtons;
+    wxButton* m_buttonAccept;
+    wxButton* m_buttonAccept2;
+    wxButton* m_buttonDecline;
+    wxButton* m_buttonCancel;
 
-		// Virtual event handlers, override them in your derived class
-		virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
-		virtual void onCheckBoxClick( wxCommandEvent& event ) { event.Skip(); }
-		virtual void onButtonAccept( wxCommandEvent& event ) { event.Skip(); }
-		virtual void onButtonAccept2( wxCommandEvent& event ) { event.Skip(); }
-		virtual void onButtonDecline( wxCommandEvent& event ) { event.Skip(); }
-		virtual void onCancel( wxCommandEvent& event ) { event.Skip(); }
+    // Virtual event handlers, override them in your derived class
+    virtual void onClose( wxCloseEvent& event ) { event.Skip(); }
+    virtual void onCheckBoxClick( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onButtonAccept( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onButtonAccept2( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onButtonDecline( wxCommandEvent& event ) { event.Skip(); }
+    virtual void onCancel( wxCommandEvent& event ) { event.Skip(); }
 
 
-	public:
+public:
 
-		PopupDialogGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("dummy"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER );
+    PopupDialogGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("dummy"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER );
 
-		~PopupDialogGenerated();
+    ~PopupDialogGenerated();
 
 };
 
@@ -75,17 +75,17 @@ class PopupDialogGenerated : public wxDialog
 ///////////////////////////////////////////////////////////////////////////////
 class TooltipDlgGenerated : public wxDialog
 {
-	private:
+private:
 
-	protected:
+protected:
 
-	public:
-		wxStaticBitmap* m_bitmapLeft;
-		wxStaticText* m_staticTextMain;
+public:
+    wxStaticBitmap* m_bitmapLeft;
+    wxStaticText* m_staticTextMain;
 
-		TooltipDlgGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = wxEmptyString, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE );
+    TooltipDlgGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = wxEmptyString, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE );
 
-		~TooltipDlgGenerated();
+    ~TooltipDlgGenerated();
 
 };
 

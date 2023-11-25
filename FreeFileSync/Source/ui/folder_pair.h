@@ -152,9 +152,9 @@ private:
     std::optional<SyncConfig> localSyncCfg_;
     FilterConfig              localFilter_;
 
-    const wxImage imgCmp_    = zen::loadImage("options_compare", zen::fastFromDIP(20));
-    const wxImage imgSync_   = zen::loadImage("options_sync",    zen::fastFromDIP(20));
-    const wxImage imgFilter_ = zen::loadImage("options_filter",  zen::fastFromDIP(20));
+    const wxImage imgCmp_    = zen::loadImage("options_compare", zen::dipToScreen(20));
+    const wxImage imgSync_   = zen::loadImage("options_sync",    zen::dipToScreen(20));
+    const wxImage imgFilter_ = zen::loadImage("options_filter",  zen::dipToScreen(20));
 };
 }
 

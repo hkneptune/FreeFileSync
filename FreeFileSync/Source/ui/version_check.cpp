@@ -90,7 +90,7 @@ std::wstring getIso3166Country()
 
 
 //coordinate with get_latest_version_number.php
-std::vector<std::pair<std::string, std::string>> geHttpPostParameters(wxWindow& parent) //throw SysError
+std::vector<std::pair<std::string, std::string>> geHttpPostParameters() //throw SysError
 {
     assert(runningOnMainThread()); //this function is not thread-safe, e.g. consider wxWidgets usage in getIso639Language()
     std::vector<std::pair<std::string, std::string>> params;
@@ -107,9 +107,9 @@ std::vector<std::pair<std::string, std::string>> geHttpPostParameters(wxWindow& 
     params.emplace_back("os_arch", osArch);
 
 #if GTK_MAJOR_VERSION == 2
-    //wxWindow::GetContentScaleFactor() requires GTK3 or later
+    //GetContentScaleFactor() requires GTK3 or later
 #elif GTK_MAJOR_VERSION == 3
-    params.emplace_back("dip_scale", numberTo<std::string>(parent.GetContentScaleFactor()));
+    params.emplace_back("dip_scale", numberTo<std::string>(wxScreenDC().GetContentScaleFactor()));
 #else
 #error unknown GTK version!
 #endif
@@ -146,7 +146,7 @@ void showUpdateAvailableDialog(wxWindow* parent, const std::string& onlineVersio
 
 
     switch (showConfirmationDialog(parent, DialogInfoType::info, PopupDialogCfg().
-                                   setIcon(loadImage("FreeFileSync", fastFromDIP(48))).
+                                   setIcon(loadImage("FreeFileSync", dipToScreen(48))).
                                    setTitle(_("Check for Program Updates")).
                                    setMainInstructions(replaceCpy(_("FreeFileSync %x is available!"), L"%x", utfTo<std::wstring>(onlineVersion)) + L"\n\n" + _("Download now?")).
                                    setDetailInstructions(updateDetailsMsg), _("&Download")))
@@ -208,7 +208,7 @@ void fff::checkForUpdateNow(wxWindow& parent, std::string& lastOnlineVersion)
 {
     try
     {
-        const std::string onlineVersion = getOnlineVersion(geHttpPostParameters(parent)); //throw SysError
+        const std::string onlineVersion = getOnlineVersion(geHttpPostParameters()); //throw SysError
         lastOnlineVersion = onlineVersion;
 
         if (haveNewerVersionOnline(onlineVersion))
@@ -267,7 +267,7 @@ SharedRef<const UpdateCheckResultPrep> fff::automaticUpdateCheckPrepare(wxWindow
     auto prep = makeSharedRef<UpdateCheckResultPrep>();
     try
     {
-        prep.ref().postParameters = geHttpPostParameters(parent); //throw SysError
+        prep.ref().postParameters = geHttpPostParameters(); //throw SysError
     }
     catch (const SysError& e)
     {

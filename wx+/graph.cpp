@@ -145,19 +145,15 @@ void drawXLabel(wxDC& dc, double xMin, double xMax, int blockCount, const Conver
     if (blockCount <= 0)
         return;
 
-    wxDCPenChanger dummy(dc, wxPen(wxColor(192, 192, 192), fastFromDIP(1))); //light grey => not accessible! but no big deal...
-    wxDCTextColourChanger textColor(dc, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
-
     const double valRangePerBlock = (xMax - xMin) / blockCount;
 
     for (int i = 1; i < blockCount; ++i)
     {
-        //draw grey vertical lines
         const double valX = xMin + i * valRangePerBlock; //step over raw data, not graph area pixels, to not lose precision
         const int x = graphArea.x + cvrtX.realToScreenRound(valX);
 
-        if (graphArea.height > 0)
-            dc.DrawLine(wxPoint(x, graphArea.y), wxPoint(x, graphArea.y + graphArea.height)); //wxDC::DrawLine() doesn't draw last pixel
+        //draw grey vertical lines
+        clearArea(dc, {x - dipToWxsize(1) / 2, graphArea.y, dipToWxsize(1), graphArea.height}, wxColor(192, 192, 192)); //light grey => not accessible! but no big deal...
 
         //draw x axis labels
         const wxString label = labelFmt.formatText(valX, valRangePerBlock);
@@ -173,9 +169,6 @@ void drawYLabel(wxDC& dc, double yMin, double yMax, int blockCount, const Conver
     if (blockCount <= 0)
         return;
 
-    wxDCPenChanger dummy(dc, wxPen(wxColor(192, 192, 192), fastFromDIP(1))); //light grey => not accessible! but no big deal...
-    wxDCTextColourChanger textColor(dc, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
-
     const double valRangePerBlock = (yMax - yMin) / blockCount;
 
     for (int i = 1; i < blockCount; ++i)
@@ -184,8 +177,7 @@ void drawYLabel(wxDC& dc, double yMin, double yMax, int blockCount, const Conver
         const double valY = yMin + i * valRangePerBlock; //step over raw data, not graph area pixels, to not lose precision
         const int y = graphArea.y + cvrtY.realToScreenRound(valY);
 
-        if (graphArea.width > 0)
-            dc.DrawLine(wxPoint(graphArea.x, y), wxPoint(graphArea.x + graphArea.width, y)); //wxDC::DrawLine() doesn't draw last pixel
+        clearArea(dc, {graphArea.x, y - dipToWxsize(1) / 2, graphArea.width, dipToWxsize(1)}, wxColor(192, 192, 192)); //light grey => not accessible! but no big deal...
 
         //draw y axis labels
         const wxString label = labelFmt.formatText(valY, valRangePerBlock);
@@ -199,7 +191,7 @@ void drawCornerText(wxDC& dc, const wxRect& graphArea, const wxString& txt, Grap
 {
     if (txt.empty()) return;
 
-    const wxSize border(fastFromDIP(5), fastFromDIP(2));
+    const wxSize border(dipToWxsize(5), dipToWxsize(2));
     //it looks like wxDC::GetMultiLineTextExtent() precisely returns width, but too large a height: maybe they consider "text row height"?
 
     const wxSize boxExtent = dc.GetMultiLineTextExtent(txt) + 2 * border;
@@ -223,7 +215,7 @@ void drawCornerText(wxDC& dc, const wxRect& graphArea, const wxString& txt, Grap
 
     //add text shadow to improve readability:
     wxDCTextColourChanger textColor(dc, colorBack);
-    dc.DrawText(txt, drawPos + border + wxSize(1, 1) /*better without fastFromDIP()?*/);
+    dc.DrawText(txt, drawPos + border + wxSize(1, 1) /*better without dipToWxsize()?*/);
 
     textColor.Set(colorText);
     dc.DrawText(txt, drawPos + border);
@@ -525,6 +517,7 @@ void Graph2D::render(wxDC& dc) const
 {
     //set label font right at the start so that it is considered by wxDC::GetTextExtent() below!
     dc.SetFont(GetFont());
+    dc.SetTextForeground(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
 
     const wxRect clientRect = GetClientRect(); //DON'T use wxDC::GetSize()! DC may be larger than visible area!
 
@@ -532,7 +525,7 @@ void Graph2D::render(wxDC& dc) const
     //wxPanel::GetClassDefaultAttributes().colBg :
     //wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE);
 
-    const int xLabelHeight = attr_.xLabelHeight ? *attr_.xLabelHeight : GetCharHeight() + fastFromDIP(2) /*margin*/;
+    const int xLabelHeight = attr_.xLabelHeight ? *attr_.xLabelHeight : GetCharHeight() + dipToWxsize(2) /*margin*/;
     const int yLabelWidth  = attr_.yLabelWidth  ? *attr_.yLabelWidth  : dc.GetTextExtent(L"1.23457e+07").x;
 
     /*  -----------------------
@@ -576,13 +569,12 @@ void Graph2D::render(wxDC& dc) const
     assert(attr_.yLabelpos == YLabelPos::none || attr_.labelFmtY);
 
     //paint graph background (excluding label area)
-    drawFilledRectangle(dc, graphArea, attr_.colorBack, getBorderColor(), fastFromDIP(1));
-    graphArea.Deflate(fastFromDIP(1));
+    drawFilledRectangle(dc, graphArea, attr_.colorBack, getBorderColor(), dipToWxsize(1));
+    graphArea.Deflate(dipToWxsize(1));
 
     //set label areas respecting graph area border!
     const wxRect xLabelArea(graphArea.x, xLabelPosY, graphArea.width, xLabelHeight);
     const wxRect yLabelArea(yLabelPosX, graphArea.y, yLabelWidth, graphArea.height);
-    const wxPoint graphAreaOrigin = graphArea.GetTopLeft();
 
     //detect x value range
     double minX = attr_.minX ? *attr_.minX :  std::numeric_limits<double>::infinity(); //automatic: ensure values are initialized by first curve
@@ -685,38 +677,28 @@ void Graph2D::render(wxDC& dc) const
 
                 auto& dp = drawPoints[index];
                 for (const CurvePoint& pt : cp)
-                    dp.push_back(wxPoint(cvrtX.realToScreenRound(pt.x),
-                                         cvrtY.realToScreenRound(pt.y)) + graphAreaOrigin);
+                    dp.push_back(wxSize(cvrtX.realToScreenRound(pt.x),
+                                        cvrtY.realToScreenRound(pt.y)) + graphArea.GetTopLeft());
             }
 
             //update active mouse selection
             if (activeSel_)
             {
-                auto widen = [](double* low, double* high)
-                {
-                    if (*low > *high)
-                        std::swap(low, high);
-                    *low  -= 0.5;
-                    *high += 0.5;
-                };
+                wxPoint screenFrom = activeSel_->getStartPos()   - graphArea.GetTopLeft(); //make relative to graphArea
+                wxPoint screenTo   = activeSel_->refCurrentPos() - graphArea.GetTopLeft();
 
-                const wxPoint screenStart   = activeSel_->getStartPos()   - graphAreaOrigin; //make relative to graphArea
-                const wxPoint screenCurrent = activeSel_->refCurrentPos() - graphAreaOrigin;
-
-                //normalize positions: a mouse selection is symmetric and *not* an half-open range!
-                double screenFromX = std::clamp(screenStart  .x, 0, graphArea.width  - 1);
-                double screenFromY = std::clamp(screenStart  .y, 0, graphArea.height - 1);
-                double screenToX   = std::clamp(screenCurrent.x, 0, graphArea.width  - 1);
-                double screenToY   = std::clamp(screenCurrent.y, 0, graphArea.height - 1);
-                widen(&screenFromX, &screenToX); //use full pixel range for selection!
-                widen(&screenFromY, &screenToY);
+                //normalize positions:
+                screenFrom.x = std::clamp(screenFrom.x, 0, graphArea.width  - 1);
+                screenFrom.y = std::clamp(screenFrom.y, 0, graphArea.height - 1);
+                screenTo  .x = std::clamp(screenTo  .x, 0, graphArea.width  - 1);
+                screenTo  .y = std::clamp(screenTo  .y, 0, graphArea.height - 1);
 
                 //save current selection as "double" coordinates
-                activeSel_->refSelection().from = CurvePoint{cvrtX.screenToReal(screenFromX),
-                                                             cvrtY.screenToReal(screenFromY)};
+                activeSel_->refSelection().from = CurvePoint{cvrtX.screenToReal(screenFrom.x),
+                                                             cvrtY.screenToReal(screenFrom.y)};
 
-                activeSel_->refSelection().to = CurvePoint{cvrtX.screenToReal(screenToX),
-                                                           cvrtY.screenToReal(screenToY)};
+                activeSel_->refSelection().to = CurvePoint{cvrtX.screenToReal(screenTo.x),
+                                                           cvrtY.screenToReal(screenTo.y)};
             }
 
             //#################### begin drawing ####################
@@ -727,9 +709,9 @@ void Graph2D::render(wxDC& dc) const
                         points.size() >= 3)
                     {
                         //wxDC::DrawPolygon() draws *transparent* border if wxTRANSPARENT_PEN is used!
-                        //unlike wxDC::DrawRectangle() which just widens inner area!
-                        wxDCPenChanger   dummy (dc, wxPen(it->second.fillColor, 1 /*[!] width*/));
-                        wxDCBrushChanger dummy2(dc, it->second.fillColor);
+                        //unlike wxDC::DrawRectangle() which widens inner area instead!
+                        dc.SetPen ({it->second.fillColor, 1 /*[!] width*/});
+                        dc.SetBrush(it->second.fillColor);
                         dc.DrawPolygon(static_cast<int>(points.size()), points.data());
                     }
 
@@ -740,51 +722,37 @@ void Graph2D::render(wxDC& dc) const
 
             if (!allSelections.empty())
             {
+                const wxColor innerCol(168, 202, 236); //light blue
+                const wxColor borderCol(51, 153, 255); //dark blue
+
                 //alpha channel not supported on wxMSW, so draw selection before curves
-                wxDCBrushChanger dummy(dc, wxColor(168, 202, 236)); //light blue
-                wxDCPenChanger dummy2(dc, wxPen(wxColor(51, 153, 255), fastFromDIP(1))); //dark blue
-
-                auto shrink = [](double* low, double* high)
-                {
-                    if (*low > *high)
-                        std::swap(low, high);
-                    *low  += 0.5;
-                    *high -= 0.5;
-                    if (*low > *high)
-                        *low = *high = (*low + *high) / 2;
-                };
-
                 for (const SelectionBlock& sel : allSelections)
                 {
                     //harmonize with active mouse selection above
-                    double screenFromX = cvrtX.realToScreen(sel.from.x);
-                    double screenFromY = cvrtY.realToScreen(sel.from.y);
-                    double screenToX   = cvrtX.realToScreen(sel.to.x);
-                    double screenToY   = cvrtY.realToScreen(sel.to.y);
-                    shrink(&screenFromX, &screenToX);
-                    shrink(&screenFromY, &screenToY);
+                    int screenFromX = cvrtX.realToScreenRound(sel.from.x);
+                    int screenFromY = cvrtY.realToScreenRound(sel.from.y);
+                    int screenToX   = cvrtX.realToScreenRound(sel.to.x);
+                    int screenToY   = cvrtY.realToScreenRound(sel.to.y);
 
-                    screenFromX = std::clamp(screenFromX, 0.0, graphArea.width  - 1.0);
-                    screenFromY = std::clamp(screenFromY, 0.0, graphArea.height - 1.0);
-                    screenToX   = std::clamp(screenToX,   0.0, graphArea.width  - 1.0);
-                    screenToY   = std::clamp(screenToY,   0.0, graphArea.height - 1.0);
+                    if (screenFromX > screenToX) std::swap(screenFromX, screenToX);
+                    if (screenFromY > screenToY) std::swap(screenFromY, screenToY);
 
-                    const wxPoint pixelFrom = wxPoint(std::round(screenFromX),
-                                                      std::round(screenFromY)) + graphAreaOrigin;
-                    const wxPoint pixelTo = wxPoint(std::round(screenToX),
-                                                    std::round(screenToY)) + graphAreaOrigin;
+                    const wxRect rectSel{graphArea.GetTopLeft() + wxSize(screenFromX,
+                                                                         screenFromY),
+                                         wxSize(screenToX - screenFromX + 1,   //mouse selection is symmetric
+                                                screenToY - screenFromY + 1)}; //and *not* a half-open range!
                     switch (attr_.mouseSelMode)
                     {
                         case GraphSelMode::none:
                             break;
                         case GraphSelMode::rect:
-                            dc.DrawRectangle(wxRect(pixelFrom, pixelTo)); //wxRect considers area *including* both points
+                            drawFilledRectangle(dc, rectSel, innerCol, borderCol, dipToWxsize(1));
                             break;
                         case GraphSelMode::x:
-                            dc.DrawRectangle(wxRect(wxPoint(pixelFrom.x, graphArea.y), wxPoint(pixelTo.x, graphArea.y + graphArea.height - 1)));
+                            drawFilledRectangle(dc, {rectSel.x, graphArea.y, rectSel.width, graphArea.height}, innerCol, borderCol, dipToWxsize(1));
                             break;
                         case GraphSelMode::y:
-                            dc.DrawRectangle(wxRect(wxPoint(graphArea.x, pixelFrom.y), wxPoint(graphArea.x + graphArea.width - 1, pixelTo.y)));
+                            drawFilledRectangle(dc, {graphArea.x, rectSel.y, graphArea.width, rectSel.height}, innerCol, borderCol, dipToWxsize(1));
                             break;
                     }
                 }
@@ -801,7 +769,7 @@ void Graph2D::render(wxDC& dc) const
 
                 for (auto it = curves_.begin(); it != curves_.end(); ++it)
                 {
-                    wxDCPenChanger dummy(dc, wxPen(it->second.color, it->second.lineWidth));
+                    dc.SetPen({it->second.color, it->second.lineWidth});
 
                     const size_t index = it - curves_.begin();
                     const std::vector<wxPoint>& points = drawPoints[index];
@@ -818,7 +786,7 @@ void Graph2D::render(wxDC& dc) const
                         const int pointCount = static_cast<int>(drawIndexLast - drawIndexFirst);
                         if (pointCount > 0)
                         {
-                            if (pointCount >= 2) //on OS X wxWidgets has a nasty assert on this
+                            if (pointCount >= 2) //on macOS wxWidgets has a nasty assert on this
                                 dc.DrawLines(pointCount, &points[drawIndexFirst]);
                             dc.DrawPoint(points[drawIndexLast - 1]); //wxDC::DrawLines() doesn't draw last pixel
                         }

@@ -36,7 +36,7 @@ CommandBox::CommandBox(wxWindow* parent,
     wxComboBox(parent, id, value, pos, size, n, choices, style, validator, name)
 {
     //####################################
-    /*#*/ SetMinSize({fastFromDIP(150), -1}); //# workaround yet another wxWidgets bug: default minimum size is much too large for a wxComboBox
+    /*#*/ SetMinSize({dipToWxsize(150), -1}); //# workaround yet another wxWidgets bug: default minimum size is much too large for a wxComboBox
     //####################################
 
     Bind(wxEVT_KEY_DOWN,                  [this](wxKeyEvent&     event) { onKeyEvent  (event); });

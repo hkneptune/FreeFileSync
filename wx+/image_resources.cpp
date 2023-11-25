@@ -144,7 +144,7 @@ private:
     ImageBuffer& operator=(const ImageBuffer&) = delete;
 
     const wxImage& getRawImage   (const std::string& name);
-    const wxImage& getScaledImage(const std::string& name);
+    const wxImage& getHqScaledImage(const std::string& name);
 
     std::unordered_map<std::string, wxImage> imagesRaw_;
     std::unordered_map<std::string, wxImage> imagesScaled_;
@@ -211,7 +211,7 @@ ImageBuffer::ImageBuffer(const Zstring& zipPath) //throw FileError
     wxImage::AddHandler(new wxPNGHandler/*ownership passed*/); //activate support for .png files
 
     //do we need xBRZ scaling for high quality DPI images?
-    const int hqScale = std::clamp(numeric::intDivCeil(fastFromDIP(1000), 1000), 1, xbrz::SCALE_FACTOR_MAX);
+    const int hqScale = std::clamp(static_cast<int>(std::ceil(getScreenDpiScale())), 1, xbrz::SCALE_FACTOR_MAX);
     //even for 125% DPI scaling, "2xBRZ + bilinear downscale" gives a better result than mere "125% bilinear upscale"!
     if (hqScale > 1)
         hqScaler_ = std::make_unique<HqParallelScaler>(hqScale);
@@ -255,7 +255,7 @@ const wxImage& ImageBuffer::getRawImage(const std::string& name)
 }
 
 
-const wxImage& ImageBuffer::getScaledImage(const std::string& name)
+const wxImage& ImageBuffer::getHqScaledImage(const std::string& name)
 {
     //test: this function is first called about 220ms after ImageBuffer::ImageBuffer() has ended
     //      => should be enough time to finish xBRZ scaling in parallel (which takes 50ms)
@@ -279,8 +279,8 @@ const wxImage& ImageBuffer::getImage(const std::string& name, int maxWidth /*opt
 {
     const wxImage& rawImg = getRawImage(name);
 
-    const wxSize dpiSize(fastFromDIP(rawImg.GetWidth ()),
-                         fastFromDIP(rawImg.GetHeight()));
+    const wxSize dpiSize(dipToScreen(rawImg.GetWidth ()),
+                         dipToScreen(rawImg.GetHeight()));
 
     int outHeight = dpiSize.y;
     if (maxWidth >= 0 && maxWidth < dpiSize.x)
@@ -289,18 +289,17 @@ const wxImage& ImageBuffer::getImage(const std::string& name, int maxWidth /*opt
     if (maxHeight >= 0 && maxHeight < outHeight)
         outHeight = maxHeight;
 
-    const OutImageKey imkey{name, outHeight};
+    const OutImageKey imgKey{name, outHeight};
 
-    auto it = imagesOut_.find(imkey);
+    auto it = imagesOut_.find(imgKey);
     if (it == imagesOut_.end())
     {
         if (rawImg.GetHeight() >= outHeight) //=> skip needless xBRZ upscaling
-            it = imagesOut_.emplace(imkey, shrinkImage(rawImg, -1 /*maxWidth*/, outHeight)).first;
+            it = imagesOut_.emplace(imgKey, shrinkImage(rawImg, -1 /*maxWidth*/, outHeight)).first;
         else if (rawImg.GetHeight() >= 0.9 * outHeight) //almost there: also no need for xBRZ-scale
-            it = imagesOut_.emplace(imkey, bilinearScale(rawImg, numeric::intDivRound(outHeight * rawImg.GetWidth(), rawImg.GetHeight()), outHeight)).first;
-        //however: for 125% DPI scaling, "2xBRZ + bilinear downscale" gives a better result than mere "125% bilinear upscale"
-        else
-            it = imagesOut_.emplace(imkey, shrinkImage(getScaledImage(name), -1 /*maxWidth*/, outHeight)).first;
+            it = imagesOut_.emplace(imgKey, bilinearScale(rawImg, numeric::intDivRound(outHeight * rawImg.GetWidth(), rawImg.GetHeight()), outHeight)).first;
+        else //however: for 125% DPI scaling, "2xBRZ + bilinear downscale" gives a better result than mere "125% bilinear upscale"
+            it = imagesOut_.emplace(imgKey, shrinkImage(getHqScaledImage(name), -1 /*maxWidth*/, outHeight)).first;
     }
     return it->second;
 }

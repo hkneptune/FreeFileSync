@@ -380,13 +380,15 @@ struct OutputStreamNative : public AFS::OutputStreamImpl
 
         fileOut_.close(); //throw FileError
         /* is setting modtime after closing the file handle a pessimization?
-           no, needed for functional correctness, see file_access.cpp::copyNewFile() for macOS/Linux */
+           no, needed for functional correctness, see file_access.cpp::copyNewFile() for macOS/Linux
+           even required on Windows: https://freefilesync.org/forum/viewtopic.php?t=10781 */
         try
         {
             if (modTime_)
                 setFileTime(fileOut_.getFilePath(), *modTime_, ProcSymlink::follow); //throw FileError
         }
         catch (const FileError& e) { result.errorModTime = e; /*might slice derived class?*/ }
+
         return result;
     }
 

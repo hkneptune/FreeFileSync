@@ -2580,7 +2580,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
                 continue;
             }
 
-        //============ Warnings (*after* potential folder pair skips) ============
+        //================= Warnings (*after* folder pair skips) =================
         //========================================================================
 
         //prepare conflict preview:
@@ -2612,7 +2612,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
             if (folderPairCfg.versionMaxAgeDays > 0 || folderPairCfg.versionCountMax > 0) //same check as in applyVersioningLimit()
                 checkVersioningLimitPaths.insert(versioningFolderPath);
 
-        //check if more than 50% of total number of files/dirs are to be created/overwritten/deleted
+        //check if more than 50% of total number of files/dirs will be created/overwritten/deleted
         if (significantDifferenceDetected(folderPairStat))
             checkSignificantDiffPairs.emplace_back(baseFolder.getAbstractPath<SelectSide::left >(),
                                                    baseFolder.getAbstractPath<SelectSide::right>());
@@ -2793,7 +2793,7 @@ break2:
             std::set<AbstractPath> foldersWithWarnings; //=> at most one msg per base folder (*and* per versioningFolderPath)
 
             for (const auto& [folderPath, filter] : checkVersioningBasePaths) //may contain duplicate paths, but with *different* hard filter!
-                if (std::optional<PathDependency> pd = getPathDependency(versioningFolderPath, NullFilter(), folderPath, *filter))
+                if (std::optional<PathDependency> pd = getFolderPathDependency(versioningFolderPath, NullFilter(), folderPath, *filter))
                     if (const auto [it, inserted] = foldersWithWarnings.insert(folderPath);
                         inserted)
                     {
@@ -2801,12 +2801,13 @@ break2:
                                _("Selected folder:")   + L" \t" + AFS::getDisplayPath(folderPath) + L'\n' +
                                _("Versioning folder:") + L" \t" + AFS::getDisplayPath(versioningFolderPath);
 
-                        if (pd->folderPathParent == folderPath) //if versioning folder is a subfolder of a base folder
+                        if (pd->itemPathParent == folderPath) //if versioning folder is a subfolder of a base folder
                             if (!pd->relPath.empty())           //this can be fixed via an exclude filter
                             {
+                assert(pd->itemPathParent == folderPath); //otherwise: what the fuck!?
                                 shouldExclude = true;
-                                msg += std::wstring() + L'\n' + L"⇒ " +
-                                       _("Exclude:") + L" \t" + utfTo<std::wstring>(FILE_NAME_SEPARATOR + pd->relPath + FILE_NAME_SEPARATOR);
+                                msg += std::wstring() + L'\n' + 
+                                    L"⇒ " + _("Exclude:") + L" \t" + utfTo<std::wstring>(FILE_NAME_SEPARATOR + pd->relPath + FILE_NAME_SEPARATOR);
                             }
                     }
         }

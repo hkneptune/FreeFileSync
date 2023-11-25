@@ -105,8 +105,10 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
 
     //CURLOPT_TIMEOUT: "Since this puts a hard limit for how long time a request is allowed to take, it has limited use in dynamic use cases with varying transfer times."
     setCurlOption({CURLOPT_LOW_SPEED_TIME, timeoutSec}); //throw SysError
-    setCurlOption({CURLOPT_LOW_SPEED_LIMIT, 1}); //throw SysError
-    //[bytes], can't use "0" which means "inactive", so use some low number
+    setCurlOption({CURLOPT_LOW_SPEED_LIMIT, 1 /*[bytes]*/}); //throw SysError
+    //can't use "0" which means "inactive", so use some low number
+
+    //CURLOPT_SERVER_RESPONSE_TIMEOUT: does not apply to HTTP
 
 
     std::exception_ptr userCallbackException;
@@ -249,6 +251,7 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
 
     //WTF!!! 1-sec delay when server doesn't support "Expect: 100-continue"!! https://stackoverflow.com/questions/49670008/how-to-disable-expect-100-continue-in-libcurl
     headers = ::curl_slist_append(headers, "Expect:"); //guess, what: www.googleapis.com doesn't support it! e.g. gdriveUploadFile()
+    //CURLOPT_EXPECT_100_TIMEOUT_MS: should not be needed
 
     if (headers)
         setCurlOption({CURLOPT_HTTPHEADER, headers}); //throw SysError

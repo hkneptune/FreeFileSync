@@ -41,10 +41,11 @@ void setActiveStatus(bool newStatus, FileSystemObject& fsObj);     //activate or
 
 struct PathDependency
 {
-    AbstractPath folderPathParent;
+    AbstractPath itemPathParent;
     Zstring relPath; //filled if child path is subfolder of parent path; empty if child path == parent path
 };
-std::optional<PathDependency> getPathDependency(const AbstractPath& folderPathL, const PathFilter& filterL,
+std::optional<PathDependency> getPathDependency(const AbstractPath& itemPathL, const AbstractPath& itemPathR);
+std::optional<PathDependency> getFolderPathDependency(const AbstractPath& folderPathL, const PathFilter& filterL,
                                                 const AbstractPath& folderPathR, const PathFilter& filterR);
 
 //manual copy to alternate folder:

@@ -36,7 +36,7 @@ public:
 };
 
 //wxButton::SetBitmap() also supports "image + text", but screws up proper gap and border handling
-void setBitmapTextLabel(wxBitmapButton& btn, const wxImage& img, const wxString& text, int gap = fastFromDIP(5), int border = fastFromDIP(5));
+void setBitmapTextLabel(wxBitmapButton& btn, const wxImage& img, const wxString& text, int gap = dipToWxsize(5), int border = dipToWxsize(5));
 
 //set bitmap label flicker free:
 void setImage(wxAnyButton& button, const wxImage& bmp);
@@ -65,12 +65,12 @@ void setBitmapTextLabel(wxBitmapButton& btn, const wxImage& img, const wxString&
     wxImage imgTxt = createImageFromText(text, btn.GetFont(), btn.GetForegroundColour());
     if (img.IsOk())
         imgTxt = btn.GetLayoutDirection() != wxLayout_RightToLeft ?
-                 stackImages(img, imgTxt, ImageStackLayout::horizontal, ImageStackAlignment::center, gap) :
-                 stackImages(imgTxt, img, ImageStackLayout::horizontal, ImageStackAlignment::center, gap);
+                 stackImages(img, imgTxt, ImageStackLayout::horizontal, ImageStackAlignment::center, wxsizeToScreen(gap)) :
+                 stackImages(imgTxt, img, ImageStackLayout::horizontal, ImageStackAlignment::center, wxsizeToScreen(gap));
 
     //SetMinSize() instead of SetSize() is needed here for wxWindows layout determination to work correctly
-    btn.SetMinSize({imgTxt.GetWidth () + 2 * border,
-                    std::max(imgTxt.GetHeight() + 2 * border, getDefaultButtonHeight())});
+    btn.SetMinSize({screenToWxsize(imgTxt.GetWidth()) + 2 * border,
+                    std::max(screenToWxsize(imgTxt.GetHeight()) + 2 * border, getDefaultButtonHeight())});
 
     setImage(btn, imgTxt);
 }
@@ -107,11 +107,12 @@ inline
 wxImage generatePressedButtonBack(const wxSize& sz)
 {
 #if 1
-    return rectangleImage(sz, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW), {0x11, 0x79, 0xfe} /*light blue*/, fastFromDIP(2));
+    return rectangleImage(sz, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW), {0x11, 0x79, 0xfe} /*light blue*/, dipToScreen(2));
 
 #else //rectangle border with gradient as background
-    wxBitmap bmp(sz); //seems we don't need to pass 24-bit depth here even for high-contrast color schemes
-    bmp.SetScaleFactor(getDisplayScaleFactor());
+    wxBitmap bmp(wxsizeToScreen(sz.x),
+                 wxsizeToScreen(sz.y)); //seems we don't need to pass 24-bit depth here even for high-contrast color schemes
+    bmp.SetScaleFactor(getScreenDpiScale());
     {
         //draw rectangle border with gradient
         const wxColor colFrom = wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE);
@@ -120,9 +121,9 @@ wxImage generatePressedButtonBack(const wxSize& sz)
         wxMemoryDC dc(bmp);
         dc.SetPen(*wxTRANSPARENT_PEN); //wxTRANSPARENT_PEN is about 2x faster than redundantly drawing with col!
 
-        wxRect rect(bmp.GetSize());
+        wxRect rect(sz);
 
-        const int borderSize = fastFromDIP(3);
+        const int borderSize = dipToWxsize(3);
         for (int i = 1 ; i <= borderSize; ++i)
         {
             const wxColor colGradient((colFrom.Red  () * (borderSize - i) + colTo.Red  () * i) / borderSize,
@@ -130,7 +131,7 @@ wxImage generatePressedButtonBack(const wxSize& sz)
                                       (colFrom.Blue () * (borderSize - i) + colTo.Blue () * i) / borderSize);
             dc.SetBrush(colGradient);
             dc.DrawRectangle(rect);
-            rect.Deflate(1);
+            rect.Deflate(dipToWxsize(1));
         }
 
         dc.SetBrush(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));

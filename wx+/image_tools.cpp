@@ -168,7 +168,7 @@ wxImage zen::stackImages(const wxImage& img1, const wxImage& img2, ImageStackLay
 wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const wxColor& col, ImageStackAlignment textAlign)
 {
     wxMemoryDC dc; //the context used for bitmaps
-    setScaleFactor(dc, getDisplayScaleFactor());
+    setScaleFactor(dc, getScreenDpiScale());
     dc.SetFont(font); //the font parameter of GetTextExtent() is not evaluated on OS X, wxWidgets 2.9.5, so apply it to the DC directly!
 
     std::vector<std::pair<wxString, wxSize>> lineInfo; //text + extent
@@ -186,8 +186,9 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
     if (maxWidth == 0 || lineHeight == 0)
         return wxNullImage;
 
-    wxBitmap newBitmap(maxWidth, lineHeight * lineInfo.size()); //seems we don't need to pass 24-bit depth here even for high-contrast color schemes
-    newBitmap.SetScaleFactor(getDisplayScaleFactor());
+    wxBitmap newBitmap(wxsizeToScreen(maxWidth),
+                       wxsizeToScreen(static_cast<int>(lineHeight * lineInfo.size()))); //seems we don't need to pass 24-bit depth here even for high-contrast color schemes
+    newBitmap.SetScaleFactor(getScreenDpiScale());
     {
         dc.SelectObject(newBitmap); //copies scale factor from wxBitmap
         ZEN_ON_SCOPE_EXIT(dc.SelectObject(wxNullBitmap));
@@ -377,10 +378,10 @@ void zen::convertToVanillaImage(wxImage& img)
         const int height = img.GetHeight();
         if (width <= 0 || height <= 0) return;
 
-        unsigned char mask_r = 0;
-        unsigned char mask_g = 0;
-        unsigned char mask_b = 0;
-        const bool haveMask = img.HasMask() && img.GetOrFindMaskColour(&mask_r, &mask_g, &mask_b);
+        unsigned char maskR = 0;
+        unsigned char maskG = 0;
+        unsigned char maskB = 0;
+        const bool haveMask = img.HasMask() && img.GetOrFindMaskColour(&maskR, &maskG, &maskB);
         //check for mask before calling wxImage::GetOrFindMaskColour() to skip needlessly searching for new mask color
 
         img.SetAlpha();
@@ -402,9 +403,9 @@ void zen::convertToVanillaImage(wxImage& img)
                 const unsigned char g = *rgb++;
                 const unsigned char b = *rgb++;
 
-                if (r == mask_r &&
-                    g == mask_g &&
-                    b == mask_b)
+                if (r == maskR &&
+                    g == maskG &&
+                    b == maskB)
                     alpha[i] = wxIMAGE_ALPHA_TRANSPARENT;
             }
         }

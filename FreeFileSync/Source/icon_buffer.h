@@ -29,8 +29,8 @@ public:
     explicit IconBuffer(IconSize sz);
     ~IconBuffer();
 
-    static int getSize(IconSize sz); //expected and *maximum* icon size in pixel
-    int getSize() const { return getSize(iconSizeType_); } //
+    static int getPixSize(IconSize sz); //expected and *maximum* icon size in pixel
+    int getPixSize() const { return getPixSize(iconSizeType_); } //
 
     void                   setWorkload      (const std::vector<AbstractPath>& load); //(re-)set new workload of icons to be retrieved;
     bool                   readyForRetrieval(const AbstractPath& filePath);

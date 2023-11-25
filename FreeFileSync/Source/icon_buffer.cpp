@@ -42,7 +42,7 @@ std::variant<ImageHolder, FileIconHolder> getDisplayIcon(const AbstractPath& ite
         case IconBuffer::IconSize::large:
             try
             {
-                if (ImageHolder ih = AFS::getThumbnailImage(itemPath, IconBuffer::getSize(sz))) //throw FileError; optional return value
+                if (ImageHolder ih = AFS::getThumbnailImage(itemPath, IconBuffer::getPixSize(sz))) //throw FileError; optional return value
                     return ih;
             }
             catch (FileError&) {}
@@ -54,7 +54,7 @@ std::variant<ImageHolder, FileIconHolder> getDisplayIcon(const AbstractPath& ite
     //2. retrieve file icons
         try
         {
-            if (FileIconHolder fih = AFS::getFileIcon(itemPath, IconBuffer::getSize(sz))) //throw FileError; optional return value
+            if (FileIconHolder fih = AFS::getFileIcon(itemPath, IconBuffer::getPixSize(sz))) //throw FileError; optional return value
                 return fih;
         }
         catch (FileError&) {}
@@ -318,17 +318,17 @@ IconBuffer::~IconBuffer()
 }
 
 
-int IconBuffer::getSize(IconSize sz)
+int IconBuffer::getPixSize(IconSize sz)
 {
     //coordinate with getIconByIndexImpl() and linkOverlayIcon()!
     switch (sz)
     {
         case IconSize::small:
-            return getDefaultMenuIconSize();
+            return dipToScreen(getMenuIconDipSize());
         case IconSize::medium:
-            return fastFromDIP(48);
+            return dipToScreen(48);
         case IconSize::large:
-            return fastFromDIP(128);
+            return dipToScreen(128);
     }
     assert(false);
     return 0;
@@ -384,7 +384,7 @@ wxImage IconBuffer::getIconByExtension(const Zstring& filePath)
         wxImage img;
         try
         {
-            img = extractWxImage(getIconByTemplatePath(templateName, getSize(iconSizeType_))); //throw SysError
+            img = extractWxImage(getIconByTemplatePath(templateName, getPixSize(iconSizeType_))); //throw SysError
         }
         catch (SysError&) {}
         if (!img.IsOk()) //Linux: not all MIME types have icons!
@@ -401,7 +401,7 @@ wxImage IconBuffer::genericFileIcon(IconSize sz)
 {
     try
     {
-        return extractWxImage(fff::genericFileIcon(IconBuffer::getSize(sz))); //throw SysError
+        return extractWxImage(fff::genericFileIcon(IconBuffer::getPixSize(sz))); //throw SysError
     }
     catch (SysError&) { assert(false); return wxNullImage; }
 }
@@ -411,7 +411,7 @@ wxImage IconBuffer::genericDirIcon(IconSize sz)
 {
     try
     {
-        return extractWxImage(fff::genericDirIcon(IconBuffer::getSize(sz))); //throw SysError
+        return extractWxImage(fff::genericDirIcon(IconBuffer::getPixSize(sz))); //throw SysError
     }
     catch (SysError&) { assert(false); return wxNullImage; }
 }
@@ -419,14 +419,14 @@ wxImage IconBuffer::genericDirIcon(IconSize sz)
 
 wxImage IconBuffer::linkOverlayIcon(IconSize sz)
 {
-    //coordinate with IconBuffer::getSize()!
+    //coordinate with IconBuffer::getPixSize()!
     return loadImage([sz]
     {
-        const int iconSize = IconBuffer::getSize(sz);
+        const int iconSize = IconBuffer::getPixSize(sz);
 
-        if (iconSize >= fastFromDIP(128)) return "file_link_128";
-        if (iconSize >= fastFromDIP( 48)) return "file_link_48";
-        if (iconSize >= fastFromDIP( 20)) return "file_link_20";
+        if (iconSize >= dipToScreen(128)) return "file_link_128";
+        if (iconSize >= dipToScreen( 48)) return "file_link_48";
+        if (iconSize >= dipToScreen( 20)) return "file_link_20";
         return "file_link_16";
     }());
 }
@@ -434,14 +434,14 @@ wxImage IconBuffer::linkOverlayIcon(IconSize sz)
 
 wxImage IconBuffer::plusOverlayIcon(IconSize sz)
 {
-    //coordinate with IconBuffer::getSize()!
+    //coordinate with IconBuffer::getPixSize()!
     return loadImage([sz]
     {
-        const int iconSize = IconBuffer::getSize(sz);
+        const int iconSize = IconBuffer::getPixSize(sz);
 
-        if (iconSize >= fastFromDIP(128)) return "file_plus_128";
-        if (iconSize >= fastFromDIP( 48)) return "file_plus_48";
-        if (iconSize >= fastFromDIP( 20)) return "file_plus_20";
+        if (iconSize >= dipToScreen(128)) return "file_plus_128";
+        if (iconSize >= dipToScreen( 48)) return "file_plus_48";
+        if (iconSize >= dipToScreen( 20)) return "file_plus_20";
         return "file_plus_16";
     }());
 }
@@ -449,14 +449,14 @@ wxImage IconBuffer::plusOverlayIcon(IconSize sz)
 
 wxImage IconBuffer::minusOverlayIcon(IconSize sz)
 {
-    //coordinate with IconBuffer::getSize()!
+    //coordinate with IconBuffer::getPixSize()!
     return loadImage([sz]
     {
-        const int iconSize = IconBuffer::getSize(sz);
+        const int iconSize = IconBuffer::getPixSize(sz);
 
-        if (iconSize >= fastFromDIP(128)) return "file_minus_128";
-        if (iconSize >= fastFromDIP( 48)) return "file_minus_48";
-        if (iconSize >= fastFromDIP( 20)) return "file_minus_20";
+        if (iconSize >= dipToScreen(128)) return "file_minus_128";
+        if (iconSize >= dipToScreen( 48)) return "file_minus_48";
+        if (iconSize >= dipToScreen( 20)) return "file_minus_20";
         return "file_minus_16";
     }());
 }

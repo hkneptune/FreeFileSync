@@ -192,7 +192,6 @@ public:
             GridData::renderRowBackgound(dc, rect, row, true /*enabled*/, true /*selected*/, rowHover);
 
         //-------------- draw item separation line -----------------
-        wxDCPenChanger dummy2(dc, wxPen(getColorGridLine(), fastFromDIP(1)));
         const bool drawBottomLine = [&] //don't separate multi-line messages
         {
             if (std::optional<MessageView::LogEntryView> nextEntry = msgView_.getEntry(row + 1))
@@ -201,7 +200,7 @@ public:
         }();
 
         if (drawBottomLine)
-            dc.DrawLine(rect.GetBottomLeft(), rect.GetBottomRight() + wxPoint(1, 0)); //DrawLine() doesn't draw last pixel!
+            clearArea(dc, {rect.x, rect.y + rect.height - dipToWxsize(1), rect.width, dipToWxsize(1)}, getColorGridLine());
         //--------------------------------------------------------
     }
 
@@ -228,11 +227,11 @@ public:
                             switch (entry->type)
                             {
                                 case MSG_TYPE_INFO:
-                                    return loadImage("msg_info", getDefaultMenuIconSize());
+                                    return loadImage("msg_info", dipToScreen(getMenuIconDipSize()));
                                 case MSG_TYPE_WARNING:
-                                    return loadImage("msg_warning", getDefaultMenuIconSize());
+                                    return loadImage("msg_warning", dipToScreen(getMenuIconDipSize()));
                                 case MSG_TYPE_ERROR:
-                                    return loadImage("msg_error", getDefaultMenuIconSize());
+                                    return loadImage("msg_error", dipToScreen(getMenuIconDipSize()));
                             }
                             assert(false);
                             return wxNullImage;
@@ -260,7 +259,7 @@ public:
                     return 2 * getColumnGapLeft() + dc.GetTextExtent(getValue(row, colType)).GetWidth();
 
                 case ColumnTypeLog::severity:
-                    return getDefaultMenuIconSize();
+                    return dipToWxsize(getMenuIconDipSize());
 
                 case ColumnTypeLog::text:
                     return getColumnGapLeft() + dc.GetTextExtent(getValue(row, colType)).GetWidth();
@@ -277,12 +276,12 @@ public:
 
     static int getColumnSeverityDefaultWidth()
     {
-        return getDefaultMenuIconSize();
+        return dipToWxsize(getMenuIconDipSize());
     }
 
     static int getRowDefaultHeight(const Grid& grid)
     {
-        return std::max(getDefaultMenuIconSize(), grid.getMainWin().GetCharHeight() + fastFromDIP(2) /*extra space*/) + fastFromDIP(1) /*bottom border*/;
+        return std::max(dipToWxsize(getMenuIconDipSize()), grid.getMainWin().GetCharHeight() + dipToWxsize(2) /*extra space*/) + dipToWxsize(1) /*bottom border*/;
     }
 
     std::wstring getToolTip(size_t row, ColumnType colType, HoverArea rowHover) override

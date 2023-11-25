@@ -337,7 +337,8 @@ public:
 
     static int getRowDefaultHeight(const Grid& grid)
     {
-        return std::max(getDefaultMenuIconSize(), grid.getMainWin().GetCharHeight()) + fastFromDIP(1) /*extra space*/;
+        return std::max(dipToWxsize(getMenuIconDipSize()),
+                        grid.getMainWin().GetCharHeight()) + dipToWxsize(1) /*extra space*/;
     }
 
     int  getSyncOverdueDays() const { return syncOverdueDays_; }
@@ -401,7 +402,7 @@ private:
     {
         if (selected)
             clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT));
-        //else: clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW)); -> already the default
+        //else: wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW) already the default!
     }
 
     enum class HoverAreaConfig
@@ -415,8 +416,7 @@ private:
         wxDCTextColourChanger textColor(dc); //accessibility: always set both foreground AND background colors!
         if (selected)
             textColor.Set(wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHTTEXT));
-        else
-            textColor.Set(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
+        //else: wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT) already the default!
 
         if (const ConfigView::Details* item = cfgView_.getItem(row))
             switch (static_cast<ColumnTypeCfg>(colType))
@@ -442,7 +442,7 @@ private:
                         }
                         else //always show a glimpse of the background color
                         {
-                            rectTmp.width = getColumnGapLeft() + getDefaultMenuIconSize();
+                            rectTmp.width = getColumnGapLeft() + dipToWxsize(getMenuIconDipSize());
                             clearArea(dc, rectTmp, backColor);
 
                             rectTmp.x += rectTmp.width;
@@ -451,7 +451,7 @@ private:
                         }
                     }
                     if (!selected && static_cast<HoverAreaConfig>(rowHover) == HoverAreaConfig::name)
-                        drawRectangleBorder(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT), fastFromDIP(1));
+                        drawRectangleBorder(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT), dipToWxsize(1));
 
                     //-------------------------------------------------------------------------------------
                     wxRect rectTmp = rect;
@@ -465,9 +465,9 @@ private:
                             case ConfigView::Details::CFG_TYPE_NONE:
                                 return wxNullImage;
                             case ConfigView::Details::CFG_TYPE_GUI:
-                                return loadImage("start_sync", getDefaultMenuIconSize());
+                                return loadImage("start_sync", dipToScreen(getMenuIconDipSize()));
                             case ConfigView::Details::CFG_TYPE_BATCH:
-                                return loadImage("cfg_batch", getDefaultMenuIconSize());
+                                return loadImage("cfg_batch", dipToScreen(getMenuIconDipSize()));
                         }
                         assert(false);
                         return wxNullImage;
@@ -475,20 +475,20 @@ private:
                     if (cfgIcon.IsOk())
                         drawBitmapRtlNoMirror(dc, enabled ? cfgIcon : cfgIcon.ConvertToDisabled(), rectTmp, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
 
-                    rectTmp.x     += getDefaultMenuIconSize() + getColumnGapLeft();
-                    rectTmp.width -= getDefaultMenuIconSize() + getColumnGapLeft();
+                    rectTmp.x     += dipToWxsize(getMenuIconDipSize()) + getColumnGapLeft();
+                    rectTmp.width -= dipToWxsize(getMenuIconDipSize()) + getColumnGapLeft();
 
                     if (!item->notes.empty())
-                        rectTmp.width -= getDefaultMenuIconSize() + getColumnGapLeft();
+                        rectTmp.width -= dipToWxsize(getMenuIconDipSize()) + getColumnGapLeft();
 
                     drawCellText(dc, rectTmp, getValue(row, colType));
 
                     if (!item->notes.empty())
                     {
                         rectTmp.x += rectTmp.width;
-                        rectTmp.width = getDefaultMenuIconSize();
+                        rectTmp.width = dipToWxsize(getMenuIconDipSize());
 
-                        const wxImage notesIcon = loadImage("notes", getDefaultMenuIconSize());
+                        const wxImage notesIcon = loadImage("notes", dipToScreen(getMenuIconDipSize()));
                         drawBitmapRtlNoMirror(dc, enabled ? notesIcon : notesIcon.ConvertToDisabled(), rectTmp, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
                     }
                 }
@@ -513,12 +513,12 @@ private:
                             switch (item->cfgItem.lastRunStats.syncResult)
                             {
                                 case TaskResult::success:
-                                    return loadImage("msg_success", getDefaultMenuIconSize());
+                                    return loadImage("msg_success", dipToScreen(getMenuIconDipSize()));
                                 case TaskResult::warning:
-                                    return loadImage("msg_warning", getDefaultMenuIconSize());
+                                    return loadImage("msg_warning", dipToScreen(getMenuIconDipSize()));
                                 case TaskResult::error:
                                 case TaskResult::cancelled:
-                                    return loadImage("msg_error", getDefaultMenuIconSize());
+                                    return loadImage("msg_error", dipToScreen(getMenuIconDipSize()));
                             }
                             assert(false);
                             return wxNullImage;
@@ -538,13 +538,13 @@ private:
         switch (static_cast<ColumnTypeCfg>(colType))
         {
             case ColumnTypeCfg::name:
-                return getColumnGapLeft() + getDefaultMenuIconSize() + getColumnGapLeft() + dc.GetTextExtent(getValue(row, colType)).GetWidth() + getColumnGapLeft();
+                return getColumnGapLeft() + dipToWxsize(getMenuIconDipSize()) + getColumnGapLeft() + dc.GetTextExtent(getValue(row, colType)).GetWidth() + getColumnGapLeft();
 
             case ColumnTypeCfg::lastSync:
                 return getColumnGapLeft() + dc.GetTextExtent(getValue(row, colType)).GetWidth() + getColumnGapLeft();
 
             case ColumnTypeCfg::lastLog:
-                return getDefaultMenuIconSize();
+                return dipToWxsize(getMenuIconDipSize());
         }
         assert(false);
         return 0;
@@ -558,7 +558,7 @@ private:
             {
                 case ColumnTypeCfg::name:
                 case ColumnTypeCfg::lastSync:
-                    //if (!item->notes.empty() && cellRelativePosX >= cellWidth - (getColumnGapLeft() + getDefaultMenuIconSize() + getColumnGapLeft()))
+                    //if (!item->notes.empty() && cellRelativePosX >= cellWidth - (getColumnGapLeft() + dipToWxsize(getMenuIconDipSize()) + getColumnGapLeft()))
                     break;
                 case ColumnTypeCfg::lastLog:
                     if (!item->isLastRunCfg && !getNativeItemPath(item->cfgItem.lastRunStats.logFilePath).empty())
@@ -600,7 +600,7 @@ private:
 
             case ColumnTypeCfg::lastLog:
             {
-                const wxImage logIcon = loadImage("log_file", getDefaultMenuIconSize());
+                const wxImage logIcon = loadImage("log_file", dipToScreen(getMenuIconDipSize()));
                 drawBitmapRtlNoMirror(dc, enabled ? logIcon : logIcon.ConvertToDisabled(), rectInner, wxALIGN_CENTER);
 
                 if (sortMarker.IsOk())
@@ -727,7 +727,7 @@ void cfggrid::init(Grid& grid)
     grid.setDataProvider(std::make_shared<GridDataCfg>(grid));
     grid.showRowLabel(false);
     grid.setRowHeight(rowHeight);
-    grid.setColumnLabelHeight(rowHeight + fastFromDIP(2));
+    grid.setColumnLabelHeight(rowHeight + dipToWxsize(2));
 }
 
 

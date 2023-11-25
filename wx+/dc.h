@@ -35,14 +35,14 @@ namespace zen
 inline
 void clearArea(wxDC& dc, const wxRect& rect, const wxColor& col)
 {
+    assert(col.IsSolid());
     if (rect.width  > 0 && //clearArea() is surprisingly expensive
         rect.height > 0)
     {
-        assert(col.IsSolid());
         //wxDC::DrawRectangle() just widens inner area if wxTRANSPARENT_PEN is used!
         //bonus: wxTRANSPARENT_PEN is about 2x faster than redundantly drawing with col!
-        wxDCPenChanger   areaPen  (dc, *wxTRANSPARENT_PEN);
-        wxDCBrushChanger areaBrush(dc, col);
+        dc.SetPen(*wxTRANSPARENT_PEN);
+        dc.SetBrush(col);
         dc.DrawRectangle(rect);
     }
 }
@@ -50,78 +50,98 @@ void clearArea(wxDC& dc, const wxRect& rect, const wxColor& col)
 
 //properly draw rectangle respecting high DPI (and avoiding wxPen position fuzzyness)
 inline
-void drawFilledRectangle(wxDC& dc, wxRect rect, const wxColor& innerCol, const wxColor& borderCol, int borderWidth)
+void drawFilledRectangle(wxDC& dc, wxRect rect, const wxColor& innerCol, const wxColor& borderCol, int borderSize)
 {
+    assert(innerCol.IsSolid() && borderCol.IsSolid());
     if (rect.width  > 0 &&
         rect.height > 0)
     {
-        assert(innerCol.IsSolid() && borderCol.IsSolid());
-        wxDCPenChanger   rectPen  (dc, *wxTRANSPARENT_PEN);
-        wxDCBrushChanger rectBrush(dc, borderCol);
+        dc.SetPen(*wxTRANSPARENT_PEN);
+        dc.SetBrush(borderCol);
         dc.DrawRectangle(rect);
-        rect.Deflate(borderWidth); //attention, more wxWidgets design mistakes: behavior of wxRect::Deflate depends on object being const/non-const!!!
 
-        dc.SetBrush(innerCol);
-        dc.DrawRectangle(rect);
+        rect.Deflate(borderSize); //more wxWidgets design mistakes: behavior of wxRect::Deflate depends on object being const/non-const!!!
+
+        if (rect.width  > 0 &&
+            rect.height > 0)
+        {
+            dc.SetBrush(innerCol);
+            dc.DrawRectangle(rect);
+        }
     }
 }
 
 
 inline
-void drawRectangleBorder(wxDC& dc, const wxRect& rect, const wxColor& col, int borderWidth)
+void drawRectangleBorder(wxDC& dc, const wxRect& rect, const wxColor& col, int borderSize)
 {
+    assert(col.IsSolid());
     if (rect.width  > 0 &&
         rect.height > 0)
     {
-        assert(col.IsSolid());
-        wxDCPenChanger   areaPen  (dc, *wxTRANSPARENT_PEN);
-        wxDCBrushChanger areaBrush(dc, col);
-        dc.DrawRectangle(rect.GetTopLeft(),                                         {borderWidth, rect.height});
-        dc.DrawRectangle(rect.GetTopLeft() + wxPoint{rect.width - borderWidth, 0},  {borderWidth, rect.height});
-        dc.DrawRectangle(rect.GetTopLeft(),                                         {rect.width, borderWidth});
-        dc.DrawRectangle(rect.GetTopLeft() + wxPoint{0, rect.height - borderWidth}, {rect.width, borderWidth});
+        if (2 * borderSize >= std::min(rect.width, rect.height))
+            return clearArea(dc, rect, col);
+
+        dc.SetPen(*wxTRANSPARENT_PEN);
+        dc.SetBrush(col);
+        dc.DrawRectangle(rect.x, rect.y,                           borderSize, rect.height); //left
+        dc.DrawRectangle(rect.x + rect.width - borderSize, rect.y, borderSize, rect.height); //right
+        dc.DrawRectangle(rect.x, rect.y,                            rect.width, borderSize); //top
+        dc.DrawRectangle(rect.x, rect.y + rect.height - borderSize, rect.width, borderSize); //bottom
     }
 }
 
 
-/* Standard DPI:
-     Windows/Ubuntu: 96 x 96
-     macOS: wxWidgets uses DIP (note: wxScreenDC().GetPPI() returns 72 x 72 which is a lie; looks like 96 x 96)       */
-constexpr int defaultDpi = 96; //on Windows same as wxDisplay::GetStdPPIValue() (however returns 72 on macOS!)
+/*  figure out wxWidgets cross-platform high DPI mess:
+
+    1. "wxsize"    := what wxWidgets is using: device-dependent on Windows, device-indepent on macOS (...mostly)
+    2. screen unit := device-dependent size in pixels
+    3. DIP         := device-independent pixels
+
+    corollary:
+        macOS:   "wxsize = DIP"
+        Windows: "wxsize = screen unit"
+        cross-platform: images are in "screen unit"         */
 
 inline
-int getDPI()
+double getScreenDpiScale()
 {
-#ifndef wxHAS_DPI_INDEPENDENT_PIXELS
-#error why is wxHAS_DPI_INDEPENDENT_PIXELS not defined?
-#endif
     //GTK2 doesn't properly support high DPI: https://freefilesync.org/forum/viewtopic.php?t=6114
     //=> requires general fix at wxWidgets-level
 
     //https://github.com/wxWidgets/wxWidgets/blob/d9d05c2bb201078f5e762c42458ca2f74af5b322/include/wx/window.h#L2060
-    return defaultDpi; //e.g. macOS, GTK3
+    const double scale = 1.0; //e.g. macOS, GTK3
+
+    return scale;
 }
 
 
 inline
-double getDisplayScaleFactor()
+double getWxsizeDpiScale()
 {
-    return static_cast<double>(getDPI()) / defaultDpi;
+#ifndef wxHAS_DPI_INDEPENDENT_PIXELS
+#error why is wxHAS_DPI_INDEPENDENT_PIXELS not defined?
+#endif
+    return 1.0; //e.g. macOS, GTK3
 }
 
 
-inline
-int fastFromDIP(int d) //like wxWindow::FromDIP (but tied to primary monitor and buffered)
-{
-    return numeric::intDivRound(d * getDPI() - 10 /*round values like 1.5 down => 1 pixel on 150% scale*/, defaultDpi);
-}
-int fastFromDIP(double d) = delete;
+//similar to wxWindow::FromDIP (but tied to primary monitor and buffered)
+inline int dipToWxsize   (int d) { return std::round(d * getWxsizeDpiScale() - 0.1 /*round values like 1.5 down => 1 pixel on 150% scale*/); }
+inline int dipToScreen   (int d) { return std::round(d * getScreenDpiScale()); }
+inline int wxsizeToScreen(int u) { return std::round(u / getWxsizeDpiScale() * getScreenDpiScale()); }
+inline int screenToWxsize(int s) { return std::round(s / getScreenDpiScale() * getWxsizeDpiScale()); }
+
+int dipToWxsize   (double d) = delete;
+int dipToScreen   (double d) = delete;
+int wxsizeToScreen(double d) = delete;
+int screenToWxsize(double d) = delete;
 
 
 inline
 int getDpiScalePercent()
 {
-    return numeric::intDivRound(100 * getDPI(), defaultDpi);
+    return std::round(100 * getScreenDpiScale());
 }
 
 
@@ -130,7 +150,7 @@ wxBitmap toScaledBitmap(const wxImage& img /*expected to be DPI-scaled!*/)
 {
     //wxBitmap(const wxImage& image, int depth = -1, double WXUNUSED(scale) = 1.0) => wxWidgets just ignores scale parameter! WTF!
     wxBitmap bmpScaled(img);
-    bmpScaled.SetScaleFactor(getDisplayScaleFactor());
+    bmpScaled.SetScaleFactor(getScreenDpiScale());
     return bmpScaled; //when testing use 175% scaling: wxWidgets' scaling logic doesn't kick in for 150% only
 }
 
@@ -161,7 +181,7 @@ class RecursiveDcClipper
 public:
     RecursiveDcClipper(wxDC& dc, const wxRect& r) : dc_(dc)
     {
-        if (auto it = clippingAreas_.find(&dc);
+        if (auto it = clippingAreas_.find(&dc_);
             it != clippingAreas_.end())
         {
             oldRect_ = it->second;
@@ -196,6 +216,7 @@ private:
     RecursiveDcClipper           (const RecursiveDcClipper&) = delete;
     RecursiveDcClipper& operator=(const RecursiveDcClipper&) = delete;
 
+
     //associate "active" clipping area with each DC
     inline static std::unordered_map<wxDC*, wxRect> clippingAreas_;
 
@@ -219,7 +240,7 @@ public:
     BufferedPaintDC(wxWindow& wnd, std::optional<wxBitmap>& buffer) : buffer_(buffer), paintDc_(&wnd)
     {
         const wxSize clientSize = wnd.GetClientSize();
-        if (clientSize.GetWidth() > 0 && clientSize.GetHeight() > 0) //wxBitmap asserts this!! width may be 0; test case "Grid::CornerWin": compare both sides, then change config
+        if (clientSize.GetWidth() > 0 && clientSize.GetHeight() > 0) //wxBitmap asserts this!! width can be 0; test case "Grid::CornerWin": compare both sides, then change config
         {
             if (!buffer_ || buffer->GetSize() != clientSize)
                 buffer.emplace(clientSize);

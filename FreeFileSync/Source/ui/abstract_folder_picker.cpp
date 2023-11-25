@@ -87,17 +87,17 @@ AbstractFolderPickerDlg::AbstractFolderPickerDlg(wxWindow* parent, AbstractPath&
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
 
     m_staticTextStatus->SetLabel(L"");
-    m_treeCtrlFileSystem->SetMinSize({fastFromDIP(350), fastFromDIP(400)});
+    m_treeCtrlFileSystem->SetMinSize({dipToWxsize(350), dipToWxsize(400)});
 
-    const int iconSize = IconBuffer::getSize(IconBuffer::IconSize::small);
+    const int iconSize = screenToWxsize(IconBuffer::getPixSize(IconBuffer::IconSize::small));
     auto imgList = std::make_unique<wxImageList>(iconSize, iconSize);
 
     //add images in same sequence like TreeNodeImage enum!!!
-    imgList->Add(loadImage("server", iconSize));
-    imgList->Add(        IconBuffer::genericDirIcon (IconBuffer::IconSize::small));
-    imgList->Add(layOver(IconBuffer::genericDirIcon (IconBuffer::IconSize::small),
-                         IconBuffer::linkOverlayIcon(IconBuffer::IconSize::small)));
-    imgList->Add(loadImage("msg_error", iconSize));
+    imgList->Add(toScaledBitmap(loadImage("server", wxsizeToScreen(iconSize))));
+    imgList->Add(toScaledBitmap(        IconBuffer::genericDirIcon (IconBuffer::IconSize::small)));
+    imgList->Add(toScaledBitmap(layOver(IconBuffer::genericDirIcon (IconBuffer::IconSize::small),
+                                        IconBuffer::linkOverlayIcon(IconBuffer::IconSize::small))));
+    imgList->Add(toScaledBitmap(loadImage("msg_error", wxsizeToScreen(iconSize))));
     assert(imgList->GetImageCount() == static_cast<int>(TreeNodeImage::error) + 1);
 
     m_treeCtrlFileSystem->AssignImageList(imgList.release()); //pass ownership

@@ -103,11 +103,11 @@ public:
     void renderCell(wxDC& dc, const wxRect& rect, size_t row, ColumnType colType, bool enabled, bool selected, HoverArea rowHover) override
     {
         //draw border on right
-        clearArea(dc, {rect.x + rect.width - fastFromDIP(1), rect.y, fastFromDIP(1), rect.height}, wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW));
-        wxRect rectTmp = wxRect(rect.GetTopLeft(), wxSize(rect.width - fastFromDIP(1), rect.height));
+        clearArea(dc, {rect.x + rect.width - dipToWxsize(1), rect.y, dipToWxsize(1), rect.height}, wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW));
 
+        wxRect rectTmp = rect;
         rectTmp.x     += getColumnGapLeft();
-        rectTmp.width -= getColumnGapLeft();
+        rectTmp.width -= getColumnGapLeft() + dipToWxsize(1);
 
         switch (static_cast<ColumnTypeRename>(colType))
         {
@@ -117,30 +117,38 @@ public:
 
             case ColumnTypeRename::newName:
             {
-                const wxSize extentBefore = dc.GetTextExtent(fileNamesNewSelectBefore_[row]);
-                drawCellText(dc, rectTmp, fileNamesNewSelectBefore_[row], wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, &extentBefore);
-                rectTmp.x     += extentBefore.GetWidth();
-                rectTmp.width -= extentBefore.GetWidth();
+                const std::wstring& fulltext = fileNamesNewSelectBefore_[row] + fileNamesNewSelected_[row] + fileNamesNewSelectAfter_[row];
+                //macOS: drawCellText() is not accurate for partial strings => draw full text + calculate deltas:
+                const wxSize extentBefore   = dc.GetTextExtent(fileNamesNewSelectBefore_[row]);
+                const wxSize extentFullText = dc.GetTextExtent(fulltext);
+
+                drawCellText(dc, rectTmp, fulltext, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, &extentFullText);
 
                 if (!fileNamesNewSelected_[row].empty()) //highlight text selection:
                 {
-                    const wxSize extentSelect = dc.GetTextExtent(fileNamesNewSelected_[row]);
-                    clearArea(dc, {rectTmp.x, rectTmp.y, extentSelect.GetWidth(), rectTmp.height}, wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT));
+                    const wxSize extentBeforeAndSel = dc.GetTextExtent(fileNamesNewSelectBefore_[row] + fileNamesNewSelected_[row]);
+
+                    const wxRect rectSel{rectTmp.x + extentBefore.GetWidth(),
+                                         rectTmp.y,
+                                         extentBeforeAndSel.GetWidth() - extentBefore.GetWidth(),
+                                         rectTmp.height};
+
+                    clearArea(dc, rectSel, wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHT));
+
+                    RecursiveDcClipper dummy(dc, rectSel);
 
                     wxDCTextColourChanger textColor(dc, wxSystemSettings::GetColour(wxSYS_COLOUR_HIGHLIGHTTEXT)); //accessibility: always set both foreground AND background colors!
-                    drawCellText(dc, rectTmp, fileNamesNewSelected_[row], wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, &extentSelect);
-                    rectTmp.x     += extentSelect.GetWidth();
-                    rectTmp.width -= extentSelect.GetWidth();
+                    drawCellText(dc, rectTmp, fulltext, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, &extentFullText); //draw everything: might fix partially cleared character
                 }
-
-                drawCellText(dc, rectTmp, fileNamesNewSelectAfter_[row]);
-
-                if (fileNamesNewSelected_[row].empty() && //draw input cursor
-                    (showCursor_ || std::chrono::steady_clock::now() < previewChangeTime_ + std::chrono::milliseconds(400)))
-                {
-                    wxDCPenChanger dummy(dc, wxPen(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT), fastFromDIP(1)));
-                    dc.DrawLine(rectTmp.GetTopLeft(), rectTmp.GetBottomLeft() + wxPoint(0, 1)); //DrawLine() doesn't draw last pixel!
-                }
+                else //draw input cursor
+                    if (showCursor_ || std::chrono::steady_clock::now() < previewChangeTime_ + std::chrono::milliseconds(400))
+                    {
+                        const wxRect rectLine{rectTmp.x + extentBefore.GetWidth(),
+                                              rectTmp.y,
+                                              dipToWxsize(1),
+                                              rectTmp.height};
+                        clearArea(dc, rectLine, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
+                    }
             }
             break;
         }
@@ -149,7 +157,7 @@ public:
     int getBestSize(wxDC& dc, size_t row, ColumnType colType) override
     {
         // -> synchronize renderCell() <-> getBestSize()
-        return dc.GetTextExtent(getValue(row, colType)).GetWidth() + 2 * getColumnGapLeft() + fastFromDIP(1); //gap on left and right side + border
+        return dc.GetTextExtent(getValue(row, colType)).GetWidth() + 2 * getColumnGapLeft() + dipToWxsize(1); //gap on left and right side + border
     }
 
     std::wstring getToolTip(size_t row, ColumnType colType, HoverArea rowHover) override { return std::wstring(); }
@@ -259,7 +267,7 @@ RenameDialog::RenameDialog(wxWindow* parent,
     //-----------------------------------------------------------
     m_gridRenamePreview->setDataProvider(std::make_shared<GridDataRename>(fileNamesOld, renameBuf));
     m_gridRenamePreview->showRowLabel(false);
-    m_gridRenamePreview->setRowHeight(m_gridRenamePreview->getMainWin().GetCharHeight() + fastFromDIP(1) /*extra space*/);
+    m_gridRenamePreview->setRowHeight(m_gridRenamePreview->getMainWin().GetCharHeight() + dipToWxsize(1) /*extra space*/);
 
     //-----------------------------------------------------------
     if (fileNamesOld.size() > 1) //calculate reasonable default preview grid size
@@ -272,7 +280,7 @@ RenameDialog::RenameDialog(wxWindow* parent,
             /**/[](const std::wstring& lhs, const std::wstring& rhs) { return lhs.size() < rhs.size(); }); //complexity: O(n)
 
         wxMemoryDC dc; //the context used for bitmaps
-        setScaleFactor(dc, getDisplayScaleFactor());
+        setScaleFactor(dc, getScreenDpiScale());
         dc.SetFont(m_gridRenamePreview->GetFont()); //the font parameter of GetTextExtent() is not evaluated on OS X, wxWidgets 2.9.5, so apply it to the DC directly!
 
         int maxStringWidth = 0;
@@ -281,8 +289,8 @@ RenameDialog::RenameDialog(wxWindow* parent,
             maxStringWidth = std::max(maxStringWidth, dc.GetTextExtent(str).GetWidth());
         });
 
-        const int defaultColWidthOld = maxStringWidth + 2 * GridData::getColumnGapLeft() + fastFromDIP(1) /*border*/ + fastFromDIP(10) /*extra space: less cramped*/;
-        const int defaultColWidthNew = maxStringWidth + 2 * GridData::getColumnGapLeft() + fastFromDIP(1) /*border*/ + fastFromDIP(50) /*extra space: for longer new name*/;
+        const int defaultColWidthOld = maxStringWidth + 2 * GridData::getColumnGapLeft() + dipToWxsize(1) /*border*/ + dipToWxsize(10) /*extra space: less cramped*/;
+        const int defaultColWidthNew = maxStringWidth + 2 * GridData::getColumnGapLeft() + dipToWxsize(1) /*border*/ + dipToWxsize(50) /*extra space: for longer new name*/;
 
         m_gridRenamePreview->setColumnConfig(
         {
@@ -290,16 +298,16 @@ RenameDialog::RenameDialog(wxWindow* parent,
             {static_cast<ColumnType>(ColumnTypeRename::newName), -defaultColWidthOld, 1, true}, //stretch "new name" only
         });
 
-        const int previewDefaultWidth = std::min(defaultColWidthOld + defaultColWidthNew + fastFromDIP(25), //scroll bar width (guess!)
-                                                 fastFromDIP(900));
+        const int previewDefaultWidth = std::min(defaultColWidthOld + defaultColWidthNew + dipToWxsize(25), //scroll bar width (guess!)
+                                                 dipToWxsize(900));
 
         const int previewDefaultHeight = std::min(m_gridRenamePreview->getColumnLabelHeight() +
                                                   static_cast<int>(fileNamesOld.size()) * m_gridRenamePreview->getRowHeight(),
-                                                  fastFromDIP(400));
+                                                  dipToWxsize(400));
 
         m_gridRenamePreview->SetMinSize({previewDefaultWidth, previewDefaultHeight});
 
-        m_staticTextHeader->Wrap(std::max(previewDefaultWidth, fastFromDIP(400))); //needs to be reapplied after SetLabel()
+        m_staticTextHeader->Wrap(std::max(previewDefaultWidth, dipToWxsize(400))); //needs to be reapplied after SetLabel()
     }
     else //renaming single file
     {
@@ -308,15 +316,15 @@ RenameDialog::RenameDialog(wxWindow* parent,
         m_staticTextPlaceholderDescription->Hide();
 
         wxMemoryDC dc; //the context used for bitmaps
-        setScaleFactor(dc, getDisplayScaleFactor());
+        setScaleFactor(dc, getScreenDpiScale());
         dc.SetFont(m_textCtrlNewName->GetFont()); //the font parameter of GetTextExtent() is not evaluated on OS X, wxWidgets 2.9.5, so apply it to the DC directly!
 
         const int textCtrlDefaultWidth = std::min(dc.GetTextExtent(renamePhrase).GetWidth() + 20 /*borders (non-DIP!)*/ +
-                                                  fastFromDIP(50) /*extra space: for longer new name*/,
-                                                  fastFromDIP(900));
+                                                  dipToWxsize(50) /*extra space: for longer new name*/,
+                                                  dipToWxsize(900));
         m_textCtrlNewName->SetMinSize({textCtrlDefaultWidth, -1});
 
-        m_staticTextHeader->Wrap(std::max(textCtrlDefaultWidth, fastFromDIP(400))); //needs to be reapplied after SetLabel()
+        m_staticTextHeader->Wrap(std::max(textCtrlDefaultWidth, dipToWxsize(400))); //needs to be reapplied after SetLabel()
     }
     //-----------------------------------------------------------
 

@@ -30,7 +30,7 @@ using namespace zen;
 wxColor GridData::getColorSelectionGradientFrom() { return {137, 172, 255}; } //blue: HSL: 158, 255, 196   HSV: 222, 0.46, 1
 wxColor GridData::getColorSelectionGradientTo  () { return {225, 234, 255}; } //      HSL: 158, 255, 240   HSV: 222, 0.12, 1
 
-int GridData::getColumnGapLeft() { return fastFromDIP(4); }
+int GridData::getColumnGapLeft() { return dipToWxsize(4); }
 
 
 namespace
@@ -129,23 +129,16 @@ void GridData::renderCell(wxDC& dc, const wxRect& rect, size_t row, ColumnType c
 
 int GridData::getBestSize(wxDC& dc, size_t row, ColumnType colType)
 {
-    return dc.GetTextExtent(getValue(row, colType)).GetWidth() + 2 * getColumnGapLeft() + fastFromDIP(1); //gap on left and right side + border
+    return dc.GetTextExtent(getValue(row, colType)).GetWidth() + 2 * getColumnGapLeft() + dipToWxsize(1); //gap on left and right side + border
 }
 
 
 wxRect GridData::drawCellBorder(wxDC& dc, const wxRect& rect) //returns remaining rectangle
 {
-    //following code is adapted from clearArea():
-    assert(getColorGridLine().IsSolid());
-    //wxDC::DrawRectangle() just widens inner area if wxTRANSPARENT_PEN is used!
-    //bonus: wxTRANSPARENT_PEN is about 2x faster than redundantly drawing with col!
-    wxDCPenChanger   areaPen  (dc, *wxTRANSPARENT_PEN);
-    wxDCBrushChanger areaBrush(dc, getColorGridLine());
+    clearArea(dc, {rect.x + rect.width - dipToWxsize(1), rect.y, dipToWxsize(1), rect.height}, getColorGridLine()); //right border
+    clearArea(dc, {rect.x, rect.y + rect.height - dipToWxsize(1), rect.width, dipToWxsize(1)}, getColorGridLine()); //bottom border
 
-    dc.DrawRectangle(rect.x + rect.width - fastFromDIP(1), rect.y, fastFromDIP(1), rect.height); //right border
-    dc.DrawRectangle(rect.x, rect.y + rect.height - fastFromDIP(1), rect.width, fastFromDIP(1)); //bottom border
-
-    return wxRect(rect.GetTopLeft(), wxSize(rect.width - fastFromDIP(1), rect.height - fastFromDIP(1)));
+    return {rect.x, rect.y, rect.width - dipToWxsize(1), rect.height - dipToWxsize(1)};
 }
 
 
@@ -238,17 +231,16 @@ wxRect GridData::drawColumnLabelBackground(wxDC& dc, const wxRect& rect, bool hi
         dc.GradientFillLinear(rect, getColorLabelGradientFrom(), getColorLabelGradientTo(), wxSOUTH);
 
     //left border
-    clearArea(dc, wxRect(rect.GetTopLeft(), wxSize(fastFromDIP(1), rect.height)), wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
+    clearArea(dc, wxRect(rect.GetTopLeft(), wxSize(dipToWxsize(1), rect.height)), wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
 
     //right border
-    dc.GradientFillLinear(wxRect(rect.x + rect.width - fastFromDIP(1), rect.y, fastFromDIP(1), rect.height),
+    dc.GradientFillLinear(wxRect(rect.x + rect.width - dipToWxsize(1), rect.y, dipToWxsize(1), rect.height),
                           getColorLabelGradientFrom(), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW), wxSOUTH);
 
     //bottom border
-    clearArea(dc, wxRect(rect.x, rect.y + rect.height - fastFromDIP(1), rect.width, fastFromDIP(1)), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW));
+    clearArea(dc, wxRect(rect.x, rect.y + rect.height - dipToWxsize(1), rect.width, dipToWxsize(1)), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW));
 
-    return rect.Deflate(fastFromDIP(1),
-                        fastFromDIP(1));
+    return rect.Deflate(dipToWxsize(1), dipToWxsize(1));
 }
 
 
@@ -420,19 +412,19 @@ private:
         dc.GradientFillLinear(rect, getColorLabelGradientFrom(), getColorLabelGradientTo(), wxSOUTH);
 
         //left border
-        dc.GradientFillLinear(wxRect(rect.GetTopLeft(), wxSize(fastFromDIP(1), rect.height)),
+        dc.GradientFillLinear(wxRect(rect.GetTopLeft(), wxSize(dipToWxsize(1), rect.height)),
                               getColorLabelGradientFrom(), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW), wxSOUTH);
 
         //left border2
-        clearArea(dc, wxRect(rect.x + fastFromDIP(1), rect.y, fastFromDIP(1), rect.height),
+        clearArea(dc, wxRect(rect.x + dipToWxsize(1), rect.y, dipToWxsize(1), rect.height),
                   wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
 
         //right border
-        dc.GradientFillLinear(wxRect(rect.x + rect.width - fastFromDIP(1), rect.y, fastFromDIP(1), rect.height),
+        dc.GradientFillLinear(wxRect(rect.x + rect.width - dipToWxsize(1), rect.y, dipToWxsize(1), rect.height),
                               getColorLabelGradientFrom(), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW), wxSOUTH);
 
         //bottom border
-        clearArea(dc, wxRect(rect.x, rect.y + rect.height - fastFromDIP(1), rect.width, fastFromDIP(1)),
+        clearArea(dc, wxRect(rect.x, rect.y + rect.height - dipToWxsize(1), rect.width, dipToWxsize(1)),
                   wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW));
     }
 };
@@ -445,7 +437,7 @@ class Grid::RowLabelWin : public SubWindow
 public:
     explicit RowLabelWin(Grid& parent) :
         SubWindow(parent),
-        rowHeight_(parent.GetCharHeight() + fastFromDIP(2) + fastFromDIP(1)) {} //default height; don't call any functions on "parent" other than those from wxWindow during construction!
+        rowHeight_(parent.GetCharHeight() + dipToWxsize(2) + dipToWxsize(1)) {} //default height; don't call any functions on "parent" other than those from wxWindow during construction!
     //2 for some more space, 1 for bottom border (gives 15 + 2 + 1 on Windows, 17 + 2 + 1 on Ubuntu)
 
     int getBestWidth(ptrdiff_t rowFrom, ptrdiff_t rowTo)
@@ -456,7 +448,7 @@ public:
 
         int bestWidth = 0;
         for (ptrdiff_t i = rowFrom; i <= rowTo; ++i)
-            bestWidth = std::max(bestWidth, dc.GetTextExtent(formatRowNum(i)).GetWidth() + fastFromDIP(2 * ROW_LABEL_BORDER_DIP));
+            bestWidth = std::max(bestWidth, dc.GetTextExtent(formatRowNum(i)).GetWidth() + dipToWxsize(2 * ROW_LABEL_BORDER_DIP));
         return bestWidth;
     }
 
@@ -514,24 +506,20 @@ private:
         dc.GradientFillLinear(rect, getColorLabelGradientFrom(), getColorLabelGradientTo(), wxEAST); //clear overlapping cells
 
         //top border
-        clearArea(dc, wxRect(rect.GetTopLeft(), wxSize(rect.width, fastFromDIP(1))),
-                  wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
+        clearArea(dc, wxRect(rect.x, rect.y, rect.width, dipToWxsize(1)), wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
 
         //left border
-        clearArea(dc, wxRect(rect.GetTopLeft(), wxSize(fastFromDIP(1), rect.height)),
-                  wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW));
+        clearArea(dc, wxRect(rect.x, rect.y, dipToWxsize(1), rect.height), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW));
 
         //right border
-        clearArea(dc, wxRect(rect.x + rect.width - fastFromDIP(1), rect.y, fastFromDIP(1), rect.height),
-                  wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW));
+        clearArea(dc, wxRect(rect.x + rect.width - dipToWxsize(1), rect.y, dipToWxsize(1), rect.height), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW));
 
         //bottom border
-        clearArea(dc, wxRect(rect.x, rect.y + rect.height - fastFromDIP(1), rect.width, fastFromDIP(1)),
-                  wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW));
+        clearArea(dc, wxRect(rect.x, rect.y + rect.height - dipToWxsize(1), rect.width, dipToWxsize(1)), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW));
 
         //label text
         wxRect textRect = rect;
-        textRect.Deflate(fastFromDIP(1));
+        textRect.Deflate(dipToWxsize(1));
 
         wxDCTextColourChanger textColor(dc, getColorLabelText(enabled)); //accessibility: always set both foreground AND background colors!
         GridData::drawCellText(dc, textRect, formatRowNum(row), wxALIGN_CENTRE);
@@ -621,7 +609,7 @@ public:
         labelFont_(GetFont().Bold())
     {
         //coordinate with ColLabelWin::render():
-        colLabelHeight_ = fastFromDIP(2 * DEFAULT_COL_LABEL_BORDER_DIP) + labelFont_.GetPixelSize().GetHeight();
+        colLabelHeight_ = dipToWxsize(2 * DEFAULT_COL_LABEL_BORDER_DIP) + labelFont_.GetPixelSize().GetHeight();
     }
 
     int getColumnLabelHeight() const { return colLabelHeight_; }
@@ -633,14 +621,12 @@ private:
     void render(wxDC& dc, const wxRect& rect) override
     {
         clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
-        //caveat: system colors can bes partially transparent on macOS:
+        //caveat: system colors can be partially transparent on macOS
+
+        dc.SetFont(labelFont_); //coordinate with "colLabelHeight" in Grid constructor
+        dc.SetTextForeground(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
 
         const bool enabled = renderAsEnabled(*this);
-
-        //coordinate with "colLabelHeight" in Grid constructor:
-        dc.SetFont(labelFont_);
-
-        wxDCTextColourChanger textColor(dc, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT)); //use user setting for labels
 
         wxPoint labelAreaTL(refParent().CalcScrolledPosition(wxPoint(0, 0)).x, 0); //client coordinates
 
@@ -687,7 +673,7 @@ private:
             if (refParent().allowColumnMove_)
                 if (activeClickOrMove_ && activeClickOrMove_->isRealMove())
                 {
-                    const int markerWidth = fastFromDIP(COLUMN_MOVE_MARKER_WIDTH_DIP);
+                    const int markerWidth = dipToWxsize(COLUMN_MOVE_MARKER_WIDTH_DIP);
 
                     if (col + 1 == activeClickOrMove_->refColumnTo()) //handle pos 1, 2, .. up to "at end" position
                         dc.GradientFillLinear(wxRect(rect.x + rect.width - markerWidth, rect.y, markerWidth, rect.height), getColorLabelGradientFrom(), *wxBLUE, wxSOUTH);
@@ -703,7 +689,7 @@ private:
             if (const int absPosX = refParent().CalcUnscrolledPosition(pos).x;
                 absPosX >= 0)
             {
-                const int resizeTolerance = refParent().allowColumnResize_ ? fastFromDIP(COLUMN_RESIZE_TOLERANCE_DIP) : 0;
+                const int resizeTolerance = refParent().allowColumnResize_ ? dipToWxsize(COLUMN_RESIZE_TOLERANCE_DIP) : 0;
                 const std::vector<ColumnWidth>& absWidths = refParent().getColWidths(); //resolve stretched widths
 
                 int accuWidth = 0;
@@ -858,7 +844,7 @@ private:
 
             //check if there's a small gap after last column, if yes, fill it
             const int gapWidth = GetClientSize().GetWidth() - refParent().getColWidthsSum(GetClientSize().GetWidth());
-            if (std::abs(gapWidth) < fastFromDIP(COLUMN_FILL_GAP_TOLERANCE_DIP))
+            if (std::abs(gapWidth) < dipToWxsize(COLUMN_FILL_GAP_TOLERANCE_DIP))
                 refParent().setColumnWidth(newWidth + gapWidth, col, GridEventPolicy::allow);
 
             Refresh();
@@ -867,7 +853,7 @@ private:
         else if (activeClickOrMove_)
         {
             const int clientPosX = clientPos.x;
-            if (std::abs(clientPosX - activeClickOrMove_->getStartPosX()) > fastFromDIP(COLUMN_MOVE_DELAY_DIP)) //real move (not a single click)
+            if (std::abs(clientPosX - activeClickOrMove_->getStartPosX()) > dipToWxsize(COLUMN_MOVE_DELAY_DIP)) //real move (not a single click)
             {
                 activeClickOrMove_->setRealMove();
                 activeClickOrMove_->refColumnTo() = clientPosToMoveTargetColumn(clientPos);
@@ -1003,8 +989,7 @@ private:
         if (auto prov = refParent().getDataProvider())
         {
             dc.SetFont(GetFont()); //harmonize with Grid::getBestColumnSize()
-
-            wxDCTextColourChanger textColor(dc, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT)); //use user setting for labels
+            dc.SetTextForeground(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
 
             const std::vector<ColumnWidth>& absWidths = refParent().getColWidths(); //resolve stretched widths
 
@@ -2306,7 +2291,7 @@ void Grid::setColumnWidth(int width, size_t col, GridEventPolicy columnResizeEve
         //I. fixed-size columns: normalize offset so that resulting width is at least COLUMN_MIN_WIDTH_DIP: this is NOT enforced by getColWidths()!
         //II. stretched columns: do not allow user to set offsets so small that they result in negative (non-normalized) widths: this gives an
         //unusual delay when enlarging the column again later
-        width = std::max(width, fastFromDIP(COLUMN_MIN_WIDTH_DIP));
+        width = std::max(width, dipToWxsize(COLUMN_MIN_WIDTH_DIP));
 
         vcRs.offset = width - stretchedWidths[col]; //width := stretchedWidth + offset
 
@@ -2318,7 +2303,7 @@ void Grid::setColumnWidth(int width, size_t col, GridEventPolicy columnResizeEve
         //4. now verify that the stretched column is resizing immediately if main window is enlarged again
         for (size_t col2 = 0; col2 < visibleCols_.size(); ++col2)
             if (visibleCols_[col2].stretch > 0) //normalize stretched columns only
-                visibleCols_[col2].offset = std::max(visibleCols_[col2].offset, fastFromDIP(COLUMN_MIN_WIDTH_DIP) - stretchedWidths[col2]);
+                visibleCols_[col2].offset = std::max(visibleCols_[col2].offset, dipToWxsize(COLUMN_MIN_WIDTH_DIP) - stretchedWidths[col2]);
 
         if (columnResizeEventPolicy == GridEventPolicy::allow)
         {
@@ -2409,7 +2394,7 @@ std::vector<Grid::ColumnWidth> Grid::getColWidths(int mainWinWidth) const //eval
         int width = stretchedWidths[col2] + vc.offset;
 
         if (vc.stretch > 0)
-            width = std::max(width, fastFromDIP(COLUMN_MIN_WIDTH_DIP)); //normalization really needed here: e.g. smaller main window would result in negative width
+            width = std::max(width, dipToWxsize(COLUMN_MIN_WIDTH_DIP)); //normalization really needed here: e.g. smaller main window would result in negative width
         else
             width = std::max(width, 0); //support smaller width than COLUMN_MIN_WIDTH_DIP if set via configuration
 

@@ -189,14 +189,14 @@ CompareProgressPanel::Impl::Impl(wxFrame& parentWindow) :
     parentWindow_(parentWindow)
 {
     setImage(*m_bitmapItemStat, IconBuffer::genericFileIcon(IconBuffer::IconSize::small));
-    setImage(*m_bitmapTimeStat, loadImage("time", -1 /*maxWidth*/, IconBuffer::getSize(IconBuffer::IconSize::small)));
-    m_bitmapTimeStat->SetMinSize({-1, IconBuffer::getSize(IconBuffer::IconSize::small)});
+    setImage(*m_bitmapTimeStat, loadImage("time", -1 /*maxWidth*/, IconBuffer::getPixSize(IconBuffer::IconSize::small)));
+    m_bitmapTimeStat->SetMinSize({-1, screenToWxsize(IconBuffer::getPixSize(IconBuffer::IconSize::small))});
 
-    setImage(*m_bitmapErrors,   loadImage("msg_error",   getDefaultMenuIconSize()));
-    setImage(*m_bitmapWarnings, loadImage("msg_warning", getDefaultMenuIconSize()));
+    setImage(*m_bitmapErrors,   loadImage("msg_error",   dipToScreen(getMenuIconDipSize())));
+    setImage(*m_bitmapWarnings, loadImage("msg_warning", dipToScreen(getMenuIconDipSize())));
 
-    setImage(*m_bitmapIgnoreErrors, loadImage("error_ignore_active", getDefaultMenuIconSize()));
-    setImage(*m_bitmapRetryErrors,  loadImage("error_retry",         getDefaultMenuIconSize()));
+    setImage(*m_bitmapIgnoreErrors, loadImage("error_ignore_active", dipToScreen(getMenuIconDipSize())));
+    setImage(*m_bitmapRetryErrors,  loadImage("error_retry",         dipToScreen(getMenuIconDipSize())));
 
     //make sure standard height matches ProcessPhase::binaryCompare statistics layout (== largest)
 
@@ -207,10 +207,10 @@ CompareProgressPanel::Impl::Impl(wxFrame& parentWindow) :
                                         setBaseColors(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE)).
                                         setSelectionMode(GraphSelMode::none));
 
-    m_panelProgressGraph->addCurve(curveDataBytes_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(1)).fillPolygonArea(getColorBytes()).setColor(Graph2D::getBorderColor()));
-    m_panelProgressGraph->addCurve(curveDataItems_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(1)).fillPolygonArea(getColorItems()).setColor(Graph2D::getBorderColor()));
+    m_panelProgressGraph->addCurve(curveDataBytes_, Graph2D::CurveAttributes().setLineWidth(dipToWxsize(1)).fillPolygonArea(getColorBytes()).setColor(Graph2D::getBorderColor()));
+    m_panelProgressGraph->addCurve(curveDataItems_, Graph2D::CurveAttributes().setLineWidth(dipToWxsize(1)).fillPolygonArea(getColorItems()).setColor(Graph2D::getBorderColor()));
 
-    m_panelProgressGraph->addCurve(makeSharedRef<CurveDataProgressSeparatorLine>(), Graph2D::CurveAttributes().setLineWidth(fastFromDIP(1)).setColor(Graph2D::getBorderColor()));
+    m_panelProgressGraph->addCurve(makeSharedRef<CurveDataProgressSeparatorLine>(), Graph2D::CurveAttributes().setLineWidth(dipToWxsize(1)).setColor(Graph2D::getBorderColor()));
 
     Layout();
     m_panelItemStats->Layout();
@@ -810,7 +810,7 @@ syncStat_(&syncStat)
     assert((std::is_same_v<TopLevelDialog, wxFrame> == !parentFrame));
 
     //finish construction of this dialog:
-    this->pnl_.m_panelProgress->SetMinSize({fastFromDIP(550), fastFromDIP(340)});
+    this->pnl_.m_panelProgress->SetMinSize({dipToWxsize(550), dipToWxsize(340)});
 
     wxBoxSizer* bSizer170 = new wxBoxSizer(wxVERTICAL);
     bSizer170->Add(&pnl_, 1, wxEXPAND);
@@ -858,18 +858,18 @@ syncStat_(&syncStat)
     setImage(*pnl_.m_bpButtonMinimizeToTray, loadImage("minimize_to_tray"));
 
     setImage(*pnl_.m_bitmapItemStat, IconBuffer::genericFileIcon(IconBuffer::IconSize::small));
-    setImage(*pnl_.m_bitmapTimeStat, loadImage("time", -1 /*maxWidth*/, IconBuffer::getSize(IconBuffer::IconSize::small)));
-    pnl_.m_bitmapTimeStat->SetMinSize({-1, IconBuffer::getSize(IconBuffer::IconSize::small)});
+    setImage(*pnl_.m_bitmapTimeStat, loadImage("time", -1 /*maxWidth*/, IconBuffer::getPixSize(IconBuffer::IconSize::small)));
+    pnl_.m_bitmapTimeStat->SetMinSize({-1, screenToWxsize(IconBuffer::getPixSize(IconBuffer::IconSize::small))});
 
-    setImage(*pnl_.m_bitmapErrors,   loadImage("msg_error",   getDefaultMenuIconSize()));
-    setImage(*pnl_.m_bitmapWarnings, loadImage("msg_warning", getDefaultMenuIconSize()));
+    setImage(*pnl_.m_bitmapErrors,   loadImage("msg_error",   dipToScreen(getMenuIconDipSize())));
+    setImage(*pnl_.m_bitmapWarnings, loadImage("msg_warning", dipToScreen(getMenuIconDipSize())));
 
-    setImage(*pnl_.m_bitmapIgnoreErrors, loadImage("error_ignore_active", getDefaultMenuIconSize()));
-    setImage(*pnl_.m_bitmapRetryErrors,  loadImage("error_retry", getDefaultMenuIconSize()));
+    setImage(*pnl_.m_bitmapIgnoreErrors, loadImage("error_ignore_active", dipToScreen(getMenuIconDipSize())));
+    setImage(*pnl_.m_bitmapRetryErrors,  loadImage("error_retry",         dipToScreen(getMenuIconDipSize())));
 
     //init graph
-    const int xLabelHeight = this->GetCharHeight() + fastFromDIP(2) /*margin*/; //use same height for both graphs to make sure they stretch evenly
-    const int yLabelWidth  = fastFromDIP(70);
+    const int xLabelHeight = this->GetCharHeight() + dipToWxsize(2) /*margin*/; //use same height for both graphs to make sure they stretch evenly
+    const int yLabelWidth  = dipToWxsize(70);
     pnl_.m_panelGraphBytes->setAttributes(Graph2D::MainAttributes().
                                           setLabelX(XLabelPos::top,   xLabelHeight, std::make_shared<LabelFormatterTimeElapsed>()).
                                           setLabelY(YLabelPos::right, yLabelWidth,  std::make_shared<LabelFormatterBytes>()).
@@ -882,21 +882,22 @@ syncStat_(&syncStat)
                                           setBaseColors(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT), wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW)).
                                           setSelectionMode(GraphSelMode::none));
 
-    pnl_.m_panelGraphBytes->addCurve(curveBytes_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(1)).fillCurveArea(getColorBytes()).setColor(getColorBytesRim()));
-    pnl_.m_panelGraphItems->addCurve(curveItems_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(1)).fillCurveArea(getColorItems()).setColor(getColorItemsRim()));
+    pnl_.m_panelGraphBytes->addCurve(curveBytes_, Graph2D::CurveAttributes().setLineWidth(dipToWxsize(1)).fillCurveArea(getColorBytes()).setColor(getColorBytesRim()));
+    pnl_.m_panelGraphItems->addCurve(curveItems_, Graph2D::CurveAttributes().setLineWidth(dipToWxsize(1)).fillCurveArea(getColorItems()).setColor(getColorItemsRim()));
 
-    pnl_.m_panelGraphBytes->addCurve(curveBytesEstim_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(1)).fillCurveArea(getColorLightGrey()).setColor(getColorDarkGrey()));
-    pnl_.m_panelGraphItems->addCurve(curveItemsEstim_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(1)).fillCurveArea(getColorLightGrey()).setColor(getColorDarkGrey()));
+    pnl_.m_panelGraphBytes->addCurve(curveBytesEstim_, Graph2D::CurveAttributes().setLineWidth(dipToWxsize(1)).fillCurveArea(getColorLightGrey()).setColor(getColorDarkGrey()));
+    pnl_.m_panelGraphItems->addCurve(curveItemsEstim_, Graph2D::CurveAttributes().setLineWidth(dipToWxsize(1)).fillCurveArea(getColorLightGrey()).setColor(getColorDarkGrey()));
 
-    pnl_.m_panelGraphBytes->addCurve(curveBytesTimeNow_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(2)).setColor(getColorBytesDark()));
-    pnl_.m_panelGraphItems->addCurve(curveItemsTimeNow_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(2)).setColor(getColorItemsDark()));
+    pnl_.m_panelGraphBytes->addCurve(curveBytesTimeNow_, Graph2D::CurveAttributes().setLineWidth(dipToWxsize(2)).setColor(getColorBytesDark()));
+    pnl_.m_panelGraphItems->addCurve(curveItemsTimeNow_, Graph2D::CurveAttributes().setLineWidth(dipToWxsize(2)).setColor(getColorItemsDark()));
 
-    pnl_.m_panelGraphBytes->addCurve(curveBytesTimeEstim_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(2)).setColor(getColorDarkGrey()));
-    pnl_.m_panelGraphItems->addCurve(curveItemsTimeEstim_, Graph2D::CurveAttributes().setLineWidth(fastFromDIP(2)).setColor(getColorDarkGrey()));
+    pnl_.m_panelGraphBytes->addCurve(curveBytesTimeEstim_, Graph2D::CurveAttributes().setLineWidth(dipToWxsize(2)).setColor(getColorDarkGrey()));
+    pnl_.m_panelGraphItems->addCurve(curveItemsTimeEstim_, Graph2D::CurveAttributes().setLineWidth(dipToWxsize(2)).setColor(getColorDarkGrey()));
 
     //graph legend:
-    setImage(*pnl_.m_bitmapGraphKeyBytes, rectangleImage({this->GetCharHeight(), this->GetCharHeight()}, getColorBytes(), getColorBytesRim(), fastFromDIP(1)));
-    setImage(*pnl_.m_bitmapGraphKeyItems, rectangleImage({this->GetCharHeight(), this->GetCharHeight()}, getColorItems(), getColorItemsRim(), fastFromDIP(1)));
+    const wxSize squareSize{this->GetCharHeight(), this->GetCharHeight()};
+    setImage(*pnl_.m_bitmapGraphKeyBytes, rectangleImage({wxsizeToScreen(squareSize.x), wxsizeToScreen(squareSize.y)}, getColorBytes(), getColorBytesRim(), dipToScreen(1)));
+    setImage(*pnl_.m_bitmapGraphKeyItems, rectangleImage({wxsizeToScreen(squareSize.x), wxsizeToScreen(squareSize.y)}, getColorItems(), getColorItemsRim(), dipToScreen(1)));
 
     pnl_.bSizerDynSpace->SetMinSize(yLabelWidth, -1); //ensure item/time stats are nicely centered
 
@@ -1485,7 +1486,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(TaskResult syncResult, 
 
     //-------------------------------------------------------------
 
-    pnl_.m_notebookResult->SetPadding(wxSize(fastFromDIP(2), 0)); //height cannot be changed
+    pnl_.m_notebookResult->SetPadding(wxSize(dipToWxsize(2), 0)); //height cannot be changed
 
     //1. re-arrange graph into results listbook
     const size_t pagePosProgress = 0;
@@ -1508,11 +1509,11 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(TaskResult syncResult, 
         pnl_.m_notebookResult->ChangeSelection(pagePosLog);
 
     //fill image list to cope with wxNotebook image setting design desaster...
-    const int imgListSize = fastFromDIP(16); //also required by GTK => don't use getDefaultMenuIconSize()
+    const int imgListSize = dipToWxsize(16); //also required by GTK => don't use getMenuIconDipSize()
     auto imgList = std::make_unique<wxImageList>(imgListSize, imgListSize);
 
-    imgList->Add(toScaledBitmap(loadImage("progress", imgListSize)));
-    imgList->Add(toScaledBitmap(loadImage("log_file", imgListSize)));
+    imgList->Add(toScaledBitmap(loadImage("progress", wxsizeToScreen(imgListSize))));
+    imgList->Add(toScaledBitmap(loadImage("log_file", wxsizeToScreen(imgListSize))));
 
     pnl_.m_notebookResult->AssignImageList(imgList.release()); //pass ownership
 

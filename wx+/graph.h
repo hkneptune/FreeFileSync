@@ -212,7 +212,7 @@ public:
         CurveFillMode fillMode = CurveFillMode::none;
         wxColor fillColor;
 
-        int lineWidth = fastFromDIP(2);
+        int lineWidth = dipToWxsize(2);
     };
 
     void addCurve(const SharedRef<CurveData>& data, const CurveAttributes& ca = CurveAttributes());

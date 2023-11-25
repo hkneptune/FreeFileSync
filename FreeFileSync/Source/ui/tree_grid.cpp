@@ -27,7 +27,7 @@ namespace
 {
 //let's NOT create wxWidgets objects statically:
 const int PERCENTAGE_BAR_WIDTH_DIP = 60;
-const int TREE_GRID_GAP_SIZE_DIP   = 2;
+const int TREE_GRID_GAP_SIZE_DIP   = 4;
 
 inline wxColor getColorPercentBorder    () { return {198, 198, 198}; }
 inline wxColor getColorPercentBackground() { return {0xf8, 0xf8, 0xf8}; }
@@ -696,10 +696,10 @@ class GridDataTree : private wxEvtHandler, public GridData
 {
 public:
     GridDataTree(Grid& grid) :
-        widthNodeIcon_(IconBuffer::getSize(IconBuffer::IconSize::small)),
+        widthNodeIcon_(screenToWxsize(IconBuffer::getPixSize(IconBuffer::IconSize::small))),
         widthLevelStep_(widthNodeIcon_),
-        widthNodeStatus_(loadImage("node_expanded").GetWidth()),
-        rootIcon_(loadImage("root_folder", widthNodeIcon_)),
+        widthNodeStatus_(screenToWxsize(loadImage("node_expanded").GetWidth())),
+        rootIcon_(loadImage("root_folder", wxsizeToScreen(widthNodeIcon_))),
         grid_(grid)
     {
         grid.Bind(wxEVT_KEY_DOWN,                   [this](wxKeyEvent& event) { onKeyDown(event); });
@@ -852,10 +852,10 @@ private:
                     //percentage bar
                     if (showPercentBar_)
                     {
-                        wxRect areaPerc(rectTmp.x, rectTmp.y + fastFromDIP(2), percentageBarWidth_, rectTmp.height - fastFromDIP(4));
+                        wxRect areaPerc(rectTmp.x, rectTmp.y + dipToWxsize(2), percentageBarWidth_, rectTmp.height - dipToWxsize(4));
                         //clear background
-                        drawFilledRectangle(dc, areaPerc, getColorPercentBackground(), getColorPercentBorder(), fastFromDIP(1));
-                        areaPerc.Deflate(fastFromDIP(1));
+                        drawFilledRectangle(dc, areaPerc, getColorPercentBackground(), getColorPercentBorder(), dipToWxsize(1));
+                        areaPerc.Deflate(dipToWxsize(1));
 
                         //inner area
                         wxRect areaPercTmp = areaPerc;
@@ -904,7 +904,7 @@ private:
                             drawIcon(nodeIcon, rectTmp, isActive);
 
                             if (static_cast<HoverAreaTree>(rowHover) == HoverAreaTree::item)
-                                drawRectangleBorder(dc, rectTmp, *wxBLUE, fastFromDIP(1));
+                                drawRectangleBorder(dc, rectTmp, *wxBLUE, dipToWxsize(1));
 
                             rectTmp.x     += widthNodeIcon_ + gapSize_;
                             rectTmp.width -= widthNodeIcon_ + gapSize_;
@@ -969,7 +969,7 @@ private:
                 const int nodeStatusXLast  = nodeStatusXFirst + widthNodeStatus_;
                 // -> synchronize renderCell() <-> getBestSize() <-> getMouseHover()
 
-                const int tolerance = fastFromDIP(5);
+                const int tolerance = dipToWxsize(5);
                 if (nodeStatusXFirst - tolerance <= cellRelativePosX && cellRelativePosX < nodeStatusXLast + tolerance)
                     return static_cast<HoverArea>(HoverAreaTree::node);
             }
@@ -1167,8 +1167,8 @@ private:
 
     SharedRef<TreeView> treeDataView_ = makeSharedRef<TreeView>();
 
-    const int gapSize_            = fastFromDIP(TREE_GRID_GAP_SIZE_DIP);
-    const int percentageBarWidth_ = fastFromDIP(PERCENTAGE_BAR_WIDTH_DIP);
+    const int gapSize_            = dipToWxsize(TREE_GRID_GAP_SIZE_DIP);
+    const int percentageBarWidth_ = dipToWxsize(PERCENTAGE_BAR_WIDTH_DIP);
 
     const wxImage fileIcon_ = IconBuffer::genericFileIcon(IconBuffer::IconSize::small);
     const wxImage dirIcon_  = IconBuffer::genericDirIcon (IconBuffer::IconSize::small);
@@ -1190,7 +1190,7 @@ void treegrid::init(Grid& grid)
     grid.setDataProvider(std::make_shared<GridDataTree>(grid));
     grid.showRowLabel(false);
 
-    const int rowHeight = std::max(IconBuffer::getSize(IconBuffer::IconSize::small) + 2, //1 extra pixel on top/bottom; dearly needed on OS X!
+    const int rowHeight = std::max(screenToWxsize(IconBuffer::getPixSize(IconBuffer::IconSize::small)) + dipToWxsize(2), //1 extra pixel on top/bottom; dearly needed on OS X!
                                    grid.getMainWin().GetCharHeight()); //seems to already include 3 margin pixels on top/bottom (consider percentage area)
     grid.setRowHeight(rowHeight);
 }

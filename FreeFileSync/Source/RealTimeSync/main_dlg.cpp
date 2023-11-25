@@ -104,19 +104,19 @@ MainDialog::MainDialog(const Zstring& cfgFilePath) :
     const int scrollDelta = m_buttonSelectFolderMain->GetSize().y; //more approriate than GetCharHeight() here
     m_scrolledWinFolders->SetScrollRate(scrollDelta, scrollDelta);
 
-    m_txtCtrlDirectoryMain->SetMinSize({fastFromDIP(300), -1});
+    m_txtCtrlDirectoryMain->SetMinSize({dipToWxsize(300), -1});
     setDefaultWidth(*m_spinCtrlDelay);
 
     m_bpButtonRemoveTopFolder->Hide();
     m_panelMainFolder->Layout();
 
-    setImage(*m_bitmapBatch,   loadImage("cfg_batch", fastFromDIP(20)));
+    setImage(*m_bitmapBatch,   loadImage("cfg_batch", dipToScreen(20)));
     setImage(*m_bitmapFolders, fff::IconBuffer::genericDirIcon(fff::IconBuffer::IconSize::small));
-    setImage(*m_bitmapConsole, loadImage("command_line", fastFromDIP(20)));
+    setImage(*m_bitmapConsole, loadImage("command_line", dipToScreen(20)));
 
     setImage(*m_bpButtonAddFolder,       loadImage("item_add"));
     setImage(*m_bpButtonRemoveTopFolder, loadImage("item_remove"));
-    setBitmapTextLabel(*m_buttonStart, loadImage("start_rts"), m_buttonStart->GetLabelText(), fastFromDIP(5), fastFromDIP(8));
+    setBitmapTextLabel(*m_buttonStart, loadImage("start_rts"), m_buttonStart->GetLabelText(), dipToWxsize(5), dipToWxsize(8));
 
     Bind(wxEVT_CHAR_HOOK, [this](wxKeyEvent& event) { onLocalKeyEvent(event); });
 

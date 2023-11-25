@@ -1,3 +1,15 @@
+FreeFileSync 13.2
+------------------------------
+Complete high-DPI/Retina display support (macOS)
+Prevent versioning files from being moved to versioning recursively
+Fixed tooltip line wrap bug for moved files (Windows)
+Return first FTP parsing error when trying multiple variants
+Allow file times from the future for Linux-style FTP listing
+Fixed setting modification times on certain storage devices (Windows)
+Fixed bogus "Sound playback failed" error message (macOS)
+Fixed rename dialog text selection wobble (macOS)
+
+
 FreeFileSync 13.1 [2023-10-23]
 ------------------------------
 Keep comparison results when only changing cloud connection settings

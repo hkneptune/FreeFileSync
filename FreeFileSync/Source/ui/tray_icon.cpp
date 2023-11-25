@@ -177,7 +177,7 @@ private:
 
 FfsTrayIcon::FfsTrayIcon(const std::function<void()>& requestResume) :
     trayIcon_(new TaskBarImpl(requestResume)),
-    iconGenerator_(std::make_unique<ProgressIconGenerator>(loadImage("start_sync", fastFromDIP(24))))
+    iconGenerator_(std::make_unique<ProgressIconGenerator>(loadImage("start_sync", dipToScreen(24))))
 {
     [[maybe_unused]] const bool rv = trayIcon_->SetIcon(iconGenerator_->get(activeFraction_), activeToolTip_);
     assert(rv); //caveat wxTaskBarIcon::SetIcon() can return true, even if not wxTaskBarIcon::IsAvailable()!!!

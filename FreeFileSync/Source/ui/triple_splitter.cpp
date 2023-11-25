@@ -55,8 +55,8 @@ TripleSplitter::TripleSplitter(wxWindow* parent,
                                const wxPoint& pos,
                                const wxSize& size,
                                long style) : wxWindow(parent, id, pos, size, style | wxTAB_TRAVERSAL), //tab between windows
-    sashSize_          (fastFromDIP(SASH_SIZE_DIP)),
-    childWindowMinSize_(fastFromDIP(CHILD_WINDOW_MIN_SIZE_DIP))
+    sashSize_          (dipToWxsize(SASH_SIZE_DIP)),
+    childWindowMinSize_(dipToWxsize(CHILD_WINDOW_MIN_SIZE_DIP))
 {
     Bind(wxEVT_PAINT, [this](wxPaintEvent& event) { onPaintEvent(event); });
     Bind(wxEVT_SIZE,  [this](wxSizeEvent&  event) { updateWindowSizes(); event.Skip(); });
@@ -143,10 +143,10 @@ void TripleSplitter::onPaintEvent(wxPaintEvent& event)
         clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE));
 
         //left border
-        clearArea(dc, wxRect(rect.GetTopLeft(), wxSize(fastFromDIP(1), rect.height)), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW));
+        clearArea(dc, wxRect(rect.GetTopLeft(), wxSize(dipToWxsize(1), rect.height)), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW));
 
         //right border
-        clearArea(dc, wxRect(rect.x + rect.width - fastFromDIP(1), rect.y, fastFromDIP(1), rect.height), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW));
+        clearArea(dc, wxRect(rect.x + rect.width - dipToWxsize(1), rect.y, dipToWxsize(1), rect.height), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW));
     };
 
     const wxRect rectSashL(centerPosX,                           0, sashSize_, GetClientRect().height);
@@ -163,7 +163,7 @@ bool TripleSplitter::hitOnSashLine(int posX) const
     const int centerWidth = getCenterWidth();
 
     //we don't get events outside of sash, so SASH_HIT_TOLERANCE_DIP is currently *useless*
-    auto hitSash = [&](int sashX) { return sashX - fastFromDIP(SASH_HIT_TOLERANCE_DIP) <= posX && posX < sashX + sashSize_ + fastFromDIP(SASH_HIT_TOLERANCE_DIP); };
+    auto hitSash = [&](int sashX) { return sashX - dipToWxsize(SASH_HIT_TOLERANCE_DIP) <= posX && posX < sashX + sashSize_ + dipToWxsize(SASH_HIT_TOLERANCE_DIP); };
 
     return hitSash(centerPosX) || hitSash(centerPosX + centerWidth - sashSize_); //hit one of the two sash lines
 }

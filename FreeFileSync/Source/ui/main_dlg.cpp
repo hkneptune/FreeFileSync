@@ -319,34 +319,34 @@ void updateTopButton(wxBitmapButton& btn,
     wxImage varImg = varLabelImg;
     if (varIconName)
     {
-        wxImage varIcon = mirrorIfRtl(loadImage(varIconName, -1 /*maxWidth*/, getDefaultMenuIconSize()));
+        wxImage varIcon = mirrorIfRtl(loadImage(varIconName, -1 /*maxWidth*/, dipToScreen(getMenuIconDipSize())));
 
         //if (!highlightCol.IsOk())
         //    varIcon = greyScale(varIcon);
 
         varImg = btn.GetLayoutDirection() != wxLayout_RightToLeft ?
-                 stackImages(varLabelImg, varIcon, ImageStackLayout::horizontal, ImageStackAlignment::center, fastFromDIP(5)) :
-                 stackImages(varIcon, varLabelImg, ImageStackLayout::horizontal, ImageStackAlignment::center, fastFromDIP(5));
+                 stackImages(varLabelImg, varIcon, ImageStackLayout::horizontal, ImageStackAlignment::center, dipToScreen(5)) :
+                 stackImages(varIcon, varLabelImg, ImageStackLayout::horizontal, ImageStackAlignment::center, dipToScreen(5));
     }
 
     wxImage btnImg = stackImages(btnLabelImg, varImg, ImageStackLayout::vertical, ImageStackAlignment::center);
 
     btnImg = btn.GetLayoutDirection() != wxLayout_RightToLeft ?
-             stackImages(iconImg, btnImg, ImageStackLayout::horizontal, ImageStackAlignment::center, fastFromDIP(5)) :
-             stackImages(btnImg, iconImg, ImageStackLayout::horizontal, ImageStackAlignment::center, fastFromDIP(5));
+             stackImages(iconImg, btnImg, ImageStackLayout::horizontal, ImageStackAlignment::center, dipToScreen(5)) :
+             stackImages(btnImg, iconImg, ImageStackLayout::horizontal, ImageStackAlignment::center, dipToScreen(5));
 
     if (extraIconName)
     {
-        const wxImage exImg = loadImage(extraIconName, fastFromDIP(20));
+        const wxImage exImg = loadImage(extraIconName, dipToScreen(20));
 
         btnImg = btn.GetLayoutDirection() != wxLayout_RightToLeft ?
-                 stackImages(btnImg, exImg, ImageStackLayout::horizontal, ImageStackAlignment::center, fastFromDIP(5)) :
-                 stackImages(exImg, btnImg, ImageStackLayout::horizontal, ImageStackAlignment::center, fastFromDIP(5));
+                 stackImages(btnImg, exImg, ImageStackLayout::horizontal, ImageStackAlignment::center, dipToScreen(5)) :
+                 stackImages(exImg, btnImg, ImageStackLayout::horizontal, ImageStackAlignment::center, dipToScreen(5));
     }
 
-    wxSize btnSize = btnImg.GetSize() + wxSize(fastFromDIP(10), 0) /*border space*/;
-    btnSize.x = std::max(btnSize.x, fastFromDIP(TOP_BUTTON_OPTIMAL_WIDTH_DIP));
-
+    wxSize btnSize = btnImg.GetSize() + wxSize(dipToScreen(5 + 5), 0) /*border space*/;
+    btnSize.x = std::max(btnSize.x, dipToScreen(TOP_BUTTON_OPTIMAL_WIDTH_DIP));
+    btnSize.y += dipToScreen(2 + 2); //border space
     btnImg = resizeCanvas(btnImg, btnSize, wxALIGN_CENTER);
 
     if (highlightCol.IsOk())
@@ -554,18 +554,18 @@ MainDialog::MainDialog(const Zstring& globalConfigFilePath,
     folderHistoryRight_(std::make_shared<HistoryList>(globalSettings.mainDlg.folderHistoryRight, globalSettings.folderHistoryMax)),
     imgTrashSmall_([]
 {
-    try { return extractWxImage(fff::getTrashIcon(getDefaultMenuIconSize())); /*throw SysError*/ }
-    catch (SysError&) { assert(false); return loadImage("delete_recycler", getDefaultMenuIconSize()); }
+    try { return extractWxImage(fff::getTrashIcon(dipToScreen(getMenuIconDipSize()))); /*throw SysError*/ }
+    catch (SysError&) { assert(false); return loadImage("delete_recycler", dipToScreen(getMenuIconDipSize())); }
 }
 ()),
 
 imgFileManagerSmall_([]
 {
-    try { return extractWxImage(fff::getFileManagerIcon(getDefaultMenuIconSize())); /*throw SysError*/ }
-    catch (SysError&) { assert(false); return loadImage("file_manager", getDefaultMenuIconSize()); }
+    try { return extractWxImage(fff::getFileManagerIcon(dipToScreen(getMenuIconDipSize()))); /*throw SysError*/ }
+    catch (SysError&) { assert(false); return loadImage("file_manager", dipToScreen(getMenuIconDipSize())); }
 }())
 {
-    SetSizeHints(fastFromDIP(640), fastFromDIP(400));
+    SetSizeHints(dipToWxsize(640), dipToWxsize(400));
 
     //setup sash: detach + reparent:
     m_splitterMain->SetSizer(nullptr); //alas wxFormbuilder doesn't allow us to have child windows without a sizer, so we have to remove it here
@@ -605,13 +605,13 @@ imgFileManagerSmall_([]
     setImage(*m_bpButtonHideSearch, loadImage("close_panel"));
     setImage(*m_bpButtonToggleLog,  loadImage("log_file"));
 
-    m_bpButtonFilter   ->SetMinSize({loadImage("options_filter").GetWidth() + fastFromDIP(27), -1}); //make the filter button wider
-    m_textCtrlSearchTxt->SetMinSize({fastFromDIP(220), -1});
+    m_bpButtonFilter   ->SetMinSize({screenToWxsize(loadImage("options_filter").GetWidth()) + dipToWxsize(27), -1}); //make the filter button wider
+    m_textCtrlSearchTxt->SetMinSize({dipToWxsize(220), -1});
 
     //----------------------------------------------------------------------------------------
     wxImage labelImage = createImageFromText(_("Select view:"), m_bpButtonViewType->GetFont(), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNTEXT));
 
-    labelImage = resizeCanvas(labelImage, labelImage.GetSize() + wxSize(fastFromDIP(10), 0), wxALIGN_CENTER); //add border space
+    labelImage = resizeCanvas(labelImage, labelImage.GetSize() + wxSize(dipToScreen(10), 0), wxALIGN_CENTER); //add border space
 
     auto generateViewTypeImage = [&](const char* imgName)
     {
@@ -650,7 +650,7 @@ imgFileManagerSmall_([]
 
     wxImage imgTime = loadImage("time", -1 /*maxWidth*/, imgFile.GetHeight());
     setImage(*m_bitmapTimeStat, imgTime);
-    m_bitmapTimeStat->SetMinSize({-1, imgFile.GetHeight()});
+    m_bitmapTimeStat->SetMinSize({-1, screenToWxsize(imgFile.GetHeight())});
 
     logPanel_ = new LogPanel(m_panelLog); //pass ownership
     bSizerLog->Add(logPanel_, 1, wxEXPAND);
@@ -711,15 +711,15 @@ imgFileManagerSmall_([]
     updateTopButton(*m_buttonCompare, loadImage("compare"), getVariantName(CompareVariant::timeSize), "cmp_time", nullptr /*extraIconName*/, wxNullColour);
     m_panelTopButtons->GetSizer()->SetSizeHints(m_panelTopButtons); //~=Fit() + SetMinSize()
 
-    m_buttonCancel->SetMinSize({std::max(m_buttonCancel->GetSize().x, fastFromDIP(TOP_BUTTON_OPTIMAL_WIDTH_DIP)),
+    m_buttonCancel->SetMinSize({std::max(m_buttonCancel->GetSize().x, dipToWxsize(TOP_BUTTON_OPTIMAL_WIDTH_DIP)),
                                 std::max(m_buttonCancel->GetSize().y, m_buttonCompare->GetSize().y)
                                });
 
     auiMgr_.AddPane(m_panelTopButtons,
                     wxAuiPaneInfo().Name(L"TopPanel").Layer(2).Top().Row(1).Caption(_("Main Bar")).CaptionVisible(false).
                     PaneBorder(false).Gripper().
-                    //BestSize(-1, m_panelTopButtons->GetSize().GetHeight() + fastFromDIP(10)).
-                    MinSize(fastFromDIP(TOP_BUTTON_OPTIMAL_WIDTH_DIP), m_panelTopButtons->GetSize().GetHeight())
+                    //BestSize(-1, m_panelTopButtons->GetSize().GetHeight() + dipToWxsize(10)).
+                    MinSize(dipToWxsize(TOP_BUTTON_OPTIMAL_WIDTH_DIP), m_panelTopButtons->GetSize().GetHeight())
                    );
     //note: min height is calculated incorrectly by wxAuiManager if panes with and without caption are in the same row => use smaller min-size
 
@@ -734,22 +734,22 @@ imgFileManagerSmall_([]
                     /* yes, m_panelDirectoryPairs's min height is overwritten in updateGuiForFolderPair(), but the default height might be wrong
                        after increasing text size (Win10 Settings -> Accessibility -> Text size), e.g. to 150%:
                        auiMgr_.LoadPerspective will load a too small "dock_size", so m_panelTopLeft/m_panelTopCenter will have squashed height */
-                    MinSize(fastFromDIP(100), m_panelDirectoryPairs->GetSize().y));
+                    MinSize(dipToWxsize(100), m_panelDirectoryPairs->GetSize().y));
 
     m_panelSearch->GetSizer()->SetSizeHints(m_panelSearch); //~=Fit() + SetMinSize()
     auiMgr_.AddPane(m_panelSearch,
                     wxAuiPaneInfo().Name(L"SearchPanel").Layer(2).Bottom().Row(3).Caption(_("Find")).CaptionVisible(false).PaneBorder(false).Gripper().
-                    MinSize(fastFromDIP(100), m_panelSearch->GetSize().y).Hide());
+                    MinSize(dipToWxsize(100), m_panelSearch->GetSize().y).Hide());
 
     auiMgr_.AddPane(m_panelLog,
                     wxAuiPaneInfo().Name(L"LogPanel").Layer(2).Bottom().Row(2).Caption(_("Log")).MaximizeButton().Hide().
-                    MinSize (fastFromDIP(100), fastFromDIP(100)).
-                    BestSize(fastFromDIP(600), fastFromDIP(300)));
+                    MinSize (dipToWxsize(100), dipToWxsize(100)).
+                    BestSize(dipToWxsize(600), dipToWxsize(300)));
 
     m_panelViewFilter->GetSizer()->SetSizeHints(m_panelViewFilter); //~=Fit() + SetMinSize()
     auiMgr_.AddPane(m_panelViewFilter,
                     wxAuiPaneInfo().Name(L"ViewFilterPanel").Layer(2).Bottom().Row(1).Caption(_("View Settings")).CaptionVisible(false).
-                    PaneBorder(false).Gripper().MinSize(fastFromDIP(80), m_panelViewFilter->GetSize().y));
+                    PaneBorder(false).Gripper().MinSize(dipToWxsize(80), m_panelViewFilter->GetSize().y));
 
     m_panelConfig->GetSizer()->SetSizeHints(m_panelConfig); //~=Fit() + SetMinSize()
     auiMgr_.AddPane(m_panelConfig,
@@ -757,8 +757,8 @@ imgFileManagerSmall_([]
 
     auiMgr_.AddPane(m_gridOverview,
                     wxAuiPaneInfo().Name(L"OverviewPanel").Layer(3).Left().Position(2).Caption(_("Overview")).
-                    MinSize (fastFromDIP(100), fastFromDIP(100)).
-                    BestSize(fastFromDIP(300), -1));
+                    MinSize (dipToWxsize(100), dipToWxsize(100)).
+                    BestSize(dipToWxsize(300), -1));
     {
         wxAuiDockArt* artProvider = auiMgr_.GetArtProvider();
 
@@ -766,7 +766,7 @@ imgFileManagerSmall_([]
         font.SetWeight(wxFONTWEIGHT_BOLD);
         font.SetPointSize(wxNORMAL_FONT->GetPointSize()); //= larger than the wxAuiDockArt default; looks better on OS X
         artProvider->SetFont(wxAUI_DOCKART_CAPTION_FONT, font);
-        artProvider->SetMetric(wxAUI_DOCKART_CAPTION_SIZE, font.GetPixelSize().GetHeight() + fastFromDIP(2 + 2));
+        artProvider->SetMetric(wxAUI_DOCKART_CAPTION_SIZE, font.GetPixelSize().GetHeight() + dipToWxsize(2 + 2));
 
         //- fix wxWidgets 3.1.0 insane color scheme
         artProvider->SetColor(wxAUI_DOCKART_INACTIVE_CAPTION_TEXT_COLOUR, *wxWHITE); //accessibility: always set both foreground AND background colors!
@@ -853,25 +853,25 @@ imgFileManagerSmall_([]
     setImage(*m_bitmapSmallFileRight,      imgFile);
 
     //---------------------- menu bar----------------------------
-    setImage(*m_menuItemNew,         loadImage("cfg_new",   getDefaultMenuIconSize()));
-    setImage(*m_menuItemLoad,        loadImage("cfg_load",  getDefaultMenuIconSize()));
-    setImage(*m_menuItemSave,        loadImage("cfg_save",  getDefaultMenuIconSize()));
-    setImage(*m_menuItemSaveAsBatch, loadImage("cfg_batch", getDefaultMenuIconSize()));
+    setImage(*m_menuItemNew,         loadImage("cfg_new",   dipToScreen(getMenuIconDipSize())));
+    setImage(*m_menuItemLoad,        loadImage("cfg_load",  dipToScreen(getMenuIconDipSize())));
+    setImage(*m_menuItemSave,        loadImage("cfg_save",  dipToScreen(getMenuIconDipSize())));
+    setImage(*m_menuItemSaveAsBatch, loadImage("cfg_batch", dipToScreen(getMenuIconDipSize())));
 
-    setImage(*m_menuItemShowLog,      loadImage("log_file",        getDefaultMenuIconSize()));
-    setImage(*m_menuItemCompare,      loadImage("compare",         getDefaultMenuIconSize()));
-    setImage(*m_menuItemCompSettings, loadImage("options_compare", getDefaultMenuIconSize()));
-    setImage(*m_menuItemFilter,       loadImage("options_filter",  getDefaultMenuIconSize()));
-    setImage(*m_menuItemSyncSettings, loadImage("options_sync",    getDefaultMenuIconSize()));
-    setImage(*m_menuItemSynchronize,  loadImage("start_sync",      getDefaultMenuIconSize()));
+    setImage(*m_menuItemShowLog,      loadImage("log_file",        dipToScreen(getMenuIconDipSize())));
+    setImage(*m_menuItemCompare,      loadImage("compare",         dipToScreen(getMenuIconDipSize())));
+    setImage(*m_menuItemCompSettings, loadImage("options_compare", dipToScreen(getMenuIconDipSize())));
+    setImage(*m_menuItemFilter,       loadImage("options_filter",  dipToScreen(getMenuIconDipSize())));
+    setImage(*m_menuItemSyncSettings, loadImage("options_sync",    dipToScreen(getMenuIconDipSize())));
+    setImage(*m_menuItemSynchronize,  loadImage("start_sync",      dipToScreen(getMenuIconDipSize())));
 
-    setImage(*m_menuItemOptions,     loadImage("settings", getDefaultMenuIconSize()));
+    setImage(*m_menuItemOptions,     loadImage("settings", dipToScreen(getMenuIconDipSize())));
     setImage(*m_menuItemFind,        loadImage("find_sicon"));
     setImage(*m_menuItemResetLayout, loadImage("reset_sicon"));
 
-    setImage(*m_menuItemHelp,            loadImage("help",         getDefaultMenuIconSize()));
-    setImage(*m_menuItemAbout,           loadImage("about",        getDefaultMenuIconSize()));
-    setImage(*m_menuItemCheckVersionNow, loadImage("update_check", getDefaultMenuIconSize()));
+    setImage(*m_menuItemHelp,            loadImage("help",         dipToScreen(getMenuIconDipSize())));
+    setImage(*m_menuItemAbout,           loadImage("about",        dipToScreen(getMenuIconDipSize())));
+    setImage(*m_menuItemCheckVersionNow, loadImage("update_check", dipToScreen(getMenuIconDipSize())));
 
     fixMenuIcons(*m_menuFile);
     fixMenuIcons(*m_menuActions);
@@ -1114,7 +1114,7 @@ void MainDialog::setGlobalCfgOnInit(const XmlGlobalSettings& globalSettings)
     //caveat: set/get language asymmmetry! setLanguage(globalSettings.programLanguage); //throw FileError
     //we need to set language before creating this class!
 
-    WindowLayout::setInitial(*this, {layout.mainDlg.size, layout.mainDlg.pos, layout.mainDlg.isMaximized}, {fastFromDIP(900), fastFromDIP(600)} /*defaultSize*/);
+    WindowLayout::setInitial(*this, {layout.mainDlg.size, layout.mainDlg.pos, layout.mainDlg.isMaximized}, {dipToWxsize(900), dipToWxsize(600)} /*defaultSize*/);
 
     //set column attributes
     m_gridMainL   ->setColumnConfig(convertColAttributes(layout.fileColumnAttribsLeft,  getFileGridDefaultColAttribsLeft()));
@@ -2693,8 +2693,8 @@ void MainDialog::onTreeGridContext(GridContextMenuEvent& event)
             menu.addItem(label + L" <" + _("multiple selection") + L">",
                          [this, &selection, include] { addFilterPhrase(getFilterPhraseRel(selection, selection), include, true /*requireNewLine*/); }, img);
     };
-    addFilterMenu(_("&Include via filter:"), loadImage("filter_include", getDefaultMenuIconSize()), true);
-    addFilterMenu(_("&Exclude via filter:"), loadImage("filter_exclude", getDefaultMenuIconSize()), false);
+    addFilterMenu(_("&Include via filter:"), loadImage("filter_include", dipToScreen(getMenuIconDipSize())), true);
+    addFilterMenu(_("&Exclude via filter:"), loadImage("filter_exclude", dipToScreen(getMenuIconDipSize())), false);
     //----------------------------------------------------------------------------------------------------
     if (m_bpButtonShowExcluded->isActive() && !selection.empty() && !selection[0]->isActive())
         menu.addItem(_("Include temporarily") + L"\tSpace", [this, &selection] { setIncludedManually(selection, true); }, loadImage("checkbox_true"));
@@ -2709,7 +2709,8 @@ void MainDialog::onTreeGridContext(GridContextMenuEvent& event)
         return false;
     }();
     menu.addSeparator();
-    menu.addItem(_("&Synchronize selection") + L"\tEnter", [&] { startSyncForSelecction(selection); }, loadImage("start_sync_selection", getDefaultMenuIconSize()), selectionContainsItemsToSync);
+    menu.addItem(_("&Synchronize selection") + L"\tEnter", [&] { startSyncForSelecction(selection); },
+                 loadImage("start_sync_selection", dipToScreen(getMenuIconDipSize())), selectionContainsItemsToSync);
     //----------------------------------------------------------------------------------------------------
     const ptrdiff_t itemsSelected =
     std::count_if(selection.begin(), selection.end(), [](const FileSystemObject* fsObj) { return !fsObj->isEmpty<SelectSide::left >(); }) +
@@ -2721,7 +2722,7 @@ void MainDialog::onTreeGridContext(GridContextMenuEvent& event)
     menu.addSeparator();
 
     menu.addItem((itemsSelected > 1 ? _("Multi-&Rename") : _("&Rename")) + L"\tF2",
-                 [&] { renameSelectedFiles(selection, selection); }, loadImage("rename", getDefaultMenuIconSize()), itemsSelected > 0);
+                 [&] { renameSelectedFiles(selection, selection); }, loadImage("rename", dipToScreen(getMenuIconDipSize())), itemsSelected > 0);
 
     menu.addItem(_("&Delete") + L"\t(Shift+)Del", [&] { deleteSelectedFiles(selection, selection, true /*moveToRecycler*/); }, imgTrashSmall_, itemsSelected > 0);
 
@@ -2836,8 +2837,8 @@ void MainDialog::onGridContextRim(const std::vector<FileSystemObject*>& selectio
             menu.addItem(label + L" <" + _("multiple selection") + L">",
                          [this, &selectionL, &selectionR, include] { addFilterPhrase(getFilterPhraseRel(selectionL, selectionR), include, true /*requireNewLine*/); }, img);
     };
-    addFilterMenu(_("&Include via filter:"), loadImage("filter_include", getDefaultMenuIconSize()), true);
-    addFilterMenu(_("&Exclude via filter:"), loadImage("filter_exclude", getDefaultMenuIconSize()), false);
+    addFilterMenu(_("&Include via filter:"), loadImage("filter_include", dipToScreen(getMenuIconDipSize())), true);
+    addFilterMenu(_("&Exclude via filter:"), loadImage("filter_exclude", dipToScreen(getMenuIconDipSize())), false);
     //----------------------------------------------------------------------------------------------------
     if (m_bpButtonShowExcluded->isActive() && !selection.empty() && !selection[0]->isActive())
         menu.addItem(_("Include temporarily") + L"\tSpace", [this, &selection] { setIncludedManually(selection, true); }, loadImage("checkbox_true"));
@@ -2852,7 +2853,7 @@ void MainDialog::onGridContextRim(const std::vector<FileSystemObject*>& selectio
         return false;
     }();
     menu.addSeparator();
-    menu.addItem(_("&Synchronize selection") + L"\tEnter", [&] { startSyncForSelecction(selection); }, loadImage("start_sync_selection", getDefaultMenuIconSize()), selectionContainsItemsToSync);
+    menu.addItem(_("&Synchronize selection") + L"\tEnter", [&] { startSyncForSelecction(selection); }, loadImage("start_sync_selection", dipToScreen(getMenuIconDipSize())), selectionContainsItemsToSync);
     //----------------------------------------------------------------------------------------------------
     if (!globalCfg_.externalApps.empty())
     {
@@ -2890,7 +2891,7 @@ void MainDialog::onGridContextRim(const std::vector<FileSystemObject*>& selectio
     menu.addSeparator();
 
     menu.addItem((itemsSelected > 1 ? _("Multi-&Rename") : _("&Rename")) + L"\tF2",
-                 [&] { renameSelectedFiles(selectionL, selectionR); }, loadImage("rename", getDefaultMenuIconSize()), itemsSelected > 0);
+                 [&] { renameSelectedFiles(selectionL, selectionR); }, loadImage("rename", dipToScreen(getMenuIconDipSize())), itemsSelected > 0);
 
     menu.addItem(_("&Delete") + L"\t(Shift+)Del", [&] { deleteSelectedFiles(selectionL, selectionR, true /*moveToRecycler*/); }, imgTrashSmall_, itemsSelected > 0);
 
@@ -2956,8 +2957,11 @@ void MainDialog::onGridLabelContextC(GridLabelClickEvent& event)
     ContextMenu menu;
 
     const GridViewType viewType = m_bpButtonViewType->isActive() ? GridViewType::action : GridViewType::difference;
-    menu.addItem(_("Difference") + (viewType != GridViewType::difference ? L"\tF11" : L""), [&] { setGridViewType(GridViewType::difference); }, greyScaleIfDisabled(loadImage("compare", getDefaultMenuIconSize()), viewType == GridViewType::difference));
-    menu.addItem(_("Action")     + (viewType != GridViewType::action     ? L"\tF11" : L""), [&] { setGridViewType(GridViewType::action    ); }, greyScaleIfDisabled(loadImage("start_sync", getDefaultMenuIconSize()), viewType == GridViewType::action));
+    menu.addItem(_("Difference") + (viewType != GridViewType::difference ? L"\tF11" : L""),
+                 [&] { setGridViewType(GridViewType::difference); }, greyScaleIfDisabled(loadImage("compare", dipToScreen(getMenuIconDipSize())), viewType == GridViewType::difference));
+
+    menu.addItem(_("Action")     + (viewType != GridViewType::action ? L"\tF11" : L""),
+                 [&] { setGridViewType(GridViewType::action); }, greyScaleIfDisabled(loadImage("start_sync", dipToScreen(getMenuIconDipSize())), viewType == GridViewType::action));
     menu.popup(*m_gridMainC, {event.mousePos_.x, m_gridMainC->getColumnLabelHeight()});
 }
 
@@ -3166,7 +3170,7 @@ void MainDialog::onCompSettingsContext(wxEvent& event)
 
     auto addVariantItem = [&](CompareVariant cmpVar, const char* iconName)
     {
-        const wxImage imgSel = loadImage(iconName, -1 /*maxWidth*/, getDefaultMenuIconSize());
+        const wxImage imgSel = loadImage(iconName, -1 /*maxWidth*/, dipToScreen(getMenuIconDipSize()));
 
         menu.addItem(getVariantName(cmpVar), [&setVariant, cmpVar] { setVariant(cmpVar); }, greyScaleIfDisabled(imgSel, activeCmpVar == cmpVar));
     };
@@ -3192,7 +3196,7 @@ void MainDialog::onSyncSettingsContext(wxEvent& event)
 
     auto addVariantItem = [&](SyncVariant syncVar, const char* iconName)
     {
-        const wxImage imgSel = mirrorIfRtl(loadImage(iconName, -1 /*maxWidth*/, getDefaultMenuIconSize()));
+        const wxImage imgSel = mirrorIfRtl(loadImage(iconName, -1 /*maxWidth*/, dipToScreen(getMenuIconDipSize())));
 
         menu.addItem(getVariantName(syncVar), [&setVariant, syncVar] { setVariant(syncVar); }, greyScaleIfDisabled(imgSel, activeSyncVar == syncVar));
     };
@@ -3902,12 +3906,15 @@ void MainDialog::onCfgGridContext(GridContextMenuEvent& event)
         //m_gridCfgHistory->Refresh(); <- implicit in last call
     };
 
+    const wxSize colSize{this->GetCharHeight(), this->GetCharHeight()};
+
     auto addColorOption = [&](const wxColor& col, const wxString& name)
     {
         submenu.addItem(name, [&, col] { applyBackColor(col); },
-                        rectangleImage({this->GetCharHeight(), this->GetCharHeight()},
+                        rectangleImage({wxsizeToScreen(this->GetCharHeight()),
+                                        wxsizeToScreen(this->GetCharHeight())},
                                        col.Ok() ? col : wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW),
-        {0xdd, 0xdd, 0xdd} /*light grey*/, fastFromDIP(1)),
+        {0xdd, 0xdd, 0xdd} /*light grey*/, dipToScreen(1)),
         !selectedRows.empty());
     };
 
@@ -3933,15 +3940,16 @@ void MainDialog::onCfgGridContext(GridContextMenuEvent& event)
     }
 
     //show color picker
-    wxBitmap bmpColorPicker(this->GetCharHeight(), this->GetCharHeight()); //seems we don't need to pass 24-bit depth here even for high-contrast color schemes
-    bmpColorPicker.SetScaleFactor(getDisplayScaleFactor());
+    wxBitmap bmpColorPicker(wxsizeToScreen(colSize.x),
+                            wxsizeToScreen(colSize.y)); //seems we don't need to pass 24-bit depth here even for high-contrast color schemes
+    bmpColorPicker.SetScaleFactor(getScreenDpiScale());
     {
         wxMemoryDC dc(bmpColorPicker);
         const wxColor borderCol(0xdd, 0xdd, 0xdd); //light grey
-        drawFilledRectangle(dc, wxRect(bmpColorPicker.GetSize()), wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW), borderCol, fastFromDIP(1));
+        drawFilledRectangle(dc, wxRect(colSize), wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW), borderCol, dipToWxsize(1));
 
         dc.SetFont(dc.GetFont().Bold());
-        dc.DrawText(L"?", wxPoint() + (bmpColorPicker.GetSize() - dc.GetTextExtent(L"?")) / 2);
+        dc.DrawText(L"?", wxPoint() + (colSize - dc.GetTextExtent(L"?")) / 2);
     }
 
     submenu.addItem(_("Different color..."), [&]
@@ -3991,7 +3999,7 @@ void MainDialog::onCfgGridContext(GridContextMenuEvent& event)
                 inserted)
                 addColorOption(item.backColor, item.backColor.GetAsString(wxC2S_HTML_SYNTAX)); //#RRGGBB
 
-    menu.addSubmenu(_("Background color"), submenu, loadImage("color", getDefaultMenuIconSize()), !selectedRows.empty());
+    menu.addSubmenu(_("Background color"), submenu, loadImage("color", dipToScreen(getMenuIconDipSize())), !selectedRows.empty());
     menu.addSeparator();
     //--------------------------------------------------------------------------------------------------------
 
@@ -4029,7 +4037,7 @@ void MainDialog::onCfgGridContext(GridContextMenuEvent& event)
                 return !cfg->isLastRunCfg;
         return false;
     }();
-    menu.addItem(_("&Rename") + L"\tF2",  [this] { renameSelectedCfgHistoryItem (); }, loadImage("rename", getDefaultMenuIconSize()), renameEnabled);
+    menu.addItem(_("&Rename") + L"\tF2",  [this] { renameSelectedCfgHistoryItem (); }, loadImage("rename", dipToScreen(getMenuIconDipSize())), renameEnabled);
 
     //--------------------------------------------------------------------------------------------------------
     menu.addItem(_("&Hide")   + L"\tDel",       [this] { removeSelectedCfgHistoryItems(false /*deleteFromDisk*/); }, wxNullImage,    !selectedRows.empty());
@@ -4445,8 +4453,12 @@ void MainDialog::onViewTypeContextMouse(wxMouseEvent& event)
     ContextMenu menu;
 
     const GridViewType viewType = m_bpButtonViewType->isActive() ? GridViewType::action : GridViewType::difference;
-    menu.addItem(_("Difference") + (viewType != GridViewType::difference ? L"\tF11" : L""), [&] { setGridViewType(GridViewType::difference); }, greyScaleIfDisabled(loadImage("compare", getDefaultMenuIconSize()), viewType == GridViewType::difference));
-    menu.addItem(_("Action")     + (viewType != GridViewType::action     ? L"\tF11" : L""), [&] { setGridViewType(GridViewType::action    ); }, greyScaleIfDisabled(loadImage("start_sync", getDefaultMenuIconSize()), viewType == GridViewType::action));
+
+    menu.addItem(_("Difference") + (viewType != GridViewType::difference ? L"\tF11" : L""),
+                 [&] { setGridViewType(GridViewType::difference); }, greyScaleIfDisabled(loadImage("compare", dipToScreen(getMenuIconDipSize())), viewType == GridViewType::difference));
+
+    menu.addItem(_("Action")     + (viewType != GridViewType::action     ? L"\tF11" : L""),
+                 [&] { setGridViewType(GridViewType::action); }, greyScaleIfDisabled(loadImage("start_sync", dipToScreen(getMenuIconDipSize())), viewType == GridViewType::action));
 
     menu.popup(*m_bpButtonViewType, {m_bpButtonViewType->GetSize().x, 0});
 }
@@ -4486,7 +4498,7 @@ void MainDialog::onViewFilterContext(wxEvent& event)
         flashStatusInfo(_("View settings saved"));
     };
 
-    menu.addItem(_("&Save as default"), saveDefault, loadImage("cfg_save", getDefaultMenuIconSize()));
+    menu.addItem(_("&Save as default"), saveDefault, loadImage("cfg_save", dipToScreen(getMenuIconDipSize())));
     menu.popup(*m_bpButtonViewFilterContext, {m_bpButtonViewFilterContext->GetSize().x, 0});
 }
 
@@ -5199,11 +5211,11 @@ void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::s
         {
             const ErrorLogStats logCount = getStats(*errorLog);
             if (logCount.error > 0)
-                return loadImage("msg_error", getDefaultMenuIconSize());
+                return loadImage("msg_error", dipToScreen(getMenuIconDipSize()));
             if (logCount.warning > 0)
-                return loadImage("msg_warning", getDefaultMenuIconSize());
+                return loadImage("msg_warning", dipToScreen(getMenuIconDipSize()));
 
-            //return loadImage("msg_success", getDefaultMenuIconSize()); -> too noisy?
+            //return loadImage("msg_success", dipToScreen(getMenuIconDipSize())); -> too noisy?
         }
         return wxNullImage;
     }();
@@ -5452,11 +5464,11 @@ void MainDialog::updateGridViewData()
                 imgCountReleased = resizeCanvas(imgCountReleased, imgCountPressed.GetSize(), wxALIGN_CENTER); //match with imgCountPressed's bold font
 
                 //add bottom/right border space
-                imgCountPressed  = resizeCanvas(imgCountPressed,  imgCountPressed .GetSize() + wxSize(fastFromDIP(5), fastFromDIP(5)), wxALIGN_TOP | wxALIGN_LEFT);
-                imgCountReleased = resizeCanvas(imgCountReleased, imgCountReleased.GetSize() + wxSize(fastFromDIP(5), fastFromDIP(5)), wxALIGN_TOP | wxALIGN_LEFT);
+                imgCountPressed  = resizeCanvas(imgCountPressed,  imgCountPressed .GetSize() + wxSize(dipToScreen(5), dipToScreen(5)), wxALIGN_TOP | wxALIGN_LEFT);
+                imgCountReleased = resizeCanvas(imgCountReleased, imgCountReleased.GetSize() + wxSize(dipToScreen(5), dipToScreen(5)), wxALIGN_TOP | wxALIGN_LEFT);
 
                 wxImage imgCategory = loadImage(imgName);
-                imgCategory = resizeCanvas(imgCategory, imgCategory.GetSize() + wxSize(fastFromDIP(5), fastFromDIP(2)), wxALIGN_CENTER);
+                imgCategory = resizeCanvas(imgCategory, imgCategory.GetSize() + wxSize(dipToScreen(5), dipToScreen(2)), wxALIGN_CENTER);
 
                 wxImage imgIconReleased = imgCategory.ConvertToGreyscale(1.0/3, 1.0/3, 1.0/3); //treat all channels equally!
                 brighten(imgIconReleased, 80);
@@ -5956,8 +5968,8 @@ void MainDialog::updateGuiForFolderPair()
     wxAuiPaneInfo& dirPane = auiMgr_.GetPane(m_panelDirectoryPairs);
 
     //make sure user cannot fully shrink additional folder pairs
-    dirPane.MinSize(fastFromDIP(100), firstPairHeight + addPairCountMin * addPairHeight);
-    dirPane.BestSize(-1,              firstPairHeight + addPairCountOpt * addPairHeight);
+    dirPane.MinSize(dipToWxsize(100), firstPairHeight + addPairCountMin * addPairHeight);
+    dirPane.BestSize(-1,            firstPairHeight + addPairCountOpt * addPairHeight);
 
     //########################################################################################################################
     //wxAUI hack: call wxAuiPaneInfo::Fixed() to apply best size:

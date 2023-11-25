@@ -33,9 +33,9 @@ void setStandardButtonLayout(wxBoxSizer& sizer, const StdButtons& buttons = StdB
 
 
 inline
-int getDefaultMenuIconSize()
+constexpr int getMenuIconDipSize()
 {
-    return fastFromDIP(20);
+    return 20;
 }
 
 
@@ -43,7 +43,7 @@ inline
 int getDefaultButtonHeight()
 {
     const int defaultHeight = wxButton::GetDefaultSize().GetHeight(); //buffered by wxWidgets
-    return std::max(defaultHeight, fastFromDIP(31)); //default button height is much too small => increase!
+    return std::max(defaultHeight, dipToWxsize(31)); //default button height is much too small => increase!
 }
 
 
@@ -62,9 +62,9 @@ void setStandardButtonLayout(wxBoxSizer& sizer, const StdButtons& buttons)
     assert(sizer.GetOrientation() == wxHORIZONTAL);
 
     //GNOME Human Interface Guidelines: https://developer.gnome.org/hig-book/3.2/hig-book.html#alert-spacing
-    const int spaceH    = fastFromDIP( 6); //OK
-    const int spaceRimH = fastFromDIP(12); //OK
-    const int spaceRimV = fastFromDIP(12); //OK
+    const int spaceH    = dipToWxsize( 6); //OK
+    const int spaceRimH = dipToWxsize(12); //OK
+    const int spaceRimV = dipToWxsize(12); //OK
 
     StdButtons buttonsTmp = buttons;
 

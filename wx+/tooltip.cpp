@@ -75,8 +75,10 @@ void Tooltip::show(const wxString& text, wxPoint mousePos, const wxImage* img)
     if (txtChanged)
     {
         lastUsedText_ = text;
+        {
             tipWindow_->staticTextMain_->SetLabelText(text);
-        tipWindow_->staticTextMain_->Wrap(fastFromDIP(600));
+            tipWindow_->staticTextMain_->Wrap(dipToWxsize(600));
+        }
     }
 
     if (imgChanged || txtChanged)
@@ -88,8 +90,8 @@ void Tooltip::show(const wxString& text, wxPoint mousePos, const wxImage* img)
 #endif
 
     const wxPoint newPos = wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft ?
-                           mousePos - wxPoint(fastFromDIP(TIP_WINDOW_OFFSET_DIP) + tipWindow_->GetSize().GetWidth(), 0) :
-                           mousePos + wxPoint(fastFromDIP(TIP_WINDOW_OFFSET_DIP),                                    0);
+                           mousePos - wxPoint(dipToWxsize(TIP_WINDOW_OFFSET_DIP) + tipWindow_->GetSize().GetWidth(), 0) :
+                           mousePos + wxPoint(dipToWxsize(TIP_WINDOW_OFFSET_DIP),                                    0);
 
     if (newPos != tipWindow_->GetScreenPosition())
         tipWindow_->Move(newPos);

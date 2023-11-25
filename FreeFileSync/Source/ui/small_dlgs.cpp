@@ -55,11 +55,15 @@ public:
     AboutDlg(wxWindow* parent);
 
 private:
-    void onOkay  (wxCommandEvent& event) override { EndModal(static_cast<int>(ConfirmationButton::accept)); }
-    void onClose (wxCloseEvent&   event) override { EndModal(static_cast<int>(ConfirmationButton::cancel)); }
+    void onOkay (wxCommandEvent& event) override { EndModal(static_cast<int>(ConfirmationButton::accept)); }
+    void onClose(wxCloseEvent&   event) override { EndModal(static_cast<int>(ConfirmationButton::cancel)); }
     void onOpenForum(wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://freefilesync.org/forum"); }
-    void onSendEmail(wxCommandEvent& event) override { wxLaunchDefaultBrowser(wxString() + L"mailto:zenju@" + /*don't leave full email in either source or binary*/ L"freefilesync.org"); }
     void onDonate   (wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://freefilesync.org/donate"); }
+    void onSendEmail(wxCommandEvent& event) override
+    {
+        wxLaunchDefaultBrowser(wxString() + L"mailto:zenju@" +
+                               /*don't leave full email in either source or binary*/ L"freefilesync.org");
+    }
 
     void onLocalKeyEvent(wxKeyEvent& event);
 };
@@ -105,15 +109,15 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
         m_staticTextDonate->Hide(); //temporarily! => avoid impact to dialog width
 
         setRelativeFontSize(*m_buttonDonate1, 1.25);
-        setBitmapTextLabel(*m_buttonDonate1, loadImage("ffs_heart", fastFromDIP(28)), m_buttonDonate1->GetLabelText());
+        setBitmapTextLabel(*m_buttonDonate1, loadImage("ffs_heart", dipToScreen(28)), m_buttonDonate1->GetLabelText());
 
         m_buttonShowSupporterDetails->Hide();
         m_buttonDonate2->Hide();
     }
 
     //--------------------------------------------------------------------------
-    m_staticTextThanksForLoc->SetMinSize({fastFromDIP(200), -1});
-    m_staticTextThanksForLoc->Wrap(fastFromDIP(200));
+    m_staticTextThanksForLoc->SetMinSize({dipToWxsize(200), -1});
+    m_staticTextThanksForLoc->Wrap(dipToWxsize(200));
 
     const int scrollDelta = GetCharHeight();
     m_scrolledWindowTranslators->SetScrollRate(scrollDelta, scrollDelta);
@@ -152,7 +156,7 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
         const int imageWidth = (m_panelDonate->GetSize().GetWidth() - 5 - 5 - 5 /* grey border*/) / 2;
         const int textWidth  =  m_panelDonate->GetSize().GetWidth() - 5 - 5 - 5 - imageWidth;
 
-        setImage(*m_bitmapAnimalSmall, shrinkImage(animalImg, imageWidth, -1 /*maxHeight*/));
+        setImage(*m_bitmapAnimalSmall, shrinkImage(animalImg, wxsizeToScreen(imageWidth), -1 /*maxHeight*/));
 
         m_staticTextDonate->Show();
         m_staticTextDonate->Wrap(textWidth - 10 /*left gap*/); //wrap *after* changing font size
@@ -269,12 +273,12 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, Zstrin
     setRelativeFontSize(*m_toggleBtnSftp,   1.25);
     setRelativeFontSize(*m_toggleBtnFtp,    1.25);
 
-    setBitmapTextLabel(*m_buttonGdriveAddUser,    loadImage("user_add",    fastFromDIP(20)), m_buttonGdriveAddUser   ->GetLabelText());
-    setBitmapTextLabel(*m_buttonGdriveRemoveUser, loadImage("user_remove", fastFromDIP(20)), m_buttonGdriveRemoveUser->GetLabelText());
+    setBitmapTextLabel(*m_buttonGdriveAddUser,    loadImage("user_add",    dipToScreen(20)), m_buttonGdriveAddUser   ->GetLabelText());
+    setBitmapTextLabel(*m_buttonGdriveRemoveUser, loadImage("user_remove", dipToScreen(20)), m_buttonGdriveRemoveUser->GetLabelText());
 
-    setImage(*m_bitmapGdriveUser,  loadImage("user",   fastFromDIP(20)));
-    setImage(*m_bitmapGdriveDrive, loadImage("drive",  fastFromDIP(20)));
-    setImage(*m_bitmapServer,      loadImage("server", fastFromDIP(20)));
+    setImage(*m_bitmapGdriveUser,  loadImage("user",   dipToScreen(20)));
+    setImage(*m_bitmapGdriveDrive, loadImage("drive",  dipToScreen(20)));
+    setImage(*m_bitmapServer,      loadImage("server", dipToScreen(20)));
     setImage(*m_bitmapCloud,       loadImage("cloud"));
     setImage(*m_bitmapPerf,        loadImage("speed"));
     setImage(*m_bitmapServerDir, IconBuffer::genericDirIcon(IconBuffer::IconSize::small));
@@ -282,9 +286,9 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, Zstrin
     m_checkBoxPasswordPrompt->SetValue(false);
 
     m_textCtrlServer->SetHint(_("Example:") + L"    website.com    66.198.240.22");
-    m_textCtrlServer->SetMinSize({fastFromDIP(260), -1});
+    m_textCtrlServer->SetMinSize({dipToWxsize(260), -1});
 
-    m_textCtrlPort->SetMinSize({fastFromDIP(60), -1});
+    m_textCtrlPort->SetMinSize({dipToWxsize(60), -1});
     setDefaultWidth(*m_spinCtrlConnectionCount);
     setDefaultWidth(*m_spinCtrlChannelCountSftp);
     setDefaultWidth(*m_spinCtrlTimeout);
@@ -944,7 +948,7 @@ CopyToDialog::CopyToDialog(wxWindow* parent,
 
     m_targetFolderPath->setHistory(std::make_shared<HistoryList>(folderHistory, folderHistoryMax));
 
-    m_textCtrlFileList->SetMinSize({fastFromDIP(500), fastFromDIP(200)});
+    m_textCtrlFileList->SetMinSize({dipToWxsize(500), dipToWxsize(200)});
 
     /*  There is a nasty bug on wxGTK under Ubuntu: If a multi-line wxTextCtrl contains so many lines that scrollbars are shown,
         it re-enables all windows that are supposed to be disabled during the current modal loop!
@@ -954,7 +958,7 @@ CopyToDialog::CopyToDialog(wxWindow* parent,
 
     m_staticTextHeader->SetLabelText(_P("Copy the following item to another folder?",
                                         "Copy the following %x items to another folder?", itemCount));
-    m_staticTextHeader->Wrap(fastFromDIP(460)); //needs to be reapplied after SetLabel()
+    m_staticTextHeader->Wrap(dipToWxsize(460)); //needs to be reapplied after SetLabel()
 
     m_textCtrlFileList->ChangeValue(itemList);
 
@@ -1066,7 +1070,7 @@ DeleteDialog::DeleteDialog(wxWindow* parent,
 
     setMainInstructionFont(*m_staticTextHeader);
 
-    m_textCtrlFileList->SetMinSize({fastFromDIP(500), fastFromDIP(200)});
+    m_textCtrlFileList->SetMinSize({dipToWxsize(500), dipToWxsize(200)});
 
     wxString itemList2(itemList);
     trim(itemList2); //remove trailing newline
@@ -1110,7 +1114,7 @@ void DeleteDialog::updateGui()
                                             "Do you really want to delete the following %x items?", itemCount_));
         m_buttonOK->SetLabelText(wxControl::RemoveMnemonics(_("&Delete"))); //no access key needed: use ENTER!
     }
-    m_staticTextHeader->Wrap(fastFromDIP(460)); //needs to be reapplied after SetLabel()
+    m_staticTextHeader->Wrap(dipToWxsize(460)); //needs to be reapplied after SetLabel()
 
     Layout();
     Refresh(); //needed after m_buttonOK label change
@@ -1195,7 +1199,7 @@ SyncConfirmationDlg::SyncConfirmationDlg(wxWindow* parent,
             //*INDENT-ON*
         }
     if (varImgName)
-        setImage(*m_bitmapSyncVar, loadImage(varImgName, -1 /*maxWidth*/, getDefaultMenuIconSize()));
+        setImage(*m_bitmapSyncVar, loadImage(varImgName, -1 /*maxWidth*/, dipToScreen(getMenuIconDipSize())));
 
     m_checkBoxDontShowAgain->SetValue(dontShowAgain);
 
@@ -1381,8 +1385,8 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalCfg) :
 
     const wxImage imgFileManagerSmall_([]
     {
-        try { return extractWxImage(fff::getFileManagerIcon(fastFromDIP(20))); /*throw SysError*/ }
-        catch (SysError&) { assert(false); return loadImage("file_manager", fastFromDIP(20)); }
+        try { return extractWxImage(fff::getFileManagerIcon(dipToScreen(20))); /*throw SysError*/ }
+        catch (SysError&) { assert(false); return loadImage("file_manager", dipToScreen(20)); }
     }());
     setImage(*m_bpButtonShowLogFolder, imgFileManagerSmall_);
     m_bpButtonShowLogFolder->SetToolTip(translate(extCommandFileManager.description));//translate default external apps on the fly: "Show in Explorer"
@@ -1397,13 +1401,13 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalCfg) :
     setDefaultWidth(*m_spinCtrlLogFilesMaxAge);
 
     setImage(*m_bitmapSettings,           loadImage("settings"));
-    setImage(*m_bitmapWarnings,           loadImage("msg_warning", fastFromDIP(20)));
-    setImage(*m_bitmapLogFile,            loadImage("log_file",    fastFromDIP(20)));
+    setImage(*m_bitmapWarnings,           loadImage("msg_warning", dipToScreen(20)));
+    setImage(*m_bitmapLogFile,            loadImage("log_file",    dipToScreen(20)));
     setImage(*m_bitmapNotificationSounds, loadImage("notification_sounds"));
-    setImage(*m_bitmapConsole,            loadImage("command_line", fastFromDIP(20)));
-    setImage(*m_bitmapCompareDone,        loadImage("compare", fastFromDIP(20)));
-    setImage(*m_bitmapSyncDone,           loadImage("start_sync", fastFromDIP(20)));
-    setImage(*m_bitmapAlertPending,       loadImage("msg_error", fastFromDIP(20)));
+    setImage(*m_bitmapConsole,            loadImage("command_line", dipToScreen(20)));
+    setImage(*m_bitmapCompareDone,        loadImage("compare",      dipToScreen(20)));
+    setImage(*m_bitmapSyncDone,           loadImage("start_sync",   dipToScreen(20)));
+    setImage(*m_bitmapAlertPending,       loadImage("msg_error",    dipToScreen(20)));
     setImage(*m_bpButtonPlayCompareDone,  loadImage("play_sound"));
     setImage(*m_bpButtonPlaySyncDone,     loadImage("play_sound"));
     setImage(*m_bpButtonPlayAlertPending, loadImage("play_sound"));
@@ -1579,7 +1583,7 @@ void OptionsDlg::playSoundWithDiagnostics(const wxString& filePath)
     try
     {
         //::PlaySound() on Windows does not set last error!
-        //wxSound::Play(..., wxSOUND_SYNC) can return false, but also without details!
+        //wxSound::Play(..., wxSOUND_SYNC) can return "false", but also without details!
         //=> check file access manually:
         [[maybe_unused]] const std::string& stream = getFileContent(utfTo<Zstring>(filePath), nullptr /*notifyUnbufferedIO*/); //throw FileError
 
@@ -1897,7 +1901,7 @@ PasswordPromptDlg::PasswordPromptDlg(wxWindow* parent, const std::wstring& msg, 
     const int maxWidthDip = 600;
 
     m_staticTextMain->SetLabelText(msg);
-    m_staticTextMain->Wrap(fastFromDIP(maxWidthDip));
+    m_staticTextMain->Wrap(dipToWxsize(maxWidthDip));
 
     m_checkBoxShowPassword->SetValue(false);
 
@@ -1906,10 +1910,10 @@ PasswordPromptDlg::PasswordPromptDlg(wxWindow* parent, const std::wstring& msg, 
     bSizerError->Show(!lastErrorMsg.empty());
     if (!lastErrorMsg.empty())
     {
-        setImage(*m_bitmapError, loadImage("msg_error", fastFromDIP(32)));
+        setImage(*m_bitmapError, loadImage("msg_error", dipToWxsize(32)));
 
         m_staticTextError->SetLabelText(lastErrorMsg);
-        m_staticTextError->Wrap(fastFromDIP(maxWidthDip) - m_bitmapError->GetSize().x - 10 /*border in non-DIP pixel*/);
+        m_staticTextError->Wrap(dipToWxsize(maxWidthDip) - m_bitmapError->GetSize().x - 10 /*border in non-DIP pixel*/);
     }
 
     //set up default view for dialog size calculation
@@ -1995,7 +1999,7 @@ CfgHighlightDlg::CfgHighlightDlg(wxWindow* parent, int& cfgHistSyncOverdueDays) 
 {
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
 
-    m_staticTextHighlight->Wrap(fastFromDIP(300));
+    m_staticTextHighlight->Wrap(dipToWxsize(300));
 
     setDefaultWidth(*m_spinCtrlOverdueDays);
 
@@ -2060,9 +2064,9 @@ ActivationDlg::ActivationDlg(wxWindow* parent,
 
     //setMainInstructionFont(*m_staticTextMain);
 
-    m_richTextLastError          ->SetMinSize({-1, m_richTextLastError          ->GetCharHeight() * 7});
+    m_richTextLastError          ->SetMinSize({-1, m_richTextLastError          ->GetCharHeight() * 8});
     m_richTextManualActivationUrl->SetMinSize({-1, m_richTextManualActivationUrl->GetCharHeight() * 4});
-    m_textCtrlOfflineActivationKey->SetMinSize({fastFromDIP(260), -1});
+    m_textCtrlOfflineActivationKey->SetMinSize({dipToWxsize(260), -1});
 
     setImage(*m_bitmapActivation, loadImage("internet"));
     m_textCtrlOfflineActivationKey->ForceUpper();
@@ -2170,9 +2174,9 @@ DownloadProgressWindow::Impl::Impl(wxWindow* parent, int64_t fileSizeTotal) :
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setCancel(m_buttonCancel));
 
     setMainInstructionFont(*m_staticTextHeader);
-    m_staticTextHeader->Wrap(fastFromDIP(460)); //*after* font change!
+    m_staticTextHeader->Wrap(dipToWxsize(460)); //*after* font change!
 
-    m_staticTextDetails->SetMinSize({fastFromDIP(550), -1});
+    m_staticTextDetails->SetMinSize({dipToWxsize(550), -1});
 
     setImage(*m_bitmapDownloading, loadImage("internet"));
 

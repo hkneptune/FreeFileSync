@@ -390,18 +390,24 @@ public:
 
         //CURLOPT_TIMEOUT: "Since this puts a hard limit for how long time a request is allowed to take, it has limited use in dynamic use cases with varying transfer times."
         setCurlOption({CURLOPT_LOW_SPEED_TIME, *timeoutSec}); //throw SysError
-        setCurlOption({CURLOPT_LOW_SPEED_LIMIT, 1}); //throw SysError
-        ; //[bytes], can't use "0" which means "inactive", so use some low number
+        setCurlOption({CURLOPT_LOW_SPEED_LIMIT, 1 /*[bytes]*/}); //throw SysError
+        //can't use "0" which means "inactive", so use some low number
 
-        //unlike CURLOPT_TIMEOUT, this one is NOT a limit on the total transfer time
         setCurlOption({CURLOPT_SERVER_RESPONSE_TIMEOUT, *timeoutSec}); //throw SysError
-        //== alias of CURLOPT_SERVER_RESPONSE_TIMEOUT
+        //FTP only; unlike CURLOPT_TIMEOUT, this one is NOT a limit on the total transfer time
 
         //CURLOPT_ACCEPTTIMEOUT_MS? => only relevant for "active" FTP connections
 
-        //long-running file uploads require us to send keep-alives for the TCP control connection: https://freefilesync.org/forum/viewtopic.php?t=6928
+        //long-running file uploads require keep-alives for the TCP control connection: https://freefilesync.org/forum/viewtopic.php?t=6928
         setCurlOption({CURLOPT_TCP_KEEPALIVE, 1}); //throw SysError
         //=> CURLOPT_TCP_KEEPIDLE (=delay) and CURLOPT_TCP_KEEPINTVL both default to 60 sec
+
+warn_static("remove after test") //https://freefilesync.org/forum/viewtopic.php?p=41482#p41482
+#if 0
+        setCurlOption({CURLOPT_TCP_KEEPIDLE,  30 /*[sec]*/}); //throw SysError
+        setCurlOption({CURLOPT_TCP_KEEPINTVL, 30 /*[sec]*/}); //throw SysError
+#endif
+
 
 
         std::optional<SysError> socketException;
@@ -1443,9 +1449,9 @@ private:
                 switch (line[0])
                 {
                     //*INDENT-OFF*
-                    case 'd': return dirOwnerGroupCount;
+                    case 'd': return  dirOwnerGroupCount;
                     case 'l': return linkOwnerGroupCount;
-                    default: return fileOwnerGroupCount;
+                    default : return fileOwnerGroupCount;
                     //*INDENT-ON*
                 }
             }();
@@ -1454,19 +1460,20 @@ private:
             if (!ownerGroupCount)
                 ownerGroupCount = [&]
             {
+                std::optional<SysError> firstError;
+
                 for (int i = 3; i-- > 0;)
                     try
                     {
                         parseUnixLine(line, utcTimeNow, utcCurrentYear, i /*ownerGroupCount*/, session); //throw SysError
                         return i;
                     }
-                    catch (SysError&)
+                    catch (const SysError& e)
                     {
-                        if (i == 0)
-                            throw;
+                        if (!firstError)
+                            firstError = e;
                     }
-                assert(false);
-                return 1234; //placate bogus compiler warning: "not all control paths return a value"
+                throw* firstError; //most likely the relevant one: https://freefilesync.org/forum/viewtopic.php?t=10798
             }();
 
             const FtpItem item = parseUnixLine(line, utcTimeNow, utcCurrentYear, *ownerGroupCount, session); //throw SysError
@@ -1585,7 +1592,7 @@ private:
             {
                 timeComp.year = stringTo<int>(timeOrYear);
 
-                if (timeComp.year < 1600 || timeComp.year > utcCurrentYear + 1 /*leeway*/)
+                if (timeComp.year < 1600 || timeComp.year >= 3000)
                     throw SysError(L"Failed to parse modification time.");
             }
             else

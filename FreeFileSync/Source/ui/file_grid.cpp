@@ -236,7 +236,7 @@ struct IconManager
         }
     }
 
-    int getIconSize() const { return iconBuffer_ ? iconBuffer_->getSize() : IconBuffer::getSize(IconBuffer::IconSize::small); }
+    int getIconWxsize() const { return screenToWxsize(iconBuffer_ ? iconBuffer_->getPixSize() : IconBuffer::getPixSize(IconBuffer::IconSize::small)); }
 
     IconBuffer* getIconBuffer() { return iconBuffer_.get(); }
     void startIconUpdater() { assert(iconUpdater_); if (iconUpdater_) iconUpdater_->start(); }
@@ -549,7 +549,7 @@ private:
             GridData::renderRowBackgound(dc, rect, row, true /*enabled*/, true /*selected*/, rowHover);
 
         //----------------------------------------------------------------------------------
-        const wxRect rectLine(rect.x, rect.y + rect.height - fastFromDIP(1), rect.width, fastFromDIP(1));
+        const wxRect rectLine(rect.x, rect.y + rect.height - dipToWxsize(1), rect.width, dipToWxsize(1));
         clearArea(dc, rectLine, row == pdi.groupLastRow - 1 /*last group item*/ ?
                   getColorGridLine() : getDefaultBackgroundColorAlternating(pdi.groupIdx % 2 != 0));
     }
@@ -616,7 +616,7 @@ private:
         assert(pdi.fsObj);
 
         const bool drawFileIcons = getIconManager().getIconBuffer();
-        const int iconSize       = getIconManager().getIconSize();
+        const int iconSize       = getIconManager().getIconWxsize();
 
         //--------------------------------------------------------------------
         const int ellipsisWidth = getTextExtentBuffered(dc, ELLIPSIS).x;
@@ -683,7 +683,7 @@ private:
         int       groupNameWidth    = groupName.empty() ? 0 : (gapSize_ + iconSize + gapSize_ + getTextExtentBuffered(dc, groupName).x);
         const int groupNameMinWidth = groupName.empty() ? 0 : (gapSize_ + iconSize + gapSize_ + ellipsisWidth);
 
-        const int groupSepWidth = (groupParentFolder.empty() && groupName.empty()) ? 0 : (2 * gapSize_ + fastFromDIP(1));
+        const int groupSepWidth = (groupParentFolder.empty() && groupName.empty()) ? 0 : (2 * gapSize_ + dipToWxsize(1));
 
         int       groupItemsWidth    = groupSepWidth + (drawFileIcons ? gapSize_ + iconSize : 0) + gapSize_ + groupItemNamesWidth;
         const int groupItemsMinWidth = groupSepWidth + (drawFileIcons ? gapSize_ + iconSize : 0) + gapSize_ + ellipsisWidth;
@@ -802,12 +802,12 @@ private:
                                 if (const auto& [cudAction, cudSide] = getCudAction(syncOp);
                                     cudAction != CudAction::noChange && side == cudSide)
                                 {
-                                    rectCud.width = gapSize_ + IconBuffer::getSize(IconBuffer::IconSize::small);
+                                    rectCud.width = gapSize_ + screenToWxsize(IconBuffer::getPixSize(IconBuffer::IconSize::small));
                                     //fixed-size looks fine for all icon sizes! use same width even if file icons are disabled!
                                     clearArea(dc, rectCud, getBackGroundColorSyncAction(syncOp));
 
                                     rectCud.x += rectCud.width;
-                                    rectCud.width = gapSize_ + fastFromDIP(2);
+                                    rectCud.width = gapSize_ + dipToWxsize(2);
 
 #if 0 //wxDC::GetPixel() is broken in GTK3! https://github.com/wxWidgets/wxWidgets/issues/14067
                                     wxColor backCol = wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW);
@@ -827,10 +827,10 @@ private:
                             isNavMarked(*pdi.fsObj) &&
                             (!enabled || !selected))
                         {
-                            rectNav.width = std::min(rectNav.width, fastFromDIP(10));
+                            rectNav.width = std::min(rectNav.width, dipToWxsize(10));
 
                             if (row == pdi.groupLastRow - 1 /*last group item*/) //preserve the group separation line!
-                                rectNav.height -= fastFromDIP(1);
+                                rectNav.height -= dipToWxsize(1);
 
                             dc.GradientFillLinear(rectNav, getColorSelectionGradientFrom(), getColorSelectionGradientTo(), wxEAST);
                             navMarkerDrawn = true;
@@ -846,7 +846,7 @@ private:
                             icon = icon.ConvertToDisabled();
 
                         rectIcon.x += gapSize_;
-                        rectIcon.width = getIconManager().getIconSize(); //center smaller-than-default icons
+                        rectIcon.width = getIconManager().getIconWxsize(); //center smaller-than-default icons
                         drawBitmapRtlNoMirror(dc, icon, rectIcon, wxALIGN_CENTER);
                     };
 
@@ -928,7 +928,7 @@ private:
                             rectGroupBack.width += 2 * gapSize_; //include gap before vline
 
                             if (row == pdi.groupLastRow - 1 /*last group item*/) //preserve the group separation line!
-                                rectGroupBack.height -= fastFromDIP(1);
+                                rectGroupBack.height -= dipToWxsize(1);
 
                             clearArea(dc, rectGroupBack, getDefaultBackgroundColorAlternating(pdi.groupIdx % 2 == 0));
                             //clearArea() is surprisingly expensive => call just once!
@@ -957,7 +957,7 @@ private:
 
                             if (!itemName.empty())
                                 rectGroupNameBack.width += 2 * gapSize_; //include gap left of item vline
-                            rectGroupNameBack.height -= fastFromDIP(1); //harmonize with item separation lines
+                            rectGroupNameBack.height -= dipToWxsize(1); //harmonize with item separation lines
 
                             wxDCTextColourChanger textColorGroupName(dc);
                             //folder background: coordinate with renderRowBackgound()
@@ -979,13 +979,13 @@ private:
                                 drawAsLink = pdi.folderGroupObj->isFollowedSymlink<side>();
                             }
                             drawFileIcon(folderIcon, drawAsLink, rectGroupName, *pdi.folderGroupObj);
-                            rectGroupName.x     += gapSize_ + getIconManager().getIconSize() + gapSize_;
-                            rectGroupName.width -= gapSize_ + getIconManager().getIconSize() + gapSize_;
+                            rectGroupName.x     += gapSize_ + getIconManager().getIconWxsize() + gapSize_;
+                            rectGroupName.width -= gapSize_ + getIconManager().getIconWxsize() + gapSize_;
 
                             //mouse highlight: group name
                             if (static_cast<HoverAreaGroup>(rowHover) == HoverAreaGroup::groupName ||
                                 (static_cast<HoverAreaGroup>(rowHover) == HoverAreaGroup::item && pdi.fsObj == pdi.folderGroupObj /*exception: extend highlight*/))
-                                drawRectangleBorder(dc, rectGroupNameBack, *wxBLUE, fastFromDIP(1));
+                                drawRectangleBorder(dc, rectGroupNameBack, *wxBLUE, dipToWxsize(1));
 
                             if (!pdi.folderGroupObj->isEmpty<side>())
                                 drawCellText(dc, rectGroupName, groupName, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, &getTextExtentBuffered(dc, groupName));
@@ -1001,16 +1001,17 @@ private:
                             rectGroupItems.x     += 2 * gapSize_;
                             rectGroupItems.width -= 2 * gapSize_;
 
-                            wxDCPenChanger dummy(dc, wxPen(getColorGridLine(), fastFromDIP(1)));
-                            dc.DrawLine(rectGroupItems.GetTopLeft(), rectGroupItems.GetBottomLeft() + wxPoint(0, 1)); //DrawLine() doesn't draw last pixel!
+                            wxRect rectLine = rectGroupItems;
+                            rectLine.width = dipToWxsize(1);
+                            clearArea(dc, rectLine, getColorGridLine());
 
-                            rectGroupItems.x     += fastFromDIP(1);
-                            rectGroupItems.width -= fastFromDIP(1);
+                            rectGroupItems.x     += dipToWxsize(1);
+                            rectGroupItems.width -= dipToWxsize(1);
                         }
                         //-------------------------------------------------------------------------
 
                         wxRect rectItemsBack = rectGroupItems;
-                        rectItemsBack.height -= fastFromDIP(1); //preserve item separation lines!
+                        rectItemsBack.height -= dipToWxsize(1); //preserve item separation lines!
 
                         drawCudHighlight(rectItemsBack, pdi.fsObj->getSyncOperation());
                         tryDrawNavMarker(rectGroupItems);
@@ -1047,8 +1048,8 @@ private:
                                     break;
                             }
                             drawFileIcon(fileIcon, ii.drawAsLink, rectGroupItems, *pdi.fsObj);
-                            rectGroupItems.x     += gapSize_ + getIconManager().getIconSize();
-                            rectGroupItems.width -= gapSize_ + getIconManager().getIconSize();
+                            rectGroupItems.x     += gapSize_ + getIconManager().getIconWxsize();
+                            rectGroupItems.width -= gapSize_ + getIconManager().getIconWxsize();
                         }
 
                         rectGroupItems.x     += gapSize_;
@@ -1056,7 +1057,7 @@ private:
 
                         //mouse highlight: item name
                         if (static_cast<HoverAreaGroup>(rowHover) == HoverAreaGroup::item)
-                            drawRectangleBorder(dc, rectItemsBack, *wxBLUE, fastFromDIP(1));
+                            drawRectangleBorder(dc, rectItemsBack, *wxBLUE, dipToWxsize(1));
 
                         if (!pdi.fsObj->isEmpty<side>())
                             drawCellText(dc, rectGroupItems, itemName, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, &getTextExtentBuffered(dc, itemName));
@@ -1141,8 +1142,8 @@ private:
                              groupNameWidth] = getGroupRenderLayout(dc, row, pdi, insanelyHugeWidth);
                 assert(!stackedGroupRender);
 
-                const int groupSepWidth = (groupParentFolder.empty() && groupName.empty()) ? 0 : (2 * gapSize_ + fastFromDIP(1));
-                const int fileIconWidth = getIconManager().getIconBuffer() ? gapSize_ + getIconManager().getIconSize() : 0;
+                const int groupSepWidth = (groupParentFolder.empty() && groupName.empty()) ? 0 : (2 * gapSize_ + dipToWxsize(1));
+                const int fileIconWidth = getIconManager().getIconBuffer() ? gapSize_ + getIconManager().getIconWxsize() : 0;
                 const int ellipsisWidth = getTextExtentBuffered(dc, ELLIPSIS).x;
                 const int itemWidth = itemName.empty() ? 0 :
                                       (groupSepWidth + fileIconWidth + gapSize_ +
@@ -1284,8 +1285,8 @@ private:
         return out;
     }
 
-    const int gapSize_     = fastFromDIP(FILE_GRID_GAP_SIZE_DIP);
-    const int gapSizeWide_ = fastFromDIP(FILE_GRID_GAP_SIZE_WIDE_DIP);
+    const int gapSize_     = dipToWxsize(FILE_GRID_GAP_SIZE_DIP);
+    const int gapSizeWide_ = dipToWxsize(FILE_GRID_GAP_SIZE_WIDE_DIP);
 
     ItemPathFormat itemPathFormat_ = ItemPathFormat::full;
 
@@ -1430,7 +1431,7 @@ private:
             GridData::renderRowBackgound(dc, rect, row, true /*enabled*/, true /*selected*/, rowHover);
 
         //----------------------------------------------------------------------------------
-        const wxRect rectLine(rect.x, rect.y + rect.height - fastFromDIP(1), rect.width, fastFromDIP(1));
+        const wxRect rectLine(rect.x, rect.y + rect.height - dipToWxsize(1), rect.width, dipToWxsize(1));
         clearArea(dc, rectLine, row == pdi.groupLastRow - 1 /*last group item*/ ?
                   getColorGridLine() : getDefaultBackgroundColorAlternating(pdi.groupIdx % 2 != 0));
     }
@@ -1454,7 +1455,7 @@ private:
                 {
                     wxRect rectBack = rect;
                     if (row == pdi.groupLastRow - 1 /*last group item*/) //preserve the group separation line!
-                        rectBack.height -= fastFromDIP(1);
+                        rectBack.height -= dipToWxsize(1);
 
                     clearArea(dc, rectBack, col);
                 }
@@ -1484,13 +1485,14 @@ private:
                     wxRect rectTmp = rect;
                     {
                         //draw notch on left side
-                        if (notch_.GetHeight() != rectTmp.height)
-                            notch_ = notch_.Scale(notch_.GetWidth(), rectTmp.height);
+                        if (notch_.GetHeight() != wxsizeToScreen(rectTmp.height))
+                            notch_ = notch_.Scale(notch_.GetWidth(), wxsizeToScreen(rectTmp.height));
 
                         //wxWidgets screws up again and has wxALIGN_RIGHT off by one pixel! -> use wxALIGN_LEFT instead
-                        const wxRect rectNotch(rectTmp.x + rectTmp.width - notch_.GetWidth(), rectTmp.y, notch_.GetWidth(), rectTmp.height);
+                        const wxRect rectNotch(rectTmp.x + rectTmp.width - screenToWxsize(notch_.GetWidth()), rectTmp.y,
+                                               screenToWxsize(notch_.GetWidth()), rectTmp.height);
                         drawBitmapRtlNoMirror(dc, notch_, rectNotch, wxALIGN_LEFT);
-                        rectTmp.width -= notch_.GetWidth();
+                        rectTmp.width -= screenToWxsize(notch_.GetWidth());
                     }
 
                     auto drawIcon = [&](wxImage icon, int alignment)
@@ -1605,11 +1607,11 @@ private:
                 break;
 
             case ColumnTypeCenter::difference:
-                colIcon = greyScaleIfDisabled(loadImage("compare", getDefaultMenuIconSize()), getViewType() == GridViewType::difference);
+                colIcon = greyScaleIfDisabled(loadImage("compare", dipToScreen(getMenuIconDipSize())), getViewType() == GridViewType::difference);
                 break;
 
             case ColumnTypeCenter::action:
-                colIcon = greyScaleIfDisabled(loadImage("start_sync", getDefaultMenuIconSize()), getViewType() == GridViewType::action);
+                colIcon = greyScaleIfDisabled(loadImage("start_sync", dipToScreen(getMenuIconDipSize())), getViewType() == GridViewType::action);
                 break;
         }
 
@@ -1621,7 +1623,7 @@ private:
             if (const ColumnTypeCenter* sortType = std::get_if<ColumnTypeCenter>(&sortInfo->sortCol))
                 if (*sortType == colTypeCenter)
                 {
-                    const int gapLeft = (rectInner.width + colIcon.GetWidth()) / 2;
+                    const int gapLeft = (rectInner.width + screenToWxsize(colIcon.GetWidth())) / 2;
                     wxRect rectRemain = rectInner;
                     rectRemain.x     += gapLeft;
                     rectRemain.width -= gapLeft;
@@ -2041,9 +2043,9 @@ void filegrid::init(Grid& gridLeft, Grid& gridCenter, Grid& gridRight)
     //gridLeft  .showScrollBars(Grid::SB_SHOW_AUTOMATIC, Grid::SB_SHOW_NEVER); -> redundant: configuration happens in GridEventManager::onAlignScrollBars()
     //gridCenter.showScrollBars(Grid::SB_SHOW_NEVER,     Grid::SB_SHOW_NEVER);
 
-    const int widthCheckbox =       loadImage("checkbox_true").GetWidth() + fastFromDIP(3);
-    const int widthDifference = 2 * loadImage("sort_ascending").GetWidth() + loadImage("cat_left_only_sicon").GetWidth() + loadImage("notch").GetWidth();
-    const int widthAction     = 3 * loadImage("so_create_left_sicon").GetWidth();
+    const int widthCheckbox   = screenToWxsize(    loadImage("checkbox_true").GetWidth() + dipToScreen(3));
+    const int widthDifference = screenToWxsize(2 * loadImage("sort_ascending").GetWidth() + loadImage("cat_left_only_sicon").GetWidth() + loadImage("notch").GetWidth());
+    const int widthAction     = screenToWxsize(3 * loadImage("so_create_left_sicon").GetWidth());
     gridCenter.SetSize(widthDifference + widthCheckbox + widthAction, -1);
 
     gridCenter.setColumnConfig(
@@ -2112,7 +2114,7 @@ void filegrid::setupIcons(Grid& gridLeft, Grid& gridCenter, Grid& gridRight, boo
         auto iconMgr = makeSharedRef<IconManager>(*provLeft, *provRight, sz, showFileIcons);
         provLeft ->setIconManager(iconMgr);
 
-        const int newRowHeight = std::max(iconMgr.ref().getIconSize(), gridLeft.getMainWin().GetCharHeight()) + fastFromDIP(1); //add some space
+        const int newRowHeight = std::max(iconMgr.ref().getIconWxsize(), gridLeft.getMainWin().GetCharHeight()) + dipToWxsize(1); //add some space
 
         gridLeft  .setRowHeight(newRowHeight);
         gridCenter.setRowHeight(newRowHeight);

@@ -181,8 +181,25 @@ void moveExistingItemToVersioning(const AbstractPath& sourcePath, const Abstract
 }
 
 
+void FileVersioner::checkPathConflict(const AbstractPath& itemPath) const //throw FileError
+{
+    if (std::optional<PathDependency> pd = getPathDependency(itemPath, versioningFolderPath_))
+    {
+        assert(pd->itemPathParent == versioningFolderPath_); //otherwise: what the fuck!?
+        //user ignored warning about versioning folder being part of sync =>
+        //prevent files from being moved to versioning recursively:
+        throw FileError(trimCpy(replaceCpy(replaceCpy(_("Cannot move %x to %y."),
+                                                      L"%x", L'\n' + fmtPath(AFS::getDisplayPath(itemPath))),
+                                           L"%y", L'\n' + fmtPath(AFS::getDisplayPath(versioningFolderPath_)))),
+                        _("Item already located in the versioning folder."));
+    }
+}
+
+
 void FileVersioner::revisionFile(const FileDescriptor& fileDescr, const Zstring& relativePath, const IoCallback& notifyUnbufferedIO /*throw X*/) const //throw FileError, X
 {
+    checkPathConflict(fileDescr.path); //throw FileError
+
     if (const std::optional<AFS::ItemType> type = AFS::getItemTypeIfExists(fileDescr.path)) //throw FileError
     {
         assert(*type != AFS::ItemType::symlink);
@@ -224,6 +241,8 @@ void FileVersioner::revisionFileImpl(const FileDescriptor& fileDescr, const Zstr
 
 void FileVersioner::revisionSymlink(const AbstractPath& linkPath, const Zstring& relativePath) const //throw FileError
 {
+    checkPathConflict(linkPath); //throw FileError
+
     if (AFS::itemExists(linkPath)) //throw FileError
         revisionSymlinkImpl(linkPath, relativePath, nullptr /*onBeforeMove*/); //throw FileError
     //else -> missing source item is not an error => check BEFORE deleting target
@@ -248,6 +267,8 @@ void FileVersioner::revisionFolder(const AbstractPath& folderPath, const Zstring
                                    const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeFolderMove /*throw X*/,
                                    const IoCallback& notifyUnbufferedIO /*throw X*/) const
 {
+    checkPathConflict(folderPath); //throw FileError
+
     //no error situation if directory is not existing! manual deletion relies on it!
     if (const std::optional<AFS::ItemType> type = AFS::getItemTypeIfExists(folderPath)) //throw FileError
     {

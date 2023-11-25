@@ -1015,24 +1015,6 @@ void readConfig(const XmlIn& in, SyncDirectionConfig& dirCfg, int formatVer)
             inCustDir["RightNewer"](std::get<DirectionByDiff>(dirCfg.dirs).rightNewer); //
         }
     }
-    else if (formatVer < 22) //TODO: remove if parameter migration after some time! 2023-08-20
-    {
-        warn_static("formatVer == 21 was development-internal => get rid, once the betas are out of likely use")
-
-        if (XmlIn inDir = in["Differences"])
-        {
-            dirCfg.dirs = DirectionByDiff();
-            inDir["LeftOnly"  ](std::get<DirectionByDiff>(dirCfg.dirs).leftOnly);
-            inDir["RightOnly" ](std::get<DirectionByDiff>(dirCfg.dirs).rightOnly);
-            inDir["LeftNewer" ](std::get<DirectionByDiff>(dirCfg.dirs).leftNewer);
-            inDir["RightNewer"](std::get<DirectionByDiff>(dirCfg.dirs).rightNewer);
-        }
-        else
-        {
-            assert(in["Changes"]);
-            dirCfg = getDefaultSyncCfg(SyncVariant::twoWay);
-        }
-    }
     else
     {
         if (XmlIn inDirs = in["Differences"])

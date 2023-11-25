@@ -42,14 +42,14 @@ void drawBitmapAligned(wxDC& dc, const wxImage& img, const wxRect& rect, int ali
 {
     wxPoint pt = rect.GetTopLeft();
     if (alignment & wxALIGN_RIGHT) //note: wxALIGN_LEFT == 0!
-        pt.x += rect.width - img.GetWidth();
+        pt.x += rect.width - screenToWxsize(img.GetWidth());
     else if (alignment & wxALIGN_CENTER_HORIZONTAL)
-        pt.x += (rect.width - img.GetWidth()) / 2;
+        pt.x += (rect.width - screenToWxsize(img.GetWidth())) / 2;
 
     if (alignment & wxALIGN_BOTTOM) //note: wxALIGN_TOP == 0!
-        pt.y += rect.height - img.GetHeight();
+        pt.y += rect.height - screenToWxsize(img.GetHeight());
     else if (alignment & wxALIGN_CENTER_VERTICAL)
-        pt.y += (rect.height - img.GetHeight()) / 2;
+        pt.y += (rect.height - screenToWxsize(img.GetHeight())) / 2;
 
     dc.DrawBitmap(toScaledBitmap(img), pt);
 }

@@ -49,20 +49,20 @@ void initBitmapRadioButtons(const std::vector<std::pair<ToggleButton*, std::stri
                                              selected ? *wxBLACK : //accessibility: always set both foreground AND background colors! see renderSelectedButton()
                                              btn.GetForegroundColour());
 
-        wxImage imgIco = mirrorIfRtl(loadImage(imgName, -1 /*maxWidth*/, getDefaultMenuIconSize()));
+        wxImage imgIco = mirrorIfRtl(loadImage(imgName, -1 /*maxWidth*/, dipToScreen(getMenuIconDipSize())));
 
         if (imgName == "delete_recycler") //use system icon if available (can fail on Linux??)
-            try { imgIco = extractWxImage(fff::getTrashIcon(getDefaultMenuIconSize())); /*throw SysError*/ }
+            try { imgIco = extractWxImage(fff::getTrashIcon(dipToScreen(getMenuIconDipSize()))); /*throw SysError*/ }
             catch (SysError&) { assert(false); }
 
         if (!selected)
             imgIco = greyScale(imgIco);
 
         wxImage imgStack = physicalLeft ?
-                           stackImages(imgIco, imgTxt, ImageStackLayout::horizontal, ImageStackAlignment::center, fastFromDIP(5)) :
-                           stackImages(imgTxt, imgIco, ImageStackLayout::horizontal, ImageStackAlignment::center, fastFromDIP(5));
+                           stackImages(imgIco, imgTxt, ImageStackLayout::horizontal, ImageStackAlignment::center, dipToScreen(5)) :
+                           stackImages(imgTxt, imgIco, ImageStackLayout::horizontal, ImageStackAlignment::center, dipToScreen(5));
 
-        return resizeCanvas(imgStack, imgStack.GetSize() + wxSize(fastFromDIP(14), fastFromDIP(12)), wxALIGN_CENTER);
+        return resizeCanvas(imgStack, imgStack.GetSize() + wxSize(dipToScreen(14), dipToScreen(12)), wxALIGN_CENTER);
     };
 
     wxSize maxExtent;
@@ -78,11 +78,12 @@ void initBitmapRadioButtons(const std::vector<std::pair<ToggleButton*, std::stri
 
     for (auto& [btn, imgName] : buttons)
     {
-        btn->init(layOver(rectangleImage(maxExtent, getColorToggleButtonFill(), getColorToggleButtonBorder(), fastFromDIP(1)),
+        btn->init(layOver(rectangleImage(maxExtent, getColorToggleButtonFill(), getColorToggleButtonBorder(), dipToScreen(1)),
                           generateSelectImage(*btn, imgName, true /*selected*/), wxALIGN_CENTER_VERTICAL | (physicalLeft ? wxALIGN_LEFT : wxALIGN_RIGHT)),
                   resizeCanvas(labelsNotSel[btn], maxExtent,                     wxALIGN_CENTER_VERTICAL | (physicalLeft ? wxALIGN_LEFT : wxALIGN_RIGHT)));
 
-        btn->SetMinSize(maxExtent); //get rid of selection border on Windows :)
+        btn->SetMinSize({screenToWxsize(maxExtent.x),
+                         screenToWxsize(maxExtent.y)}); //get rid of selection border on Windows :)
         //SetMinSize() instead of SetSize() is needed here for wxWindows layout determination to work correctly
     }
 }
@@ -485,9 +486,9 @@ globalLogFolderPhrase_(globalLogFolderPhrase)
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
 
 
-    setBitmapTextLabel(*m_buttonAddNotes, loadImage("notes", fastFromDIP(16)), m_buttonAddNotes->GetLabelText());
+    setBitmapTextLabel(*m_buttonAddNotes, loadImage("notes", dipToScreen(16)), m_buttonAddNotes->GetLabelText());
 
-    setImage(*m_bitmapNotes, loadImage("notes", fastFromDIP(20)));
+    setImage(*m_bitmapNotes, loadImage("notes", dipToScreen(20)));
 
     //set reasonable default height for notes: simplistic algorithm neglecting line-wrap!
     int notesRows = 1;
@@ -501,10 +502,10 @@ globalLogFolderPhrase_(globalLogFolderPhrase)
     m_textCtrNotes->SetMinSize({-1, getTextCtrlHeight(*m_textCtrNotes, visibleRows)});
 
 
-    m_notebook->SetPadding(wxSize(fastFromDIP(2), 0)); //height cannot be changed
+    m_notebook->SetPadding(wxSize(dipToWxsize(2), 0)); //height cannot be changed
 
     //fill image list to cope with wxNotebook image setting design desaster...
-    const int imgListSize = fastFromDIP(16); //also required by GTK => don't use getDefaultMenuIconSize()
+    const int imgListSize = dipToWxsize(16); //also required by GTK => don't use getMenuIconDipSize()
     auto imgList = std::make_unique<wxImageList>(imgListSize, imgListSize);
 
     auto addToImageList = [&](const wxImage& img)
@@ -513,9 +514,9 @@ globalLogFolderPhrase_(globalLogFolderPhrase)
         imgList->Add(toScaledBitmap(greyScale(img)));
     };
     //add images in same sequence like ConfigTypeImage enum!!!
-    addToImageList(loadImage("options_compare", imgListSize));
-    addToImageList(loadImage("options_filter",  imgListSize));
-    addToImageList(loadImage("options_sync",    imgListSize));
+    addToImageList(loadImage("options_compare", wxsizeToScreen(imgListSize)));
+    addToImageList(loadImage("options_filter",  wxsizeToScreen(imgListSize)));
+    addToImageList(loadImage("options_sync",    wxsizeToScreen(imgListSize)));
     assert(imgList->GetImageCount() == static_cast<int>(ConfigTypeImage::syncGrey) + 1);
 
     m_notebook->AssignImageList(imgList.release()); //pass ownership
@@ -542,9 +543,9 @@ globalLogFolderPhrase_(globalLogFolderPhrase)
     m_buttonByContent ->SetToolTip(getCompVariantDescription(CompareVariant::content));
     m_buttonBySize    ->SetToolTip(getCompVariantDescription(CompareVariant::size));
 
-    m_staticTextCompVarDescription->SetMinSize({fastFromDIP(CFG_DESCRIPTION_WIDTH_DIP), -1});
+    m_staticTextCompVarDescription->SetMinSize({dipToWxsize(CFG_DESCRIPTION_WIDTH_DIP), -1});
 
-    m_scrolledWindowPerf->SetMinSize({fastFromDIP(220), -1});
+    m_scrolledWindowPerf->SetMinSize({dipToWxsize(220), -1});
     setImage(*m_bitmapPerf, greyScaleIfDisabled(loadImage("speed"), enableExtraFeatures_));
 
     const int scrollDelta = GetCharHeight();
@@ -559,7 +560,7 @@ globalLogFolderPhrase_(globalLogFolderPhrase)
     m_textCtrlTimeShift->SetValidator(inputValidator);
 
     //------------- filter panel --------------------------
-    m_textCtrlInclude->SetMinSize({fastFromDIP(280), -1});
+    m_textCtrlInclude->SetMinSize({dipToWxsize(280), -1});
 
     assert(!contains(m_buttonClear->GetLabel(), L"&C") && !contains(m_buttonClear->GetLabel(), L"&c")); //gazillionth wxWidgets bug on OS X: Command + C mistakenly hits "&C" access key!
 
@@ -567,7 +568,7 @@ globalLogFolderPhrase_(globalLogFolderPhrase)
     setDefaultWidth(*m_spinCtrlMaxSize);
     setDefaultWidth(*m_spinCtrlTimespan);
 
-    m_staticTextFilterDescr->Wrap(fastFromDIP(450));
+    m_staticTextFilterDescr->Wrap(dipToWxsize(450));
 
     setImage(*m_bpButtonDefaultContext, mirrorIfRtl(loadImage("button_arrow_right")));
 
@@ -611,7 +612,7 @@ globalLogFolderPhrase_(globalLogFolderPhrase)
         {m_buttonCustom, "sync_custom"},
     }, false /*alignLeft*/);
 
-    m_staticTextSyncVarDescription->SetMinSize({fastFromDIP(CFG_DESCRIPTION_WIDTH_DIP), -1});
+    m_staticTextSyncVarDescription->SetMinSize({dipToWxsize(CFG_DESCRIPTION_WIDTH_DIP), -1});
 
     m_buttonRecycler  ->SetToolTip(_("Retain deleted and overwritten files in the recycle bin"));
     m_buttonPermanent ->SetToolTip(_("Delete and overwrite files permanently"));
@@ -638,8 +639,8 @@ globalLogFolderPhrase_(globalLogFolderPhrase)
 
     const wxImage imgFileManagerSmall_([]
     {
-        try { return extractWxImage(fff::getFileManagerIcon(fastFromDIP(20))); /*throw SysError*/ }
-        catch (SysError&) { assert(false); return loadImage("file_manager", fastFromDIP(20)); }
+        try { return extractWxImage(fff::getFileManagerIcon(dipToScreen(20))); /*throw SysError*/ }
+        catch (SysError&) { assert(false); return loadImage("file_manager", dipToScreen(20)); }
     }());
     setImage(*m_bpButtonShowLogFolder, imgFileManagerSmall_);
     m_bpButtonShowLogFolder->SetToolTip(translate(extCommandFileManager.description));//translate default external apps on the fly: "Show in Explorer"
@@ -657,7 +658,7 @@ globalLogFolderPhrase_(globalLogFolderPhrase)
     m_bpButtonEmailErrorWarning ->Enable(enableExtraFeatures_);
     m_bpButtonEmailErrorOnly    ->Enable(enableExtraFeatures_);
 
-    //m_staticTextPostSync->SetMinSize({fastFromDIP(180), -1});
+    //m_staticTextPostSync->SetMinSize({dipToWxsize(180), -1});
 
     enumPostSyncCondition_.
     add(PostSyncCondition::completion, _("On completion:")).
@@ -919,7 +920,7 @@ void ConfigDialog::updateCompGui()
 
     //active variant description:
     setText(*m_staticTextCompVarDescription, getCompVariantDescription(localCmpVar_));
-    m_staticTextCompVarDescription->Wrap(fastFromDIP(CFG_DESCRIPTION_WIDTH_DIP)); //needs to be reapplied after SetLabel()
+    m_staticTextCompVarDescription->Wrap(dipToWxsize(CFG_DESCRIPTION_WIDTH_DIP)); //needs to be reapplied after SetLabel()
 
     m_radioBtnSymlinksDirect->Enable(m_checkBoxSymlinksInclude->GetValue() && compOptionsEnabled); //help wxWidgets a little to render inactive config state (needed on Windows, NOT on Linux!)
     m_radioBtnSymlinksFollow->Enable(m_checkBoxSymlinksInclude->GetValue() && compOptionsEnabled); //
@@ -932,7 +933,9 @@ void ConfigDialog::onFilterDefaultContext(wxEvent& event)
     const FilterConfig defaultFilter = XmlGlobalSettings().defaultFilter;
 
     ContextMenu menu;
-    menu.addItem(_("&Save"),                 [&] { defaultFilterOut_ = activeCfg; updateFilterGui(); }, loadImage("cfg_save", getDefaultMenuIconSize()), defaultFilterOut_ != activeCfg);
+    menu.addItem(_("&Save"), [&] { defaultFilterOut_ = activeCfg; updateFilterGui(); },
+                 loadImage("cfg_save", dipToScreen(getMenuIconDipSize())), defaultFilterOut_ != activeCfg);
+
     menu.addItem(_("&Load factory default"), [&] { setFilterConfig(defaultFilter); }, wxNullImage, activeCfg != defaultFilter);
 
     menu.popup(*m_bpButtonDefaultContext, {m_bpButtonDefaultContext->GetSize().x, 0});
@@ -1294,18 +1297,18 @@ void ConfigDialog::updateSyncGui()
 
     const bool useDatabaseFile = std::get_if<DirectionByChange>(&directionsCfg_.dirs);
 
-    setImage(*m_bitmapDatabase, greyScaleIfDisabled(loadImage("database", fastFromDIP(22)), useDatabaseFile && syncOptionsEnabled));
+    setImage(*m_bitmapDatabase, greyScaleIfDisabled(loadImage("database", dipToScreen(22)), useDatabaseFile && syncOptionsEnabled));
 
     //"detect move files" is always active iff database is used:
-    setImage(*m_bitmapMoveLeft,  greyScaleIfDisabled(loadImage("so_move_left",  fastFromDIP(20)), useDatabaseFile && syncOptionsEnabled));
-    setImage(*m_bitmapMoveRight, greyScaleIfDisabled(loadImage("so_move_right", fastFromDIP(20)), useDatabaseFile && syncOptionsEnabled));
+    setImage(*m_bitmapMoveLeft,  greyScaleIfDisabled(loadImage("so_move_left",  dipToScreen(20)), useDatabaseFile && syncOptionsEnabled));
+    setImage(*m_bitmapMoveRight, greyScaleIfDisabled(loadImage("so_move_right", dipToScreen(20)), useDatabaseFile && syncOptionsEnabled));
     m_staticTextDetectMove->Enable(useDatabaseFile);
 
     const SyncVariant syncVar = getSyncVariant(directionsCfg_);
 
     //active variant description:
     setText(*m_staticTextSyncVarDescription, getSyncVariantDescription(syncVar));
-    m_staticTextSyncVarDescription->Wrap(fastFromDIP(CFG_DESCRIPTION_WIDTH_DIP)); //needs to be reapplied after SetLabel()
+    m_staticTextSyncVarDescription->Wrap(dipToWxsize(CFG_DESCRIPTION_WIDTH_DIP)); //needs to be reapplied after SetLabel()
 
     //update toggle buttons -> they have no parameter-ownership at all!
     m_buttonTwoWay->setActive(SyncVariant::twoWay == syncVar && syncOptionsEnabled);
@@ -1339,7 +1342,7 @@ void ConfigDialog::updateSyncGui()
             setImage(*m_bitmapVersioning, greyScaleIfDisabled(loadImage("delete_versioning"), syncOptionsEnabled));
             break;
     }
-    //m_staticTextDeletionTypeDescription->Wrap(fastFromDIP(200)); //needs to be reapplied after SetLabel()
+    //m_staticTextDeletionTypeDescription->Wrap(dipToWxsize(200)); //needs to be reapplied after SetLabel()
 
     const bool versioningSelected = deletionVariant_ == DeletionVariant::versioning;
 
@@ -1529,9 +1532,9 @@ void ConfigDialog::updateMiscGui()
         setImage(*m_bitmapEmail, greyScaleIfDisabled(loadImage("email"), sendEmailEnabled));
         m_comboBoxEmail->Show(sendEmailEnabled);
 
-        auto updateButton = [successIcon = loadImage("msg_success", getDefaultMenuIconSize()),
-                                         warningIcon = loadImage("msg_warning", getDefaultMenuIconSize()),
-                                         errorIcon   = loadImage("msg_error",   getDefaultMenuIconSize()),
+        auto updateButton = [successIcon = loadImage("msg_success", dipToScreen(getMenuIconDipSize())),
+                                         warningIcon = loadImage("msg_warning", dipToScreen(getMenuIconDipSize())),
+                                         errorIcon   = loadImage("msg_error",   dipToScreen(getMenuIconDipSize())),
                                          sendEmailEnabled, this](wxBitmapButton& button, ResultsNotification notifyCondition)
         {
             button.Show(sendEmailEnabled);
@@ -1570,7 +1573,7 @@ void ConfigDialog::updateMiscGui()
         m_hyperlinkPerfDeRequired2->Show(!enableExtraFeatures_); //required after each bSizerSyncMisc->Show()
 
         //----------------------------------------------------------------------------
-        setImage(*m_bitmapLogFile, greyScaleIfDisabled(loadImage("log_file", fastFromDIP(20)), m_checkBoxOverrideLogPath->GetValue()));
+        setImage(*m_bitmapLogFile, greyScaleIfDisabled(loadImage("log_file", dipToScreen(20)), m_checkBoxOverrideLogPath->GetValue()));
         m_logFolderPath             ->Enable(m_checkBoxOverrideLogPath->GetValue()); //
         m_buttonSelectLogFolder     ->Show(m_checkBoxOverrideLogPath->GetValue()); //enabled status can't be derived from resolved config!
         m_bpButtonSelectAltLogFolder->Show(m_checkBoxOverrideLogPath->GetValue()); //

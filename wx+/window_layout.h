@@ -66,7 +66,7 @@ void setDefaultWidth(wxSpinCtrl& m_spinCtrl)
 
     //get rid of excessive default width on old GTK3 3.14 (Debian);
     //gtk_entry_set_width_chars() not working => mitigate
-    m_spinCtrl.SetMinSize({fastFromDIP(100), -1}); //must be wider than gtk_entry_set_width_chars(), or it breaks newer GTK e.g. 3.22!
+    m_spinCtrl.SetMinSize({dipToWxsize(100), -1}); //must be wider than gtk_entry_set_width_chars(), or it breaks newer GTK e.g. 3.22!
 
 #if 0 //generic property syntax:
     GValue bval = G_VALUE_INIT;
@@ -76,7 +76,7 @@ void setDefaultWidth(wxSpinCtrl& m_spinCtrl)
     ::g_object_set_property(G_OBJECT(m_spinCtrl.m_widget), "visibility", &bval);
 #endif
 #else
-    m_spinCtrl.SetMinSize({fastFromDIP(70), -1});
+    m_spinCtrl.SetMinSize({dipToWxsize(70), -1});
 #endif
 
 }

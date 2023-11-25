@@ -1184,15 +1184,14 @@ void fff::applyTimeSpanFilter(FolderComparison& folderCmp, time_t timeFrom, time
 }
 
 
-std::optional<PathDependency> fff::getPathDependency(const AbstractPath& folderPathL, const PathFilter& filterL,
-                                                     const AbstractPath& folderPathR, const PathFilter& filterR)
+std::optional<PathDependency> fff::getPathDependency(const AbstractPath& itemPathL, const AbstractPath& itemPathR)
 {
-    if (!AFS::isNullPath(folderPathL) && !AFS::isNullPath(folderPathR))
+    if (!AFS::isNullPath(itemPathL) && !AFS::isNullPath(itemPathR))
     {
-        if (folderPathL.afsDevice == folderPathR.afsDevice)
+        if (itemPathL.afsDevice == itemPathR.afsDevice)
         {
-            const std::vector<Zstring> relPathL = splitCpy(folderPathL.afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip);
-            const std::vector<Zstring> relPathR = splitCpy(folderPathR.afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip);
+            const std::vector<Zstring> relPathL = splitCpy(itemPathL.afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip);
+            const std::vector<Zstring> relPathR = splitCpy(itemPathR.afsPath.value, FILE_NAME_SEPARATOR, SplitOnEmpty::skip);
 
             const bool leftParent = relPathL.size() <= relPathR.size();
 
@@ -1207,16 +1206,27 @@ std::optional<PathDependency> fff::getPathDependency(const AbstractPath& folderP
                     relDirPath = appendPath(relDirPath, itemName);
                 });
 
-                const PathFilter& filterP = leftParent ? filterL : filterR;
+               return PathDependency{leftParent ? itemPathL : itemPathR, relDirPath};
+            }
+        }
+    }
+    return {};
+}
+
+
+std::optional<PathDependency> fff::getFolderPathDependency(const AbstractPath& folderPathL, const PathFilter& filterL,
+                                                     const AbstractPath& folderPathR, const PathFilter& filterR)
+{
+    if (std::optional<PathDependency> pd = getPathDependency(folderPathL, folderPathR))
+    {        
+                const PathFilter& filterP = pd->itemPathParent == folderPathL ? filterL : filterR;
                 //if there's a dependency, check if the sub directory is (fully) excluded via filter
                 //=> easy to check but still insufficient in general:
                 // - one folder may have a *.txt include-filter, the other a *.lng include filter => no dependencies, but "childItemMightMatch = true" below!
                 // - user may have manually excluded the conflicting items or changed the filter settings without running a re-compare
                 bool childItemMightMatch = true;
-                if (relDirPath.empty() || filterP.passDirFilter(relDirPath, &childItemMightMatch) || childItemMightMatch)
-                    return PathDependency{leftParent ? folderPathL : folderPathR, relDirPath};
-            }
-        }
+                if (pd->relPath.empty() || filterP.passDirFilter(pd->relPath, &childItemMightMatch) || childItemMightMatch)
+                    return pd;
     }
     return {};
 }

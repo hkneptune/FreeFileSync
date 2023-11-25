@@ -349,9 +349,6 @@ void zen::moveAndRenameItem(const Zstring& pathFrom, const Zstring& pathTo, bool
     }
 }
 
-
-
-
 namespace
 {
 void setWriteTimeNative(const Zstring& itemPath, const timespec& modTime, ProcSymlink procSl) //throw FileError

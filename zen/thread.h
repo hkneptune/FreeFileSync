@@ -203,10 +203,13 @@ public:
     //non-blocking wait()-alternative: context of controlling thread:
     void notifyWhenDone(const std::function<void()>& onCompletion /*noexcept! runs on worker thread!*/)
     {
-        std::lock_guard dummy(workLoad_.ref().lock);
+        std::unique_lock dummy(workLoad_.ref().lock);
 
         if (workLoad_.ref().tasksPending == 0)
+        {
+            dummy.unlock();
             onCompletion();
+        }
         else
             workLoad_.ref().onCompletionCallbacks.push_back(onCompletion);
     }
@@ -242,8 +245,7 @@ private:
                 if (--(workLoad.tasksPending) == 0)
                     if (!workLoad.onCompletionCallbacks.empty())
                     {
-                        std::vector<std::function<void()>> callbacks;
-                        callbacks.swap(workLoad.onCompletionCallbacks);
+                        std::vector<std::function<void()>> callbacks = std::exchange(workLoad.onCompletionCallbacks, {});
 
                         dummy.unlock();
                         for (const auto& cb : callbacks)

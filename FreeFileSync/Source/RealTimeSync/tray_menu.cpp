@@ -176,7 +176,7 @@ private:
 
     const wxString jobName_; //RTS job name, may be empty
 
-    const wxImage trayImg_ = loadImage("start_rts", fastFromDIP(24)); //use 24x24 bitmap for perfect fit
+    const wxImage trayImg_ = loadImage("start_rts", dipToScreen(24)); //use 24x24 bitmap for perfect fit
 };
 
 

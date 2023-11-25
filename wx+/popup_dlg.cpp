@@ -27,7 +27,7 @@ namespace
 {
 void setBestInitialSize(wxRichTextCtrl& ctrl, const wxString& text, wxSize maxSize)
 {
-    const int scrollbarWidth = fastFromDIP(25); /*not only scrollbar, but also left/right padding (on macOS)!
+    const int scrollbarWidth = dipToWxsize(25); /*not only scrollbar, but also left/right padding (on macOS)!
     better use slightly larger than exact value (Windows: 17, Linux(CentOS): 14, macOS: 25)
     => worst case: minor increase in rowCount (no big deal) + slightly larger bestSize.x (good!)  */
 
@@ -164,8 +164,8 @@ public:
             titleTmp = wxTheApp->GetAppDisplayName() + (!titleTmp.empty() ? SPACED_DASH + titleTmp : wxString());
         SetTitle(titleTmp);
 
-        int maxWidth  = fastFromDIP(500);
-        int maxHeight = fastFromDIP(400); //try to determine better value based on actual display resolution:
+        int maxWidth  = dipToWxsize(500);
+        int maxHeight = dipToWxsize(400); //try to determine better value based on actual display resolution:
         if (parent)
             if (const int disPos = wxDisplay::GetFromWindow(parent); //window must be visible
                 disPos != wxNOT_FOUND)

@@ -1122,7 +1122,7 @@ FolderComparison fff::compare(WarningDialogs& warnings,
         bool shouldExclude = false;
 
         for (const auto& [folderPair, fpCfg] : workLoad)
-            if (std::optional<PathDependency> pd = getPathDependency(folderPair.folderPathLeft,  fpCfg.filter.nameFilter.ref(),
+            if (std::optional<PathDependency> pd = getFolderPathDependency(folderPair.folderPathLeft,  fpCfg.filter.nameFilter.ref(),
                                                                      folderPair.folderPathRight, fpCfg.filter.nameFilter.ref()))
             {
                 msg += L"\n\n" +

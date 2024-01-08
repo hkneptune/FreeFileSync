@@ -583,7 +583,7 @@ private:
 
     //symlink handling: follow
     //already existing: fail
-    FolderCopyResult copyNewFolderForSameAfsType(const AfsPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions) const override //throw FileError
+    void copyNewFolderForSameAfsType(const AfsPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions) const override //throw FileError
     {
         initComForThread(); //throw FileError
 
@@ -592,16 +592,14 @@ private:
 
         zen::createDirectory(targetPathNative); //throw FileError, ErrorTargetExisting
 
-        FolderCopyResult result;
         try
         {
             copyDirectoryAttributes(sourcePathNative, targetPathNative); //throw FileError
+        }
+        catch (FileError&) {} //[!] too unimportant + too frequent for external devices, e.g. "ERROR_INVALID_PARAMETER [SetFileInformationByHandle(FileBasicInfo)]" on Samba share
 
             if (copyFilePermissions)
                 copyItemPermissions(sourcePathNative, targetPathNative, ProcSymlink::follow); //throw FileError
-        }
-        catch (const FileError& e) { result.errorAttribs = e; }
-        return result;
     }
 
     //already existing: fail

@@ -723,8 +723,8 @@ void copySymlink(const AbstractPath& sourcePath, const AbstractPath& targetPath,
 { parallelScope([sourcePath, targetPath, copyFilePermissions] { AFS::copySymlink(sourcePath, targetPath, copyFilePermissions); /*throw FileError*/ }, singleThread); }
 
 inline
-AFS::FolderCopyResult copyNewFolder(const AbstractPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions, std::mutex& singleThread) //throw FileError
-{ return parallelScope([sourcePath, targetPath, copyFilePermissions] { return AFS::copyNewFolder(sourcePath, targetPath, copyFilePermissions); /*throw FileError*/ }, singleThread); }
+void copyNewFolder(const AbstractPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions, std::mutex& singleThread) //throw FileError
+{ parallelScope([sourcePath, targetPath, copyFilePermissions] { return AFS::copyNewFolder(sourcePath, targetPath, copyFilePermissions); /*throw FileError*/ }, singleThread); }
 
 inline
 void removeFilePlain(const AbstractPath& filePath, std::mutex& singleThread) //throw FileError
@@ -2175,10 +2175,7 @@ void FolderPairSyncer::synchronizeFolderInt(FolderPair& folder, SyncOperation sy
                 try
                 {
                     //already existing: fail
-                    AFS::FolderCopyResult result = parallel::copyNewFolder(folder.getAbstractPath<sideSrc>(), targetPath, copyFilePermissions_, singleThread_); //throw FileError
-
-                    if (result.errorAttribs) //log only; no popup
-                        acb_.logMessage(result.errorAttribs->toString(), PhaseCallback::MsgType::warning); //throw ThreadStopRequest
+                    parallel::copyNewFolder(folder.getAbstractPath<sideSrc>(), targetPath, copyFilePermissions_, singleThread_); //throw FileError
                 }
                 catch (FileError&)
                 {
@@ -2405,10 +2402,7 @@ bool createBaseFolder(BaseFolderPair& baseFolder, bool copyFilePermissions, Phas
                     if (const std::optional<AbstractPath> parentPath = AFS::getParentPath(folderPath))
                         AFS::createFolderIfMissingRecursion(*parentPath); //throw FileError
 
-                    AFS::FolderCopyResult result = AFS::copyNewFolder(baseFolder.getAbstractPath<sideSrc>(), folderPath, copyFilePermissions); //throw FileError
-
-                    if (result.errorAttribs) //log only; no popup
-                        callback.logMessage(result.errorAttribs->toString(), PhaseCallback::MsgType::warning); //throw X
+                    AFS::copyNewFolder(baseFolder.getAbstractPath<sideSrc>(), folderPath, copyFilePermissions); //throw FileError
                 }
                 else
                     AFS::createFolderIfMissingRecursion(folderPath); //throw FileError

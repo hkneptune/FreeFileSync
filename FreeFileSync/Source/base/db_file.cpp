@@ -606,8 +606,7 @@ private:
                         .right    = InSyncDescrFile{file.getLastWriteTime<SelectSide::right>(), file.getFilePrint<SelectSide::right>()},
                         .cmpVar   = activeCmpVar_,
                         .fileSize = file.getFileSize<SelectSide::left>(),
-                    }
-                                            );
+                    });
                     toPreserve.insert(fileName);
                 }
                 else //not in sync: preserve last synchronous state

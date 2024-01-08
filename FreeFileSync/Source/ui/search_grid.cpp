@@ -74,7 +74,7 @@ template <bool respectCase>
 ptrdiff_t findRow(const Grid& grid, //return -1 if no matching row found
                   const std::wstring& searchString,
                   bool searchAscending,
-                  size_t rowFirst, //specify area to search:
+                  size_t rowFirst, //range to search:
                   size_t rowLast)  // [rowFirst, rowLast)
 {
     if (auto prov = grid.getDataProvider())

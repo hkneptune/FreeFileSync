@@ -66,7 +66,7 @@ private:
     FileVersioner           (const FileVersioner&) = delete;
     FileVersioner& operator=(const FileVersioner&) = delete;
 
-    void checkPathConflict(const AbstractPath& itemPath) const; //throw FileError
+    void checkPathConflict(const AbstractPath& itemPath, const Zstring& relativePath) const; //throw FileError
 
     void revisionFileImpl(const FileDescriptor& fileDescr, const Zstring& relativePath, //throw FileError, X
                           const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeMove,

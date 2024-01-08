@@ -1,7 +1,16 @@
-FreeFileSync 13.2
+FreeFileSync 13.3 [2024-01-07]
+------------------------------
+Completed CASA security assessment for Google Drive
+Use system temp folder for auto-updating
+Ignore errors when setting directory attributes is unsupported
+Save GUI sync log file even when cancelled
+Fixed Business Edition install over existing installation
+
+
+FreeFileSync 13.2 [2023-11-23]
 ------------------------------
 Complete high-DPI/Retina display support (macOS)
-Prevent versioning files from being moved to versioning recursively
+Prevent files from being moved to versioning recursively
 Fixed tooltip line wrap bug for moved files (Windows)
 Return first FTP parsing error when trying multiple variants
 Allow file times from the future for Linux-style FTP listing

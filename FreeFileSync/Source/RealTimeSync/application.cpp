@@ -209,18 +209,11 @@ wxLayoutDirection Application::GetLayoutDirection() const { return fff::getLayou
 
 int Application::OnRun()
 {
-    try
-    {
 #if wxUSE_EXCEPTIONS
 #error why is wxWidgets uncaught exception handling enabled!?
 #endif
+
+    //exception => Windows: let it crash and create mini dump!!! Linux/macOS: std::exception::what() logged to console
         [[maybe_unused]] const int rc = wxApp::OnRun();
-    }
-    catch (const std::bad_alloc& e) //the only kind of exception we don't want crash dumps for
-    {
-        notifyAppError(utfTo<std::wstring>(e.what()));
-        terminateProcess(static_cast<int>(FfsExitCode::exception));
-    }
-    //catch (...) -> Windows: let it crash and create mini dump!!! Linux/macOS: std::exception::what() logged to console
     return static_cast<int>(FfsExitCode::success); //process exit code
 }

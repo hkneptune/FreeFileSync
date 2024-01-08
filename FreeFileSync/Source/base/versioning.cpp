@@ -181,7 +181,7 @@ void moveExistingItemToVersioning(const AbstractPath& sourcePath, const Abstract
 }
 
 
-void FileVersioner::checkPathConflict(const AbstractPath& itemPath) const //throw FileError
+void FileVersioner::checkPathConflict(const AbstractPath& itemPath, const Zstring& relativePath) const //throw FileError
 {
     if (std::optional<PathDependency> pd = getPathDependency(itemPath, versioningFolderPath_))
     {
@@ -190,7 +190,7 @@ void FileVersioner::checkPathConflict(const AbstractPath& itemPath) const //thro
         //prevent files from being moved to versioning recursively:
         throw FileError(trimCpy(replaceCpy(replaceCpy(_("Cannot move %x to %y."),
                                                       L"%x", L'\n' + fmtPath(AFS::getDisplayPath(itemPath))),
-                                           L"%y", L'\n' + fmtPath(AFS::getDisplayPath(versioningFolderPath_)))),
+                                           L"%y", L'\n' + fmtPath(AFS::getDisplayPath(generateVersionedPath(relativePath))))),
                         _("Item already located in the versioning folder."));
     }
 }
@@ -198,7 +198,7 @@ void FileVersioner::checkPathConflict(const AbstractPath& itemPath) const //thro
 
 void FileVersioner::revisionFile(const FileDescriptor& fileDescr, const Zstring& relativePath, const IoCallback& notifyUnbufferedIO /*throw X*/) const //throw FileError, X
 {
-    checkPathConflict(fileDescr.path); //throw FileError
+    checkPathConflict(fileDescr.path, relativePath); //throw FileError
 
     if (const std::optional<AFS::ItemType> type = AFS::getItemTypeIfExists(fileDescr.path)) //throw FileError
     {
@@ -241,7 +241,7 @@ void FileVersioner::revisionFileImpl(const FileDescriptor& fileDescr, const Zstr
 
 void FileVersioner::revisionSymlink(const AbstractPath& linkPath, const Zstring& relativePath) const //throw FileError
 {
-    checkPathConflict(linkPath); //throw FileError
+    checkPathConflict(linkPath, relativePath); //throw FileError
 
     if (AFS::itemExists(linkPath)) //throw FileError
         revisionSymlinkImpl(linkPath, relativePath, nullptr /*onBeforeMove*/); //throw FileError
@@ -267,7 +267,7 @@ void FileVersioner::revisionFolder(const AbstractPath& folderPath, const Zstring
                                    const std::function<void(const std::wstring& displayPathFrom, const std::wstring& displayPathTo)>& onBeforeFolderMove /*throw X*/,
                                    const IoCallback& notifyUnbufferedIO /*throw X*/) const
 {
-    checkPathConflict(folderPath); //throw FileError
+    checkPathConflict(folderPath, relativePath); //throw FileError
 
     //no error situation if directory is not existing! manual deletion relies on it!
     if (const std::optional<AFS::ItemType> type = AFS::getItemTypeIfExists(folderPath)) //throw FileError

@@ -402,12 +402,9 @@ public:
         setCurlOption({CURLOPT_TCP_KEEPALIVE, 1}); //throw SysError
         //=> CURLOPT_TCP_KEEPIDLE (=delay) and CURLOPT_TCP_KEEPINTVL both default to 60 sec
 
-warn_static("remove after test") //https://freefilesync.org/forum/viewtopic.php?p=41482#p41482
-#if 0
-        setCurlOption({CURLOPT_TCP_KEEPIDLE,  30 /*[sec]*/}); //throw SysError
-        setCurlOption({CURLOPT_TCP_KEEPINTVL, 30 /*[sec]*/}); //throw SysError
-#endif
-
+        //default is 60 sec (sufficient!?):
+        //setCurlOption({CURLOPT_TCP_KEEPIDLE,  30 /*[sec]*/}); //throw SysError
+        //setCurlOption({CURLOPT_TCP_KEEPINTVL, 30 /*[sec]*/}); //throw SysError
 
 
         std::optional<SysError> socketException;
@@ -558,7 +555,7 @@ warn_static("remove after test") //https://freefilesync.org/forum/viewtopic.php?
             long ftpStatusCode = 0; //optional
             /*const CURLcode rc =*/ ::curl_easy_getinfo(easyHandle_, CURLINFO_RESPONSE_CODE, &ftpStatusCode);
             //https://en.wikipedia.org/wiki/List_of_FTP_server_return_codes
-            assert(ftpStatusCode == 0 || 400 <= ftpStatusCode && ftpStatusCode < 600);
+            assert(rcPerf == CURLE_OPERATION_TIMEDOUT || rcPerf == CURLE_ABORTED_BY_CALLBACK || ftpStatusCode == 0 || 400 <= ftpStatusCode && ftpStatusCode < 600);
             if (ftpStatusCode != 0)
                 throw SysErrorFtpProtocol(formatSystemError("curl_easy_perform", formatCurlStatusCode(rcPerf), errorMsg), ftpStatusCode);
 
@@ -1900,8 +1897,8 @@ void ftpFileDownload(const FtpLogin& login, const AfsPath& afsFilePath, //throw 
                 {CURLOPT_WRITEFUNCTION, onBytesReceivedWrapper},
                 {CURLOPT_IGNORE_CONTENT_LENGTH, 1L}, //skip FTP "SIZE" command before download (=> download until actual EOF if file size changes)
 
-                //{CURLOPT_BUFFERSIZE, 256 * 1024} -> defaults is 16 kB which seems to correspond to SSL packet size
-                //=> setting larget buffers size does nothing (recv still returns only 16 kB)
+                //{CURLOPT_BUFFERSIZE, 256 * 1024} -> default is 16 kB which seems to correspond to TLS packet size
+                //=> setting larger buffer size does nothing (recv still returns only 16 kB)
             }, true /*requestUtf8*/); //throw SysError, SysErrorPassword, SysErrorFtpProtocol
         });
     }
@@ -2440,19 +2437,13 @@ private:
 
     //symlink handling: follow
     //already existing: fail
-    FolderCopyResult copyNewFolderForSameAfsType(const AfsPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions) const override //throw FileError
+    void copyNewFolderForSameAfsType(const AfsPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions) const override //throw FileError
     {
         //already existing: fail
         AFS::createFolderPlain(targetPath); //throw FileError
 
-        FolderCopyResult result;
-        try
-        {
             if (copyFilePermissions)
                 throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(targetPath))), _("Operation not supported by device."));
-        }
-        catch (const FileError& e) { result.errorAttribs = e; }
-        return result;
     }
 
     //already existing: fail

@@ -4867,32 +4867,43 @@ void MainDialog::onStartSync(wxCommandEvent& event)
     fullSyncLog_->totalTime += r.summary.totalTime;
 
 
+    //"consume" fullSyncLog_, but don't reset: there may be items remaining for manual operations or re-sync!
+    ProcessSummary fullSummary = r.summary;
+    fullSummary.startTime = std::exchange(fullSyncLog_->startTime, std::chrono::system_clock::now());
+    fullSummary.totalTime = std::exchange(fullSyncLog_->totalTime, {});
+    //let's *not* redetermine "ProcessSummary::result", even if errors occured during manual operations!
+
+    ErrorLog fullLog = std::exchange(fullSyncLog_->log, {});
+
+    auto logMsg2 =[&](const std::wstring& msg, MessageType type)
+    {
+        logMsg(fullLog,          msg, type);
+        logMsg(r.errorLog.ref(), msg, type);
+    };
+
+    AbstractPath logFolderPath = createAbstractPath(guiCfg.mainCfg.altLogFolderPathPhrase); //optional
+    if (AFS::isNullPath(logFolderPath))
+        logFolderPath = createAbstractPath(globalCfg_.logFolderPhrase);
+    assert(!AFS::isNullPath(logFolderPath)); //mandatory! but still: let's include fall back
+    if (AFS::isNullPath(logFolderPath))
+        logFolderPath = createAbstractPath(getLogFolderDefaultPath());
+
+    AbstractPath logFilePath = AFS::appendRelPath(logFolderPath, generateLogFileName(globalCfg_.logFormat, fullSummary));
+    //e.g. %AppData%\FreeFileSync\Logs\Backup FreeFileSync 2013-09-15 015052.123 [Error].log
+
+    auto notifyStatusNoThrow = [&](std::wstring&& msg) { try { statusHandler.updateStatus(std::move(msg)); /*throw CancelProcess*/ } catch (CancelProcess&) {} };
+
+
     if (statusHandler.taskCancelled())
         /* user cancelled => don't run post sync command
+                          => don't run post sync action
                           => don't send email notification
-                          => don't save log file (=> treat sync attempt like a manual operation)
-                          => don't update last sync stats for the selected cfg files
                           => don't play sound notification
-                          => don't run post sync action          */
+                          (=> DO save log file: sync attempt is more than just a "manual operation")
+                          (=> DO update last sync stats for the selected cfg files)     */
         assert(statusHandler.taskCancelled() == CancelReason::user); //"stop on first error" is only for ffs_batch
     else
     {
-        //"consume" fullSyncLog_, but don't reset: there may be items remaining for manual operations or re-sync!
-        ProcessSummary fullSummary = r.summary;
-        fullSummary.startTime = std::exchange(fullSyncLog_->startTime, std::chrono::system_clock::now());
-        fullSummary.totalTime = std::exchange(fullSyncLog_->totalTime, {});
-        //let's *not* redetermine "ProcessSummary::result", even if errors occured during manual operations!
-
-        ErrorLog fullLog = std::exchange(fullSyncLog_->log, {});
-
-        auto logMsg2 =[&](const std::wstring& msg, MessageType type)
-        {
-            logMsg(fullLog,          msg, type);
-            logMsg(r.errorLog.ref(), msg, type);
-        };
-
-        auto notifyStatusNoThrow = [&](std::wstring&& msg) { try { statusHandler.updateStatus(std::move(msg)); /*throw CancelProcess*/ } catch (CancelProcess&) {} };
-
         //--------------------- post sync command ----------------------
         if (const Zstring cmdLine = trimCpy(expandMacros(guiCfg.mainCfg.postSyncCommand));
             !cmdLine.empty())
@@ -4920,16 +4931,6 @@ void MainDialog::onStartSync(wxCommandEvent& event)
                 }
 
         //--------------------- email notification ----------------------
-        AbstractPath logFolderPath = createAbstractPath(guiCfg.mainCfg.altLogFolderPathPhrase); //optional
-        if (AFS::isNullPath(logFolderPath))
-            logFolderPath = createAbstractPath(globalCfg_.logFolderPhrase);
-        assert(!AFS::isNullPath(logFolderPath)); //mandatory! but still: let's include fall back
-        if (AFS::isNullPath(logFolderPath))
-            logFolderPath = createAbstractPath(getLogFolderDefaultPath());
-
-        AbstractPath logFilePath = AFS::appendRelPath(logFolderPath, generateLogFileName(globalCfg_.logFormat, fullSummary));
-        //e.g. %AppData%\FreeFileSync\Logs\Backup FreeFileSync 2013-09-15 015052.123 [Error].log
-
         if (const std::string notifyEmail = trimCpy(guiCfg.mainCfg.emailNotifyAddress);
             !notifyEmail.empty())
             if (guiCfg.mainCfg.emailNotifyCondition == ResultsNotification::always ||
@@ -4944,45 +4945,45 @@ void MainDialog::onStartSync(wxCommandEvent& event)
                     sendLogAsEmail(notifyEmail, fullSummary, fullLog, logFilePath, notifyStatusNoThrow); //throw FileError
                 }
                 catch (const FileError& e) { logMsg2(e.toString(), MSG_TYPE_ERROR); }
-
-        //--------------------- save log file ----------------------
-        try //create not before destruction: 1. avoid issues with FFS trying to sync open log file 2. include status in log file name without extra rename
-        {
-            //do NOT use tryReportingError()! saving log files should not be cancellable!
-            saveLogFile(logFilePath, fullSummary, fullLog, globalCfg_.logfilesMaxAgeDays, globalCfg_.logFormat, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
-        }
-        catch (const FileError& e)
-        {
-            logMsg2(e.toString(), MSG_TYPE_ERROR);
-
-            const AbstractPath logFileDefaultPath = AFS::appendRelPath(createAbstractPath(getLogFolderDefaultPath()), generateLogFileName(globalCfg_.logFormat, fullSummary));
-            if (logFilePath != logFileDefaultPath) //fallback: log file *must* be saved no matter what!
-                try
-                {
-                    logFilePath = logFileDefaultPath;
-                    saveLogFile(logFileDefaultPath, fullSummary, fullLog, globalCfg_.logfilesMaxAgeDays, globalCfg_.logFormat, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
-                }
-                catch (const FileError& e2) { logMsg2(e2.toString(), MSG_TYPE_ERROR); assert(false); } //should never happen!!!
-        }
-
-        //--------- update last sync stats for the selected cfg files ---------
-        const ErrorLogStats& fullLogStats = getStats(fullLog);
-
-        cfggrid::getDataView(*m_gridCfgHistory).setLastRunStats(activeConfigFiles_,
-        {
-            logFilePath,
-            std::chrono::system_clock::to_time_t(fullSummary.startTime),
-            fullSummary.result,
-            fullSummary.statsProcessed.items,
-            fullSummary.statsProcessed.bytes,
-            fullSummary.totalTime,
-            fullLogStats.error,
-            fullLogStats.warning,
-        });
-        //re-apply selection: sort order changed if sorted by last sync time
-        cfggrid::addAndSelect(*m_gridCfgHistory, activeConfigFiles_, false /*scrollToSelection*/);
-        //m_gridCfgHistory->Refresh(); <- implicit in last call
     }
+
+    //--------------------- save log file ----------------------
+    try //create not before destruction: 1. avoid issues with FFS trying to sync open log file 2. include status in log file name without extra rename
+    {
+        //do NOT use tryReportingError()! saving log files should not be cancellable!
+        saveLogFile(logFilePath, fullSummary, fullLog, globalCfg_.logfilesMaxAgeDays, globalCfg_.logFormat, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
+    }
+    catch (const FileError& e)
+    {
+        logMsg2(e.toString(), MSG_TYPE_ERROR);
+
+        const AbstractPath logFileDefaultPath = AFS::appendRelPath(createAbstractPath(getLogFolderDefaultPath()), generateLogFileName(globalCfg_.logFormat, fullSummary));
+        if (logFilePath != logFileDefaultPath) //fallback: log file *must* be saved no matter what!
+            try
+            {
+                logFilePath = logFileDefaultPath;
+                saveLogFile(logFileDefaultPath, fullSummary, fullLog, globalCfg_.logfilesMaxAgeDays, globalCfg_.logFormat, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
+            }
+            catch (const FileError& e2) { logMsg2(e2.toString(), MSG_TYPE_ERROR); assert(false); } //should never happen!!!
+    }
+
+    //--------- update last sync stats for the selected cfg files ---------
+    const ErrorLogStats& fullLogStats = getStats(fullLog);
+
+    cfggrid::getDataView(*m_gridCfgHistory).setLastRunStats(activeConfigFiles_,
+    {
+        logFilePath,
+        std::chrono::system_clock::to_time_t(fullSummary.startTime),
+        fullSummary.result,
+        fullSummary.statsProcessed.items,
+        fullSummary.statsProcessed.bytes,
+        fullSummary.totalTime,
+        fullLogStats.error,
+        fullLogStats.warning,
+    });
+    //re-apply selection: sort order changed if sorted by last sync time
+    cfggrid::addAndSelect(*m_gridCfgHistory, activeConfigFiles_, false /*scrollToSelection*/);
+    //m_gridCfgHistory->Refresh(); <- implicit in last call
 
     //---------------------------------------------------------------------------
     setLastOperationLog(r.summary, r.errorLog.ptr());

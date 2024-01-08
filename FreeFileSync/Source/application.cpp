@@ -243,19 +243,12 @@ wxLayoutDirection Application::GetLayoutDirection() const { return getLayoutDire
 
 int Application::OnRun()
 {
-    try
-    {
 #if wxUSE_EXCEPTIONS
 #error why is wxWidgets uncaught exception handling enabled!?
 #endif
+
+    //exception => Windows: let it crash and create mini dump!!! Linux/macOS: std::exception::what() logged to console
         [[maybe_unused]] const int rc = wxApp::OnRun();
-    }
-    catch (const std::bad_alloc& e) //the only kind of exception we don't want crash dumps for
-    {
-        notifyAppError(utfTo<std::wstring>(e.what()));
-        terminateProcess(static_cast<int>(FfsExitCode::exception));
-    }
-    //catch (...) -> Windows: let it crash and create mini dump!!! Linux/macOS: std::exception::what() logged to console
     return static_cast<int>(exitCode_);
 }
 
@@ -624,9 +617,9 @@ void Application::runBatchMode(const Zstring& globalConfigFilePath, const XmlBat
 
     if (statusHandler.taskCancelled() && *statusHandler.taskCancelled() == CancelReason::user)
         ; /* user cancelled => don't run post sync command
+                            => don't run post sync action
                             => don't send email notification
-                            => don't play sound notification
-                            => don't run post sync action     */
+                            => don't play sound notification  */
     else
     {
         //--------------------- post sync command ----------------------

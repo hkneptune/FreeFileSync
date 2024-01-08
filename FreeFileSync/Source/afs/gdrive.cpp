@@ -3704,19 +3704,13 @@ private:
 
     //symlink handling: follow
     //already existing: fail
-    FolderCopyResult copyNewFolderForSameAfsType(const AfsPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions) const override //throw FileError
+    void copyNewFolderForSameAfsType(const AfsPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions) const override //throw FileError
     {
         //already existing: 1. fails or 2. creates duplicate (unlikely)
         AFS::createFolderPlain(targetPath); //throw FileError
 
-        FolderCopyResult result;
-        try
-        {
             if (copyFilePermissions)
                 throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(targetPath))), _("Operation not supported by device."));
-        }
-        catch (const FileError& e) { result.errorAttribs = e; }
-        return result;
     }
 
     //already existing: fail

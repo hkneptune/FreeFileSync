@@ -289,14 +289,9 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
                                                 const std::function<void()>& onDeleteTargetFile /*throw X*/,
                                                 //accummulated delta != file size! consider ADS, sparse, compressed files
                                                 const zen::IoCallback& notifyUnbufferedIO /*throw X*/);
-
-    struct FolderCopyResult
-    {
-        std::optional<zen::FileError> errorAttribs;
-    };
     //already existing: fail
     //symlink handling: follow
-    static FolderCopyResult copyNewFolder(const AbstractPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions); //throw FileError
+    static void copyNewFolder(const AbstractPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions); //throw FileError
 
     //already existing: fail
     static void copySymlink(const AbstractPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions); //throw FileError
@@ -425,7 +420,7 @@ private:
 
     //symlink handling: follow
     //already existing: fail
-    virtual FolderCopyResult copyNewFolderForSameAfsType(const AfsPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions) const = 0; //throw FileError
+    virtual void copyNewFolderForSameAfsType(const AfsPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions) const = 0; //throw FileError
 
     //already existing: fail
     virtual void copySymlinkForSameAfsType(const AfsPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions) const = 0; //throw FileError
@@ -557,7 +552,7 @@ void AbstractFileSystem::moveAndRenameItem(const AbstractPath& pathFrom, const A
 
 
 inline
-AbstractFileSystem::FolderCopyResult AbstractFileSystem::copyNewFolder(const AbstractPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions) //throw FileError
+void AbstractFileSystem::copyNewFolder(const AbstractPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions) //throw FileError
 {
     using namespace zen;
 
@@ -566,15 +561,12 @@ AbstractFileSystem::FolderCopyResult AbstractFileSystem::copyNewFolder(const Abs
         //already existing: fail
         createFolderPlain(targetPath); //throw FileError
 
-        FolderCopyResult result;
         if (copyFilePermissions)
-            result.errorAttribs = FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(getDisplayPath(targetPath))),
+            throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(getDisplayPath(targetPath))),
                                             _("Operation not supported between different devices."));
-
-        return result;
     }
     else
-        return sourcePath.afsDevice.ref().copyNewFolderForSameAfsType(sourcePath.afsPath, targetPath, copyFilePermissions); //throw FileError
+        sourcePath.afsDevice.ref().copyNewFolderForSameAfsType(sourcePath.afsPath, targetPath, copyFilePermissions); //throw FileError
 }
 
 

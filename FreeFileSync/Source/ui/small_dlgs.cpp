@@ -149,7 +149,7 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
 #ifdef __WXGTK3__
     Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
-    Hide(); //avoid old position flash when Center() moves window (asynchronously?)
+    //Hide(); -> avoids old position flash before Center() on GNOME but causes hang on KDE? https://freefilesync.org/forum/viewtopic.php?t=10103#p42404
 #endif
 
     {
@@ -168,7 +168,7 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
 #ifdef __WXGTK3__
     Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
-    Hide(); //avoid old position flash when Center() moves window (asynchronously?)
+    //Hide(); -> avoids old position flash before Center() on GNOME but causes hang on KDE? https://freefilesync.org/forum/viewtopic.php?t=10103#p42404
 #endif
     Center(); //needs to be re-applied after a dialog size change!
 
@@ -406,7 +406,7 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, Zstrin
     //=> works like a charm for GTK with window resizing problems and title bar corruption; e.g. Debian!!!
 #ifdef __WXGTK3__
     Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
-    Hide(); //avoid old position flash when Center() moves window (asynchronously?)
+    //Hide(); -> avoids old position flash before Center() on GNOME but causes hang on KDE? https://freefilesync.org/forum/viewtopic.php?t=10103#p42404
 #endif
     Center(); //needs to be re-applied after a dialog size change!
 
@@ -973,7 +973,7 @@ CopyToDialog::CopyToDialog(wxWindow* parent,
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
 #ifdef __WXGTK3__
     Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
-    Hide(); //avoid old position flash when Center() moves window (asynchronously?)
+    //Hide(); -> avoids old position flash before Center() on GNOME but causes hang on KDE? https://freefilesync.org/forum/viewtopic.php?t=10103#p42404
 #endif
     Center(); //needs to be re-applied after a dialog size change!
 
@@ -1090,7 +1090,7 @@ DeleteDialog::DeleteDialog(wxWindow* parent,
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
 #ifdef __WXGTK3__
     Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
-    Hide(); //avoid old position flash when Center() moves window (asynchronously?)
+    //Hide(); -> avoids old position flash before Center() on GNOME but causes hang on KDE? https://freefilesync.org/forum/viewtopic.php?t=10103#p42404
 #endif
     Center(); //needs to be re-applied after a dialog size change!
 
@@ -1233,7 +1233,7 @@ SyncConfirmationDlg::SyncConfirmationDlg(wxWindow* parent,
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
 #ifdef __WXGTK3__
     Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
-    Hide(); //avoid old position flash when Center() moves window (asynchronously?)
+    //Hide(); -> avoids old position flash before Center() on GNOME but causes hang on KDE? https://freefilesync.org/forum/viewtopic.php?t=10103#p42404
 #endif
     Center(); //needs to be re-applied after a dialog size change!
 
@@ -1500,7 +1500,7 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalCfg) :
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
 #ifdef __WXGTK3__
     Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
-    Hide(); //avoid old position flash when Center() moves window (asynchronously?)
+    //Hide(); -> avoids old position flash before Center() on GNOME but causes hang on KDE? https://freefilesync.org/forum/viewtopic.php?t=10103#p42404
 #endif
     Center(); //needs to be re-applied after a dialog size change!
 
@@ -1823,7 +1823,7 @@ SelectTimespanDlg::SelectTimespanDlg(wxWindow* parent, time_t& timeFrom, time_t&
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
 #ifdef __WXGTK3__
     Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
-    Hide(); //avoid old position flash when Center() moves window (asynchronously?)
+    //Hide(); -> avoids old position flash before Center() on GNOME but causes hang on KDE? https://freefilesync.org/forum/viewtopic.php?t=10103#p42404
 #endif
     Center(); //needs to be re-applied after a dialog size change!
 
@@ -1922,7 +1922,7 @@ PasswordPromptDlg::PasswordPromptDlg(wxWindow* parent, const std::wstring& msg, 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
 #ifdef __WXGTK3__
     Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
-    Hide(); //avoid old position flash when Center() moves window (asynchronously?)
+    //Hide(); -> avoids old position flash before Center() on GNOME but causes hang on KDE? https://freefilesync.org/forum/viewtopic.php?t=10103#p42404
 #endif
     Center(); //needs to be re-applied after a dialog size change!
 
@@ -2008,7 +2008,7 @@ CfgHighlightDlg::CfgHighlightDlg(wxWindow* parent, int& cfgHistSyncOverdueDays) 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
 #ifdef __WXGTK3__
     Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
-    Hide(); //avoid old position flash when Center() moves window (asynchronously?)
+    //Hide(); -> avoids old position flash before Center() on GNOME but causes hang on KDE? https://freefilesync.org/forum/viewtopic.php?t=10103#p42404
 #endif
     Center(); //needs to be re-applied after a dialog size change!
 
@@ -2064,8 +2064,8 @@ ActivationDlg::ActivationDlg(wxWindow* parent,
 
     //setMainInstructionFont(*m_staticTextMain);
 
-    m_richTextLastError          ->SetMinSize({-1, m_richTextLastError          ->GetCharHeight() * 8});
-    m_richTextManualActivationUrl->SetMinSize({-1, m_richTextManualActivationUrl->GetCharHeight() * 4});
+    m_richTextLastError           ->SetMinSize({-1, m_richTextLastError          ->GetCharHeight() * 8});
+    m_richTextManualActivationUrl ->SetMinSize({-1, m_richTextManualActivationUrl->GetCharHeight() * 4});
     m_textCtrlOfflineActivationKey->SetMinSize({dipToWxsize(260), -1});
 
     setImage(*m_bitmapActivation, loadImage("internet"));
@@ -2079,7 +2079,7 @@ ActivationDlg::ActivationDlg(wxWindow* parent,
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
 #ifdef __WXGTK3__
     Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
-    Hide(); //avoid old position flash when Center() moves window (asynchronously?)
+    //Hide(); -> avoids old position flash before Center() on GNOME but causes hang on KDE? https://freefilesync.org/forum/viewtopic.php?t=10103#p42404
 #endif
     Center(); //needs to be re-applied after a dialog size change!
 
@@ -2187,7 +2187,7 @@ DownloadProgressWindow::Impl::Impl(wxWindow* parent, int64_t fileSizeTotal) :
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
 #ifdef __WXGTK3__
     Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
-    Hide(); //avoid old position flash when Center() moves window (asynchronously?)
+    //Hide(); -> avoids old position flash before Center() on GNOME but causes hang on KDE? https://freefilesync.org/forum/viewtopic.php?t=10103#p42404
 #endif
     Center(); //needs to be re-applied after a dialog size change!
 

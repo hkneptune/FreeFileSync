@@ -776,19 +776,21 @@ void matchFolders(const MapType& mapLeft, const MapType& mapRight, ProcessLeftOn
 {
     struct FileRef
     {
-        //perf: buffer ZstringNoCase instead of compareNoCase()/equalNoCase()? => makes no (significant) difference!
+        Zstring canonicalName; //perf: buffer instead of compareNoCase()/equalNoCase()? => makes no (significant) difference!
         const typename MapType::value_type* ref;
         SelectSide side;
     };
     std::vector<FileRef> fileList;
     fileList.reserve(mapLeft.size() + mapRight.size()); //perf: ~5% shorter runtime
 
-    for (const auto& item : mapLeft ) fileList.push_back({&item, SelectSide::left});
-    for (const auto& item : mapRight) fileList.push_back({&item, SelectSide::right});
+    auto getCanonicalName = [](const Zstring& name){ return trimCpy(getUpperCase(name)); };
+    
+    for (const auto& item : mapLeft ) fileList.push_back({getCanonicalName(item.first), &item, SelectSide::left});
+    for (const auto& item : mapRight) fileList.push_back({getCanonicalName(item.first), &item, SelectSide::right});
 
-    //primary sort: ignore Unicode normal form and upper/lower case
+    //primary sort: ignore upper/lower case, leading/trailing space, Unicode normal form
     //bonus: natural default sequence on UI file grid
-    std::sort(fileList.begin(), fileList.end(), [](const FileRef& lhs, const FileRef& rhs) { return compareNoCase(lhs.ref->first /*item name*/, rhs.ref->first) < 0; });
+    std::sort(fileList.begin(), fileList.end(), [](const FileRef& lhs, const FileRef& rhs) { return lhs.canonicalName < rhs.canonicalName; });
 
     using ItType = typename std::vector<FileRef>::iterator;
     auto tryMatchRange = [&](ItType it, ItType itLast) //auto parameters? compiler error on VS 17.2...
@@ -814,16 +816,16 @@ void matchFolders(const MapType& mapLeft, const MapType& mapRight, ProcessLeftOn
 
     for (auto it = fileList.begin(); it != fileList.end();)
     {
-        //find equal range: ignore case, ignore Unicode normalization
-        auto itEndEq = std::find_if(it + 1, fileList.end(), [&](const FileRef& fr) { return !equalNoCase(fr.ref->first, it->ref->first); });
+        //find equal range: ignore upper/lower case, leading/trailing space, Unicode normal form
+        auto itEndEq = std::find_if(it + 1, fileList.end(), [&](const FileRef& fr) { return fr.canonicalName != it->canonicalName; });
         if (!tryMatchRange(it, itEndEq))
         {
-            //secondary sort: respect case, ignore unicode normal forms
+            //secondary sort: respect case, ignore Unicode normal forms
             std::sort(it, itEndEq, [](const FileRef& lhs, const FileRef& rhs) { return getUnicodeNormalForm(lhs.ref->first) < getUnicodeNormalForm(rhs.ref->first); });
 
             for (auto itCase = it; itCase != itEndEq;)
             {
-                //find equal range: respect case, ignore Unicode normalization
+                //find equal range: respect case, ignore Unicode normal forms
                 auto itEndCase = std::find_if(itCase + 1, itEndEq, [&](const FileRef& fr) { return getUnicodeNormalForm(fr.ref->first) != getUnicodeNormalForm(itCase->ref->first); });
                 if (!tryMatchRange(itCase, itEndCase))
                 {

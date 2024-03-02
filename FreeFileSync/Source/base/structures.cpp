@@ -231,7 +231,7 @@ std::wstring fff::getSymbol(CompareFileResult cmpRes)
     switch (cmpRes)
     {
         //*INDENT-OFF*
-        case FILE_EQUAL:             return L"'=="; //added quotation mark to avoid error in Excel cell when exporting to *.cvs
+        case FILE_EQUAL:             return L"'="; //added quotation mark to avoid error in Excel cell when exporting to *.cvs
         case FILE_RENAMED:           return L"renamed"; 
         case FILE_LEFT_ONLY:         return L"only <-";
         case FILE_RIGHT_ONLY:        return L"only ->";
@@ -252,20 +252,20 @@ std::wstring fff::getSymbol(SyncOperation op)
     switch (op)
     {
         //*INDENT-OFF*
-        case SO_CREATE_LEFT:  return L"create <-";
-        case SO_CREATE_RIGHT: return L"create ->";
-        case SO_DELETE_LEFT:      return L"delete <-";
-        case SO_DELETE_RIGHT:     return L"delete ->";
-        case SO_MOVE_LEFT_FROM:   return L"move from <-";
-        case SO_MOVE_LEFT_TO:     return L"move to <-";
-        case SO_MOVE_RIGHT_FROM:  return L"move from ->";
-        case SO_MOVE_RIGHT_TO:    return L"move to ->";
-        case SO_OVERWRITE_LEFT:   return L"update <-";
-        case SO_OVERWRITE_RIGHT:  return L"update ->";
-        case SO_RENAME_LEFT:      return L"rename <-";
-        case SO_RENAME_RIGHT:     return L"rename ->";
-        case SO_DO_NOTHING:       return L" -";
-        case SO_EQUAL:            return L"'=="; //added quotation mark to avoid error in Excel cell when exporting to *.cvs
+        case SO_CREATE_LEFT:     return L"create <-";
+        case SO_CREATE_RIGHT:    return L"create ->";
+        case SO_DELETE_LEFT:     return L"delete <-";
+        case SO_DELETE_RIGHT:    return L"delete ->";
+        case SO_MOVE_LEFT_FROM:  return L"move from <-";
+        case SO_MOVE_LEFT_TO:    return L"move to <-";
+        case SO_MOVE_RIGHT_FROM: return L"move from ->";
+        case SO_MOVE_RIGHT_TO:   return L"move to ->";
+        case SO_OVERWRITE_LEFT:  return L"update <-";
+        case SO_OVERWRITE_RIGHT: return L"update ->";
+        case SO_RENAME_LEFT:     return L"rename <-";
+        case SO_RENAME_RIGHT:    return L"rename ->";
+        case SO_DO_NOTHING:      return L" -";
+        case SO_EQUAL:           return L"'="; //added quotation mark to avoid error in Excel cell when exporting to *.cvs
         case SO_UNRESOLVED_CONFLICT: return L"conflict"; //portable Unicode symbol: ⚡
         //*INDENT-ON*
     };

@@ -22,7 +22,7 @@ class FileView //grid view of FolderComparison
 {
 public:
     FileView() {}
-    explicit FileView(FolderComparison& folderCmp); //takes (shared) ownership
+    explicit FileView(FolderComparison& folderCmp); //takes weak (non-owning) references
 
     size_t rowsOnView() const { return viewRef_  .size(); } //only visible elements
     size_t rowsTotal () const { return sortedRef_.size(); } //total rows available

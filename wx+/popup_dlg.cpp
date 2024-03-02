@@ -289,7 +289,7 @@ public:
         GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
 #ifdef __WXGTK3__
         Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
-        Hide(); //avoid old position flash when Center() moves window (asynchronously?)
+        //Hide(); -> avoids old position flash before Center() on GNOME but causes hang on KDE? https://freefilesync.org/forum/viewtopic.php?t=10103#p42404
 #endif
         Center(); //needs to be re-applied after a dialog size change!
 

@@ -1585,14 +1585,14 @@ private:
             case ColumnTypeCenter::checkbox:
                 break;
             case ColumnTypeCenter::difference:
-                return _("Difference") + L" (F11)";
+                return _("Difference");
             case ColumnTypeCenter::action:
-                return _("Action")   + L" (F11)";
+                return _("Action");
         }
         return std::wstring();
     }
 
-    std::wstring getToolTip(ColumnType colType) const override { return getColumnLabel(colType); }
+    std::wstring getToolTip(ColumnType colType) const override { return getColumnLabel(colType) + L" (F11)"; }
 
     void renderColumnLabel(wxDC& dc, const wxRect& rect, ColumnType colType, bool enabled, bool highlighted) override
     {

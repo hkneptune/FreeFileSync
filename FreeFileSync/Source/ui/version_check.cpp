@@ -312,7 +312,7 @@ void fff::automaticUpdateCheckEval(wxWindow& parent, time_t& lastUpdateCheck, st
     {
         lastUpdateCheck = getVersionCheckCurrentTime();
 
-        if (lastOnlineVersion != result.onlineVersion) //show new version popup only *once*
+        if (lastOnlineVersion != result.onlineVersion) //show new version popup only *once* per new release
         {
             lastOnlineVersion = result.onlineVersion;
 

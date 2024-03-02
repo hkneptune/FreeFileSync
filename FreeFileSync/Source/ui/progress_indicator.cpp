@@ -219,8 +219,8 @@ CompareProgressPanel::Impl::Impl(wxFrame& parentWindow) :
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
 #ifdef __WXGTK3__
-    Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
-    Hide(); //avoid old position flash when Center() moves window (asynchronously?)
+    //Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
+    //Hide(); -> avoids old position flash before Center() on GNOME but causes hang on KDE? https://freefilesync.org/forum/viewtopic.php?t=10103#p42404
 #endif
 }
 
@@ -924,7 +924,7 @@ syncStat_(&syncStat)
     this->GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
 #ifdef __WXGTK3__
     this->Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
-    this->Hide(); //avoid old position flash when Center() moves window (asynchronously?)
+    //Hide(); -> avoids old position flash before Center() on GNOME but causes hang on KDE? https://freefilesync.org/forum/viewtopic.php?t=10103#p42404
 #endif
     pnl_.Layout();
     this->Center(); //call *after* dialog layout update and *before* wxWindow::Show()!

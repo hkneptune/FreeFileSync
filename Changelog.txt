@@ -1,3 +1,12 @@
+FreeFileSync 13.4 [2024-02-16]
+------------------------------
+Ignore leading/trailing space when matching file names
+Work around wxWidgets system logger clearing error code
+Fixed registration info not found after App Translocation (macOS)
+Avoid modal dialog hang on KDE when compiling with GTK3
+Change app location without losing Donation Edition status (macOS)
+
+
 FreeFileSync 13.3 [2024-01-07]
 ------------------------------
 Completed CASA security assessment for Google Drive
@@ -5,6 +14,7 @@ Use system temp folder for auto-updating
 Ignore errors when setting directory attributes is unsupported
 Save GUI sync log file even when cancelled
 Fixed Business Edition install over existing installation
+Updated code signing certificates (Windows)
 
 
 FreeFileSync 13.2 [2023-11-23]

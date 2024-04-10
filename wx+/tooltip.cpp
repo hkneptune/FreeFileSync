@@ -75,10 +75,9 @@ void Tooltip::show(const wxString& text, wxPoint mousePos, const wxImage* img)
     if (txtChanged)
     {
         lastUsedText_ = text;
-        {
             tipWindow_->staticTextMain_->SetLabelText(text);
-            tipWindow_->staticTextMain_->Wrap(dipToWxsize(600));
-        }
+
+        tipWindow_->staticTextMain_->Wrap(dipToWxsize(600));
     }
 
     if (imgChanged || txtChanged)

@@ -1961,7 +1961,7 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
                 else
                     assert(false);
 
-#if 0 //changing file time without copying content is not justified after CompareVariant::size finds "equal" files! similar issue with CompareVariant::timeSize and FileTimeTolerance == -1
+#if 0 //changing file time without copying content is not justified after CompareVariant::size finds "equal" files!
                 //Bonus: some devices don't support setting (precise) file times anyway, e.g. FAT or MTP!
                 if (file.getLastWriteTime<sideTrg>() != file.getLastWriteTime<sideSrc>())
                     //- no need to call sameFileTime() or respect 2 second FAT/FAT32 precision in this comparison
@@ -2798,10 +2798,10 @@ break2:
                         if (pd->itemPathParent == folderPath) //if versioning folder is a subfolder of a base folder
                             if (!pd->relPath.empty())           //this can be fixed via an exclude filter
                             {
-                assert(pd->itemPathParent == folderPath); //otherwise: what the fuck!?
+                                assert(pd->itemPathParent == folderPath); //otherwise: what the fuck!?
                                 shouldExclude = true;
-                                msg += std::wstring() + L'\n' + 
-                                    L"⇒ " + _("Exclude:") + L" \t" + utfTo<std::wstring>(FILE_NAME_SEPARATOR + pd->relPath + FILE_NAME_SEPARATOR);
+                                msg += std::wstring() + L'\n' +
+                                       L"⇒ " + _("Exclude:") + L" \t" + utfTo<std::wstring>(FILE_NAME_SEPARATOR + pd->relPath + FILE_NAME_SEPARATOR);
                             }
                     }
         }
@@ -2872,11 +2872,6 @@ break2:
                 continue;
 
             //------------------------------------------------------------------------------------------
-            callback.logMessage(_("Synchronizing folder pair:") + L' ' + getVariantNameWithSymbol(folderPairCfg.syncVar) + L'\n' + //throw X
-                                TAB_SPACE + AFS::getDisplayPath(baseFolder.getAbstractPath<SelectSide::left >()) + L'\n' +
-                                TAB_SPACE + AFS::getDisplayPath(baseFolder.getAbstractPath<SelectSide::right>()), PhaseCallback::MsgType::info);
-            //------------------------------------------------------------------------------------------
-
             //checking a second time: 1. a long time may have passed since syncing the previous folder pairs!
             //                        2. expected to be run directly *before* createBaseFolder()!
             if (!checkBaseFolderStatus<SelectSide::left >(baseFolder, callback) ||
@@ -2890,9 +2885,7 @@ break2:
                     continue;
 
             //------------------------------------------------------------------------------------------
-            //execute synchronization recursively
-
-            //update database even when sync is cancelled:
+            //update database even when sync is cancelled (or "nothing to sync"):
             auto guardDbSave = makeGuard<ScopeGuardRunMode::onFail>([&]
             {
                 if (folderPairCfg.saveSyncDB)
@@ -2900,64 +2893,73 @@ break2:
                                              callbackNoThrow);
             });
 
-            //guarantee removal of invalid entries (where element is empty on both sides)
-            ZEN_ON_SCOPE_EXIT(baseFolder.removeDoubleEmpty());
-
-            bool copyPermissionsFp = false;
-            tryReportingError([&]
+            //------------------------------------------------------------------------------------------
+            //execute synchronization recursively
+            if (getCUD(folderPairStat) > 0)
             {
-                copyPermissionsFp = copyFilePermissions && //copy permissions only if asked for and supported by *both* sides!
-                AFS::supportPermissionCopy(baseFolder.getAbstractPath<SelectSide::left>(),
-                                           baseFolder.getAbstractPath<SelectSide::right>()); //throw FileError
-            }, callback); //throw X
+                callback.logMessage(_("Synchronizing folder pair:") + L' ' + getVariantNameWithSymbol(folderPairCfg.syncVar) + L'\n' + //throw X
+                                    TAB_SPACE + AFS::getDisplayPath(baseFolder.getAbstractPath<SelectSide::left >()) + L'\n' +
+                                    TAB_SPACE + AFS::getDisplayPath(baseFolder.getAbstractPath<SelectSide::right>()), PhaseCallback::MsgType::info);
 
-            const AbstractPath versioningFolderPath = createAbstractPath(folderPairCfg.versioningFolderPhrase);
+                //guarantee removal of invalid entries (where element is empty on both sides)
+                ZEN_ON_SCOPE_EXIT(baseFolder.removeDoubleEmpty());
 
-            DeletionHandler delHandlerL(baseFolder.getAbstractPath<SelectSide::left>(),
-                                        recyclerMissingReportOnce,
-                                        warnings.warnRecyclerMissing,
-                                        folderPairCfg.handleDeletion,
-                                        versioningFolderPath,
-                                        folderPairCfg.versioningStyle,
-                                        std::chrono::system_clock::to_time_t(syncStartTime));
+                bool copyPermissionsFp = false;
+                tryReportingError([&]
+                {
+                    copyPermissionsFp = copyFilePermissions && //copy permissions only if asked for and supported by *both* sides!
+                    AFS::supportPermissionCopy(baseFolder.getAbstractPath<SelectSide::left>(),
+                                               baseFolder.getAbstractPath<SelectSide::right>()); //throw FileError
+                }, callback); //throw X
 
-            DeletionHandler delHandlerR(baseFolder.getAbstractPath<SelectSide::right>(),
-                                        recyclerMissingReportOnce,
-                                        warnings.warnRecyclerMissing,
-                                        folderPairCfg.handleDeletion,
-                                        versioningFolderPath,
-                                        folderPairCfg.versioningStyle,
-                                        std::chrono::system_clock::to_time_t(syncStartTime));
+                const AbstractPath versioningFolderPath = createAbstractPath(folderPairCfg.versioningFolderPhrase);
 
-            //always (try to) clean up, even if synchronization is aborted!
-            auto guardDelCleanup = makeGuard<ScopeGuardRunMode::onFail>([&]
-            {
-                delHandlerL.tryCleanup(callbackNoThrow);
-                delHandlerR.tryCleanup(callbackNoThrow);
-            });
+                DeletionHandler delHandlerL(baseFolder.getAbstractPath<SelectSide::left>(),
+                                            recyclerMissingReportOnce,
+                                            warnings.warnRecyclerMissing,
+                                            folderPairCfg.handleDeletion,
+                                            versioningFolderPath,
+                                            folderPairCfg.versioningStyle,
+                                            std::chrono::system_clock::to_time_t(syncStartTime));
+
+                DeletionHandler delHandlerR(baseFolder.getAbstractPath<SelectSide::right>(),
+                                            recyclerMissingReportOnce,
+                                            warnings.warnRecyclerMissing,
+                                            folderPairCfg.handleDeletion,
+                                            versioningFolderPath,
+                                            folderPairCfg.versioningStyle,
+                                            std::chrono::system_clock::to_time_t(syncStartTime));
+
+                //always (try to) clean up, even if synchronization is aborted!
+                auto guardDelCleanup = makeGuard<ScopeGuardRunMode::onFail>([&]
+                {
+                    delHandlerL.tryCleanup(callbackNoThrow);
+                    delHandlerR.tryCleanup(callbackNoThrow);
+                });
 
 
-            FolderPairSyncer::SyncCtx syncCtx =
-            {
-                verifyCopiedFiles, copyPermissionsFp, failSafeFileCopy,
-                delHandlerL, delHandlerR,
-            };
-            FolderPairSyncer::runSync(syncCtx, baseFolder, callback);
+                FolderPairSyncer::SyncCtx syncCtx =
+                {
+                    verifyCopiedFiles, copyPermissionsFp, failSafeFileCopy,
+                    delHandlerL, delHandlerR,
+                };
+                FolderPairSyncer::runSync(syncCtx, baseFolder, callback);
 
-            //(try to gracefully) clean up temporary Recycle Bin folders and versioning
-            delHandlerL.tryCleanup(callback); //throw X
-            delHandlerR.tryCleanup(callback); //
-            guardDelCleanup.dismiss();
+                //(try to gracefully) clean up temporary Recycle Bin folders and versioning
+                delHandlerL.tryCleanup(callback); //throw X
+                delHandlerR.tryCleanup(callback); //
+                guardDelCleanup.dismiss();
 
-            if (folderPairCfg.handleDeletion == DeletionVariant::versioning &&
-                folderPairCfg.versioningStyle != VersioningStyle::replace)
-                versionLimitFolders.insert(
-            {
-                versioningFolderPath,
-                folderPairCfg.versionMaxAgeDays,
-                folderPairCfg.versionCountMin,
-                folderPairCfg.versionCountMax
-            });
+                if (folderPairCfg.handleDeletion == DeletionVariant::versioning &&
+                    folderPairCfg.versioningStyle != VersioningStyle::replace)
+                    versionLimitFolders.insert(
+                {
+                    versioningFolderPath,
+                    folderPairCfg.versionMaxAgeDays,
+                    folderPairCfg.versionCountMin,
+                    folderPairCfg.versionCountMax
+                });
+            }
 
             //(try to gracefully) write database file
             if (folderPairCfg.saveSyncDB)

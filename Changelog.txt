@@ -1,3 +1,12 @@
+FreeFileSync 13.5 [2024-04-01]
+------------------------------
+Wrap file grid folder paths instead of truncate
+Fixed sync operation arrows for RTL layout
+Fixed FTP hang during connection (libcurl regression)
+Consider user-defined file time tolerance for DB comparisons
+Don't log folder pair paths if nothing to sync
+
+
 FreeFileSync 13.4 [2024-02-16]
 ------------------------------
 Ignore leading/trailing space when matching file names

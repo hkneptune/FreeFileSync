@@ -14,10 +14,9 @@
 namespace fff
 {
 inline
-bool sameFileTime(time_t lhs, time_t rhs, int tolerance, const std::vector<unsigned int>& ignoreTimeShiftMinutes)
+bool sameFileTime(time_t lhs, time_t rhs, /*unsigned*/ int tolerance, const std::vector<unsigned int>& ignoreTimeShiftMinutes)
 {
-    if (tolerance < 0) //:= unlimited tolerance by convention!
-        return true;
+    assert(tolerance >= 0);
 
     if (lhs < rhs)
         std::swap(lhs, rhs);
@@ -71,7 +70,7 @@ inline const time_t oneYearFromNow = std::time(nullptr) + 365 * 24 * 3600;
 
 
 inline
-TimeResult compareFileTime(time_t lhs, time_t rhs, int tolerance, const std::vector<unsigned int>& ignoreTimeShiftMinutes)
+TimeResult compareFileTime(time_t lhs, time_t rhs, unsigned int tolerance, const std::vector<unsigned int>& ignoreTimeShiftMinutes)
 {
     assert(oneYearFromNow != 0);
     if (sameFileTime(lhs, rhs, tolerance, ignoreTimeShiftMinutes)) //last write time may differ by up to 2 seconds (NTFS vs FAT32)

@@ -195,8 +195,12 @@ public:
         }
         else
         {
-            dc_.SetClippingRegion(r);
-            clippingAreas_.emplace(&dc_, r);
+            //caveat: actual clipping region is smaller when rect is not fully inside the DC
+            //=> ensure consistency for validateClippingBuffer()
+            const wxRect tmp = getIntersection(r, wxRect(dc.GetSize()));
+
+            dc_.SetClippingRegion(tmp);
+            clippingAreas_.emplace(&dc_, tmp);
         }
     }
 

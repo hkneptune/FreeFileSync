@@ -218,7 +218,8 @@ bool fff::allElementsEqual(const FolderComparison& folderCmp)
 namespace
 {
 template <SelectSide side> inline
-CudAction compareDbEntry(const FilePair& file, const InSyncFile* dbFile, const std::vector<unsigned int>& ignoreTimeShiftMinutes, bool renamedOrMoved)
+CudAction compareDbEntry(const FilePair& file, const InSyncFile* dbFile, unsigned int fileTimeTolerance,
+                         const std::vector<unsigned int>& ignoreTimeShiftMinutes, bool renamedOrMoved)
 {
     if (file.isEmpty<side>())
         return dbFile ? (renamedOrMoved ? CudAction::update: CudAction::delete_) : CudAction::noChange;
@@ -227,8 +228,7 @@ CudAction compareDbEntry(const FilePair& file, const InSyncFile* dbFile, const s
 
     const InSyncDescrFile& descrDb = selectParam<side>(dbFile->left, dbFile->right);
 
-    return sameFileTime(file.getLastWriteTime<side>(), descrDb.modTime, FAT_FILE_TIME_PRECISION_SEC, ignoreTimeShiftMinutes) &&
-           //- we're not interested in "fileTimeTolerance"!
+    return sameFileTime(file.getLastWriteTime<side>(), descrDb.modTime, fileTimeTolerance, ignoreTimeShiftMinutes) &&
            //- we do *not* consider file ID, but only *user-visual* changes. E.g. user moving data to some other medium should not be considered a change!
            file.getFileSize<side>() == dbFile->fileSize ?
            CudAction::noChange : CudAction::update;
@@ -237,7 +237,7 @@ CudAction compareDbEntry(const FilePair& file, const InSyncFile* dbFile, const s
 
 //check whether database entry is in sync considering *current* comparison settings
 inline
-bool stillInSync(const InSyncFile& dbFile, CompareVariant compareVar, int fileTimeTolerance, const std::vector<unsigned int>& ignoreTimeShiftMinutes)
+bool stillInSync(const InSyncFile& dbFile, CompareVariant compareVar, unsigned int fileTimeTolerance, const std::vector<unsigned int>& ignoreTimeShiftMinutes)
 {
     switch (compareVar)
     {
@@ -263,7 +263,8 @@ bool stillInSync(const InSyncFile& dbFile, CompareVariant compareVar, int fileTi
 
 //check whether database entry and current item match: *irrespective* of current comparison settings
 template <SelectSide side> inline
-CudAction compareDbEntry(const SymlinkPair& symlink, const InSyncSymlink* dbSymlink, const std::vector<unsigned int>& ignoreTimeShiftMinutes, bool renamedOrMoved)
+CudAction compareDbEntry(const SymlinkPair& symlink, const InSyncSymlink* dbSymlink, unsigned int fileTimeTolerance, 
+    const std::vector<unsigned int>& ignoreTimeShiftMinutes, bool renamedOrMoved)
 {
     if (symlink.isEmpty<side>())
         return dbSymlink ? (renamedOrMoved ? CudAction::update: CudAction::delete_) : CudAction::noChange;
@@ -272,14 +273,14 @@ CudAction compareDbEntry(const SymlinkPair& symlink, const InSyncSymlink* dbSyml
 
     const InSyncDescrLink& descrDb = selectParam<side>(dbSymlink->left, dbSymlink->right);
 
-    return sameFileTime(symlink.getLastWriteTime<side>(), descrDb.modTime, FAT_FILE_TIME_PRECISION_SEC, ignoreTimeShiftMinutes) ?
+    return sameFileTime(symlink.getLastWriteTime<side>(), descrDb.modTime, fileTimeTolerance, ignoreTimeShiftMinutes) ?
            CudAction::noChange : CudAction::update;
 }
 
 
 //check whether database entry is in sync considering *current* comparison settings
 inline
-bool stillInSync(const InSyncSymlink& dbLink, CompareVariant compareVar, int fileTimeTolerance, const std::vector<unsigned int>& ignoreTimeShiftMinutes)
+bool stillInSync(const InSyncSymlink& dbLink, CompareVariant compareVar, unsigned int fileTimeTolerance, const std::vector<unsigned int>& ignoreTimeShiftMinutes)
 {
     switch (compareVar)
     {
@@ -534,7 +535,7 @@ private:
     }
 
     const CompareVariant cmpVar_;
-    const int fileTimeTolerance_;
+    const unsigned int fileTimeTolerance_;
     const std::vector<unsigned int> ignoreTimeShiftMinutes_;
 
     std::vector<FilePair*> filesL_; //collection of *all* file items (with non-null filePrint)
@@ -649,8 +650,8 @@ private:
                 }
             return false;
         }();
-        const CudAction changeL = compareDbEntry<SelectSide::left >(file, dbEntryL, ignoreTimeShiftMinutes_, renamedOrMoved);
-        const CudAction changeR = compareDbEntry<SelectSide::right>(file, dbEntryR, ignoreTimeShiftMinutes_, renamedOrMoved);
+        const CudAction changeL = compareDbEntry<SelectSide::left >(file, dbEntryL, fileTimeTolerance_, ignoreTimeShiftMinutes_, renamedOrMoved);
+        const CudAction changeR = compareDbEntry<SelectSide::right>(file, dbEntryR, fileTimeTolerance_, ignoreTimeShiftMinutes_, renamedOrMoved);
 
         setSyncDirForChange(file, changeL, changeR);
     }
@@ -686,8 +687,8 @@ private:
             return symlink.setSyncDirConflict(txtDbNotInSync_);
 
         const bool renamedOrMoved = cat == SYMLINK_RENAMED;
-        const CudAction changeL = compareDbEntry<SelectSide::left >(symlink, dbEntryL, ignoreTimeShiftMinutes_, renamedOrMoved);
-        const CudAction changeR = compareDbEntry<SelectSide::right>(symlink, dbEntryR, ignoreTimeShiftMinutes_, renamedOrMoved);
+        const CudAction changeL = compareDbEntry<SelectSide::left >(symlink, dbEntryL, fileTimeTolerance_, ignoreTimeShiftMinutes_, renamedOrMoved);
+        const CudAction changeR = compareDbEntry<SelectSide::right>(symlink, dbEntryR, fileTimeTolerance_, ignoreTimeShiftMinutes_, renamedOrMoved);
 
         setSyncDirForChange(symlink, changeL, changeR);
     }
@@ -800,7 +801,7 @@ private:
 
     const DirectionByChange dirs_;
     const CompareVariant cmpVar_;
-    const int fileTimeTolerance_;
+    const unsigned int fileTimeTolerance_;
     const std::vector<unsigned int> ignoreTimeShiftMinutes_;
 };
 }
@@ -1206,7 +1207,7 @@ std::optional<PathDependency> fff::getPathDependency(const AbstractPath& itemPat
                     relDirPath = appendPath(relDirPath, itemName);
                 });
 
-               return PathDependency{leftParent ? itemPathL : itemPathR, relDirPath};
+                return PathDependency{leftParent ? itemPathL : itemPathR, relDirPath};
             }
         }
     }
@@ -1215,18 +1216,18 @@ std::optional<PathDependency> fff::getPathDependency(const AbstractPath& itemPat
 
 
 std::optional<PathDependency> fff::getFolderPathDependency(const AbstractPath& folderPathL, const PathFilter& filterL,
-                                                     const AbstractPath& folderPathR, const PathFilter& filterR)
+                                                           const AbstractPath& folderPathR, const PathFilter& filterR)
 {
     if (std::optional<PathDependency> pd = getPathDependency(folderPathL, folderPathR))
-    {        
-                const PathFilter& filterP = pd->itemPathParent == folderPathL ? filterL : filterR;
-                //if there's a dependency, check if the sub directory is (fully) excluded via filter
-                //=> easy to check but still insufficient in general:
-                // - one folder may have a *.txt include-filter, the other a *.lng include filter => no dependencies, but "childItemMightMatch = true" below!
-                // - user may have manually excluded the conflicting items or changed the filter settings without running a re-compare
-                bool childItemMightMatch = true;
-                if (pd->relPath.empty() || filterP.passDirFilter(pd->relPath, &childItemMightMatch) || childItemMightMatch)
-                    return pd;
+    {
+        const PathFilter& filterP = pd->itemPathParent == folderPathL ? filterL : filterR;
+        //if there's a dependency, check if the sub directory is (fully) excluded via filter
+        //=> easy to check but still insufficient in general:
+        // - one folder may have a *.txt include-filter, the other a *.lng include filter => no dependencies, but "childItemMightMatch = true" below!
+        // - user may have manually excluded the conflicting items or changed the filter settings without running a re-compare
+        bool childItemMightMatch = true;
+        if (pd->relPath.empty() || filterP.passDirFilter(pd->relPath, &childItemMightMatch) || childItemMightMatch)
+            return pd;
     }
     return {};
 }

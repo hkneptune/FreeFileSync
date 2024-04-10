@@ -35,6 +35,8 @@ struct TranslationHandler
     virtual std::wstring translate(const std::wstring& text) const = 0; //simple translation
     virtual std::wstring translate(const std::wstring& singular, const std::wstring& plural, int64_t n) const = 0;
 
+    virtual bool layoutIsRtl() const = 0; //right-to-left? e.g. Hebrew, Arabic
+
 private:
     TranslationHandler           (const TranslationHandler&) = delete;
     TranslationHandler& operator=(const TranslationHandler&) = delete;
@@ -42,8 +44,6 @@ private:
 
 void setTranslator(std::unique_ptr<const TranslationHandler>&& newHandler); //take ownership
 std::shared_ptr<const TranslationHandler> getTranslator();
-
-
 
 
 
@@ -100,6 +100,15 @@ std::wstring translate(const std::wstring& singular, const std::wstring& plural,
     }
     //fallback:
     return replaceCpy(std::abs(n64) == 1 ? singular : plural, L"%x", formatNumber(n));
+}
+
+
+inline
+bool languageLayoutIsRtl()
+{
+    if (std::shared_ptr<const TranslationHandler> t = getTranslator())
+        return t->layoutIsRtl();
+    return false;
 }
 }
 

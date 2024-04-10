@@ -308,7 +308,8 @@ struct SharedComponents //...between left, center, and right grids
     NavigationMarker navMarker;
     std::unique_ptr<GridEventManager> evtMgr;
     GridViewType gridViewType = GridViewType::action;
-    std::unordered_map<std::wstring, wxSize> compExtentsBuf_; //buffer expensive wxDC::GetTextExtent() calls!
+    std::unordered_map<std::wstring, wxSize, StringHash, StringEqual> compExtentsBuf_; //buffer expensive wxDC::GetTextExtent() calls!
+    //StringHash, StringEqual => heterogenous lookup by std::wstring_view
 };
 
 //########################################################################################################
@@ -351,7 +352,7 @@ public:
 
     const FileSystemObject* getFsObject(size_t row) const { return getDataView().getFsObject(row); }
 
-    const wxSize& getTextExtentBuffered(wxDC& dc, const std::wstring& text)
+    const wxSize& getTextExtentBuffered(wxDC& dc, const std::wstring_view& text)
     {
         auto& compExtentsBuf = sharedComp_.ref().compExtentsBuf_;
         //- only used for parent path names and file names on view => should not grow "too big"
@@ -359,8 +360,45 @@ public:
 
         auto it = compExtentsBuf.find(text);
         if (it == compExtentsBuf.end())
-            it = compExtentsBuf.emplace(text, dc.GetTextExtent(text)).first;
+            it = compExtentsBuf.emplace(text, dc.GetTextExtent(copyStringTo<wxString>(text))).first;
         return it->second;
+    }
+
+    //- trim while leaving path components intact
+    //- *always* returns at least one component, even if > maxWidth
+    size_t getPathTrimmedSize(wxDC& dc, const std::wstring_view& itemPath, int maxWidth)
+    {
+        if (itemPath.size() <= 1)
+            return itemPath.size();
+
+        std::vector<std::wstring_view> subComp;
+
+        //split path by components, but skip slash at beginning or end
+        for (auto it = itemPath.begin() + 1; it != itemPath.end() - 1; ++it)
+            if (*it == L'/' ||
+                *it == L'\\')
+                subComp.push_back(makeStringView(itemPath.begin(), it));
+
+        subComp.push_back(itemPath);
+
+        if (maxWidth <= 0)
+            return subComp[0].size();
+
+        size_t low  = 0;
+        size_t high = subComp.size();
+
+        for (;;)
+        {
+            if (high - low == 1)
+                return subComp[low].size();
+
+            const size_t middle = (low + high) / 2; //=> never 0 when "high - low > 1"
+
+            if (getTextExtentBuffered(dc, subComp[middle]).GetWidth() <= maxWidth)
+                low = middle;
+            else
+                high = middle;
+        }
     }
 
 private:
@@ -550,7 +588,9 @@ private:
 
         //----------------------------------------------------------------------------------
         const wxRect rectLine(rect.x, rect.y + rect.height - dipToWxsize(1), rect.width, dipToWxsize(1));
-        clearArea(dc, rectLine, row == pdi.groupLastRow - 1 /*last group item*/ ?
+        clearArea(dc, rectLine, row == pdi.groupLastRow - 1 || //last group item
+                  (pdi.fsObj == pdi.folderGroupObj &&  //folder item => distinctive separation color against subsequent file items
+                   itemPathFormat_ != ItemPathFormat::name) ?
                   getColorGridLine() : getDefaultBackgroundColorAlternating(pdi.groupIdx % 2 != 0));
     }
 
@@ -572,18 +612,18 @@ private:
         if (itemNamesWidth < 0)
         {
             itemNamesWidth = 0;
-            const int ellipsisWidth = getTextExtentBuffered(dc, ELLIPSIS).x;
+            //const int ellipsisWidth = getTextExtentBuffered(dc, ELLIPSIS).x;
 
             std::vector<int> itemWidths;
             for (size_t row2 = pdi.groupFirstRow; row2 < pdi.groupLastRow; ++row2)
                 if (const FileSystemObject* fsObj = getDataView().getFsObject(row2))
                     if (itemPathFormat_ == ItemPathFormat::name || fsObj != pdi.folderGroupObj)
-                    {
+#if 0 //render same layout even when items don't exist
                         if (fsObj->isEmpty<side>())
                             itemNamesWidth = ellipsisWidth;
                         else
+#endif
                             itemWidths.push_back(getTextExtentBuffered(dc, utfTo<std::wstring>(fsObj->getItemName<side>())).x);
-                    }
 
             if (!itemWidths.empty())
             {
@@ -601,17 +641,15 @@ private:
     }
 
 
-    struct GroupRenderLayout
+    struct GroupRowLayout
     {
+        std::wstring groupParentPart; //... if distributed over multiple rows, otherswise full group parent folder
+        std::wstring groupName; //only filled for first row of a group
         std::wstring itemName;
-        std::wstring groupName;
-        std::wstring groupParentFolder;
-        size_t groupFirstRow;
-        bool stackedGroupRender;
         int groupParentWidth;
         int groupNameWidth;
     };
-    GroupRenderLayout getGroupRenderLayout(wxDC& dc, size_t row, const FileView::PathDrawInfo& pdi, int maxWidth)
+    GroupRowLayout getGroupRowLayout(wxDC& dc, size_t row, const FileView::PathDrawInfo& pdi, int maxWidth)
     {
         assert(pdi.fsObj);
 
@@ -619,14 +657,15 @@ private:
         const int iconSize       = getIconManager().getIconWxsize();
 
         //--------------------------------------------------------------------
-        const int ellipsisWidth = getTextExtentBuffered(dc, ELLIPSIS).x;
+        const int ellipsisWidth       = getTextExtentBuffered(dc, ELLIPSIS).x;
+        const int arrowRightDownWidth = getTextExtentBuffered(dc, rightArrowDown_).x;
         const int groupItemNamesWidth = getGroupItemNamesWidth(dc, pdi);
         //--------------------------------------------------------------------
 
         //exception for readability: top row is always group start!
         const size_t groupFirstRow = std::max<size_t>(pdi.groupFirstRow, refGrid().getRowAtWinPos(0));
 
-        const bool multiItemGroup = pdi.groupLastRow - groupFirstRow > 1;
+        const size_t groupLineCount = pdi.groupLastRow - groupFirstRow;
 
         std::wstring itemName;
         if (itemPathFormat_ == ItemPathFormat::name || //hack: show folder name in item colum since groupName/groupParentFolder are unused!
@@ -660,11 +699,23 @@ private:
                 break;
         }
 
-        //path components should follow the app layout direction and are NOT a single piece of text!
-        //caveat: add Bidi support only during rendering and not in getValue() or AFS::getDisplayPath(): e.g. support "open file in Explorer"
-        assert(!contains(groupParentFolder, slashBidi_) && !contains(groupParentFolder, bslashBidi_));
-        replace(groupParentFolder, L'/',   slashBidi_);
-        replace(groupParentFolder, L'\\', bslashBidi_);
+        if (!groupParentFolder.empty())
+        {
+            const wchar_t pathSep = [&]
+            {
+                for (auto it = groupParentFolder.end(); it != groupParentFolder.begin();) //reverse iteration: 1. check 2. decrement 3. evaluate
+                {
+                    --it; //
+
+                    if (*it ==  L'/' ||
+                        *it ==  L'\\')
+                        return *it;
+                }
+                return static_cast<wchar_t>(FILE_NAME_SEPARATOR);
+            }();
+            if (!endsWith(groupParentFolder, pathSep)) //visual hint that this is a parent folder only
+                groupParentFolder += pathSep;          //
+        }
 
         /*  group details: single row
             ________________________  ___________________________________  _____________________________________________________
@@ -672,12 +723,15 @@ private:
             ------------------------  -----------------------------------  -----------------------------------------------------
 
             group details: stacked
-            _____________________________________________________  _____________________________________________________
-            |   <right-aligned> (gap | icon | gap | group name) |  |                  | (gap | icon) | gap | item name | <- group name on first row
-            |---------------------------------------------------|  | (2x gap | vline) |--------------------------------|
-            | (gap | group parent_/\ | wide gap)                |  |                  | (gap | icon) | gap | item name | <- group parent on second
-            -----------------------------------------------------  -----------------------------------------------------                            */
-        bool stackedGroupRender = false;
+            __________________________________                  ___________________________________  ___________________________________________________
+            | gap | group parent, part 1 | ⤵️ |  <right-aligned> | (gap | icon | gap | group name) |  |                | (gap | icon) | gap | item name |
+            |-------------------------------------------------------------------------------------|  | 2x gap | vline |--------------------------------|
+            | gap | group parent, part n                                                          |  |                | (gap | icon) | gap | item name |
+            ---------------------------------------------------------------------------------------  ---------------------------------------------------
+
+                -> group name on first row
+                -> parent name distributed over multiple rows, if needed                                                        */
+
         int groupParentWidth = groupParentFolder.empty() ? 0 : (gapSize_ + getTextExtentBuffered(dc, groupParentFolder).x);
 
         int       groupNameWidth    = groupName.empty() ? 0 : (gapSize_ + iconSize + gapSize_ + getTextExtentBuffered(dc, groupName).x);
@@ -688,83 +742,94 @@ private:
         int       groupItemsWidth    = groupSepWidth + (drawFileIcons ? gapSize_ + iconSize : 0) + gapSize_ + groupItemNamesWidth;
         const int groupItemsMinWidth = groupSepWidth + (drawFileIcons ? gapSize_ + iconSize : 0) + gapSize_ + ellipsisWidth;
 
-        //not enough space? => collapse
+        std::wstring groupParentPart;
+        if (row == groupFirstRow)
+            groupParentPart = groupParentFolder;
+
+        //not enough space? => trim or render on multiple rows
         if (int excessWidth = groupParentWidth + groupNameWidth + groupItemsWidth - maxWidth;
             excessWidth > 0)
         {
-            if (multiItemGroup && !groupParentFolder.empty() && !groupName.empty())
+            const bool stackedGroupRender = !groupParentFolder.empty() && groupLineCount > 1; //group parent details on multiple rows
+
+            //1. shrink group parent
+            if (!groupParentFolder.empty())
             {
-                //1. render group components on two rows
-                stackedGroupRender = true;
+                const int groupParentMinWidth = stackedGroupRender && !groupName.empty() ? 0 : gapSize_ + ellipsisWidth;
 
-                //add Unicode arrow to indicate that path was split
-                groupParentFolder += L'\u2934'; //Right Arrow Curving Up
-
-                const int groupParentMinWidth = gapSize_ + ellipsisWidth + gapSizeWide_;
-                groupParentWidth = gapSize_ + getTextExtentBuffered(dc, groupParentFolder).x + gapSizeWide_;
-
-                int groupStackWidth = std::max(groupParentWidth, groupNameWidth);
-                excessWidth = groupStackWidth + groupItemsWidth - maxWidth;
-
-                if (excessWidth > 0)
-                {
-                    //2. shrink group stack (group parent only)
-                    if (groupParentWidth > groupNameWidth)
-                    {
-                        groupStackWidth = groupParentWidth = std::max({groupParentWidth - excessWidth, groupNameWidth, groupParentMinWidth});
-                        excessWidth = groupStackWidth + groupItemsWidth - maxWidth;
-                    }
-                    if (excessWidth > 0)
-                    {
-                        //3. shrink item rendering
-                        groupItemsWidth = std::max(groupItemsWidth - excessWidth, groupItemsMinWidth);
-                        excessWidth = groupStackWidth + groupItemsWidth - maxWidth;
-
-                        if (excessWidth > 0)
-                        {
-                            //4. shrink group stack
-                            groupStackWidth = std::max({groupStackWidth - excessWidth, groupNameMinWidth, groupParentMinWidth});
-
-                            groupParentWidth = std::min(groupParentWidth, groupStackWidth);
-                            groupNameWidth   = std::min(groupNameWidth,   groupStackWidth);
-                        }
-                    }
-                }
+                groupParentWidth = std::max(groupParentWidth - excessWidth, groupParentMinWidth);
+                excessWidth = groupParentWidth + groupNameWidth + groupItemsWidth - maxWidth;
             }
-            else //group details on single row
-            {
-                //1. shrink group parent
-                if (!groupParentFolder.empty())
-                {
-                    const int groupParentMinWidth = gapSize_ + ellipsisWidth;
-                    groupParentWidth = std::max(groupParentWidth - excessWidth, groupParentMinWidth);
-                    excessWidth = groupParentWidth + groupNameWidth + groupItemsWidth - maxWidth;
-                }
-                if (excessWidth > 0)
-                {
-                    //2. shrink item rendering
-                    groupItemsWidth = std::max(groupItemsWidth - excessWidth, groupItemsMinWidth);
-                    excessWidth = groupParentWidth + groupNameWidth + groupItemsWidth - maxWidth;
 
-                    if (excessWidth > 0)
-                        //3. shrink group name
-                        if (!groupName.empty())
-                            groupNameWidth = std::max(groupNameWidth - excessWidth, groupNameMinWidth);
+            if (excessWidth > 0)
+            {
+                //2. shrink item rendering
+                groupItemsWidth = std::max(groupItemsWidth - excessWidth, groupItemsMinWidth);
+                excessWidth = groupParentWidth + groupNameWidth + groupItemsWidth - maxWidth;
+
+                if (excessWidth > 0)
+                    //3. shrink group name
+                    if (!groupName.empty())
+                        groupNameWidth = std::max(groupNameWidth - excessWidth, groupNameMinWidth);
+            }
+
+            if (stackedGroupRender)
+            {
+                size_t comp1Len = getPathTrimmedSize(dc, groupParentFolder, groupParentWidth - gapSize_ - arrowRightDownWidth);
+
+                if (!groupName.empty() &&
+                    getTextExtentBuffered(dc, makeStringView(groupParentFolder.begin(), comp1Len)).x > groupParentWidth - gapSize_ - arrowRightDownWidth)
+                    comp1Len = 0; //exception: never truncate parent component on first row, but move to second row instead
+
+                if (row == groupFirstRow)
+                {
+                    groupParentPart = groupParentFolder.substr(0, comp1Len);
+
+                    if (comp1Len != 0 && comp1Len != groupParentFolder.size())
+                        groupParentPart += rightArrowDown_;
+                }
+                else
+                {
+                    size_t compPos = comp1Len;
+
+                    for (size_t i = groupFirstRow + 1; ; ++i)
+                    {
+                        const size_t compLen = getPathTrimmedSize(dc, makeStringView(groupParentFolder.begin() + compPos, groupParentFolder.end()),
+                                                                  groupParentWidth + groupNameWidth - gapSize_ - arrowRightDownWidth);
+                        if (row == i)
+                        {
+                            groupParentPart = compPos + compLen == groupParentFolder.size() ||
+                                              row == pdi.groupLastRow - 1 ?       //not enough rows to show all parent folder components?
+                                              groupParentFolder.substr(compPos) : //=> append to last row => will be truncated with ellipsis
+                                              groupParentFolder.substr(compPos, compLen) + rightArrowDown_;
+                            break;
+                        }
+                        compPos += compLen;
+
+                        if (compPos == groupParentFolder.size())
+                            break;
+                    }
                 }
             }
         }
 
+        //path components should follow the app layout direction and are NOT a single piece of text!
+        //caveat: - add Bidi support only during rendering and not in getValue() or AFS::getDisplayPath(): e.g. support "open file in Explorer"
+        //        - add *after* getPathTrimmedSize(), otherwise LTR-mark can be confused for path component, e.g. "<LTR>/home" would be two components!
+        assert(!contains(groupParentPart, slashBidi_) && !contains(groupParentPart, bslashBidi_));
+        replace(groupParentPart, L'/',   slashBidi_);
+        replace(groupParentPart, L'\\', bslashBidi_);
+
         return
         {
-            itemName,
-            groupName,
-            groupParentFolder,
-            groupFirstRow,
-            stackedGroupRender,
-            groupParentWidth,
-            groupNameWidth,
+            std::move(groupParentPart),
+            row == groupFirstRow ? std::move(groupName) : std::wstring{},
+            std::move(itemName),
+            row == groupFirstRow ? groupParentWidth : groupParentWidth + groupNameWidth,
+            row == groupFirstRow ? groupNameWidth : 0,
         };
     }
+
 
     void renderCell(wxDC& dc, const wxRect& rect, size_t row, ColumnType colType, bool enabled, bool selected, HoverArea rowHover) override
     {
@@ -882,36 +947,26 @@ private:
                     };
                     //-------------------------------------------------------------------------
 
-                    const auto& [itemName,
+                    const auto& [groupParentPart,
                                  groupName,
-                                 groupParentFolder,
-                                 groupFirstRow,
-                                 stackedGroupRender,
+                                 itemName,
                                  groupParentWidth,
-                                 groupNameWidth] = getGroupRenderLayout(dc, row, pdi, rectTmp.width);
+                                 groupNameWidth] = getGroupRowLayout(dc, row, pdi, rectTmp.width);
 
                     wxRect rectGroup, rectGroupParent, rectGroupName;
                     rectGroup = rectGroupParent = rectGroupName = rectTmp;
 
+                    rectGroup      .width = groupParentWidth + groupNameWidth;
                     rectGroupParent.width = groupParentWidth;
                     rectGroupName  .width = groupNameWidth;
+                    rectGroupName.x += groupParentWidth;
 
-                    if (stackedGroupRender)
-                    {
-                        rectGroup.width = std::max(groupParentWidth, groupNameWidth);
-                        rectGroupName.x += rectGroup.width - groupNameWidth; //right-align
-                    }
-                    else //group details on single row
-                    {
-                        rectGroup.width = groupParentWidth + groupNameWidth;
-                        rectGroupName.x += groupParentWidth;
-                    }
                     rectTmp.x     += rectGroup.width;
                     rectTmp.width -= rectGroup.width;
 
                     wxRect rectGroupItems = rectTmp;
 
-                    if (itemName.empty()) //expand group name to include (empty) item area
+                    if (itemName.empty()) //expand group name to include unused item area (e.g. bigger selection border)
                     {
                         rectGroupName.width += rectGroupItems.width;
                         rectGroupItems.width = 0;
@@ -921,7 +976,7 @@ private:
                     {
                         //clear background below parent path => harmonize with renderRowBackgound()
                         wxDCTextColourChanger textColorGroup(dc);
-                        if ((!groupParentFolder.empty() || !groupName.empty()) &&
+                        if (rectGroup.width > 0 &&
                             (!enabled || !selected))
                         {
                             wxRect rectGroupBack = rectGroup;
@@ -936,22 +991,18 @@ private:
                             //accessibility: always set *both* foreground AND background colors!
                         }
 
-                        if (!groupParentFolder.empty() &&
-                            (( stackedGroupRender && row == groupFirstRow + 1) ||
-                             (!stackedGroupRender && row == groupFirstRow)) &&
-                            (groupName.empty() || !pdi.folderGroupObj->isEmpty<side>())) //don't show for missing folders
+                        if (!groupParentPart.empty() &&
+                            (!pdi.folderGroupObj || !pdi.folderGroupObj->isEmpty<side>())) //don't show for missing folders
                         {
                             tryDrawNavMarker(rectGroupParent);
 
                             wxRect rectGroupParentText = rectGroupParent;
                             rectGroupParentText.x     += gapSize_;
-                            rectGroupParentText.width -= stackedGroupRender ? gapSize_ + gapSizeWide_ : gapSize_;
-
-                            drawCellText(dc, rectGroupParentText, groupParentFolder, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, &getTextExtentBuffered(dc, groupParentFolder));
+                            rectGroupParentText.width -= gapSize_;
+                            drawCellText(dc, rectGroupParentText, groupParentPart, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, &getTextExtentBuffered(dc, groupParentPart));
                         }
 
-                        if (!groupName.empty() &&
-                            row == groupFirstRow)
+                        if (!groupName.empty())
                         {
                             wxRect rectGroupNameBack = rectGroupName;
 
@@ -996,7 +1047,7 @@ private:
                     if (!itemName.empty())
                     {
                         //draw group/items separation line
-                        if (!groupParentFolder.empty() || !groupName.empty())
+                        if (rectGroup.width > 0)
                         {
                             rectGroupItems.x     += 2 * gapSize_;
                             rectGroupItems.width -= 2 * gapSize_;
@@ -1099,18 +1150,15 @@ private:
             if (const FileView::PathDrawInfo pdi = getDataView().getDrawInfo(row);
                 pdi.fsObj)
             {
-                const auto& [itemName,
+                const auto& [groupParentPart,
                              groupName,
-                             groupParentFolder,
-                             groupFirstRow,
-                             stackedGroupRender,
+                             itemName,
                              groupParentWidth,
-                             groupNameWidth] = getGroupRenderLayout(dc, row, pdi, cellWidth);
+                             groupNameWidth] = getGroupRowLayout(dc, row, pdi, cellWidth);
 
-                if (!groupName.empty() && row == groupFirstRow && pdi.fsObj != pdi.folderGroupObj)
+                if (!groupName.empty() && pdi.fsObj != pdi.folderGroupObj)
                 {
-                    const int groupNameCellBeginX = (stackedGroupRender ? std::max(groupParentWidth, groupNameWidth) - groupNameWidth : //right-aligned
-                                                     groupParentWidth); //group details on single row
+                    const int groupNameCellBeginX = groupParentWidth;
 
                     if (groupNameCellBeginX <= cellRelativePosX && cellRelativePosX < groupNameCellBeginX + groupNameWidth + 2 * gapSize_ /*include gap before vline*/)
                         return static_cast<HoverArea>(HoverAreaGroup::groupName);
@@ -1133,16 +1181,13 @@ private:
                 /* ________________________  ___________________________________  _____________________________________________________
                    | (gap | group parent) |  | (gap | icon | gap | group name) |  | (2x gap | vline) | (gap | icon) | gap | item name |
                    ------------------------  -----------------------------------  ----------------------------------------------------- */
-                const auto& [itemName,
+                const auto& [groupParentPart,
                              groupName,
-                             groupParentFolder,
-                             groupFirstRow,
-                             stackedGroupRender,
+                             itemName,
                              groupParentWidth,
-                             groupNameWidth] = getGroupRenderLayout(dc, row, pdi, insanelyHugeWidth);
-                assert(!stackedGroupRender);
+                             groupNameWidth] = getGroupRowLayout(dc, row, pdi, insanelyHugeWidth);
 
-                const int groupSepWidth = (groupParentFolder.empty() && groupName.empty()) ? 0 : (2 * gapSize_ + dipToWxsize(1));
+                const int groupSepWidth = groupParentWidth + groupNameWidth <= 0 ? 0 : (2 * gapSize_ + dipToWxsize(1));
                 const int fileIconWidth = getIconManager().getIconBuffer() ? gapSize_ + getIconManager().getIconWxsize() : 0;
                 const int ellipsisWidth = getTextExtentBuffered(dc, ELLIPSIS).x;
                 const int itemWidth = itemName.empty() ? 0 :
@@ -1295,6 +1340,11 @@ private:
     const std::wstring  slashBidi_ = (wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft ? RTL_MARK : LTR_MARK) + std::wstring(L"/");
     const std::wstring bslashBidi_ = (wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft ? RTL_MARK : LTR_MARK) + std::wstring(L"\\");
     //no need for LTR/RTL marks on both sides: text follows main direction if slash is between two strong characters with different directions
+
+    const std::wstring rightArrowDown_ = wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft ?
+                                         std::wstring() + RTL_MARK + LEFT_ARROW_ANTICLOCK :
+                                         std::wstring() + LTR_MARK + RIGHT_ARROW_CURV_DOWN;
+    //Windows bug: RIGHT_ARROW_CURV_DOWN rendering and extent calculation is buggy (see wx+\tooltip.cpp) => need LTR mark!
 
     std::vector<int> groupItemNamesWidthBuf_; //buffer! groupItemNamesWidths essentially only depends on (groupIdx, side)
     uint64_t viewUpdateIdLast_ = 0;           //

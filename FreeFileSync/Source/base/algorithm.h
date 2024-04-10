@@ -46,7 +46,7 @@ struct PathDependency
 };
 std::optional<PathDependency> getPathDependency(const AbstractPath& itemPathL, const AbstractPath& itemPathR);
 std::optional<PathDependency> getFolderPathDependency(const AbstractPath& folderPathL, const PathFilter& filterL,
-                                                const AbstractPath& folderPathR, const PathFilter& filterR);
+                                                      const AbstractPath& folderPathR, const PathFilter& filterR);
 
 //manual copy to alternate folder:
 void copyToAlternateFolder(const std::vector<const FileSystemObject*>& selectionL, //all pointers need to be bound and !isEmpty<side>!

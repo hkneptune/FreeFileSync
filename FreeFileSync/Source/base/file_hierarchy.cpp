@@ -514,6 +514,11 @@ std::wstring fff::getSyncOpDescription(const FileSystemObject& fsObj)
 {
     const SyncOperation op = fsObj.getSyncOperation();
 
+    const std::wstring rightArrowDown = languageLayoutIsRtl() ?
+                                        std::wstring() + RTL_MARK + LEFT_ARROW_ANTICLOCK :
+                                        std::wstring() + LTR_MARK + RIGHT_ARROW_CURV_DOWN;
+    //Windows bug: RIGHT_ARROW_CURV_DOWN rendering and extent calculation is buggy (see wx+\tooltip.cpp) => need LTR mark!
+
     auto generateFooter = [&]
     {
         if (fsObj.hasEquivalentItemNames())
@@ -528,7 +533,7 @@ std::wstring fff::getSyncOpDescription(const FileSystemObject& fsObj)
             if (dir == SyncDirection::left)
                 std::swap(itemNameNew, itemNameOld);
 
-            return L'\n' + fmtPath(itemNameOld) + L' ' + RIGHT_ARROW_CURV_DOWN + L'\n' + fmtPath(itemNameNew);
+            return L'\n' + fmtPath(itemNameOld) + L' ' + rightArrowDown + L'\n' + fmtPath(itemNameNew);
         }
         else
             return  L'\n' +
@@ -574,10 +579,10 @@ std::wstring fff::getSyncOpDescription(const FileSystemObject& fsObj)
                            (beforeLast(relPathFrom, FILE_NAME_SEPARATOR, IfNotFoundReturn::none) ==
                             beforeLast(relPathTo,   FILE_NAME_SEPARATOR, IfNotFoundReturn::none) ?
                             //detected pure "rename"
-                            fmtPath(getItemName(relPathFrom)) + L' ' + RIGHT_ARROW_CURV_DOWN + L'\n' + //show file name only
+                            fmtPath(getItemName(relPathFrom)) + L' ' + rightArrowDown + L'\n' + //show file name only
                             fmtPath(getItemName(relPathTo)) :
                             //"move" or "move + rename"
-                            fmtPath(relPathFrom) + L' ' + RIGHT_ARROW_CURV_DOWN + L'\n' +
+                            fmtPath(relPathFrom) + L' ' + rightArrowDown + L'\n' +
                             fmtPath(relPathTo));
                 }
             break;

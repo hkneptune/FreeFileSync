@@ -238,7 +238,7 @@ int Application::OnExit()
 }
 
 
-wxLayoutDirection Application::GetLayoutDirection() const { return getLayoutDirection(); }
+wxLayoutDirection Application::GetLayoutDirection() const { return languageLayoutIsRtl() ? wxLayout_RightToLeft : wxLayout_LeftToRight; }
 
 
 int Application::OnRun()

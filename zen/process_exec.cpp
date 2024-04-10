@@ -69,7 +69,7 @@ std::pair<int /*exit code*/, std::string> processExecuteImpl(const Zstring& file
     const int fdTempFile = ::open(tempFilePath.c_str(), O_CREAT | O_EXCL | O_RDWR | O_CLOEXEC,
                                   S_IRUSR | S_IWUSR); //0600
     if (fdTempFile == -1)
-        THROW_LAST_SYS_ERROR("open");
+        THROW_LAST_SYS_ERROR("open(" + utfTo<std::string>(tempFilePath) + ")");
     auto guardTmpFile = makeGuard<ScopeGuardRunMode::onExit>([&] { ::close(fdTempFile); });
 
     //"deleting while handle is open" == FILE_FLAG_DELETE_ON_CLOSE

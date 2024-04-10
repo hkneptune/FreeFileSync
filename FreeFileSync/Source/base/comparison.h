@@ -48,7 +48,7 @@ std::vector<FolderPairCfg> extractCompareCfg(const MainConfiguration& mainCfg); 
 
 //FFS core routine:     output.size() == fpCfgList.size() or 0 on fatal error
 FolderComparison compare(WarningDialogs& warnings,
-                         int fileTimeTolerance,
+                         unsigned int fileTimeTolerance,
                          const AFS::RequestPasswordFun& requestPassword /*throw X*/,
                          bool runWithBackgroundPriority,
                          bool createDirLocks,

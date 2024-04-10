@@ -293,7 +293,7 @@ public:
                    BaseFolderStatus folderStatusRight,
                    const FilterRef& filter,
                    CompareVariant cmpVar,
-                   int fileTimeTolerance,
+                   unsigned int fileTimeTolerance,
                    const std::vector<unsigned int>& ignoreTimeShiftMinutes) :
         ContainerObject(*this), //trust that ContainerObject knows that *this is not yet fully constructed!
         filter_(filter), cmpVar_(cmpVar), fileTimeTolerance_(fileTimeTolerance), ignoreTimeShiftMinutes_(ignoreTimeShiftMinutes),
@@ -308,7 +308,7 @@ public:
     //get settings which were used while creating BaseFolderPair:
     const PathFilter&   getFilter() const { return filter_.ref(); }
     CompareVariant getCompVariant() const { return cmpVar_; }
-    int      getFileTimeTolerance() const { return fileTimeTolerance_; }
+    unsigned int getFileTimeTolerance() const { return fileTimeTolerance_; }
     const std::vector<unsigned int>& getIgnoredTimeShift() const { return ignoreTimeShiftMinutes_; }
 
     void flip() override;
@@ -319,7 +319,7 @@ private:
 
     const FilterRef filter_; //filter used while scanning directory: represents sub-view of actual files!
     const CompareVariant cmpVar_;
-    const int fileTimeTolerance_;
+    const unsigned int fileTimeTolerance_;
     const std::vector<unsigned int> ignoreTimeShiftMinutes_;
 
     BaseFolderStatus folderStatusLeft_;

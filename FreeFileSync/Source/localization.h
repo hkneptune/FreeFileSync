@@ -29,7 +29,6 @@ const std::vector<TranslationInfo>& getAvailableTranslations();
 
 wxLanguage getDefaultLanguage();
 wxLanguage getLanguage();
-wxLayoutDirection getLayoutDirection();
 
 void setLanguage(wxLanguage lng); //throw FileError
 

@@ -23,7 +23,7 @@ namespace
 class FFSTranslation : public TranslationHandler
 {
 public:
-    explicit FFSTranslation(const std::string& lngStream); //throw lng::ParsingError, plural::ParsingError
+    FFSTranslation(const std::string& lngStream, bool haveRtlLayout); //throw lng::ParsingError, plural::ParsingError
 
     std::wstring translate(const std::wstring& text) const override
     {
@@ -47,6 +47,8 @@ public:
         return replaceCpy(std::abs(n) == 1 ? singular : plural, L"%x", formatNumber(n)); //fallback
     }
 
+    bool layoutIsRtl() const override { return haveRtlLayout_; }
+
 private:
     using Translation       = std::unordered_map<std::wstring, std::wstring>; //hash_map is 15% faster than std::map on GCC
     using TranslationPlural = std::map<std::pair<std::wstring, std::wstring>, std::vector<std::wstring>>;
@@ -54,10 +56,12 @@ private:
     Translation       transMapping_; //map original text |-> translation
     TranslationPlural transMappingPl_;
     std::unique_ptr<plural::PluralForm> pluralParser_; //bound!
+    const bool haveRtlLayout_;
 };
 
 
-FFSTranslation::FFSTranslation(const std::string& lngStream) //throw lng::ParsingError, plural::ParsingError
+FFSTranslation::FFSTranslation(const std::string& lngStream, bool haveRtlLayout) ://throw lng::ParsingError, plural::ParsingError
+    haveRtlLayout_(haveRtlLayout)
 {
     lng::TransHeader          header;
     lng::TranslationMap       transUtf;
@@ -300,7 +304,6 @@ private:
 
 std::vector<TranslationInfo> globalTranslations;
 wxLanguage globalLang = wxLANGUAGE_UNKNOWN;
-wxLayoutDirection globalLayoutDir = wxLayout_Default;
 }
 
 
@@ -346,7 +349,6 @@ void fff::localizationCleanup()
 {
 #if 0 //good place for clean up rather than some time during static destruction: is this an actual benefit???
     globalLang = wxLANGUAGE_UNKNOWN;
-    globalLayoutDir = wxLayout_Default;
 
     setTranslator(nullptr);
 
@@ -382,7 +384,11 @@ void fff::setLanguage(wxLanguage lng) //throw FileError
     else
         try
         {
-            setTranslator(std::make_unique<FFSTranslation>(lngStream)); //throw lng::ParsingError, plural::ParsingError
+            bool haveRtlLayout = false;
+            if (const wxLanguageInfo* selLngInfo = wxUILocale::GetLanguageInfo(lng))
+                haveRtlLayout = selLngInfo->LayoutDirection == wxLayout_RightToLeft;
+
+            setTranslator(std::make_unique<FFSTranslation>(lngStream, haveRtlLayout)); //throw lng::ParsingError, plural::ParsingError
         }
         catch (const lng::ParsingError& e)
         {
@@ -399,12 +405,6 @@ void fff::setLanguage(wxLanguage lng) //throw FileError
     //------------------------------------------------------------
 
     globalLang = lng;
-
-    if (const wxLanguageInfo* selLngInfo = wxUILocale::GetLanguageInfo(lng))
-        globalLayoutDir = selLngInfo->LayoutDirection;
-    else
-        globalLayoutDir = wxLayout_LeftToRight;
-
 
     //add translation for wxWidgets-internal strings:
     std::map<std::string, std::wstring> transMapping =
@@ -435,5 +435,3 @@ wxLanguage fff::getDefaultLanguage()
 
 
 wxLanguage fff::getLanguage() { return globalLang; }
-
-wxLayoutDirection fff::getLayoutDirection() { return globalLayoutDir; }

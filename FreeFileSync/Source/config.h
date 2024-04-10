@@ -150,7 +150,7 @@ struct XmlGlobalSettings
     bool copyLockedFiles  = false; //safer default: avoid copies of partially written files
     bool copyFilePermissions = false;
 
-    int fileTimeTolerance = zen::FAT_FILE_TIME_PRECISION_SEC; //max. allowed file time deviation; < 0 means unlimited tolerance; default 2s: FAT vs NTFS
+    unsigned int fileTimeTolerance = zen::FAT_FILE_TIME_PRECISION_SEC; //default 2s: FAT vs NTFS
     bool runWithBackgroundPriority = false;
     bool createLockFile = true;
     bool verifyFileCopy = false;

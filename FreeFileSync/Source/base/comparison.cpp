@@ -187,7 +187,7 @@ class ComparisonBuffer
 {
 public:
     ComparisonBuffer(const FolderStatus& folderStatus,
-                     int fileTimeTolerance,
+                     unsigned int fileTimeTolerance,
                      ProcessCallback& callback) :
         fileTimeTolerance_(fileTimeTolerance),
         folderStatus_(folderStatus),
@@ -221,7 +221,7 @@ private:
         return BaseFolderStatus::notExisting;
     };
 
-    const int fileTimeTolerance_;
+    const unsigned int fileTimeTolerance_;
     const FolderStatus& folderStatus_;
     std::map<DirectoryKey, DirectoryValue> folderBuffer_; //contains entries for *all* scanned folders!
     ProcessCallback& cb_;
@@ -1055,7 +1055,7 @@ SharedRef<BaseFolderPair> ComparisonBuffer::performComparison(const ResolvedFold
 
 
 FolderComparison fff::compare(WarningDialogs& warnings,
-                              int fileTimeTolerance,
+                              unsigned int fileTimeTolerance,
                               const AFS::RequestPasswordFun& requestPassword /*throw X*/,
                               bool runWithBackgroundPriority,
                               bool createDirLocks,

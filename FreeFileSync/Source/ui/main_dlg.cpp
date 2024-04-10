@@ -719,8 +719,7 @@ imgFileManagerSmall_([]
                     wxAuiPaneInfo().Name(L"TopPanel").Layer(2).Top().Row(1).Caption(_("Main Bar")).CaptionVisible(false).
                     PaneBorder(false).Gripper().
                     //BestSize(-1, m_panelTopButtons->GetSize().GetHeight() + dipToWxsize(10)).
-                    MinSize(dipToWxsize(TOP_BUTTON_OPTIMAL_WIDTH_DIP), m_panelTopButtons->GetSize().GetHeight())
-                   );
+                    MinSize(dipToWxsize(TOP_BUTTON_OPTIMAL_WIDTH_DIP), m_panelTopButtons->GetSize().GetHeight()));
     //note: min height is calculated incorrectly by wxAuiManager if panes with and without caption are in the same row => use smaller min-size
 
     auiMgr_.AddPane(compareStatus_->getAsWindow(),
@@ -734,7 +733,7 @@ imgFileManagerSmall_([]
                     /* yes, m_panelDirectoryPairs's min height is overwritten in updateGuiForFolderPair(), but the default height might be wrong
                        after increasing text size (Win10 Settings -> Accessibility -> Text size), e.g. to 150%:
                        auiMgr_.LoadPerspective will load a too small "dock_size", so m_panelTopLeft/m_panelTopCenter will have squashed height */
-                    MinSize(dipToWxsize(100), m_panelDirectoryPairs->GetSize().y));
+                    MinSize(dipToWxsize(100), m_panelDirectoryPairs->GetSize().y).CloseButton(false));
 
     m_panelSearch->GetSizer()->SetSizeHints(m_panelSearch); //~=Fit() + SetMinSize()
     auiMgr_.AddPane(m_panelSearch,
@@ -3338,6 +3337,8 @@ void MainDialog::updateUnsavedCfgStatus()
     const bool allowSave = haveUnsavedCfg ||
                            activeConfigFiles_.size() > 1;
 
+    const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalNativePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
+
     if (m_bpButtonSave->IsEnabled() != allowSave || !m_bpButtonSave->GetBitmap().IsOk()) //support polling
     {
         setImage(*m_bpButtonSave, allowSave ? loadImage("cfg_save") : makeBrightGrey(loadImage("cfg_save")));
@@ -3349,10 +3350,13 @@ void MainDialog::updateUnsavedCfgStatus()
     wxString title;
     if (haveUnsavedCfg)
         title += L'*';
-    const Zstring activeCfgFilePath = activeConfigFiles_.size() == 1 && !equalNativePath(activeConfigFiles_[0], lastRunConfigPath_) ? activeConfigFiles_[0] : Zstring();
-
+    bool showingConfigName = true;
     if (!activeCfgFilePath.empty())
-        title += utfTo<wxString>(activeCfgFilePath);
+    {
+        title += extractJobName(activeCfgFilePath);
+        if (const std::optional<Zstring>& parentPath = getParentFolderPath(activeCfgFilePath))
+            title += L" [" + utfTo<wxString>(*parentPath) + L']';
+    }
     else if (activeConfigFiles_.size() > 1)
     {
         for (const std::wstring& jobName : getJobNames())
@@ -3361,18 +3365,22 @@ void MainDialog::updateUnsavedCfgStatus()
             title.resize(title.size() - 3);
     }
     else
-    {
-        title += L"FreeFileSync " + utfTo<std::wstring>(ffsVersion);
-        //if (!haveUnsavedCfg)
-        title += SPACED_DASH + _("Folder Comparison and Synchronization");
-    }
+        showingConfigName = false;
 
+    if (showingConfigName)
+        title += SPACED_DASH;
+
+    title += L"FreeFileSync " + utfTo<std::wstring>(ffsVersion);
     try
     {
         if (runningElevated()) //throw FileError
             title += L" (root)";
     }
     catch (FileError&) { assert(false); }
+
+    if (!showingConfigName)
+        title += SPACED_DASH + _("Folder Comparison and Synchronization");
+
 
     SetTitle(title);
 

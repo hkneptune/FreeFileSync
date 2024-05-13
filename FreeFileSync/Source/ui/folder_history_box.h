@@ -10,7 +10,7 @@
 #include <wx/combobox.h>
 #include <memory>
 #include <zen/zstring.h>
-#include <zen/stl_tools.h>
+//#include <zen/stl_tools.h>
 #include <zen/utf.h>
 
 

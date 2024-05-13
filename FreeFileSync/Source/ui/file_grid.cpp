@@ -5,13 +5,13 @@
 // *****************************************************************************
 
 #include "file_grid.h"
-#include <set>
+//#include <set>
 #include <wx/dc.h>
 #include <wx/settings.h>
 #include <wx/timer.h>
 #include <zen/i18n.h>
-#include <zen/file_error.h>
-#include <zen/format_unit.h>
+//#include <zen/file_error.h>
+//#include <zen/format_unit.h>
 #include <zen/scope_guard.h>
 #include <wx+/tooltip.h>
 #include <wx+/rtl.h>
@@ -357,10 +357,12 @@ public:
         auto& compExtentsBuf = sharedComp_.ref().compExtentsBuf_;
         //- only used for parent path names and file names on view => should not grow "too big"
         //- cleaned up during GridDataBase::setData()
+        assert(!contains(text, L'\n'));
 
         auto it = compExtentsBuf.find(text);
         if (it == compExtentsBuf.end())
             it = compExtentsBuf.emplace(text, dc.GetTextExtent(copyStringTo<wxString>(text))).first;
+        //GetTextExtent() returns (0, 0) for empty string!
         return it->second;
     }
 
@@ -643,7 +645,7 @@ private:
 
     struct GroupRowLayout
     {
-        std::wstring groupParentPart; //... if distributed over multiple rows, otherswise full group parent folder
+        std::wstring groupParentPart; //... if distributed over multiple rows, otherwise full group parent folder
         std::wstring groupName; //only filled for first row of a group
         std::wstring itemName;
         int groupParentWidth;
@@ -665,7 +667,7 @@ private:
         //exception for readability: top row is always group start!
         const size_t groupFirstRow = std::max<size_t>(pdi.groupFirstRow, refGrid().getRowAtWinPos(0));
 
-        const size_t groupLineCount = pdi.groupLastRow - groupFirstRow;
+        const size_t groupRowCount = pdi.groupLastRow - groupFirstRow;
 
         std::wstring itemName;
         if (itemPathFormat_ == ItemPathFormat::name || //hack: show folder name in item colum since groupName/groupParentFolder are unused!
@@ -743,19 +745,16 @@ private:
         const int groupItemsMinWidth = groupSepWidth + (drawFileIcons ? gapSize_ + iconSize : 0) + gapSize_ + ellipsisWidth;
 
         std::wstring groupParentPart;
-        if (row == groupFirstRow)
-            groupParentPart = groupParentFolder;
 
         //not enough space? => trim or render on multiple rows
         if (int excessWidth = groupParentWidth + groupNameWidth + groupItemsWidth - maxWidth;
             excessWidth > 0)
         {
-            const bool stackedGroupRender = !groupParentFolder.empty() && groupLineCount > 1; //group parent details on multiple rows
-
             //1. shrink group parent
             if (!groupParentFolder.empty())
             {
-                const int groupParentMinWidth = stackedGroupRender && !groupName.empty() ? 0 : gapSize_ + ellipsisWidth;
+                const int groupParentMinWidth = !groupName.empty() && groupRowCount > 1 ? //group parent details (possibly) on multiple rows
+                                                0 : gapSize_ + ellipsisWidth;
 
                 groupParentWidth = std::max(groupParentWidth - excessWidth, groupParentMinWidth);
                 excessWidth = groupParentWidth + groupNameWidth + groupItemsWidth - maxWidth;
@@ -773,44 +772,47 @@ private:
                         groupNameWidth = std::max(groupNameWidth - excessWidth, groupNameMinWidth);
             }
 
-            if (stackedGroupRender)
+            //group parent details on multiple lines
+            if (!groupParentFolder.empty())
             {
-                size_t comp1Len = getPathTrimmedSize(dc, groupParentFolder, groupParentWidth - gapSize_ - arrowRightDownWidth);
+                //let's not waste empty row space for medium + large icon sizes: print multiple lines per row!
+                const int linesPerRow = std::max(refGrid().getRowHeight() / charHeight_, 1);
 
-                if (!groupName.empty() &&
-                    getTextExtentBuffered(dc, makeStringView(groupParentFolder.begin(), comp1Len)).x > groupParentWidth - gapSize_ - arrowRightDownWidth)
-                    comp1Len = 0; //exception: never truncate parent component on first row, but move to second row instead
-
-                if (row == groupFirstRow)
-                {
-                    groupParentPart = groupParentFolder.substr(0, comp1Len);
-
-                    if (comp1Len != 0 && comp1Len != groupParentFolder.size())
-                        groupParentPart += rightArrowDown_;
-                }
-                else
-                {
-                    size_t compPos = comp1Len;
-
-                    for (size_t i = groupFirstRow + 1; ; ++i)
+                size_t compPos = 0;
+                for (size_t i = groupFirstRow; i <= row; ++i)
+                    for (int l = 0; l < linesPerRow; ++l)
                     {
-                        const size_t compLen = getPathTrimmedSize(dc, makeStringView(groupParentFolder.begin() + compPos, groupParentFolder.end()),
-                                                                  groupParentWidth + groupNameWidth - gapSize_ - arrowRightDownWidth);
-                        if (row == i)
+                        const size_t compLen = i == pdi.groupLastRow - 1 && l == linesPerRow - 1 ? //not enough rows to show remaining parent folder components?
+                                               groupParentFolder.size() - compPos : //=> append the rest: will be truncated with ellipsis
+                                               getPathTrimmedSize(dc, makeStringView(groupParentFolder.begin() + compPos, groupParentFolder.end()),
+                                                                  groupParentWidth + (i == groupFirstRow ? 0 : groupNameWidth) - gapSize_ - arrowRightDownWidth);
+
+                        if (i == groupFirstRow && !groupName.empty() && groupRowCount > 1 &&
+                            getTextExtentBuffered(dc, makeStringView(groupParentFolder.begin() + compPos, compLen)).x > groupParentWidth - gapSize_ - arrowRightDownWidth)
                         {
-                            groupParentPart = compPos + compLen == groupParentFolder.size() ||
-                                              row == pdi.groupLastRow - 1 ?       //not enough rows to show all parent folder components?
-                                              groupParentFolder.substr(compPos) : //=> append to last row => will be truncated with ellipsis
-                                              groupParentFolder.substr(compPos, compLen) + rightArrowDown_;
-                            break;
+                            if (i == row && l != 0)
+                                groupParentPart.insert(groupParentPart.begin(), linesPerRow - l, L'\n'); //effectively: "align bottom" for first row
+                            break; //exception: never truncate parent component on first row, but continue on second row instead
                         }
+
+                        if (i == row)
+                            groupParentPart += compPos + compLen == groupParentFolder.size() ?
+                                               groupParentFolder.substr(compPos) :
+                                               groupParentFolder.substr(compPos, compLen) + rightArrowDown_ + L'\n';
                         compPos += compLen;
 
                         if (compPos == groupParentFolder.size())
-                            break;
+                            goto break2;
                     }
-                }
+break2:
+                if (endsWith(groupParentPart, L'\n'))
+                    groupParentPart.pop_back();
             }
+        }
+        else
+        {
+            if (row == groupFirstRow)
+                groupParentPart = groupParentFolder;
         }
 
         //path components should follow the app layout direction and are NOT a single piece of text!
@@ -999,7 +1001,20 @@ private:
                             wxRect rectGroupParentText = rectGroupParent;
                             rectGroupParentText.x     += gapSize_;
                             rectGroupParentText.width -= gapSize_;
+
+                            //let's not waste empty row space for medium + large icon sizes: print multiple lines per row!
+                            split(groupParentPart, L'\n', [&, linesPerRow = std::max(refGrid().getRowHeight() / charHeight_, 1),
+                                                              lineNo = 0](const std::wstring_view line) mutable
+                            {
+                                drawCellText(dc, {
+                                    rectGroupParentText.x, //distribute lines evenly across multiple rows:
+                                    rectGroupParentText.y + (rectGroupParentText.height * (1 + lineNo++ * 2) - linesPerRow * charHeight_) / (linesPerRow * 2),
+                                    rectGroupParentText.width, charHeight_
+                                }, line, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, &getTextExtentBuffered(dc, line));
+                            });
+#if 0
                             drawCellText(dc, rectGroupParentText, groupParentPart, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, &getTextExtentBuffered(dc, groupParentPart));
+#endif
                         }
 
                         if (!groupName.empty())
@@ -1332,6 +1347,8 @@ private:
 
     const int gapSize_     = dipToWxsize(FILE_GRID_GAP_SIZE_DIP);
     const int gapSizeWide_ = dipToWxsize(FILE_GRID_GAP_SIZE_WIDE_DIP);
+
+    const int charHeight_ = refGrid().getMainWin().GetCharHeight();
 
     ItemPathFormat itemPathFormat_ = ItemPathFormat::full;
 

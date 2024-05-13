@@ -6,13 +6,14 @@
 
 #include "tray_menu.h"
 #include <chrono>
-#include <zen/thread.h>
+//#include <zen/thread.h>
 #include <zen/resolve_path.h>
 #include <wx/taskbar.h>
 #include <wx/icon.h> //Linux needs this
 #include <wx/app.h>
 #include <wx/menu.h>
 #include <wx/timer.h>
+#include <wx+/dc.h>
 #include <wx+/image_tools.h>
 #include <zen/process_exec.h>
 #include <wx+/popup_dlg.h>

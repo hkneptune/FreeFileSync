@@ -8,7 +8,7 @@
 #define GRID_H_834702134831734869987
 
 #include <memory>
-#include <numeric>
+//#include <numeric>
 #include <optional>
 #include <vector>
 #include <zen/stl_tools.h>
@@ -122,7 +122,7 @@ public:
     static wxColor getColorSelectionGradientFrom();
     static wxColor getColorSelectionGradientTo();
 
-    static void drawCellText(wxDC& dc, const wxRect& rect, const std::wstring& text,
+    static void drawCellText(wxDC& dc, const wxRect& rect, const std::wstring_view text,
                              int alignment = wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, const wxSize* textExtentHint = nullptr);
     static wxRect drawCellBorder(wxDC& dc, const wxRect& rect); //returns inner rectangle
 

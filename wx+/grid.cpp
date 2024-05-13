@@ -6,13 +6,13 @@
 
 #include "grid.h"
 #include <cassert>
-#include <set>
+//#include <set>
 #include <chrono>
 #include <wx/settings.h>
-#include <wx/listbox.h>
+//#include <wx/listbox.h>
 #include <wx/tooltip.h>
 #include <wx/timer.h>
-#include <wx/utils.h>
+//#include <wx/utils.h>
 #include <zen/basic_math.h>
 #include <zen/string_tools.h>
 #include <zen/scope_guard.h>
@@ -142,7 +142,7 @@ wxRect GridData::drawCellBorder(wxDC& dc, const wxRect& rect) //returns remainin
 }
 
 
-void GridData::drawCellText(wxDC& dc, const wxRect& rect, const std::wstring& text, int alignment, const wxSize* textExtentHint)
+void GridData::drawCellText(wxDC& dc, const wxRect& rect, const std::wstring_view text, int alignment, const wxSize* textExtentHint)
 {
     /* Performance Notes (Windows):
         - wxDC::GetTextExtent() is by far the most expensive call (20x more expensive than wxDC::DrawText())
@@ -157,9 +157,9 @@ void GridData::drawCellText(wxDC& dc, const wxRect& rect, const std::wstring& te
         return;
 
     //truncate large texts and add ellipsis
-    wxString textTrunc = text;
-    wxSize extentTrunc = textExtentHint ? *textExtentHint : dc.GetTextExtent(text);
-    assert(!textExtentHint || *textExtentHint == dc.GetTextExtent(text)); //"trust, but verify" :>
+    wxString textTrunc(&text[0], text.size());
+    wxSize extentTrunc = textExtentHint ? *textExtentHint : dc.GetTextExtent(textTrunc);
+    assert(!textExtentHint || *textExtentHint == dc.GetTextExtent(textTrunc)); //"trust, but verify" :>
 
     if (extentTrunc.GetWidth() > rect.width)
     {
@@ -180,13 +180,13 @@ void GridData::drawCellText(wxDC& dc, const wxRect& rect, const std::wstring& te
                 }
                 const size_t middle = (low + high) / 2; //=> never 0 when "high - low > 1"
 
-                const wxString candidate = getUnicodeSubstring(text, 0, middle) + ELLIPSIS;
+                /*const*/ wxString candidate = getUnicodeSubstring<wxString>(text, 0, middle) + ELLIPSIS;
                 const wxSize extentCand = dc.GetTextExtent(candidate); //perf: most expensive call of this routine!
 
                 if (extentCand.GetWidth() <= rect.width)
                 {
                     low = middle;
-                    textTrunc   = candidate;
+                    textTrunc   = std::move(candidate);
                     extentTrunc = extentCand;
                 }
                 else

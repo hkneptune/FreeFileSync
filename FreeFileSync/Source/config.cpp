@@ -7,13 +7,13 @@
 #include "config.h"
 #include <zenxml/xml.h>
 #include <zen/file_access.h>
-#include <zen/file_io.h>
+//#include <zen/file_io.h>
 #include <zen/time.h>
 #include <zen/process_exec.h>
 #include <wx/uilocale.h>
 #include "ffs_paths.h"
 #include "base_tools.h"
-#include "afs/native.h"
+//#include "afs/native.h"
 
 
 using namespace zen;

@@ -5,7 +5,7 @@
 // *****************************************************************************
 
 #include "process_exec.h"
-#include <chrono>
+//#include <chrono>
 #include "guid.h"
 #include "file_access.h"
 #include "file_io.h"
@@ -207,7 +207,7 @@ std::pair<int /*exit code*/, std::string> processExecuteImpl(const Zstring& file
         THROW_LAST_SYS_ERROR("lseek");
 
     guardTmpFile.dismiss();
-    FileInputPlain streamIn(fdTempFile, tempFilePath); //takes ownership!
+    FileInputPlain streamIn(fdTempFile, tempFilePath); //pass ownership!
 
     std::string output = unbufferedLoad<std::string>([&](void* buffer, size_t bytesToRead)
     {

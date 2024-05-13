@@ -10,11 +10,11 @@
 #include <zen/format_unit.h>
 #include <zen/build_info.h>
 #include <zen/file_io.h>
-#include <zen/http.h>
+//#include <zen/http.h>
 #include <wx/wupdlock.h>
 #include <wx/filedlg.h>
 #include <wx/sound.h>
-#include <wx+/choice_enum.h>
+//#include <wx+/choice_enum.h>
 #include <wx+/context_menu.h>
 #include <wx+/bitmap_button.h>
 #include <wx+/rtl.h>
@@ -26,15 +26,15 @@
 #include <wx+/image_resources.h>
 #include "gui_generated.h"
 #include "folder_selector.h"
-#include "version_check.h"
+//#include "version_check.h"
 #include "abstract_folder_picker.h"
 #include "../afs/concrete.h"
 #include "../afs/gdrive.h"
 #include "../afs/ftp.h"
 #include "../afs/sftp.h"
-#include "../base/algorithm.h"
+//#include "../base/algorithm.h"
 #include "../base/synchronization.h"
-#include "../base/path_filter.h"
+//#include "../base/path_filter.h"
 #include "../base/icon_loader.h"
 #include "../status_handler.h" //uiUpdateDue()
 #include "../version/version.h"

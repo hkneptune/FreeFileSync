@@ -15,7 +15,7 @@
 #include "ui/tree_grid_attr.h" //RTS: avoid tree grid's "file_hierarchy.h" dependency!
 #include "ui/cfg_grid.h"
 #include "log_file.h"
-#include "version/version.h"
+//#include "version/version.h"
 
 
 namespace fff

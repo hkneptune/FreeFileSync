@@ -6,20 +6,20 @@
 
 #include "folder_selector.h"
 #include <zen/thread.h>
-#include <zen/file_access.h>
+//#include <zen/file_access.h>
 #include <zen/process_exec.h>
-#include <wx/dirdlg.h>
 #include <wx/scrolwin.h>
 #include <wx+/bitmap_button.h>
 #include <wx+/popup_dlg.h>
-#include <wx+/context_menu.h>
+//#include <wx+/context_menu.h>
 #include <wx+/image_resources.h>
 #include "small_dlgs.h" //includes structures.h, which defines "AFS"
 #include "../afs/concrete.h"
 #include "../afs/native.h"
-#include "../icon_buffer.h"
+//#include "../icon_buffer.h"
 #include "../afs/gdrive.h"
 
+    #include <wx/dirdlg.h>
 
 
 using namespace zen;

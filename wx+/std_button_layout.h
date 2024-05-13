@@ -7,7 +7,7 @@
 #ifndef STD_BUTTON_LAYOUT_H_183470321478317214
 #define STD_BUTTON_LAYOUT_H_183470321478317214
 
-#include <algorithm>
+//#include <algorithm>
 #include <wx/sizer.h>
 #include <wx/button.h>
 #include "dc.h"

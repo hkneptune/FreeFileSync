@@ -1,8 +1,8 @@
 #ifndef LOCK_HOLDER_H_489572039485723453425
 #define LOCK_HOLDER_H_489572039485723453425
 
-#include <zen/stl_tools.h>
-#include <zen/file_path.h>
+//#include <zen/stl_tools.h>
+//#include <zen/file_path.h>
 #include "dir_lock.h"
 #include "process_callback.h"
 

@@ -487,6 +487,9 @@ AbstractFileSystem::OutputStream::~OutputStream()
         //- also for Native: setFileTime() may fail *after* FileOutput::finalize()
         try { AbstractFileSystem::removeFilePlain(filePath_); /*throw FileError*/ }
         catch (const zen::FileError& e) { zen::logExtraError(e.toString()); }
+
+        warn_static("we should not log if not existing anymore!?:       ERROR_FILE_NOT_FOUND: ddddddddddd [DeleteFile]")
+    //solution: integrate cleanup into ~OutputStreamImpl() including appropriate loggin!
 }
 
 
@@ -563,7 +566,7 @@ void AbstractFileSystem::copyNewFolder(const AbstractPath& sourcePath, const Abs
 
         if (copyFilePermissions)
             throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(getDisplayPath(targetPath))),
-                                            _("Operation not supported between different devices."));
+                            _("Operation not supported between different devices."));
     }
     else
         sourcePath.afsDevice.ref().copyNewFolderForSameAfsType(sourcePath.afsPath, targetPath, copyFilePermissions); //throw FileError

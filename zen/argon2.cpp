@@ -37,9 +37,9 @@
 
 #include "argon2.h"
 #include <cassert>
-#include <cstring>
+//#include <cstring>
 #include <cstdint>
-#include <cstdlib>
+//#include <cstdlib>
 
 #if   defined __GNUC__ //including clang
     #pragma GCC diagnostic ignored "-Wimplicit-fallthrough" //"this statement may fall through"

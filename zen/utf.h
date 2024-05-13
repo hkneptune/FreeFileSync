@@ -25,8 +25,8 @@ bool isValidUtf(const UtfString& str); //check for UTF-8 encoding errors
 template <class UtfString>
 size_t unicodeLength(const UtfString& str); //return number of code points for UTF-encoded string
 
-template <class UtfString>
-UtfString getUnicodeSubstring(const UtfString& str, size_t uniPosFirst, size_t uniPosLast);
+template <class UtfStringOut, class UtfStringIn>
+UtfStringOut getUnicodeSubstring(const UtfStringIn& str, size_t uniPosFirst, size_t uniPosLast);
 
 
 
@@ -310,14 +310,14 @@ size_t unicodeLength(const UtfString& str) //return number of code points (+ cor
 }
 
 
-template <class UtfString> inline
-UtfString getUnicodeSubstring(const UtfString& str, size_t uniPosFirst, size_t uniPosLast) //return position of unicode char in UTF-encoded string
+template <class UtfStringOut, class UtfStringIn> inline
+UtfStringOut getUnicodeSubstring(const UtfStringIn& str, size_t uniPosFirst, size_t uniPosLast) //return position of unicode char in UTF-encoded string
 {
     assert(uniPosFirst <= uniPosLast && uniPosLast <= unicodeLength(str));
     using namespace impl;
-    using CharType = GetCharTypeT<UtfString>;
+    using CharType = GetCharTypeT<UtfStringIn>;
 
-    UtfString output;
+    UtfStringOut output;
     assert(uniPosFirst <= uniPosLast);
     if (uniPosFirst >= uniPosLast) //optimize for empty range
         return output;

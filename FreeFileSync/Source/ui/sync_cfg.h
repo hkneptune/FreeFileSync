@@ -7,7 +7,7 @@
 #ifndef SYNC_CFG_H_31289470134253425
 #define SYNC_CFG_H_31289470134253425
 
-#include <wx/window.h>
+//#include <wx/window.h>
 #include <wx+/popup_dlg.h>
 #include "../base/structures.h"
 

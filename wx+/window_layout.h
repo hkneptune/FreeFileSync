@@ -7,8 +7,8 @@
 #ifndef WINDOW_LAYOUT_H_23849632846734343234532
 #define WINDOW_LAYOUT_H_23849632846734343234532
 
-#include <zen/basic_math.h>
-#include <wx/window.h>
+//#include <zen/basic_math.h>
+//#include <wx/window.h>
 #include <wx/spinctrl.h>
 #include <zen/scope_guard.h>
     #include <gtk/gtk.h>

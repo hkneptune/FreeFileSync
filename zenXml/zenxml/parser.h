@@ -7,7 +7,7 @@
 #ifndef PARSER_H_81248670213764583021432
 #define PARSER_H_81248670213764583021432
 
-#include <cstdio>
+//#include <cstdio>
 #include <cstddef> //ptrdiff_t; req. on Linux
 #include <zen/string_tools.h>
 #include "dom.h"

@@ -6,18 +6,18 @@
 
 #include "progress_indicator.h"
 #include <memory>
-#include <wx/imaglist.h>
+//#include <wx/imaglist.h>
 #include <wx/wupdlock.h>
 #include <wx/app.h>
 #include <zen/format_unit.h>
-#include <zen/scope_guard.h>
-#include <wx+/toggle_button.h>
+//#include <zen/scope_guard.h>
+//#include <wx+/toggle_button.h>
 #include <wx+/image_tools.h>
 #include <wx+/graph.h>
 #include <wx+/no_flicker.h>
 #include <wx+/window_layout.h>
-#include <zen/file_access.h>
-#include <zen/thread.h>
+//#include <zen/file_access.h>
+//#include <zen/thread.h>
 #include <zen/perf.h>
 #include <wx+/choice_enum.h>
 #include "wx+/taskbar.h"
@@ -25,7 +25,7 @@
 #include "tray_icon.h"
 #include "log_panel.h"
 #include "app_icon.h"
-#include "../ffs_paths.h"
+//#include "../ffs_paths.h"
 #include "../icon_buffer.h"
 #include "../base/speed_test.h"
 
@@ -137,7 +137,7 @@ public:
     void teardown();                                                                 //
 
     void initNewPhase();
-    void updateProgressGui();
+    void updateProgressGui(bool allowYield);
 
     bool getOptionIgnoreErrors() const            { return ignoreErrors_; }
     void setOptionIgnoreErrors(bool ignoreErrors) { ignoreErrors_ = ignoreErrors; updateStaticGui(); }
@@ -227,6 +227,7 @@ CompareProgressPanel::Impl::Impl(wxFrame& parentWindow) :
 
 void CompareProgressPanel::Impl::init(const Statistics& syncStat, bool ignoreErrors, size_t autoRetryCount)
 {
+    assert(!syncStat_);
     syncStat_ = &syncStat;
     parentTitleBackup_ = parentWindow_.GetTitle();
 
@@ -286,7 +287,7 @@ void CompareProgressPanel::Impl::initNewPhase()
     m_panelItemStats->Layout(); //redundant? can we trust updateProgressGui() to do the same after detecting "layoutChanged"?
     m_panelTimeStats->Layout(); //
 
-    updateProgressGui();
+    updateProgressGui(false /*allowYield*/);
 }
 
 
@@ -297,10 +298,10 @@ void CompareProgressPanel::Impl::updateStaticGui()
 }
 
 
-void CompareProgressPanel::Impl::updateProgressGui()
+void CompareProgressPanel::Impl::updateProgressGui(bool allowYield)
 {
     assert(syncStat_);
-    if (!syncStat_) //no comparison running!!
+    if (!syncStat_) //no comparison running!?
         return;
 
     auto setTitle = [&](const wxString& title)
@@ -433,7 +434,10 @@ void CompareProgressPanel::Impl::updateProgressGui()
     }
 
     //do the ui update
-    wxTheApp->Yield();
+    if (allowYield)
+        wxTheApp->Yield(); //pump GUI messages
+    else
+        this->Update(); //don't wait until next idle event (who knows what blocking process comes next?)
 }
 
 //########################################################################################
@@ -444,7 +448,7 @@ wxWindow* CompareProgressPanel::getAsWindow() { return pimpl_; }
 void CompareProgressPanel::init(const Statistics& syncStat, bool ignoreErrors, size_t autoRetryCount) { pimpl_->init(syncStat, ignoreErrors, autoRetryCount); }
 void CompareProgressPanel::teardown()    { pimpl_->teardown(); }
 void CompareProgressPanel::initNewPhase() { pimpl_->initNewPhase(); }
-void CompareProgressPanel::updateGui()   { pimpl_->updateProgressGui(); }
+void CompareProgressPanel::updateGui()   { pimpl_->updateProgressGui(true /*allowYield*/); }
 bool CompareProgressPanel::getOptionIgnoreErrors() const { return pimpl_->getOptionIgnoreErrors(); }
 void CompareProgressPanel::setOptionIgnoreErrors(bool ignoreErrors) { pimpl_->setOptionIgnoreErrors(ignoreErrors); }
 void CompareProgressPanel::timerSetStatus(bool active) { pimpl_->timerSetStatus(active); }
@@ -931,13 +935,15 @@ syncStat_(&syncStat)
 
     WindowLayout::setInitial(*this, dim, this->GetSize() /*defaultSize*/);
 
+    pnl_.m_buttonStop->SetDefault();
+
     if (showProgress)
     {
         this->Show();
         //clear gui flicker, remove dummy texts: window must be visible to make this work!
         updateProgressGui(true /*allowYield*/); //at least on OS X a real Yield() is required to flush pending GUI updates; Update() is not enough
 
-        pnl_.m_buttonStop->SetFocus(); //don't steal focus when starting in sys-tray!
+        setFocusIfActive(*pnl_.m_buttonStop); //don't steal focus when starting in sys-tray!
     }
     else
         minimizeToTray();
@@ -1080,7 +1086,7 @@ template <class TopLevelDialog>
 void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
 {
     assert(syncStat_);
-    if (!syncStat_) //sync not running
+    if (!syncStat_) //sync not running!?
         return;
 
     //normally we don't update the "static" GUI components here, but we have to make an exception
@@ -1535,7 +1541,8 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(TaskResult syncResult, 
 
     //this->Raise(); -> don't! user may be watching a movie in the meantime ;)
 
-    pnl_.m_buttonClose->SetFocus();
+    pnl_.m_buttonClose->SetDefault();
+    setFocusIfActive(*pnl_.m_buttonClose);
 }
 
 
@@ -1696,8 +1703,8 @@ void SyncProgressDialogImpl<TopLevelDialog>::resumeFromSystray(bool userRequeste
         //    Iconize(false);
         this->Show();
 
-        updateStaticGui();                        //restore Windows 7 task bar status   (e.g. required in pause mode)
-        updateProgressGui(false  /*allowYield*/); //restore Windows 7 task bar progress (e.g. required in pause mode)
+        updateStaticGui();                       //restore Windows 7 task bar status   (e.g. required in pause mode)
+        updateProgressGui(false /*allowYield*/); //restore Windows 7 task bar progress (e.g. required in pause mode)
 
         if (userRequested)
         {

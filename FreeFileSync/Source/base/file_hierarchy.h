@@ -8,9 +8,9 @@
 #define FILE_HIERARCHY_H_257235289645296
 
 #include <string>
-#include <memory>
+//#include <memory>
 #include <list>
-#include <functional>
+//#include <functional>
 #include <unordered_set>
 #include <unordered_map>
 #include "structures.h"

@@ -5,7 +5,7 @@
 // *****************************************************************************
 
 #include "file_path.h"
-#include "thread.h"
+#include "zstring.h"
 
 using namespace zen;
 

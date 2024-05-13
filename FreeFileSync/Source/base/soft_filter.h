@@ -7,7 +7,7 @@
 #ifndef SOFT_FILTER_H_810457108534657
 #define SOFT_FILTER_H_810457108534657
 
-#include <algorithm>
+//#include <algorithm>
 #include <limits>
 #include "structures.h"
 

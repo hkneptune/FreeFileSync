@@ -10,6 +10,7 @@
 #include "sys_error.h"
     #include <unistd.h> //close
     #include <sys/socket.h>
+    #include <netinet/tcp.h> //TCP_NODELAY
     #include <netdb.h> //getaddrinfo
 
 
@@ -102,7 +103,6 @@ public:
                 THROW_LAST_SYS_ERROR_WSA("socket");
             ZEN_ON_SCOPE_FAIL(closeSocket(testSocket));
 
-
             if (::connect(testSocket, ai.ai_addr, static_cast<int>(ai.ai_addrlen)) != 0) //0 or SOCKET_ERROR(-1)
             {
                 if (errno != EINPROGRESS)
@@ -141,6 +141,16 @@ public:
             }
 
             setNonBlocking(testSocket, false); //throw SysError
+            //-----------------------------------------------------------
+
+            int noDelay =  1; //disable Nagle algorithm: https://brooker.co.za/blog/2024/05/09/nagle.html
+            //e.g. test case "website sync": 23% shorter comparison time!
+            if (::setsockopt(testSocket,                        //_In_       SOCKET s
+                             IPPROTO_TCP,                       //_In_       int    level
+                             TCP_NODELAY,                       //_In_       int    optname
+                             reinterpret_cast<char*>(&noDelay), //_In_ const char*  optval
+                             sizeof(noDelay)) != 0)             //_In_       int    optlen
+                THROW_LAST_SYS_ERROR_WSA("setsockopt(TCP_NODELAY)");
 
             return testSocket;
         };

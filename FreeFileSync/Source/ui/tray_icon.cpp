@@ -9,6 +9,7 @@
 #include <wx/taskbar.h>
 #include <wx/menu.h>
 #include <wx/icon.h> //req. by Linux
+#include <wx+/dc.h>
 #include <wx+/image_tools.h>
 #include <wx+/image_resources.h>
 

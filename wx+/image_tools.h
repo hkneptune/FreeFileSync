@@ -9,9 +9,8 @@
 
 #include <numeric>
 #include <wx/image.h>
-#include <wx/dcmemory.h>
 #include <zen/basic_math.h>
-#include <wx+/dc.h>
+#include <wx/colour.h>
 
 
 namespace zen

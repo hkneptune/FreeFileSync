@@ -202,7 +202,7 @@ AFS::FileCopyResult AFS::copyFileTransactional(const AbstractPath& sourcePath, c
 
         //don't make the temp name longer than the original when hitting file system name length limitations: "lpMaximumComponentLength is commonly 255 characters"
         while (tmpName.size() > 200) //BUT don't trim short names! we want early failure on filename-related issues
-            tmpName = getUnicodeSubstring(tmpName, 0 /*uniPosFirst*/, unicodeLength(tmpName) / 2 /*uniPosLast*/); //consider UTF encoding when cutting in the middle! (e.g. for macOS)
+            tmpName = getUnicodeSubstring<Zstring>(tmpName, 0 /*uniPosFirst*/, unicodeLength(tmpName) / 2 /*uniPosLast*/); //consider UTF encoding when cutting in the middle! (e.g. for macOS)
 
         const Zstring& shortGuid = printNumber<Zstring>(Zstr("%04x"), static_cast<unsigned int>(getCrc16(generateGUID())));
 

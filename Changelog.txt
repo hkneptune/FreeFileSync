@@ -1,3 +1,13 @@
+FreeFileSync 13.6 [2024-05-10]
+------------------------------
+Compact parent path display for medium/large row sizes
+Fixed crash when mouse inputs are queued due to system lag
+Don't steal focus from other app when sync progress dialog is shown
+Fix crackling sound at the beginning of WAV playback (Linux)
+Prevent middle grid tooltip from covering sync direction
+Disable Nagle algorithm for SFTP connections
+
+
 FreeFileSync 13.5 [2024-04-01]
 ------------------------------
 Wrap file grid folder paths instead of truncate

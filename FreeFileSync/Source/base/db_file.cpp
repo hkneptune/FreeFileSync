@@ -8,9 +8,9 @@
 #include <bit> //std::endian
 #include <zen/guid.h>
 #include <zen/crc.h>
-#include <zen/build_info.h>
+//#include <zen/build_info.h>
 #include <zen/zlib_wrap.h>
-#include "../afs/concrete.h"
+//#include "../afs/concrete.h"
 #include "../afs/native.h"
 #include "status_handler_impl.h"
 

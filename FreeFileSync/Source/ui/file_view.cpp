@@ -5,10 +5,11 @@
 // *****************************************************************************
 
 #include "file_view.h"
+#include <span>
 #include <zen/stl_tools.h>
-#include <zen/perf.h>
+//#include <zen/perf.h>
 #include <zen/thread.h>
-#include "../base/synchronization.h"
+//#include "../base/synchronization.h"
 
 using namespace zen;
 using namespace fff;

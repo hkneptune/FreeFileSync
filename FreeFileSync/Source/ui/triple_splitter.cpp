@@ -5,8 +5,8 @@
 // *****************************************************************************
 
 #include "triple_splitter.h"
-#include <algorithm>
-#include <zen/stl_tools.h>
+//#include <algorithm>
+//#include <zen/stl_tools.h>
 #include <wx/settings.h>
 #include <wx+/dc.h>
 

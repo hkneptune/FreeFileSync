@@ -5,7 +5,7 @@
 // *****************************************************************************
 
 #include "algorithm.h"
-#include <zen/perf.h>
+//#include <zen/perf.h>
 #include <zen/crc.h>
 #include <zen/guid.h>
 #include <zen/file_access.h> //needed for TempFileBuffer only
@@ -263,8 +263,8 @@ bool stillInSync(const InSyncFile& dbFile, CompareVariant compareVar, unsigned i
 
 //check whether database entry and current item match: *irrespective* of current comparison settings
 template <SelectSide side> inline
-CudAction compareDbEntry(const SymlinkPair& symlink, const InSyncSymlink* dbSymlink, unsigned int fileTimeTolerance, 
-    const std::vector<unsigned int>& ignoreTimeShiftMinutes, bool renamedOrMoved)
+CudAction compareDbEntry(const SymlinkPair& symlink, const InSyncSymlink* dbSymlink, unsigned int fileTimeTolerance,
+                         const std::vector<unsigned int>& ignoreTimeShiftMinutes, bool renamedOrMoved)
 {
     if (symlink.isEmpty<side>())
         return dbSymlink ? (renamedOrMoved ? CudAction::update: CudAction::delete_) : CudAction::noChange;

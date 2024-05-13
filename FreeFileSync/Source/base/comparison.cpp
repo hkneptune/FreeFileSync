@@ -6,7 +6,7 @@
 
 #include "comparison.h"
 #include <zen/process_priority.h>
-#include <zen/perf.h>
+//#include <zen/perf.h>
 #include <zen/time.h>
 #include "algorithm.h"
 #include "parallel_scan.h"
@@ -783,8 +783,8 @@ void matchFolders(const MapType& mapLeft, const MapType& mapRight, ProcessLeftOn
     std::vector<FileRef> fileList;
     fileList.reserve(mapLeft.size() + mapRight.size()); //perf: ~5% shorter runtime
 
-    auto getCanonicalName = [](const Zstring& name){ return trimCpy(getUpperCase(name)); };
-    
+    auto getCanonicalName = [](const Zstring& name) { return trimCpy(getUpperCase(name)); };
+
     for (const auto& item : mapLeft ) fileList.push_back({getCanonicalName(item.first), &item, SelectSide::left});
     for (const auto& item : mapRight) fileList.push_back({getCanonicalName(item.first), &item, SelectSide::right});
 
@@ -1125,7 +1125,7 @@ FolderComparison fff::compare(WarningDialogs& warnings,
 
         for (const auto& [folderPair, fpCfg] : workLoad)
             if (std::optional<PathDependency> pd = getFolderPathDependency(folderPair.folderPathLeft,  fpCfg.filter.nameFilter.ref(),
-                                                                     folderPair.folderPathRight, fpCfg.filter.nameFilter.ref()))
+                                                                           folderPair.folderPathRight, fpCfg.filter.nameFilter.ref()))
             {
                 msg += L"\n\n" +
                        AFS::getDisplayPath(folderPair.folderPathLeft) + L" <-> " + L'\n' +

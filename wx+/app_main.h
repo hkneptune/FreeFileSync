@@ -7,7 +7,7 @@
 #ifndef APP_MAIN_H_08215601837818347575856
 #define APP_MAIN_H_08215601837818347575856
 
-#include <wx/window.h>
+//#include <wx/window.h>
 #include <wx/app.h>
 
 

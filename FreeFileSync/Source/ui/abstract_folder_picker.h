@@ -7,7 +7,7 @@
 #ifndef ABSTRACT_FOLDER_PICKER_HEADER_324872346895690
 #define ABSTRACT_FOLDER_PICKER_HEADER_324872346895690
 
-#include <wx/window.h>
+//#include <wx/window.h>
 #include <wx+/popup_dlg.h>
 #include "../afs/abstract.h"
 

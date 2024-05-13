@@ -7,7 +7,6 @@
 #ifndef GRID_VIEW_H_9285028345703475842569
 #define GRID_VIEW_H_9285028345703475842569
 
-#include <span>
 #include <vector>
 #include <variant>
 #include <unordered_map>

@@ -11,7 +11,7 @@
 #include <unordered_map>
 #include <zen/zstring.h>
 #include <wx/window.h>
-#include <wx/bitmap.h>
+#include <wx/image.h>
 #include <wx/string.h>
 #include <wx/textctrl.h>
 

@@ -7,7 +7,7 @@
 #ifndef SMALL_DLGS_H_8321790875018750245
 #define SMALL_DLGS_H_8321790875018750245
 
-#include <span>
+//#include <span>
 #include <wx+/popup_dlg.h>
 #include "../base/synchronization.h"
 #include "../config.h"

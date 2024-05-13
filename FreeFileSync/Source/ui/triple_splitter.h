@@ -11,7 +11,8 @@
 #include <memory>
 #include <optional>
 #include <wx/window.h>
-#include <wx/dcclient.h>
+#include <wx/bitmap.h>
+//#include <wx/dcclient.h>
 
 
 /* manage three contained windows:

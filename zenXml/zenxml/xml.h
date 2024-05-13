@@ -7,7 +7,7 @@
 #ifndef XML_H_349578228034572457454554
 #define XML_H_349578228034572457454554
 
-#include <set>
+//#include <set>
 #include <zen/file_io.h>
 #include <zen/file_access.h>
 #include "cvrt_struc.h"

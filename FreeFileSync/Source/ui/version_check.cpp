@@ -5,8 +5,9 @@
 // *****************************************************************************
 
 #include "version_check.h"
-#include <zen/crc.h>
+#include <numeric>
 #include <zen/build_info.h>
+#include <zen/crc.h>
 #include <zen/file_io.h>
 #include <zen/http.h>
 #include <zen/process_exec.h>

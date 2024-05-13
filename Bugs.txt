@@ -65,7 +65,7 @@ ________________________________________________________________________________
 
 
 -------------------
-| wxWidgets 3.2.3 |
+| wxWidgets 3.2.4 |
 -------------------
 __________________________________________________________________________________________________________
 /include/wx/features.h
@@ -164,3 +164,11 @@ Backspace not working in filter dialog: http://www.freefilesync.org/forum/viewto
  
      g_signal_connect (widget, "key_press_event",
                        G_CALLBACK (gtk_window_key_press_callback), this);
+
+__________________________________________________________________________________________________________
+/src/unix/sound.cpp
+Fix crackling sound at the beginning of WAV playback:
+See: http://soundfile.sapp.org/doc/WaveFormat/ => skip 8 bytes (Subchunk2ID and Subchunk2 Size)
+
+-    m_data->m_data = (&m_data->m_dataWithHeader[data_offset]);
++    m_data->m_data = (&m_data->m_dataWithHeader[data_offset + 8]);

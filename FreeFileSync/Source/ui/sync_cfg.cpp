@@ -17,9 +17,8 @@
 #include <wx+/window_layout.h>
 #include <wx+/popup_dlg.h>
 #include <wx+/image_resources.h>
-#include <wx+/window_tools.h>
 #include "gui_generated.h"
-#include "command_box.h"
+//#include "command_box.h"
 #include "folder_selector.h"
 #include "../base/norm_filter.h"
 #include "../base/file_hierarchy.h"

@@ -38,7 +38,7 @@ namespace zen
 class DirWatcher
 {
 public:
-    DirWatcher(const Zstring& dirPath); //throw FileError
+    explicit DirWatcher(const Zstring& dirPath); //throw FileError
     ~DirWatcher();
 
     enum class ChangeType

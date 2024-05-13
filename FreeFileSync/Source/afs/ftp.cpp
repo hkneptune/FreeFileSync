@@ -5,7 +5,7 @@
 // *****************************************************************************
 
 #include "ftp.h"
-#include <zen/basic_math.h>
+//#include <zen/basic_math.h>
 #include <zen/sys_error.h>
 #include <zen/globals.h>
 #include <zen/resolve_path.h>
@@ -2442,8 +2442,8 @@ private:
         //already existing: fail
         AFS::createFolderPlain(targetPath); //throw FileError
 
-            if (copyFilePermissions)
-                throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(targetPath))), _("Operation not supported by device."));
+        if (copyFilePermissions)
+            throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(targetPath))), _("Operation not supported by device."));
     }
 
     //already existing: fail

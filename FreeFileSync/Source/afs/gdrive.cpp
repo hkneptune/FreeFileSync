@@ -9,9 +9,9 @@
 #include <unordered_set> //needed by clang
 #include <unordered_map> //
 #include <libcurl/curl_wrap.h> //DON'T include <curl/curl.h> directly!
-#include <zen/basic_math.h>
+//#include <zen/basic_math.h>
 #include <zen/base64.h>
-#include <zen/crc.h>
+//#include <zen/crc.h>
 #include <zen/file_access.h>
 #include <zen/file_io.h>
 #include <zen/file_traverser.h>
@@ -3709,8 +3709,8 @@ private:
         //already existing: 1. fails or 2. creates duplicate (unlikely)
         AFS::createFolderPlain(targetPath); //throw FileError
 
-            if (copyFilePermissions)
-                throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(targetPath))), _("Operation not supported by device."));
+        if (copyFilePermissions)
+            throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(targetPath))), _("Operation not supported by device."));
     }
 
     //already existing: fail

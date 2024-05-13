@@ -6,13 +6,13 @@
 
 #include "batch_config.h"
 #include <wx/wupdlock.h>
-#include <wx+/window_layout.h>
+//#include <wx+/window_layout.h>
 #include <wx+/image_resources.h>
 #include <wx+/image_tools.h>
 #include <wx+/choice_enum.h>
 #include <wx+/popup_dlg.h>
 #include "gui_generated.h"
-#include "folder_selector.h"
+//#include "folder_selector.h"
 
 
 using namespace zen;

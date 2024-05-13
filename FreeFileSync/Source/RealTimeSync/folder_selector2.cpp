@@ -7,8 +7,8 @@
 #include "folder_selector2.h"
 #include <zen/thread.h>
 #include <zen/file_access.h>
-#include <wx/dirdlg.h>
 #include <wx/scrolwin.h>
+#include <wx/dirdlg.h>
 #include <wx+/popup_dlg.h>
 #include <zen/resolve_path.h>
     #include <gtk/gtk.h>

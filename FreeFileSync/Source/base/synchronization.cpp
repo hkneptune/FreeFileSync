@@ -7,9 +7,9 @@
 #include "synchronization.h"
 #include <tuple>
 #include <zen/process_priority.h>
-#include <zen/perf.h>
-#include <zen/guid.h>
-#include <zen/crc.h>
+//#include <zen/perf.h>
+//#include <zen/guid.h>
+//#include <zen/crc.h>
 #include "algorithm.h"
 #include "db_file.h"
 #include "status_handler_impl.h"

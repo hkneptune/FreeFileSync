@@ -8,7 +8,7 @@
 #define PERF_H_83947184145342652456
 
 #include <chrono>
-#include "scope_guard.h"
+//#include "scope_guard.h"
 #include "string_tools.h"
 
     #include <iostream>

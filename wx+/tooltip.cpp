@@ -8,10 +8,10 @@
 #include <wx/dialog.h>
 #include <wx/stattext.h>
 #include <wx/sizer.h>
-#include <wx/statbmp.h>
+//#include <wx/statbmp.h>
 #include <wx/settings.h>
 #include <wx/app.h>
-#include "image_tools.h"
+//#include "image_tools.h"
 #include "bitmap_button.h"
 #include "dc.h"
     #include <gtk/gtk.h>
@@ -21,7 +21,7 @@ using namespace zen;
 
 namespace
 {
-const int TIP_WINDOW_OFFSET_DIP = 30;
+const int TIP_WINDOW_OFFSET_DIP = 20;
 }
 
 
@@ -88,13 +88,14 @@ void Tooltip::show(const wxString& text, wxPoint mousePos, const wxImage* img)
     //=> call wxWindow::Show() to "execute"
 #endif
 
-    const wxPoint newPos = wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft ?
-                           mousePos - wxPoint(dipToWxsize(TIP_WINDOW_OFFSET_DIP) + tipWindow_->GetSize().GetWidth(), 0) :
-                           mousePos + wxPoint(dipToWxsize(TIP_WINDOW_OFFSET_DIP),                                    0);
+    const wxPoint newPos = mousePos + wxPoint(wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft ?
+                                              - dipToWxsize(TIP_WINDOW_OFFSET_DIP) - tipWindow_->GetSize().GetWidth() :
+                                              dipToWxsize(TIP_WINDOW_OFFSET_DIP),
+                                              dipToWxsize(TIP_WINDOW_OFFSET_DIP));
 
     if (newPos != tipWindow_->GetScreenPosition())
         tipWindow_->Move(newPos);
-    //attention!!! possible endless loop: mouse pointer must NOT be within tipWindow!
+    //caveat: possible endless loop! mouse pointer must NOT be within tipWindow!
     //else it will trigger a wxEVT_LEAVE_WINDOW on middle grid which will hide the window, causing the window to be shown again via this method, etc.
 
     if (!tipWindow_->IsShown())

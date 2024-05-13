@@ -4,10 +4,10 @@
 // * Copyright (C) Zenju (zenju AT freefilesync DOT org) - All Rights Reserved *
 // *****************************************************************************
 
-#include <set>
+//#include <set>
 #include "tree_grid.h"
 #include <wx/settings.h>
-#include <wx/menu.h>
+//#include <wx/menu.h>
 #include <zen/i18n.h>
 #include <zen/utf.h>
 #include <zen/stl_tools.h>
@@ -16,7 +16,7 @@
 #include <wx+/dc.h>
 #include <wx+/context_menu.h>
 #include <wx+/image_resources.h>
-#include <wx+/image_tools.h>
+//#include <wx+/image_tools.h>
 #include "../icon_buffer.h"
 
 using namespace zen;

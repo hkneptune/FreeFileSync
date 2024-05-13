@@ -6,13 +6,13 @@
 
 #include "icon_buffer.h"
 #include <map>
-#include <set>
+//#include <set>
 #include <variant>
 #include <zen/thread.h> //includes <std/thread.hpp>
-#include <zen/scope_guard.h>
+//#include <zen/scope_guard.h>
 #include <wx+/dc.h>
 #include <wx+/image_resources.h>
-#include <wx+/image_tools.h>
+//#include <wx+/image_tools.h>
 #include <wx+/std_button_layout.h>
 #include "base/icon_loader.h"
 

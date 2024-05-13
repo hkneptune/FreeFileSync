@@ -54,6 +54,15 @@ wxTopLevelWindow* getTopLevelWindow(wxWindow* child)
     even if the user is currently busy using a different app! More curiosity: this foreground focus stealing happens only during the *first* SetFocus() after app start!
     It also can be avoided by changing focus back and forth with some other app after start => wxWidgets bug or Win32 feature???                                      */
 
+inline
+void setFocusIfActive(wxWindow& win) //don't steal keyboard focus when currently using a different foreground application
+{
+    if (wxTopLevelWindow* topWin = getTopLevelWindow(&win))
+        if (topWin->IsActive()) //Linux/macOS: already behaves just like ::GetForegroundWindow() on Windows!
+            win.SetFocus();
+}
+
+
 struct FocusPreserver
 {
     FocusPreserver()
@@ -70,9 +79,7 @@ struct FocusPreserver
 
         if (oldFocusId_ != wxID_ANY)
             if (wxWindow* oldFocusWin = wxWindow::FindWindowById(oldFocusId_))
-                if (wxTopLevelWindow* topWin = getTopLevelWindow(oldFocusWin))
-                    if (topWin->IsActive()) //Linux/macOS: already behaves just like ::GetForegroundWindow() on Windows!
-                        oldFocusWin->SetFocus();
+                setFocusIfActive(*oldFocusWin);
     }
 
     wxWindowID getFocusId() const { return oldFocusId_; }

@@ -9,7 +9,7 @@
 
 #include <thread>
 #include <functional>
-#include <zen/error_log.h>
+//#include <zen/error_log.h>
 #include "base/process_callback.h"
 #include "return_codes.h"
 

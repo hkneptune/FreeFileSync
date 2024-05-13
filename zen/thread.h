@@ -72,6 +72,7 @@ void interruptibleSleep(const std::chrono::duration<Rep, Period>& relTime); //th
 
 void setCurrentThreadName(const Zstring& threadName);
 
+
 bool runningOnMainThread();
 
 //------------------------------------------------------------------------------------------

@@ -11,7 +11,7 @@
 #include <zen/file_traverser.h>
 #include <zen/thread.h>
 #include <zen/process_exec.h>
-#include <zen/perf.h>
+//#include <zen/perf.h>
 #include <zen/shutdown.h>
 #include <zen/resolve_path.h>
 #include <zen/sys_info.h>
@@ -40,8 +40,9 @@
 #include "folder_pair.h"
 #include "search_grid.h"
 #include "batch_config.h"
-#include "triple_splitter.h"
+//#include "triple_splitter.h"
 #include "app_icon.h"
+#include "../base_tools.h"
 #include "../afs/concrete.h"
 #include "../afs/native.h"
 #include "../base/comparison.h"
@@ -299,6 +300,152 @@ public:
 };
 
 
+
+//---------------------------------------------------------------------------------------------
+/*  mitigate unwanted reentrancy caused by wxApp::Yield()
+
+    CAVEAT: This doesn't block all theoretically possible Window events that were queued *before* disableGuiElementsImpl() takes effect,
+            but at least the 90% case of (rare!) crashes caused by a duplicate click event on comparison or sync button.       */
+class MainDialog::SingleOperationBlocker
+{
+public:
+    explicit SingleOperationBlocker(MainDialog& mainDlg) : mainDlg_(mainDlg) {}
+
+    ~SingleOperationBlocker()
+    {
+        if (opStarted_)
+        {
+            if (guiDisabled_)
+            {
+                wxTheApp->Yield(); //GUI update before enabling buttons again: prevent strange behaviour of delayed button clicks
+                enableGuiElementsImpl();
+            }
+            assert(mainDlg_.operationInProgress_);
+            mainDlg_.operationInProgress_ = false;
+        }
+        else assert(!guiDisabled_);
+    }
+
+    bool start() //disabling GUI elements is NOT enough! e.g. reentrancy when there's a second click event *already* in the Windows message queue
+    {
+        if (mainDlg_.operationInProgress_)
+            return false;
+
+        return mainDlg_.operationInProgress_ = opStarted_ = true;
+    }
+
+    void disableGui(bool enableAbort) //=> logically belongs into start()! But keep seperate: modal dialogs look better when GUI is not yet disabled
+    {
+        assert(opStarted_ && !guiDisabled_);
+        guiDisabled_ = true;
+        disableGuiElementsImpl(enableAbort);
+    }
+    
+    void dismiss()
+    {
+          opStarted_ = guiDisabled_ = false;
+    }
+
+private:
+    SingleOperationBlocker           (const SingleOperationBlocker&) = delete;
+    SingleOperationBlocker& operator=(const SingleOperationBlocker&) = delete;
+
+    void disableGuiElementsImpl(bool enableAbort); //dis-/enable all elements (except abort button) that might receive unwanted user input
+    void enableGuiElementsImpl();                  //during long-running processes: comparison, deletion
+
+    MainDialog& mainDlg_;
+    bool opStarted_ = false;
+    bool guiDisabled_ = false;
+};
+
+
+void MainDialog::SingleOperationBlocker::disableGuiElementsImpl(bool enableAbort)
+{
+    //disables all elements (except abort button) that might receive user input during long-running processes:
+    //when changing consider: comparison, synchronization, manual deletion
+
+    //OS X: wxWidgets portability promise is again a mess: http://wxwidgets.10942.n7.nabble.com/Disable-panel-and-appropriate-children-windows-linux-macos-td35357.html
+
+    mainDlg_.EnableCloseButton(false); //closing main dialog is not allowed during synchronization! crash!
+    //EnableCloseButton(false) just does not work reliably!
+    //- Windows: dialog can still be closed by clicking the task bar preview window with the middle mouse button or by pressing ALT+F4!
+    //- OS X: Quit/Preferences menu items still enabled during sync,
+    //       ([[m_macWindow standardWindowButton:NSWindowCloseButton] setEnabled:enable]) does not stick after calling Maximize() ([m_macWindow zoom:nil])
+    //- Linux: it just works! :)
+
+
+    for (size_t pos = 0; pos < mainDlg_.m_menubar->GetMenuCount(); ++pos)
+        mainDlg_.m_menubar->EnableTop(pos, false);
+
+    if (enableAbort)
+    {
+        mainDlg_.m_buttonCancel->Enable();
+        mainDlg_.m_buttonCancel->Show();
+        //if (m_buttonCancel->IsShownOnScreen()) -> needed?
+        mainDlg_.m_buttonCancel->SetFocus();
+        mainDlg_.m_buttonCompare->Disable();
+        mainDlg_.m_buttonCompare->Hide();
+        mainDlg_.m_panelTopButtons->Layout();
+
+        mainDlg_.m_bpButtonCmpConfig  ->Disable();
+        mainDlg_.m_bpButtonCmpContext ->Disable();
+        mainDlg_.m_bpButtonFilter     ->Disable();
+        mainDlg_.m_bpButtonFilterContext->Disable();
+        mainDlg_.m_bpButtonSyncConfig ->Disable();
+        mainDlg_.m_bpButtonSyncContext->Disable();
+        mainDlg_.m_buttonSync         ->Disable();
+    }
+    else
+        mainDlg_.m_panelTopButtons->Disable();
+
+    mainDlg_.m_panelDirectoryPairs->Disable();
+    mainDlg_.m_gridOverview       ->Disable();
+    mainDlg_.m_panelCenter        ->Disable();
+    mainDlg_.m_panelSearch        ->Disable();
+    mainDlg_.m_panelLog           ->Disable();
+    mainDlg_.m_panelConfig        ->Disable();
+    mainDlg_.m_panelViewFilter    ->Disable();
+
+    mainDlg_.Refresh(); //wxWidgets fails to do this automatically for child items of disabled windows
+}
+
+
+void MainDialog::SingleOperationBlocker::enableGuiElementsImpl()
+{
+    //wxGTK, yet another QOI issue: some stupid bug keeps moving main dialog to top!!
+    mainDlg_.EnableCloseButton(true);
+
+    for (size_t pos = 0; pos < mainDlg_.m_menubar->GetMenuCount(); ++pos)
+        mainDlg_.m_menubar->EnableTop(pos, true);
+
+    mainDlg_.m_buttonCancel->Disable();
+    mainDlg_.m_buttonCancel->Hide();
+    mainDlg_.m_buttonCompare->Enable();
+    mainDlg_.m_buttonCompare->Show();
+    mainDlg_.m_panelTopButtons->Layout();
+
+    mainDlg_.m_bpButtonCmpConfig  ->Enable();
+    mainDlg_.m_bpButtonCmpContext ->Enable();
+    mainDlg_.m_bpButtonFilter     ->Enable();
+    mainDlg_.m_bpButtonFilterContext->Enable();
+    mainDlg_.m_bpButtonSyncConfig ->Enable();
+    mainDlg_.m_bpButtonSyncContext->Enable();
+    mainDlg_.m_buttonSync         ->Enable();
+
+    mainDlg_.m_panelTopButtons->Enable();
+
+    mainDlg_.m_panelDirectoryPairs->Enable();
+    mainDlg_.m_gridOverview       ->Enable();
+    mainDlg_.m_panelCenter        ->Enable();
+    mainDlg_.m_panelSearch        ->Enable();
+    mainDlg_.m_panelLog           ->Enable();
+    mainDlg_.m_panelConfig        ->Enable();
+    mainDlg_.m_panelViewFilter    ->Enable();
+
+    mainDlg_.Refresh();
+    //auiMgr_.Update(); needed on macOS; 2021-02-01: apparently not anymore!
+}
+//---------------------------------------------------------------------------------------------
 
 
 namespace
@@ -1479,6 +1626,10 @@ std::vector<FileSystemObject*> MainDialog::getTreeSelection() const
 void MainDialog::copyToAlternateFolder(const std::vector<FileSystemObject*>& selectionL,
                                        const std::vector<FileSystemObject*>& selectionR)
 {
+    SingleOperationBlocker opBlock(*this);
+    if (!opBlock.start())
+        return;
+
     std::vector<const FileSystemObject*> copyLeft;
     std::vector<const FileSystemObject*> copyRight;
 
@@ -1515,11 +1666,9 @@ void MainDialog::copyToAlternateFolder(const std::vector<FileSystemObject*>& sel
                          globalCfg_.mainDlg.copyToCfg.overwriteIfExists) != ConfirmationButton::accept)
         return;
 
-    disableGuiElements(true /*enableAbort*/); //StatusHandlerTemporaryPanel will internally process Window messages, so avoid unexpected callbacks!
-    auto app = wxTheApp; //fix lambda/wxWigets/VC fuck up
-    ZEN_ON_SCOPE_EXIT(app->Yield(); enableGuiElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
-
     const auto& guiCfg = getConfig();
+
+    opBlock.disableGui(true /*enableAbort*/); //StatusHandlerTemporaryPanel calls wxApp::Yield(), so avoid unexpected callbacks!
 
     StatusHandlerTemporaryPanel statusHandler(*this, std::chrono::system_clock::now() /*startTime*/,
                                               false /*ignoreErrors*/,
@@ -1549,6 +1698,10 @@ void MainDialog::copyToAlternateFolder(const std::vector<FileSystemObject*>& sel
 void MainDialog::deleteSelectedFiles(const std::vector<FileSystemObject*>& selectionL,
                                      const std::vector<FileSystemObject*>& selectionR, bool moveToRecycler)
 {
+    SingleOperationBlocker opBlock(*this);
+    if (!opBlock.start())
+        return;
+
     std::vector<FileSystemObject*> deleteLeft  = selectionL;
     std::vector<FileSystemObject*> deleteRight = selectionR;
 
@@ -1574,12 +1727,10 @@ void MainDialog::deleteSelectedFiles(const std::vector<FileSystemObject*>& selec
                          moveToRecycler) != ConfirmationButton::accept)
         return;
 
-    disableGuiElements(true /*enableAbort*/); //StatusHandlerTemporaryPanel will internally process Window messages, so avoid unexpected callbacks!
-    auto app = wxTheApp; //fix lambda/wxWigets/VC fuck up
-    ZEN_ON_SCOPE_EXIT(app->Yield(); enableGuiElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
-
     //wxBusyCursor dummy; -> redundant: progress already shown in status bar!
     const auto& guiCfg = getConfig();
+
+    opBlock.disableGui(true /*enableAbort*/); //StatusHandlerTemporaryPanel calls wxApp::Yield(), so avoid unexpected callbacks!
 
     StatusHandlerTemporaryPanel statusHandler(*this, std::chrono::system_clock::now() /*startTime*/,
                                               false /*ignoreErrors*/,
@@ -1612,6 +1763,10 @@ void MainDialog::deleteSelectedFiles(const std::vector<FileSystemObject*>& selec
 void MainDialog::renameSelectedFiles(const std::vector<FileSystemObject*>& selectionL,
                                      const std::vector<FileSystemObject*>& selectionR)
 {
+    SingleOperationBlocker opBlock(*this);
+    if (!opBlock.start())
+        return;
+
     std::vector<FileSystemObject*> renameLeft  = selectionL;
     std::vector<FileSystemObject*> renameRight = selectionR;
 
@@ -1622,8 +1777,6 @@ void MainDialog::renameSelectedFiles(const std::vector<FileSystemObject*>& selec
         return; //harmonize with onGridContextRim(): this function should be a no-op iff context menu option is disabled!
     //------------------------------------------------------------------
 
-    FocusPreserver fp;
-
     std::vector<Zstring> fileNamesOld;
     for (const FileSystemObject* fsObj : renameLeft)
         fileNamesOld.push_back(fsObj->getItemName<SelectSide::left>());
@@ -1631,16 +1784,16 @@ void MainDialog::renameSelectedFiles(const std::vector<FileSystemObject*>& selec
     for (const FileSystemObject* fsObj : renameRight)
         fileNamesOld.push_back(fsObj->getItemName<SelectSide::right>());
 
+    FocusPreserver fp;
+
     std::vector<Zstring> fileNamesNew;
     if (showRenameDialog(this, fileNamesOld, fileNamesNew) != ConfirmationButton::accept)
         return;
 
-    disableGuiElements(true /*enableAbort*/); //StatusHandlerTemporaryPanel will internally process Window messages, so avoid unexpected callbacks!
-    auto app = wxTheApp; //fix lambda/wxWigets/VC fuck up
-    ZEN_ON_SCOPE_EXIT(app->Yield(); enableGuiElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
-
     //wxBusyCursor dummy; -> redundant: progress already shown in status bar!
     const auto& guiCfg = getConfig();
+
+    opBlock.disableGui(true /*enableAbort*/); //StatusHandlerTemporaryPanel calls wxApp::Yield(), so avoid unexpected callbacks!
 
     StatusHandlerTemporaryPanel statusHandler(*this, std::chrono::system_clock::now() /*startTime*/,
                                               false /*ignoreErrors*/,
@@ -1783,6 +1936,10 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
                                          const std::vector<FileSystemObject*>& selectionL,
                                          const std::vector<FileSystemObject*>& selectionR)
 {
+    SingleOperationBlocker opBlock(*this);
+    if (!opBlock.start())
+        return;
+
     try
     {
         //support fallback instead of an error in this special case
@@ -1866,13 +2023,11 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
             //##################### create temporary files for non-native paths ######################
             if (!nonNativeFiles.empty())
             {
+                const auto& guiCfg = getConfig();
+
                 FocusPreserver fp;
 
-                disableGuiElements(true /*enableAbort*/); //StatusHandlerTemporaryPanel will internally process Window messages, so avoid unexpected callbacks!
-                auto app = wxTheApp; //fix lambda/wxWigets/VC fuck up
-                ZEN_ON_SCOPE_EXIT(app->Yield(); enableGuiElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
-
-                const auto& guiCfg = getConfig();
+                opBlock.disableGui(true /*enableAbort*/); //StatusHandlerTemporaryPanel calls wxApp::Yield(), so avoid unexpected callbacks!
 
                 StatusHandlerTemporaryPanel statusHandler(*this, std::chrono::system_clock::now() /*startTime*/,
                                                           false /*ignoreErrors*/,
@@ -2033,104 +2188,6 @@ void MainDialog::popStatusInfo()
             m_panelStatusBar->Layout();
         }
     }
-}
-
-
-void MainDialog::disableGuiElements(bool enableAbort)
-{
-    assert(!operationInProgress_);
-
-    //disables all elements (except abort button) that might receive user input during long-running processes:
-    //when changing consider: comparison, synchronization, manual deletion
-
-    //OS X: wxWidgets portability promise is again a mess: http://wxwidgets.10942.n7.nabble.com/Disable-panel-and-appropriate-children-windows-linux-macos-td35357.html
-
-    EnableCloseButton(false); //closing main dialog is not allowed during synchronization! crash!
-    //EnableCloseButton(false) just does not work reliably!
-    //- Windows: dialog can still be closed by clicking the task bar preview window with the middle mouse button or by pressing ALT+F4!
-    //- OS X: Quit/Preferences menu items still enabled during sync,
-    //       ([[m_macWindow standardWindowButton:NSWindowCloseButton] setEnabled:enable]) does not stick after calling Maximize() ([m_macWindow zoom:nil])
-    //- Linux: it just works! :)
-    operationInProgress_ = true;
-
-    localKeyEventsEnabled_ = false;
-
-    for (size_t pos = 0; pos < m_menubar->GetMenuCount(); ++pos)
-        m_menubar->EnableTop(pos, false);
-
-    if (enableAbort)
-    {
-        m_buttonCancel->Enable();
-        m_buttonCancel->Show();
-        //if (m_buttonCancel->IsShownOnScreen()) -> needed?
-        m_buttonCancel->SetFocus();
-        m_buttonCompare->Disable();
-        m_buttonCompare->Hide();
-        m_panelTopButtons->Layout();
-
-        m_bpButtonCmpConfig  ->Disable();
-        m_bpButtonCmpContext ->Disable();
-        m_bpButtonFilter     ->Disable();
-        m_bpButtonFilterContext->Disable();
-        m_bpButtonSyncConfig ->Disable();
-        m_bpButtonSyncContext->Disable();
-        m_buttonSync         ->Disable();
-    }
-    else
-        m_panelTopButtons->Disable();
-
-    m_panelDirectoryPairs->Disable();
-    m_gridOverview       ->Disable();
-    m_panelCenter        ->Disable();
-    m_panelSearch        ->Disable();
-    m_panelLog           ->Disable();
-    m_panelConfig        ->Disable();
-    m_panelViewFilter    ->Disable();
-
-    Refresh(); //wxWidgets fails to do this automatically for child items of disabled windows
-}
-
-
-void MainDialog::enableGuiElements()
-{
-    assert(operationInProgress_ && !localKeyEventsEnabled_); //disableGuiElements() not called? => WTF!
-
-    //wxGTK, yet another QOI issue: some stupid bug keeps moving main dialog to top!!
-
-    EnableCloseButton(true);
-    operationInProgress_ = false;
-
-    localKeyEventsEnabled_ = true;
-
-    for (size_t pos = 0; pos < m_menubar->GetMenuCount(); ++pos)
-        m_menubar->EnableTop(pos, true);
-
-    m_buttonCancel->Disable();
-    m_buttonCancel->Hide();
-    m_buttonCompare->Enable();
-    m_buttonCompare->Show();
-    m_panelTopButtons->Layout();
-
-    m_bpButtonCmpConfig  ->Enable();
-    m_bpButtonCmpContext ->Enable();
-    m_bpButtonFilter     ->Enable();
-    m_bpButtonFilterContext->Enable();
-    m_bpButtonSyncConfig ->Enable();
-    m_bpButtonSyncContext->Enable();
-    m_buttonSync         ->Enable();
-
-    m_panelTopButtons->Enable();
-
-    m_panelDirectoryPairs->Enable();
-    m_gridOverview       ->Enable();
-    m_panelCenter        ->Enable();
-    m_panelSearch        ->Enable();
-    m_panelLog           ->Enable();
-    m_panelConfig        ->Enable();
-    m_panelViewFilter    ->Enable();
-
-    Refresh();
-    //auiMgr_.Update(); needed on macOS; 2021-02-01: apparently not anymore!
 }
 
 
@@ -2392,7 +2449,7 @@ void MainDialog::onLocalKeyEvent(wxKeyEvent& event) //process key events without
 {
     if (localKeyEventsEnabled_) //avoid recursion
     {
-        localKeyEventsEnabled_ = false; //avoid recursion
+        localKeyEventsEnabled_ = false;
         ZEN_ON_SCOPE_EXIT(localKeyEventsEnabled_ = true);
 
         const int keyCode = event.GetKeyCode();
@@ -3710,6 +3767,10 @@ bool MainDialog::loadConfiguration(const std::vector<Zstring>& filePaths, bool i
 
 void MainDialog::removeSelectedCfgHistoryItems(bool deleteFromDisk)
 {
+    SingleOperationBlocker opBlock(*this);
+    if (!opBlock.start())
+        return;
+
     const std::vector<size_t> selectedRows = m_gridCfgHistory->getSelectedRows();
     if (!selectedRows.empty())
     {
@@ -3723,20 +3784,18 @@ void MainDialog::removeSelectedCfgHistoryItems(bool deleteFromDisk)
         if (deleteFromDisk)
         {
             //===========================================================================
-            FocusPreserver fp;
-
             std::wstring fileList;
             for (const Zstring& filePath : filePaths)
                 fileList += utfTo<std::wstring>(filePath) + L'\n';
+
+            FocusPreserver fp;
 
             bool moveToRecycler = true;
             if (showDeleteDialog(this, fileList, static_cast<int>(filePaths.size()),
                                  moveToRecycler) != ConfirmationButton::accept)
                 return;
 
-            disableGuiElements(true /*enableAbort*/); //StatusHandlerTemporaryPanel will internally process Window messages, so avoid unexpected callbacks!
-            auto app = wxTheApp; //fix lambda/wxWigets/VC fuck up
-            ZEN_ON_SCOPE_EXIT(app->Yield(); enableGuiElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
+            opBlock.disableGui(true /*enableAbort*/); //StatusHandlerTemporaryPanel calls wxApp::Yield(), so avoid unexpected callbacks!
 
             StatusHandlerTemporaryPanel statusHandler(*this, std::chrono::system_clock::now() /*startTime*/,
                                                       false /*ignoreErrors*/,
@@ -4524,6 +4583,10 @@ void MainDialog::updateGlobalFilterButton()
 
 void MainDialog::onCompare(wxCommandEvent& event)
 {
+    SingleOperationBlocker opBlock(*this);
+    if (!opBlock.start())
+        return;
+
     //wxBusyCursor dummy; -> redundant: progress already shown in progress dialog!
 
     FocusPreserver fp; //e.g. keep focus on config panel after pressing F5
@@ -4536,20 +4599,17 @@ void MainDialog::onCompare(wxCommandEvent& event)
     int scrollPosX = 0;
     int scrollPosY = 0;
     m_gridMainL->GetViewStart(&scrollPosX, &scrollPosY); //preserve current scroll position
-    ZEN_ON_SCOPE_EXIT(
-        m_gridMainL->Scroll(scrollPosX, scrollPosY); //
-        m_gridMainR->Scroll(scrollPosX, scrollPosY); //restore
-        m_gridMainC->Scroll(-1, scrollPosY); );      //
-
-    disableGuiElements(true /*enableAbort*/); //StatusHandlerTemporaryPanel will internally process Window messages, so avoid unexpected callbacks!
-    auto app = wxTheApp; //fix lambda/wxWigets/VC fuck up
-    ZEN_ON_SCOPE_EXIT(app->Yield(); enableGuiElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
+    ZEN_ON_SCOPE_EXIT(m_gridMainL->Scroll(scrollPosX, scrollPosY); //
+                      m_gridMainR->Scroll(scrollPosX, scrollPosY); //restore
+                      m_gridMainC->Scroll(-1, scrollPosY); );      //
 
     clearGrid(); //avoid memory peak by clearing old data first
 
     const auto& guiCfg = getConfig();
 
     const std::vector<FolderPairCfg>& fpCfgList = extractCompareCfg(guiCfg.mainCfg);
+
+    opBlock.disableGui(true /*enableAbort*/); //StatusHandlerTemporaryPanel calls wxApp::Yield(), so avoid unexpected callbacks!
 
     //handle status display and error messages
     StatusHandlerTemporaryPanel statusHandler(*this, std::chrono::system_clock::now(),
@@ -4784,6 +4844,10 @@ void MainDialog::onStartSync(wxCommandEvent& event)
             return;
     }
 
+    SingleOperationBlocker opBlock(*this); //*after* simluated comparison button click!
+    if (!opBlock.start())
+        return;
+
     const auto& guiCfg = getConfig();
 
     //show sync preview/confirmation dialog
@@ -4812,9 +4876,7 @@ void MainDialog::onStartSync(wxCommandEvent& event)
         globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.isMaximized
     };
 
-
-    disableGuiElements(false /*enableAbort*/); //StatusHandlerFloatingDialog will internally process Window messages, so avoid unexpected callbacks!
-    ZEN_ON_SCOPE_EXIT(enableGuiElements()); //run AFTER StatusHandlerFloatingDialog::showResult()
+    opBlock.disableGui(false /*enableAbort*/); //StatusHandlerFloatingDialog will internally process Window messages, so avoid unexpected callbacks!
 
     //class handling status updates and error messages
     StatusHandlerFloatingDialog statusHandler(this, getJobNames(), syncStartTime,
@@ -5018,6 +5080,7 @@ void MainDialog::onStartSync(wxCommandEvent& event)
 
         case FinalRequest::exit:
             Destroy(); //don't use Close() which prompts to save current config in onClose()
+            opBlock.dismiss(); //...or else we'll crash when ~SingleOperationBlocker() calls Yield()!
             break;
 
         case FinalRequest::shutdown:
@@ -5056,6 +5119,10 @@ void appendInactive(ContainerObject& conObj, std::vector<FileSystemObject*>& ina
 
 void MainDialog::startSyncForSelecction(const std::vector<FileSystemObject*>& selection)
 {
+    SingleOperationBlocker opBlock(*this);
+    if (!opBlock.start())
+        return;
+
     //------------------ analyze selection ------------------
     std::unordered_set<const BaseFolderPair*> basePairsSelect;
     std::vector<FileSystemObject*> selectedActive;
@@ -5150,9 +5217,7 @@ void MainDialog::startSyncForSelecction(const std::vector<FileSystemObject*>& se
 
         //last sync log file? => let's go without; same behavior as manual deletion
 
-        disableGuiElements(true /*enableAbort*/); //StatusHandlerFloatingDialog will internally process Window messages, so avoid unexpected callbacks!
-        auto app = wxTheApp; //fix lambda/wxWigets/VC fuck up
-        ZEN_ON_SCOPE_EXIT(app->Yield(); enableGuiElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
+        opBlock.disableGui(true /*enableAbort*/); //StatusHandlerTemporaryPanel calls wxApp::Yield(), so avoid unexpected callbacks!
 
         StatusHandlerTemporaryPanel statusHandler(*this, syncStartTime,
                                                   guiCfg.mainCfg.ignoreErrors,
@@ -5367,6 +5432,10 @@ void MainDialog::onGridLabelLeftClickC(GridLabelClickEvent& event)
 
 void MainDialog::swapSides()
 {
+    SingleOperationBlocker opBlock(*this);
+    if (!opBlock.start())
+        return;
+
     if (!folderCmp_.empty() && //require confirmation only *after* comparison
         globalCfg_.confirmDlgs.confirmSwapSides)
     {
@@ -5423,13 +5492,11 @@ void MainDialog::swapSides()
 
     if (!folderCmp_.empty())
     {
+        const auto& guiCfg = getConfig();
+
         FocusPreserver fp;
 
-        disableGuiElements(true /*enableAbort*/); //StatusHandlerTemporaryPanel will internally process Window messages, so avoid unexpected callbacks!
-        auto app = wxTheApp; //fix lambda/wxWigets/VC fuck up
-        ZEN_ON_SCOPE_EXIT(app->Yield(); enableGuiElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
-
-        const auto& guiCfg = getConfig();
+        opBlock.disableGui(true /*enableAbort*/); //StatusHandlerTemporaryPanel calls wxApp::Yield(), so avoid unexpected callbacks!
 
         StatusHandlerTemporaryPanel statusHandler(*this, std::chrono::system_clock::now() /*startTime*/,
                                                   false /*ignoreErrors*/,
@@ -5663,14 +5730,16 @@ void MainDialog::applySyncDirections()
 {
     if (!folderCmp_.empty())
     {
-        FocusPreserver fp;
-
-        disableGuiElements(true /*enableAbort*/); //StatusHandlerTemporaryPanel will internally process Window messages, so avoid unexpected callbacks!
-        auto app = wxTheApp; //fix lambda/wxWigets/VC fuck up
-        ZEN_ON_SCOPE_EXIT(app->Yield(); enableGuiElements()); //ui update before enabling buttons again: prevent strange behaviour of delayed button clicks
-
         const auto& guiCfg = getConfig();
         const auto& directCfgs = extractDirectionCfg(folderCmp_, getConfig().mainCfg);
+
+        SingleOperationBlocker opBlock(*this);
+        if (!opBlock.start()) //can't just skip, but now's a really bad time! Hopefully never happens!?
+            throw std::runtime_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Sync direction changed while other operation running.");
+
+        FocusPreserver fp;
+
+        opBlock.disableGui(true /*enableAbort*/); //StatusHandlerTemporaryPanel calls wxApp::Yield(), so avoid unexpected callbacks!
 
         StatusHandlerTemporaryPanel statusHandler(*this, std::chrono::system_clock::now() /*startTime*/,
                                                   false /*ignoreErrors*/,

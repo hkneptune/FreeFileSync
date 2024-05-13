@@ -7,12 +7,13 @@
 #ifndef MAIN_DLG_H_8910481324545644545
 #define MAIN_DLG_H_8910481324545644545
 
-#include <map>
+//#include <map>
 #include <memory>
 #include <wx+/async_task.h>
 #include <wx+/file_drop.h>
 #include <wx/aui/aui.h>
 #include "gui_generated.h"
+#include "folder_selector.h"
 #include "file_grid.h"
 #include "tree_grid.h"
 #include "sync_cfg.h"
@@ -21,7 +22,7 @@
 #include "../config.h"
 #include "../status_handler.h"
 #include "../base/algorithm.h"
-#include "../return_codes.h"
+//#include "../return_codes.h"
 #include "../base/synchronization.h"
 
 
@@ -65,9 +66,7 @@ private:
     friend class FolderPairCallback;
     friend class PanelMoveWindow;
 
-    //mitigate potential reentrancy in during window message pumping:
-    void disableGuiElements(bool enableAbort); //dis-/enables all elements (except abort button) that might receive user input
-    void enableGuiElements();                  //during long-running processes: comparison, deletion
+    class SingleOperationBlocker; //mitigate unwanted reentrancy caused by wxApp::Yield()
 
     //configuration load/save
     void setLastUsedConfig(const XmlGuiConfig& guiConfig, const std::vector<Zstring>& cfgFilePaths);
@@ -365,7 +364,7 @@ private:
 
     //mitigate reentrancy:
     bool localKeyEventsEnabled_ = true;
-    bool operationInProgress_  = false; //e.g. do NOT allow dialog exit while sync is running => crash!!!
+    bool operationInProgress_  = false; //see SingleOperationBlocker; e.g. do NOT allow dialog exit while sync is running => crash!!!
 
     TempFileBuffer tempFileBuf_; //buffer temporary copies of non-native files for %local_path%
 

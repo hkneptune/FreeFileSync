@@ -11,10 +11,10 @@
 #include <wx+/rtl.h>
 #include <wx+/image_resources.h>
 #include <wx+/popup_dlg.h>
-#include <wx+/image_tools.h>
+//#include <wx+/image_tools.h>
 #include <wx+/std_button_layout.h>
 #include <wx/settings.h>
-#include "../icon_buffer.h"
+//#include "../icon_buffer.h"
 #include "../ffs_paths.h"
 #include "../afs/native.h"
 

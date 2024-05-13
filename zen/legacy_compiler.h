@@ -50,7 +50,7 @@ const char* toChars(char* first, char* last, double num);
 }
 
 
-#if 0 //neat: supported on MSVC, but not yet on GCC, Clang
+#if 0 //neat: supported on MSVC and GCC, but not yet on Clang
 auto closure = [](this auto&& self)
 {
     self(); //just call ourself until the stack overflows

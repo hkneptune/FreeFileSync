@@ -5,11 +5,9 @@
 // *****************************************************************************
 
 #include "curl_wrap.h"
-#include <zen/sys_info.h>
 #include <zen/http.h>
 #include <zen/open_ssl.h>
 #include <zen/thread.h>
-#include <zen/file_path.h>
     #include <fcntl.h>
 
 using namespace zen;
@@ -252,6 +250,8 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
     //WTF!!! 1-sec delay when server doesn't support "Expect: 100-continue"!! https://stackoverflow.com/questions/49670008/how-to-disable-expect-100-continue-in-libcurl
     headers = ::curl_slist_append(headers, "Expect:"); //guess, what: www.googleapis.com doesn't support it! e.g. gdriveUploadFile()
     //CURLOPT_EXPECT_100_TIMEOUT_MS: should not be needed
+
+    //CURLOPT_TCP_NODELAY => already set by default https://brooker.co.za/blog/2024/05/09/nagle.html
 
     if (headers)
         setCurlOption({CURLOPT_HTTPHEADER, headers}); //throw SysError

@@ -598,8 +598,8 @@ private:
         }
         catch (FileError&) {} //[!] too unimportant + too frequent for external devices, e.g. "ERROR_INVALID_PARAMETER [SetFileInformationByHandle(FileBasicInfo)]" on Samba share
 
-            if (copyFilePermissions)
-                copyItemPermissions(sourcePathNative, targetPathNative, ProcSymlink::follow); //throw FileError
+        if (copyFilePermissions)
+            copyItemPermissions(sourcePathNative, targetPathNative, ProcSymlink::follow); //throw FileError
     }
 
     //already existing: fail

@@ -8,7 +8,7 @@
 #define COMMAND_BOX_H_18947773210473214
 
 #include <vector>
-#include <string>
+//#include <string>
 #include <wx/combobox.h>
 #include <zen/zstring.h>
 

@@ -8,6 +8,8 @@
 #include <zen/string_tools.h>
 #include <zen/scope_guard.h>
 #include <wx/app.h>
+#include <wx/dcmemory.h>
+#include <wx+/dc.h>
 #include <xBRZ/src/xbrz_tools.h>
 
 using namespace zen;
@@ -173,7 +175,7 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
 
     std::vector<std::pair<wxString, wxSize>> lineInfo; //text + extent
     for (const wxString& line : splitCpy(text, L'\n', SplitOnEmpty::allow))
-        lineInfo.emplace_back(line, line.empty() ? wxSize() : dc.GetTextExtent(line));
+        lineInfo.emplace_back(line, dc.GetTextExtent(line)); //GetTextExtent() returns (0, 0) for empty string!
     //------------------------------------------------------------------------------------------------
 
     int maxWidth   = 0;
@@ -181,7 +183,7 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
     for (const auto& [lineText, lineSize] : lineInfo)
     {
         maxWidth   = std::max(maxWidth,   lineSize.GetWidth());
-        lineHeight = std::max(lineHeight, lineSize.GetHeight()); //wxWidgets comment "GetTextExtent will return 0 for empty string"
+        lineHeight = std::max(lineHeight, lineSize.GetHeight());
     }
     if (maxWidth == 0 || lineHeight == 0)
         return wxNullImage;

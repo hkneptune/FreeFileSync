@@ -7,7 +7,7 @@
 #ifndef ASYNC_TASK_H_839147839170432143214321
 #define ASYNC_TASK_H_839147839170432143214321
 
-#include <functional>
+//#include <functional>
 #include <zen/thread.h>
 #include <zen/scope_guard.h>
 #include <zen/stl_tools.h>

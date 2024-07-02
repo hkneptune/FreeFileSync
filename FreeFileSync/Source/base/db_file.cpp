@@ -55,7 +55,7 @@ AbstractPath getDatabaseFilePath(const BaseFolderPair& baseFolder)
         - precomposed/decomposed UTF: differences already ignored
         - 32 vs 64-bit: already handled
 
-        => give db files different names:                   */
+        => give DB files different names:                   */
     const Zstring dbName = Zstr(".sync"); //files beginning with dots are usually hidden
     return AFS::appendRelPath(baseFolder.getAbstractPath<side>(), dbName + SYNC_DB_FILE_ENDING);
 }

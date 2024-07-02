@@ -66,7 +66,7 @@ private:
     friend class FolderPairCallback;
     friend class PanelMoveWindow;
 
-    class SingleOperationBlocker; //mitigate unwanted reentrancy caused by wxApp::Yield()
+    class UiInputDisabler;
 
     //configuration load/save
     void setLastUsedConfig(const XmlGuiConfig& guiConfig, const std::vector<Zstring>& cfgFilePaths);

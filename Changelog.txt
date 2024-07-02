@@ -1,3 +1,11 @@
+FreeFileSync 13.7 [2024-06-20]
+------------------------------
+Support copying symlinks between SFTP devices
+Fixed input focus not being restored after comparison/sync
+Fixed log file pruning not considering selected configuration
+Show startup error details when running outside terminal (Linux)
+
+
 FreeFileSync 13.6 [2024-05-10]
 ------------------------------
 Compact parent path display for medium/large row sizes

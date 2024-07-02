@@ -1129,7 +1129,7 @@ void DeleteDialog::onLocalKeyEvent(wxKeyEvent& event)
 
 void DeleteDialog::onOkay(wxCommandEvent& event)
 {
-    //additional safety net, similar to Windows Explorer: time delta between DEL and ENTER must be at least 50ms to avoid accidental deletion!
+    //additional safety net, similar to File Explorer: time delta between DEL and ENTER must be at least 50ms to avoid accidental deletion!
     if (std::chrono::steady_clock::now() < dlgStartTime_ + std::chrono::milliseconds(50)) //considers chrono-wrap-around!
         return;
 

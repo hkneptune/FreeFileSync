@@ -79,7 +79,10 @@ struct FocusPreserver
 
         if (oldFocusId_ != wxID_ANY)
             if (wxWindow* oldFocusWin = wxWindow::FindWindowById(oldFocusId_))
+            {
+                assert(oldFocusWin->IsEnabled()); //only enabled windows can have focus, so why wouldn't it be anymore?
                 setFocusIfActive(*oldFocusWin);
+            }
     }
 
     wxWindowID getFocusId() const { return oldFocusId_; }

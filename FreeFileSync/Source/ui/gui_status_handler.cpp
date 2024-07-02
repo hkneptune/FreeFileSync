@@ -156,9 +156,9 @@ StatusHandlerTemporaryPanel::Result StatusHandlerTemporaryPanel::prepareResult()
         }
 
         const ErrorLogStats logCount = getStats(errorLog_);
-        if (logCount.error > 0)
+        if (logCount.errors > 0)
             return TaskResult::error;
-        else if (logCount.warning > 0)
+        else if (logCount.warnings > 0)
             return TaskResult::warning;
         else
             return TaskResult::success;
@@ -430,9 +430,9 @@ StatusHandlerFloatingDialog::Result StatusHandlerFloatingDialog::prepareResult()
         }
 
         const ErrorLogStats logCount = getStats(errorLog_.ref());
-        if (logCount.error > 0)
+        if (logCount.errors > 0)
             return TaskResult::error;
-        else if (logCount.warning > 0)
+        else if (logCount.warnings > 0)
             return TaskResult::warning;
 
         if (getTotalStats() == ProgressStats())

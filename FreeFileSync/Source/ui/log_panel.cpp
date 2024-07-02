@@ -354,17 +354,17 @@ void LogPanel::setLog(const std::shared_ptr<const ErrorLog>& log)
         btn.SetToolTip(tooltip);
     };
 
-    initButton(*m_bpButtonErrors,   "msg_error",   _("Error"  ) + L" (" + formatNumber(logCount.error)   + L')');
-    initButton(*m_bpButtonWarnings, "msg_warning", _("Warning") + L" (" + formatNumber(logCount.warning) + L')');
-    initButton(*m_bpButtonInfo,     "msg_info",    _("Info"   ) + L" (" + formatNumber(logCount.info)    + L')');
+    initButton(*m_bpButtonErrors,   "msg_error",   _("Error"  ) + L" (" + formatNumber(logCount.errors)   + L')');
+    initButton(*m_bpButtonWarnings, "msg_warning", _("Warning") + L" (" + formatNumber(logCount.warnings) + L')');
+    initButton(*m_bpButtonInfo,     "msg_info",    _("Info"   ) + L" (" + formatNumber(logCount.infos)    + L')');
 
     m_bpButtonErrors  ->setActive(true);
     m_bpButtonWarnings->setActive(true);
-    m_bpButtonInfo    ->setActive(logCount.warning + logCount.error == 0);
+    m_bpButtonInfo    ->setActive(logCount.warnings + logCount.errors == 0);
 
-    m_bpButtonErrors  ->Show(logCount.error   != 0);
-    m_bpButtonWarnings->Show(logCount.warning != 0);
-    m_bpButtonInfo    ->Show(logCount.info    != 0);
+    m_bpButtonErrors  ->Show(logCount.errors   != 0);
+    m_bpButtonWarnings->Show(logCount.warnings != 0);
+    m_bpButtonInfo    ->Show(logCount.infos    != 0);
 
     m_gridMessages->setDataProvider(std::make_shared<GridDataMessages>(newLog));
 

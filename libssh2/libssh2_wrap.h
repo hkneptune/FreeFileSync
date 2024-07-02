@@ -107,6 +107,20 @@ inline int libssh2_sftp_readlink(LIBSSH2_SFTP* sftp, const std::string& path, ch
     return libssh2_sftp_symlink_ex(sftp, path.c_str(), static_cast<unsigned int>(path.size()), buf, static_cast<unsigned int>(bufSize), LIBSSH2_SFTP_READLINK);
 }
 
+#undef libssh2_sftp_symlink
+inline int libssh2_sftp_symlink(LIBSSH2_SFTP* sftp, const std::string& path, const std::string_view buf)
+{
+    return libssh2_sftp_symlink_ex(sftp,
+                                   /* CAVEAT: https://www.sftp.net/spec/openssh-sftp-extensions.txt
+                                       "When OpenSSH's sftp-server was implemented, the order of the arguments
+                                        to the SSH_FXP_SYMLINK method was inadvertently reversed."
+                                   
+                                   => of course libssh2 didn't get the memo: fix this shit: */
+                                   /**/              buf .data (),  static_cast<unsigned int>(buf .size()),
+                                   const_cast<char*>(path.c_str()), static_cast<unsigned int>(path.size()),
+                                   LIBSSH2_SFTP_SYMLINK);
+}
+
 #undef libssh2_sftp_rename
 inline int libssh2_sftp_rename(LIBSSH2_SFTP* sftp, const std::string& pathFrom, const std::string& pathTo, long flags)
 {

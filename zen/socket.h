@@ -141,16 +141,6 @@ public:
             }
 
             setNonBlocking(testSocket, false); //throw SysError
-            //-----------------------------------------------------------
-
-            int noDelay =  1; //disable Nagle algorithm: https://brooker.co.za/blog/2024/05/09/nagle.html
-            //e.g. test case "website sync": 23% shorter comparison time!
-            if (::setsockopt(testSocket,                        //_In_       SOCKET s
-                             IPPROTO_TCP,                       //_In_       int    level
-                             TCP_NODELAY,                       //_In_       int    optname
-                             reinterpret_cast<char*>(&noDelay), //_In_ const char*  optval
-                             sizeof(noDelay)) != 0)             //_In_       int    optlen
-                THROW_LAST_SYS_ERROR_WSA("setsockopt(TCP_NODELAY)");
 
             return testSocket;
         };
@@ -163,11 +153,26 @@ public:
             try
             {
                 socket_ = getConnectedSocket(*si); //throw SysError; pass ownership
-                return;
+                firstError = std::nullopt;
+                break;
             }
             catch (const SysError& e) { if (!firstError) firstError = e; }
 
-        throw* firstError; //list was not empty, so there must have been an error!
+        if (firstError)
+            throw* firstError;
+        assert(socket_ != invalidSocket); //list was non-empty, so there's either an error, or a valid socket
+        ZEN_ON_SCOPE_FAIL(closeSocket(socket_));
+        //-----------------------------------------------------------
+        //configure *after* selecting appropriate socket: cfg-failure should not discard otherwise fine connection!
+
+        int noDelay =  1; //disable Nagle algorithm: https://brooker.co.za/blog/2024/05/09/nagle.html
+        //e.g. test case "website sync": 23% shorter comparison time!
+        if (::setsockopt(socket_,                                 //_In_       SOCKET s
+                         IPPROTO_TCP,                             //_In_       int    level
+                         TCP_NODELAY,                             //_In_       int    optname
+                         reinterpret_cast<const char*>(&noDelay), //_In_ const char*  optval
+                         sizeof(noDelay)) != 0)                   //_In_       int    optlen
+            THROW_LAST_SYS_ERROR_WSA("setsockopt(TCP_NODELAY)");
     }
 
     ~Socket() { closeSocket(socket_); }

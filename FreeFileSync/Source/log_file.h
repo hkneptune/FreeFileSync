@@ -29,7 +29,7 @@ void saveLogFile(const AbstractPath& logFilePath, //throw FileError, X
                  const zen::ErrorLog& log,
                  int logfilesMaxAgeDays,
                  LogFileFormat logFormat,
-                 const std::set<AbstractPath>& logFilePathsToKeep,
+                 const std::set<AbstractPath>& logsToKeepPaths,
                  const std::function<void(std::wstring&& msg)>& notifyStatus /*throw X*/);
 
 void sendLogAsEmail(const std::string& email, //throw FileError, X

@@ -85,9 +85,9 @@ BatchStatusHandler::Result BatchStatusHandler::prepareResult()
             return TaskResult::cancelled;
         }
         const ErrorLogStats logCount = getStats(errorLog_.ref());
-        if (logCount.error > 0)
+        if (logCount.errors > 0)
             return TaskResult::error;
-        else if (logCount.warning > 0)
+        else if (logCount.warnings > 0)
             return TaskResult::warning;
 
         if (getTotalStats() == ProgressStats())

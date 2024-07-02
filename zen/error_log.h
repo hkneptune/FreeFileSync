@@ -38,9 +38,9 @@ void logMsg(ErrorLog& log, const std::wstring& msg, MessageType type, time_t tim
 
 struct ErrorLogStats
 {
-    int info    = 0;
-    int warning = 0;
-    int error   = 0;
+    int infos    = 0;
+    int warnings = 0;
+    int errors   = 0;
 };
 ErrorLogStats getStats(const ErrorLog& log);
 
@@ -66,16 +66,16 @@ ErrorLogStats getStats(const ErrorLog& log)
         switch (entry.type)
         {
             case MSG_TYPE_INFO:
-                ++count.info;
+                ++count.infos;
                 break;
             case MSG_TYPE_WARNING:
-                ++count.warning;
+                ++count.warnings;
                 break;
             case MSG_TYPE_ERROR:
-                ++count.error;
+                ++count.errors;
                 break;
         }
-    assert(std::ssize(log) == count.info + count.warning + count.error);
+    assert(std::ssize(log) == count.infos + count.warnings + count.errors);
     return count;
 }
 

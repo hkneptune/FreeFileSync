@@ -17,7 +17,7 @@ namespace zen
 std::wstring formatFilesizeShort(int64_t filesize);
 std::wstring formatRemainingTime(double timeInSec);
 std::wstring formatProgressPercent(double fraction /*[0, 1]*/, int decPlaces = 0 /*[0, 9]*/); //rounded down!
-std::wstring formatUtcToLocalTime(time_t utcTime); //like Windows Explorer would...
+std::wstring formatUtcToLocalTime(time_t utcTime); //like File Explorer would...
 
 std::wstring formatTwoDigitPrecision  (double value); //format with fixed number of digits
 std::wstring formatThreeDigitPrecision(double value); //(unless value is too large)

@@ -1474,10 +1474,10 @@ private:
     {
         if (!fileHandle_)
             throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
+
+        ZEN_ON_SCOPE_EXIT(fileHandle_ = nullptr); //reset on error, too! there's no point in, calling libssh2_sftp_close() a second time in ~OutputStreamSftp()
         try
         {
-            ZEN_ON_SCOPE_EXIT(fileHandle_ = nullptr);  //reset on error, too! there's no point in, calling libssh2_sftp_close() a second time in ~OutputStreamSftp()
-
             session_->executeBlocking("libssh2_sftp_close", //throw SysError, SysErrorSftpProtocol
             [&](const SshSession::Details& sd) { return ::libssh2_sftp_close(fileHandle_); }); //noexcept!
         }
@@ -1733,26 +1733,31 @@ private:
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot determine final path for %x."), L"%x", fmtPath(getDisplayPath(linkPath))), e.toString()); }
     }
 
+    static std::string getSymlinkContentImpl(const SftpFileSystem& sftpFs, const AfsPath& linkPath) //throw SysError
+    {
+        std::string buf(10000, '\0');
+        int rc = 0;
+
+        runSftpCommand(sftpFs.login_, "libssh2_sftp_readlink", //throw SysError, SysErrorSftpProtocol
+        [&](const SshSession::Details& sd) { return rc = ::libssh2_sftp_readlink(sd.sftpChannel, getLibssh2Path(linkPath), buf.data(), buf.size()); }); //noexcept!
+
+        ASSERT_SYSERROR(makeUnsigned(rc) <= buf.size()); //better safe than sorry
+
+        buf.resize(rc);
+        return buf;
+    }
+
     bool equalSymlinkContentForSameAfsType(const AfsPath& linkPathL, const AbstractPath& linkPathR) const override //throw FileError
     {
-        auto getTargetPath = [](const SftpFileSystem& sftpFs, const AfsPath& linkPath)
+        auto getLinkContent = [](const SftpFileSystem& sftpFs, const AfsPath& linkPath)
         {
-            std::string buf(10000, '\0');
-            int rc = 0;
             try
             {
-                runSftpCommand(sftpFs.login_, "libssh2_sftp_readlink", //throw SysError, SysErrorSftpProtocol
-                [&](const SshSession::Details& sd) { return rc = ::libssh2_sftp_readlink(sd.sftpChannel, getLibssh2Path(linkPath), buf.data(), buf.size()); }); //noexcept!
-
-                ASSERT_SYSERROR(makeUnsigned(rc) <= buf.size()); //better safe than sorry
+                return getSymlinkContentImpl(sftpFs, linkPath); //throw SysError
             }
             catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot resolve symbolic link %x."), L"%x", fmtPath(sftpFs.getDisplayPath(linkPath))), e.toString()); }
-
-            buf.resize(rc);
-            return buf;
         };
-
-        return getTargetPath(*this, linkPathL) == getTargetPath(static_cast<const SftpFileSystem&>(linkPathR.afsDevice.ref()), linkPathR.afsPath);
+        return getLinkContent(*this, linkPathL) == getLinkContent(static_cast<const SftpFileSystem&>(linkPathR.afsDevice.ref()), linkPathR.afsPath); //throw FileError
     }
     //----------------------------------------------------------------------------------------------------------------
 
@@ -1802,12 +1807,25 @@ private:
             throw FileError(replaceCpy(_("Cannot write permissions of %x."), L"%x", fmtPath(AFS::getDisplayPath(targetPath))), _("Operation not supported by device."));
     }
 
-    //already existing: fail
-    void copySymlinkForSameAfsType(const AfsPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions) const override
+    //already existing: fail (SSH_FX_FAILURE)
+    void copySymlinkForSameAfsType(const AfsPath& sourcePath, const AbstractPath& targetPath, bool copyFilePermissions) const override //throw FileError
     {
-        throw FileError(replaceCpy(replaceCpy(_("Cannot copy symbolic link %x to %y."),
-                                              L"%x", L'\n' + fmtPath(getDisplayPath(sourcePath))),
-                                   L"%y", L'\n' + fmtPath(AFS::getDisplayPath(targetPath))), _("Operation not supported by device."));
+        try
+        {
+            const std::string buf = getSymlinkContentImpl(*this, sourcePath); //throw SysError
+
+            runSftpCommand(static_cast<const SftpFileSystem&>(targetPath.afsDevice.ref()).login_, "libssh2_sftp_symlink", //throw SysError, SysErrorSftpProtocol
+                           [&](const SshSession::Details& sd) //noexcept!
+            {
+                return ::libssh2_sftp_symlink(sd.sftpChannel, getLibssh2Path(targetPath.afsPath), buf);
+            });
+        }
+        catch (const SysError& e)
+        {
+            throw FileError(replaceCpy(replaceCpy(_("Cannot copy symbolic link %x to %y."),
+                                                  L"%x", L'\n' + fmtPath(getDisplayPath(sourcePath))),
+                                       L"%y", L'\n' + fmtPath(AFS::getDisplayPath(targetPath))), e.toString());
+        }
     }
 
     //already existing: undefined behavior! (e.g. fail/overwrite)

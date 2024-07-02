@@ -50,8 +50,8 @@ std::string generateLogHeaderTxt(const ProcessSummary& s, const ErrorLog& log, i
 
     const ErrorLogStats logCount = getStats(log);
 
-    if (logCount.error   > 0) summary.push_back(tabSpace + utfTo<std::string>(_("Errors:")   + L' ' + formatNumber(logCount.error)));
-    if (logCount.warning > 0) summary.push_back(tabSpace + utfTo<std::string>(_("Warnings:") + L' ' + formatNumber(logCount.warning)));
+    if (logCount.errors   > 0) summary.push_back(tabSpace + utfTo<std::string>(_("Errors:")   + L' ' + formatNumber(logCount.errors)));
+    if (logCount.warnings > 0) summary.push_back(tabSpace + utfTo<std::string>(_("Warnings:") + L' ' + formatNumber(logCount.warnings)));
 
     summary.push_back(tabSpace + utfTo<std::string>(_("Items processed:") + L' ' + formatNumber(s.statsProcessed.items) + //show always, even if 0!
                                                     L" (" + formatFilesizeShort(s.statsProcessed.bytes) + L')'));
@@ -79,7 +79,7 @@ std::string generateLogHeaderTxt(const ProcessSummary& s, const ErrorLog& log, i
     output += '|' + std::string(sepLineLen, '_') + "\n\n";
 
     //------------ warnings/errors preview ----------------
-    const int logFailTotal = logCount.warning + logCount.error;
+    const int logFailTotal = logCount.warnings + logCount.errors;
     if (logFailTotal > 0)
     {
         output += '\n' + utfTo<std::string>(_("Errors and warnings:")) + '\n';
@@ -251,20 +251,20 @@ std::string generateLogHeaderHtml(const ProcessSummary& s, const ErrorLog& log, 
 
     const ErrorLogStats logCount = getStats(log);
 
-    if (logCount.error > 0) 
+    if (logCount.errors > 0) 
         output += R"(
             <tr>
                 <td>)" + htmlTxt(_("Errors:")) + R"(</td>
                 <td><img src="https://freefilesync.org/images/log/msg-error.png" width="24" height="24" alt=""></td>
-                <td><span style="font-weight:600;">)" + htmlTxt(formatNumber(logCount.error)) + R"(</span></td>
+                <td><span style="font-weight:600;">)" + htmlTxt(formatNumber(logCount.errors)) + R"(</span></td>
             </tr>)";
 
-    if (logCount.warning > 0)
+    if (logCount.warnings > 0)
         output += R"(
             <tr>
                 <td>)" + htmlTxt(_("Warnings:")) + R"(</td>
                 <td><img src="https://freefilesync.org/images/log/msg-warning.png" width="24" height="24" alt=""></td>
-                <td><span style="font-weight:600;">)" + htmlTxt(formatNumber(logCount.warning)) + R"(</span></td>
+                <td><span style="font-weight:600;">)" + htmlTxt(formatNumber(logCount.warnings)) + R"(</span></td>
             </tr>)";
 
     output += R"(
@@ -299,7 +299,7 @@ std::string generateLogHeaderHtml(const ProcessSummary& s, const ErrorLog& log, 
 )";
 
     //------------ warnings/errors preview ----------------
-    const int logFailTotal = logCount.warning + logCount.error;
+    const int logFailTotal = logCount.warnings + logCount.errors;
     if (logFailTotal > 0)
     {
         output += R"(
@@ -526,7 +526,7 @@ std::vector<LogFileInfo> getLogFiles(const AbstractPath& logFolderPath) //throw 
 
 void limitLogfileCount(const AbstractPath& logFolderPath, //throw FileError, X
                        int logfilesMaxAgeDays, //<= 0 := no limit
-                       const std::set<AbstractPath>& logFilePathsToKeep,
+                       const std::set<AbstractPath>& logsToKeepPaths,
                        const std::function<void(std::wstring&& msg)>& notifyStatus /*throw X*/)
 {
     if (logfilesMaxAgeDays > 0)
@@ -551,7 +551,7 @@ void limitLogfileCount(const AbstractPath& logFolderPath, //throw FileError, X
 
         for (const LogFileInfo& lfi : logFiles)
             if (lfi.timeStamp < cutOffTime &&
-                !logFilePathsToKeep.contains(lfi.filePath)) //don't trim latest log files corresponding to last used config files!
+                !logsToKeepPaths.contains(lfi.filePath)) //don't trim latest log files corresponding to last used config files!
                 //nitpicker's corner: what about path differences due to case? e.g. user-overriden log file path changed in case
             {
                 if (notifyStatus) notifyStatus(statusPrefix + fmtPath(AFS::getDisplayPath(lfi.filePath))); //throw X
@@ -635,7 +635,7 @@ void fff::saveLogFile(const AbstractPath& logFilePath, //throw FileError, X
                       const ErrorLog& log,
                       int logfilesMaxAgeDays,
                       LogFileFormat logFormat,
-                      const std::set<AbstractPath>& logFilePathsToKeep,
+                      const std::set<AbstractPath>& logsToKeepPaths,
                       const std::function<void(std::wstring&& msg)>& notifyStatus /*throw X*/)
 {
     std::exception_ptr firstError;
@@ -648,9 +648,8 @@ void fff::saveLogFile(const AbstractPath& logFilePath, //throw FileError, X
     try
     {
         const std::optional<AbstractPath> logFolderPath = AFS::getParentPath(logFilePath);
-        assert(logFolderPath);
-        if (logFolderPath) //else: logFilePath == device root; not possible with generateLogFilePath()
-            limitLogfileCount(*logFolderPath, logfilesMaxAgeDays, logFilePathsToKeep, notifyStatus); //throw FileError, X
+        assert(logFolderPath); //else: logFilePath == device root; not possible with generateLogFilePath()
+        limitLogfileCount(*logFolderPath, logfilesMaxAgeDays, logsToKeepPaths, notifyStatus); //throw FileError, X
     }
     catch (const FileError&) { if (!firstError) firstError = std::current_exception(); };
 

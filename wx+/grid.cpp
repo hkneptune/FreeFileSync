@@ -163,7 +163,7 @@ void GridData::drawCellText(wxDC& dc, const wxRect& rect, const std::wstring_vie
 
     if (extentTrunc.GetWidth() > rect.width)
     {
-        //unlike Windows Explorer, we truncate UTF-16 correctly: e.g. CJK-Ideograph encodes to TWO wchar_t: utfTo<std::wstring>("\xf0\xa4\xbd\x9c");
+        //unlike File Explorer, we truncate UTF-16 correctly: e.g. CJK-Ideograph encodes to TWO wchar_t: utfTo<std::wstring>("\xf0\xa4\xbd\x9c");
         size_t low  = 0;                   //number of Unicode chars!
         size_t high = unicodeLength(text); //
         if (high > 1)

@@ -24,7 +24,7 @@ const int FAT_FILE_TIME_PRECISION_SEC = 2; //https://devblogs.microsoft.com/oldn
 using FileIndex = ino_t;
 using FileTimeNative = timespec;
 
-inline time_t nativeFileTimeToTimeT(const timespec& ft) { return ft.tv_sec; } //follow Windows Explorer: always round down!
+inline time_t nativeFileTimeToTimeT(const timespec& ft) { return ft.tv_sec; } //follow File Explorer: always round down!
 inline timespec timetToNativeFileTime(time_t utcTime) { return {.tv_sec = utcTime}; }
 
 enum class ItemType

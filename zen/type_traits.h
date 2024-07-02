@@ -30,6 +30,7 @@ public:
     using Type = decltype(dummyFun(F()));
 };
 template <class F> using FunctionReturnTypeT = typename FunctionReturnType<F>::Type;
+//yes, there's std::invoke_result_t, but it requires to specify function argument types for no good reason
 
 //=============================================================================
 

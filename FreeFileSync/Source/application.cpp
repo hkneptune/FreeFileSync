@@ -530,10 +530,6 @@ void Application::runBatchMode(const Zstring& globalConfigFilePath, const XmlBat
         -> WinInet not working when FFS is running as a service!!! https://support.microsoft.com/en-us/help/238425/info-wininet-not-supported-for-use-in-services   */
 
 
-    std::set<AbstractPath> logFilePathsToKeep;
-    for (const ConfigFileItem& item : globalCfg.mainDlg.config.fileHistory)
-        logFilePathsToKeep.insert(item.lastRunStats.logFilePath);
-
     const std::chrono::system_clock::time_point syncStartTime = std::chrono::system_clock::now();
 
     const WindowLayout::Dimensions progressDim
@@ -666,26 +662,33 @@ void Application::runBatchMode(const Zstring& globalConfigFilePath, const XmlBat
     }
 
     //--------------------- save log file ----------------------
+    std::set<AbstractPath> logsToKeepPaths;
+    for (const ConfigFileItem& cfi : globalCfg.mainDlg.config.fileHistory)
+        if (!equalNativePath(cfi.cfgFilePath, cfgFilePath)) //exception: don't keep old log for the selected cfg file!
+            logsToKeepPaths.insert(cfi.lastRunStats.logFilePath);
+
     try //create not before destruction: 1. avoid issues with FFS trying to sync open log file 2. include status in log file name without extra rename
     {
         //do NOT use tryReportingError()! saving log files should not be cancellable!
-        saveLogFile(logFilePath, r.summary, r.errorLog.ref(), globalCfg.logfilesMaxAgeDays, globalCfg.logFormat, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
+        saveLogFile(logFilePath, r.summary, r.errorLog.ref(), globalCfg.logfilesMaxAgeDays, globalCfg.logFormat, logsToKeepPaths, notifyStatusNoThrow); //throw FileError
     }
     catch (const FileError& e)
     {
-        logMsg(r.errorLog.ref(), e.toString(), MSG_TYPE_ERROR);
+        try //fallback: log file *must* be saved no matter what!
+        {
+            const AbstractPath logFileDefaultPath = AFS::appendRelPath(createAbstractPath(getLogFolderDefaultPath()), generateLogFileName(globalCfg.logFormat, r.summary));
+            if (logFilePath == logFileDefaultPath)
+                throw;
 
-        const AbstractPath logFileDefaultPath = AFS::appendRelPath(createAbstractPath(getLogFolderDefaultPath()), generateLogFileName(globalCfg.logFormat, r.summary));
-        if (logFilePath != logFileDefaultPath) //fallback: log file *must* be saved no matter what!
-            try
-            {
-                logFilePath = logFileDefaultPath;
-                saveLogFile(logFileDefaultPath, r.summary, r.errorLog.ref(), globalCfg.logfilesMaxAgeDays, globalCfg.logFormat, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
-            }
-            catch (const FileError& e2) { logMsg(r.errorLog.ref(), e2.toString(), MSG_TYPE_ERROR); assert(false); } //should never happen!!!
+            logMsg(r.errorLog.ref(), e.toString(), MSG_TYPE_ERROR);
+
+            logFilePath = logFileDefaultPath;
+            saveLogFile(logFileDefaultPath, r.summary, r.errorLog.ref(), globalCfg.logfilesMaxAgeDays, globalCfg.logFormat, logsToKeepPaths, notifyStatusNoThrow); //throw FileError
+        }
+        catch (const FileError& e2) { logMsg(r.errorLog.ref(), e2.toString(), MSG_TYPE_ERROR); logExtraError(e2.toString()); } //should never happen!!!
     }
 
-    //--------- update last sync stats for the selected cfg files ---------
+    //--------- update last sync stats for the selected cfg file ---------
     const ErrorLogStats& logStats = getStats(r.errorLog.ref());
 
     for (ConfigFileItem& cfi : globalCfg.mainDlg.config.fileHistory)
@@ -702,8 +705,8 @@ void Application::runBatchMode(const Zstring& globalConfigFilePath, const XmlBat
                 r.summary.statsProcessed.items,
                 r.summary.statsProcessed.bytes,
                 r.summary.totalTime,
-                logStats.error,
-                logStats.warning,
+                logStats.errors,
+                logStats.warnings,
             };
             break;
         }
@@ -726,9 +729,9 @@ void Application::runBatchMode(const Zstring& globalConfigFilePath, const XmlBat
     }
 
     //email sending, or saving log file failed? at least this should affect the exit code:
-    if (logStats.error > 0)
+    if (logStats.errors > 0)
         raiseExitCode(exitCode_, FfsExitCode::error);
-    else if (logStats.warning > 0)
+    else if (logStats.warnings > 0)
         raiseExitCode(exitCode_, FfsExitCode::warning);
 
     //---------------------------------------------------------------------------

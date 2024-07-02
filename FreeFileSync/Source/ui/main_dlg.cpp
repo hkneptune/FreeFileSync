@@ -302,64 +302,38 @@ public:
 
 
 //---------------------------------------------------------------------------------------------
-/*  mitigate unwanted reentrancy caused by wxApp::Yield()
-
-    CAVEAT: This doesn't block all theoretically possible Window events that were queued *before* disableGuiElementsImpl() takes effect,
-            but at least the 90% case of (rare!) crashes caused by a duplicate click event on comparison or sync button.       */
-class MainDialog::SingleOperationBlocker
+class MainDialog::UiInputDisabler
 {
 public:
-    explicit SingleOperationBlocker(MainDialog& mainDlg) : mainDlg_(mainDlg) {}
-
-    ~SingleOperationBlocker()
+    UiInputDisabler(MainDialog& mainDlg, bool enableAbort) : mainDlg_(mainDlg)
     {
-        if (opStarted_)
-        {
-            if (guiDisabled_)
-            {
-                wxTheApp->Yield(); //GUI update before enabling buttons again: prevent strange behaviour of delayed button clicks
-                enableGuiElementsImpl();
-            }
-            assert(mainDlg_.operationInProgress_);
-            mainDlg_.operationInProgress_ = false;
-        }
-        else assert(!guiDisabled_);
-    }
-
-    bool start() //disabling GUI elements is NOT enough! e.g. reentrancy when there's a second click event *already* in the Windows message queue
-    {
-        if (mainDlg_.operationInProgress_)
-            return false;
-
-        return mainDlg_.operationInProgress_ = opStarted_ = true;
-    }
-
-    void disableGui(bool enableAbort) //=> logically belongs into start()! But keep seperate: modal dialogs look better when GUI is not yet disabled
-    {
-        assert(opStarted_ && !guiDisabled_);
-        guiDisabled_ = true;
         disableGuiElementsImpl(enableAbort);
     }
-    
-    void dismiss()
+
+    ~UiInputDisabler()
     {
-          opStarted_ = guiDisabled_ = false;
+        if (!dismissed_ )
+        {
+            wxTheApp->Yield(); //GUI update before enabling buttons again: prevent strange behaviour of delayed button clicks
+            enableGuiElementsImpl();
+        }
     }
 
+    void dismiss() { dismissed_ = true; }
+
 private:
-    SingleOperationBlocker           (const SingleOperationBlocker&) = delete;
-    SingleOperationBlocker& operator=(const SingleOperationBlocker&) = delete;
+    UiInputDisabler           (const UiInputDisabler&) = delete;
+    UiInputDisabler& operator=(const UiInputDisabler&) = delete;
 
     void disableGuiElementsImpl(bool enableAbort); //dis-/enable all elements (except abort button) that might receive unwanted user input
     void enableGuiElementsImpl();                  //during long-running processes: comparison, deletion
 
     MainDialog& mainDlg_;
-    bool opStarted_ = false;
-    bool guiDisabled_ = false;
+    bool dismissed_ = false;
 };
 
 
-void MainDialog::SingleOperationBlocker::disableGuiElementsImpl(bool enableAbort)
+void MainDialog::UiInputDisabler::disableGuiElementsImpl(bool enableAbort)
 {
     //disables all elements (except abort button) that might receive user input during long-running processes:
     //when changing consider: comparison, synchronization, manual deletion
@@ -410,7 +384,7 @@ void MainDialog::SingleOperationBlocker::disableGuiElementsImpl(bool enableAbort
 }
 
 
-void MainDialog::SingleOperationBlocker::enableGuiElementsImpl()
+void MainDialog::UiInputDisabler::enableGuiElementsImpl()
 {
     //wxGTK, yet another QOI issue: some stupid bug keeps moving main dialog to top!!
     mainDlg_.EnableCloseButton(true);
@@ -1154,7 +1128,7 @@ imgFileManagerSmall_([]
             if (!extraLog.empty())
             {
                 const ErrorLogStats logCount = getStats(extraLog);
-                const TaskResult taskResult = logCount.error > 0 ? TaskResult::error : (logCount.warning > 0 ? TaskResult::warning : TaskResult::success);
+                const TaskResult taskResult = logCount.errors > 0 ? TaskResult::error : (logCount.warnings > 0 ? TaskResult::warning : TaskResult::success);
                 setLastOperationLog({.result = taskResult}, make_shared<const ErrorLog>(std::move(extraLog)));
                 showLogPanel(true);
             }
@@ -1626,9 +1600,9 @@ std::vector<FileSystemObject*> MainDialog::getTreeSelection() const
 void MainDialog::copyToAlternateFolder(const std::vector<FileSystemObject*>& selectionL,
                                        const std::vector<FileSystemObject*>& selectionR)
 {
-    SingleOperationBlocker opBlock(*this);
-    if (!opBlock.start())
+    if (std::exchange(operationInProgress_, true))
         return;
+    ZEN_ON_SCOPE_EXIT(operationInProgress_ = false);
 
     std::vector<const FileSystemObject*> copyLeft;
     std::vector<const FileSystemObject*> copyRight;
@@ -1668,7 +1642,7 @@ void MainDialog::copyToAlternateFolder(const std::vector<FileSystemObject*>& sel
 
     const auto& guiCfg = getConfig();
 
-    opBlock.disableGui(true /*enableAbort*/); //StatusHandlerTemporaryPanel calls wxApp::Yield(), so avoid unexpected callbacks!
+    UiInputDisabler uiBlock(*this, true /*enableAbort*/); //StatusHandlerTemporaryPanel calls wxApp::Yield(), so avoid unexpected callbacks!
 
     StatusHandlerTemporaryPanel statusHandler(*this, std::chrono::system_clock::now() /*startTime*/,
                                               false /*ignoreErrors*/,
@@ -1698,9 +1672,9 @@ void MainDialog::copyToAlternateFolder(const std::vector<FileSystemObject*>& sel
 void MainDialog::deleteSelectedFiles(const std::vector<FileSystemObject*>& selectionL,
                                      const std::vector<FileSystemObject*>& selectionR, bool moveToRecycler)
 {
-    SingleOperationBlocker opBlock(*this);
-    if (!opBlock.start())
+    if (std::exchange(operationInProgress_, true))
         return;
+    ZEN_ON_SCOPE_EXIT(operationInProgress_ = false);
 
     std::vector<FileSystemObject*> deleteLeft  = selectionL;
     std::vector<FileSystemObject*> deleteRight = selectionR;
@@ -1730,7 +1704,7 @@ void MainDialog::deleteSelectedFiles(const std::vector<FileSystemObject*>& selec
     //wxBusyCursor dummy; -> redundant: progress already shown in status bar!
     const auto& guiCfg = getConfig();
 
-    opBlock.disableGui(true /*enableAbort*/); //StatusHandlerTemporaryPanel calls wxApp::Yield(), so avoid unexpected callbacks!
+    UiInputDisabler uiBlock(*this, true /*enableAbort*/); //StatusHandlerTemporaryPanel calls wxApp::Yield(), so avoid unexpected callbacks!
 
     StatusHandlerTemporaryPanel statusHandler(*this, std::chrono::system_clock::now() /*startTime*/,
                                               false /*ignoreErrors*/,
@@ -1763,9 +1737,9 @@ void MainDialog::deleteSelectedFiles(const std::vector<FileSystemObject*>& selec
 void MainDialog::renameSelectedFiles(const std::vector<FileSystemObject*>& selectionL,
                                      const std::vector<FileSystemObject*>& selectionR)
 {
-    SingleOperationBlocker opBlock(*this);
-    if (!opBlock.start())
+    if (std::exchange(operationInProgress_, true))
         return;
+    ZEN_ON_SCOPE_EXIT(operationInProgress_ = false);
 
     std::vector<FileSystemObject*> renameLeft  = selectionL;
     std::vector<FileSystemObject*> renameRight = selectionR;
@@ -1793,7 +1767,7 @@ void MainDialog::renameSelectedFiles(const std::vector<FileSystemObject*>& selec
     //wxBusyCursor dummy; -> redundant: progress already shown in status bar!
     const auto& guiCfg = getConfig();
 
-    opBlock.disableGui(true /*enableAbort*/); //StatusHandlerTemporaryPanel calls wxApp::Yield(), so avoid unexpected callbacks!
+    UiInputDisabler uiBlock(*this, true /*enableAbort*/); //StatusHandlerTemporaryPanel calls wxApp::Yield(), so avoid unexpected callbacks!
 
     StatusHandlerTemporaryPanel statusHandler(*this, std::chrono::system_clock::now() /*startTime*/,
                                               false /*ignoreErrors*/,
@@ -1936,9 +1910,9 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
                                          const std::vector<FileSystemObject*>& selectionL,
                                          const std::vector<FileSystemObject*>& selectionR)
 {
-    SingleOperationBlocker opBlock(*this);
-    if (!opBlock.start())
+    if (std::exchange(operationInProgress_, true))
         return;
+    ZEN_ON_SCOPE_EXIT(operationInProgress_ = false);
 
     try
     {
@@ -2027,7 +2001,7 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
 
                 FocusPreserver fp;
 
-                opBlock.disableGui(true /*enableAbort*/); //StatusHandlerTemporaryPanel calls wxApp::Yield(), so avoid unexpected callbacks!
+                UiInputDisabler uiBlock(*this, true /*enableAbort*/); //StatusHandlerTemporaryPanel calls wxApp::Yield(), so avoid unexpected callbacks!
 
                 StatusHandlerTemporaryPanel statusHandler(*this, std::chrono::system_clock::now() /*startTime*/,
                                                           false /*ignoreErrors*/,
@@ -3286,6 +3260,8 @@ void MainDialog::onFolderSelected(wxCommandEvent& event)
 
 void MainDialog::cfgHistoryRemoveObsolete(const std::vector<Zstring>& filePaths)
 {
+    warn_static("shouldn't delete on access denied!?") //https://freefilesync.org/forum/viewtopic.php?t=11363
+
     auto getUnavailableCfgFilesAsync = [filePaths] //don't use wxString: NOT thread-safe! (e.g. non-atomic ref-count)
     {
         std::vector<std::future<bool>> availableFiles; //check existence of all config files in parallel!
@@ -3767,9 +3743,9 @@ bool MainDialog::loadConfiguration(const std::vector<Zstring>& filePaths, bool i
 
 void MainDialog::removeSelectedCfgHistoryItems(bool deleteFromDisk)
 {
-    SingleOperationBlocker opBlock(*this);
-    if (!opBlock.start())
+    if (std::exchange(operationInProgress_, true))
         return;
+    ZEN_ON_SCOPE_EXIT(operationInProgress_ = false);
 
     const std::vector<size_t> selectedRows = m_gridCfgHistory->getSelectedRows();
     if (!selectedRows.empty())
@@ -3795,7 +3771,7 @@ void MainDialog::removeSelectedCfgHistoryItems(bool deleteFromDisk)
                                  moveToRecycler) != ConfirmationButton::accept)
                 return;
 
-            opBlock.disableGui(true /*enableAbort*/); //StatusHandlerTemporaryPanel calls wxApp::Yield(), so avoid unexpected callbacks!
+            UiInputDisabler uiBlock(*this, true /*enableAbort*/); //StatusHandlerTemporaryPanel calls wxApp::Yield(), so avoid unexpected callbacks!
 
             StatusHandlerTemporaryPanel statusHandler(*this, std::chrono::system_clock::now() /*startTime*/,
                                                       false /*ignoreErrors*/,
@@ -4583,9 +4559,14 @@ void MainDialog::updateGlobalFilterButton()
 
 void MainDialog::onCompare(wxCommandEvent& event)
 {
-    SingleOperationBlocker opBlock(*this);
-    if (!opBlock.start())
+    /*  mitigate unwanted reentrancy caused by wxApp::Yield():
+        disabling GUI elements is NOT enough! e.g. reentrancy when there's a second click event *already* in the Windows message queue
+
+        CAVEAT: This doesn't block all theoretically possible Window events that were queued *before* disableGuiElementsImpl() takes effect,
+                but at least the 90% case of (rare!) crashes caused by a duplicate click event on comparison or sync button.       */
+    if (std::exchange(operationInProgress_, true))
         return;
+    ZEN_ON_SCOPE_EXIT(operationInProgress_ = false);
 
     //wxBusyCursor dummy; -> redundant: progress already shown in progress dialog!
 
@@ -4609,7 +4590,7 @@ void MainDialog::onCompare(wxCommandEvent& event)
 
     const std::vector<FolderPairCfg>& fpCfgList = extractCompareCfg(guiCfg.mainCfg);
 
-    opBlock.disableGui(true /*enableAbort*/); //StatusHandlerTemporaryPanel calls wxApp::Yield(), so avoid unexpected callbacks!
+    UiInputDisabler uiBlock(*this, true /*enableAbort*/); //StatusHandlerTemporaryPanel calls wxApp::Yield(), so avoid unexpected callbacks!
 
     //handle status display and error messages
     StatusHandlerTemporaryPanel statusHandler(*this, std::chrono::system_clock::now(),
@@ -4844,9 +4825,10 @@ void MainDialog::onStartSync(wxCommandEvent& event)
             return;
     }
 
-    SingleOperationBlocker opBlock(*this); //*after* simluated comparison button click!
-    if (!opBlock.start())
+    if (std::exchange(operationInProgress_, true)) //*after* simluated comparison button click!
         return;
+    ZEN_ON_SCOPE_EXIT(operationInProgress_ = false);
+    //------------------------------------------------------------------
 
     const auto& guiCfg = getConfig();
 
@@ -4863,10 +4845,6 @@ void MainDialog::onStartSync(wxCommandEvent& event)
         globalCfg_.confirmDlgs.confirmSyncStart = !dontShowAgain;
     }
 
-    std::set<AbstractPath> logFilePathsToKeep;
-    for (const ConfigFileItem& item : cfggrid::getDataView(*m_gridCfgHistory).get())
-        logFilePathsToKeep.insert(item.lastRunStats.logFilePath);
-
     const std::chrono::system_clock::time_point syncStartTime = std::chrono::system_clock::now();
 
     const WindowLayout::Dimensions progressDim
@@ -4876,7 +4854,7 @@ void MainDialog::onStartSync(wxCommandEvent& event)
         globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.isMaximized
     };
 
-    opBlock.disableGui(false /*enableAbort*/); //StatusHandlerFloatingDialog will internally process Window messages, so avoid unexpected callbacks!
+    UiInputDisabler uiBlock(*this, false /*enableAbort*/); //StatusHandlerFloatingDialog will internally process Window messages, so avoid unexpected callbacks!
 
     //class handling status updates and error messages
     StatusHandlerFloatingDialog statusHandler(this, getJobNames(), syncStartTime,
@@ -5018,23 +4996,33 @@ void MainDialog::onStartSync(wxCommandEvent& event)
     }
 
     //--------------------- save log file ----------------------
+    std::set<AbstractPath> logsToKeepPaths;
+    {
+        const std::set<Zstring /*cfg file path*/, LessNativePath> activeCfgSorted(activeConfigFiles_.begin(), activeConfigFiles_.end());
+
+        for (const ConfigFileItem& cfi : cfggrid::getDataView(*m_gridCfgHistory).get())
+            if (!activeCfgSorted.contains(cfi.cfgFilePath)) //exception: don't keep old logs for the selected cfg files!
+                logsToKeepPaths.insert(cfi.lastRunStats.logFilePath);
+    }
     try //create not before destruction: 1. avoid issues with FFS trying to sync open log file 2. include status in log file name without extra rename
     {
         //do NOT use tryReportingError()! saving log files should not be cancellable!
-        saveLogFile(logFilePath, fullSummary, fullLog, globalCfg_.logfilesMaxAgeDays, globalCfg_.logFormat, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
+        saveLogFile(logFilePath, fullSummary, fullLog, globalCfg_.logfilesMaxAgeDays, globalCfg_.logFormat, logsToKeepPaths, notifyStatusNoThrow); //throw FileError
     }
     catch (const FileError& e)
     {
-        logMsg2(e.toString(), MSG_TYPE_ERROR);
+        try //fallback: log file *must* be saved no matter what!
+        {
+            const AbstractPath logFileDefaultPath = AFS::appendRelPath(createAbstractPath(getLogFolderDefaultPath()), generateLogFileName(globalCfg_.logFormat, fullSummary));
+            if (logFilePath == logFileDefaultPath)
+                throw;
 
-        const AbstractPath logFileDefaultPath = AFS::appendRelPath(createAbstractPath(getLogFolderDefaultPath()), generateLogFileName(globalCfg_.logFormat, fullSummary));
-        if (logFilePath != logFileDefaultPath) //fallback: log file *must* be saved no matter what!
-            try
-            {
-                logFilePath = logFileDefaultPath;
-                saveLogFile(logFileDefaultPath, fullSummary, fullLog, globalCfg_.logfilesMaxAgeDays, globalCfg_.logFormat, logFilePathsToKeep, notifyStatusNoThrow); //throw FileError
-            }
-            catch (const FileError& e2) { logMsg2(e2.toString(), MSG_TYPE_ERROR); assert(false); } //should never happen!!!
+            logMsg2(e.toString(), MSG_TYPE_ERROR);
+
+            logFilePath = logFileDefaultPath;
+            saveLogFile(logFileDefaultPath, fullSummary, fullLog, globalCfg_.logfilesMaxAgeDays, globalCfg_.logFormat, logsToKeepPaths, notifyStatusNoThrow); //throw FileError
+        }
+        catch (const FileError& e2) { logMsg2(e2.toString(), MSG_TYPE_ERROR); logExtraError(e2.toString()); } //should never happen!!!
     }
 
     //--------- update last sync stats for the selected cfg files ---------
@@ -5048,8 +5036,8 @@ void MainDialog::onStartSync(wxCommandEvent& event)
         fullSummary.statsProcessed.items,
         fullSummary.statsProcessed.bytes,
         fullSummary.totalTime,
-        fullLogStats.error,
-        fullLogStats.warning,
+        fullLogStats.errors,
+        fullLogStats.warnings,
     });
     //re-apply selection: sort order changed if sorted by last sync time
     cfggrid::addAndSelect(*m_gridCfgHistory, activeConfigFiles_, false /*scrollToSelection*/);
@@ -5080,7 +5068,7 @@ void MainDialog::onStartSync(wxCommandEvent& event)
 
         case FinalRequest::exit:
             Destroy(); //don't use Close() which prompts to save current config in onClose()
-            opBlock.dismiss(); //...or else we'll crash when ~SingleOperationBlocker() calls Yield()!
+            uiBlock.dismiss(); //...or else: crash when ~UiInputDisabler() calls Yield() + enableGuiElementsImpl()!
             break;
 
         case FinalRequest::shutdown:
@@ -5119,9 +5107,9 @@ void appendInactive(ContainerObject& conObj, std::vector<FileSystemObject*>& ina
 
 void MainDialog::startSyncForSelecction(const std::vector<FileSystemObject*>& selection)
 {
-    SingleOperationBlocker opBlock(*this);
-    if (!opBlock.start())
+    if (std::exchange(operationInProgress_, true))
         return;
+    ZEN_ON_SCOPE_EXIT(operationInProgress_ = false);
 
     //------------------ analyze selection ------------------
     std::unordered_set<const BaseFolderPair*> basePairsSelect;
@@ -5217,7 +5205,7 @@ void MainDialog::startSyncForSelecction(const std::vector<FileSystemObject*>& se
 
         //last sync log file? => let's go without; same behavior as manual deletion
 
-        opBlock.disableGui(true /*enableAbort*/); //StatusHandlerTemporaryPanel calls wxApp::Yield(), so avoid unexpected callbacks!
+        UiInputDisabler uiBlock(*this, true /*enableAbort*/); //StatusHandlerTemporaryPanel calls wxApp::Yield(), so avoid unexpected callbacks!
 
         StatusHandlerTemporaryPanel statusHandler(*this, syncStartTime,
                                                   guiCfg.mainCfg.ignoreErrors,
@@ -5284,9 +5272,9 @@ void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::s
         if (errorLog)
         {
             const ErrorLogStats logCount = getStats(*errorLog);
-            if (logCount.error > 0)
+            if (logCount.errors > 0)
                 return loadImage("msg_error", dipToScreen(getMenuIconDipSize()));
-            if (logCount.warning > 0)
+            if (logCount.warnings > 0)
                 return loadImage("msg_warning", dipToScreen(getMenuIconDipSize()));
 
             //return loadImage("msg_success", dipToScreen(getMenuIconDipSize())); -> too noisy?
@@ -5432,9 +5420,11 @@ void MainDialog::onGridLabelLeftClickC(GridLabelClickEvent& event)
 
 void MainDialog::swapSides()
 {
-    SingleOperationBlocker opBlock(*this);
-    if (!opBlock.start())
+    if (std::exchange(operationInProgress_, true))
         return;
+    ZEN_ON_SCOPE_EXIT(operationInProgress_ = false);
+
+    FocusPreserver fp;
 
     if (!folderCmp_.empty() && //require confirmation only *after* comparison
         globalCfg_.confirmDlgs.confirmSwapSides)
@@ -5494,9 +5484,7 @@ void MainDialog::swapSides()
     {
         const auto& guiCfg = getConfig();
 
-        FocusPreserver fp;
-
-        opBlock.disableGui(true /*enableAbort*/); //StatusHandlerTemporaryPanel calls wxApp::Yield(), so avoid unexpected callbacks!
+        UiInputDisabler uiBlock(*this, true /*enableAbort*/); //StatusHandlerTemporaryPanel calls wxApp::Yield(), so avoid unexpected callbacks!
 
         StatusHandlerTemporaryPanel statusHandler(*this, std::chrono::system_clock::now() /*startTime*/,
                                                   false /*ignoreErrors*/,
@@ -5730,16 +5718,17 @@ void MainDialog::applySyncDirections()
 {
     if (!folderCmp_.empty())
     {
-        const auto& guiCfg = getConfig();
-        const auto& directCfgs = extractDirectionCfg(folderCmp_, getConfig().mainCfg);
-
-        SingleOperationBlocker opBlock(*this);
-        if (!opBlock.start()) //can't just skip, but now's a really bad time! Hopefully never happens!?
+        if (std::exchange(operationInProgress_, true))
+            //can't just skip:t now's a really bad time! Hopefully never happens!?
             throw std::runtime_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Sync direction changed while other operation running.");
+        ZEN_ON_SCOPE_EXIT(operationInProgress_ = false);
 
         FocusPreserver fp;
 
-        opBlock.disableGui(true /*enableAbort*/); //StatusHandlerTemporaryPanel calls wxApp::Yield(), so avoid unexpected callbacks!
+        UiInputDisabler uiBlock(*this, true /*enableAbort*/); //StatusHandlerTemporaryPanel calls wxApp::Yield(), so avoid unexpected callbacks!
+
+        const auto& guiCfg = getConfig();
+        const auto& directCfgs = extractDirectionCfg(folderCmp_, getConfig().mainCfg);
 
         StatusHandlerTemporaryPanel statusHandler(*this, std::chrono::system_clock::now() /*startTime*/,
                                                   false /*ignoreErrors*/,

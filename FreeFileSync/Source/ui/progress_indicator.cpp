@@ -1511,7 +1511,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(TaskResult syncResult, 
 
     //show log instead of graph if errors occurred! (not required for ignored warnings)
     const ErrorLogStats logCount = getStats(log.ref());
-    if (logCount.error > 0)
+    if (logCount.errors > 0)
         pnl_.m_notebookResult->ChangeSelection(pagePosLog);
 
     //fill image list to cope with wxNotebook image setting design desaster...

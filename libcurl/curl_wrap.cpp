@@ -402,9 +402,10 @@ std::wstring zen::formatCurlStatusCode(CURLcode sc)
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_SSL_CLIENTCERT);
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_UNRECOVERABLE_POLL);
             ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_TOO_LARGE);
+            ZEN_CHECK_CASE_FOR_CONSTANT(CURLE_ECH_REQUIRED);
             ZEN_CHECK_CASE_FOR_CONSTANT(CURL_LAST);
     }
-    static_assert(CURL_LAST == CURLE_TOO_LARGE + 1);
+    static_assert(CURL_LAST == CURLE_ECH_REQUIRED + 1);
 
     return replaceCpy<std::wstring>(L"Curl status %x", L"%x", numberTo<std::wstring>(static_cast<int>(sc)));
 }

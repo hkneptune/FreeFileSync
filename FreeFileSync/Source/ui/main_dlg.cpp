@@ -1531,8 +1531,9 @@ void MainDialog::copyPathsToClipboard(const std::vector<FileSystemObject*>& sele
 
         auto appendPath = [&](const AbstractPath& itemPath)
         {
+            if (!clipBuf.empty())
+                clipBuf += L'\n';
             clipBuf += AFS::getDisplayPath(itemPath);
-            clipBuf += L'\n';
         };
 
         for (const FileSystemObject* fsObj : selectionL)
@@ -3260,32 +3261,30 @@ void MainDialog::onFolderSelected(wxCommandEvent& event)
 
 void MainDialog::cfgHistoryRemoveObsolete(const std::vector<Zstring>& filePaths)
 {
-    warn_static("shouldn't delete on access denied!?") //https://freefilesync.org/forum/viewtopic.php?t=11363
-
     auto getUnavailableCfgFilesAsync = [filePaths] //don't use wxString: NOT thread-safe! (e.g. non-atomic ref-count)
     {
-        std::vector<std::future<bool>> availableFiles; //check existence of all config files in parallel!
+        std::vector<std::future<bool>> keepFile; //check all config files in parallel!
 
         for (const Zstring& filePath : filePaths)
-            availableFiles.push_back(runAsync([=]
+            keepFile.push_back(runAsync([=]
         {
             try
             {
                 getItemType(filePath); //throw FileError
                 return true;
             }
-            catch (FileError&) { return false; } //not-existing/access error?
+            catch (FileError&) { return false; } //not-existing/access error? e.g. not accessible network share or USB stick => remove cfg
         }));
 
         //potentially slow network access => limit maximum wait time!
-        waitForAllTimed(availableFiles.begin(), availableFiles.end(), std::chrono::seconds(2));
+        waitForAllTimed(keepFile.begin(), keepFile.end(), std::chrono::seconds(2));
 
         std::vector<Zstring> pathsToRemove;
 
-        auto itFut = availableFiles.begin();
+        auto itFut = keepFile.begin();
         for (auto it = filePaths.begin(); it != filePaths.end(); ++it, ++itFut)
             if (isReady(*itFut) && !itFut->get()) //not ready? maybe HDD that is just spinning up => better keep it
-                pathsToRemove.push_back(*it); //file access error? probably not accessible network share or usb stick => remove cfg
+                pathsToRemove.push_back(*it);
 
         return pathsToRemove;
     };

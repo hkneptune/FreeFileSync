@@ -160,7 +160,10 @@ std::wstring getCurlDisplayPath(const FtpDeviceId& deviceId, const AfsPath& item
     if (!deviceId.username.empty()) //show username! consider AFS::compareDeviceSameAfsType()
         displayPath += deviceId.username + Zstr('@');
 
-    displayPath += deviceId.server;
+    if (parseIpv6Address(deviceId.server) && deviceId.port != DEFAULT_PORT_FTP)
+        displayPath += Zstr('[') + deviceId.server + Zstr(']');
+    else
+        displayPath += deviceId.server;
 
     if (deviceId.port != DEFAULT_PORT_FTP)
         displayPath += Zstr(':') + numberTo<Zstring>(deviceId.port);
@@ -2576,6 +2579,10 @@ Zstring concatenateFtpFolderPathPhrase(const FtpLogin& login, const AfsPath& fol
     if (!login.username.empty())
         username = encodeFtpUsername(login.username) + Zstr("@");
 
+    Zstring server = login.server;
+    if (parseIpv6Address(server) && login.portCfg > 0)
+        server = Zstr('[') + server + Zstr(']'); //e.g. [::1]:80
+
     Zstring port;
     if (login.portCfg > 0)
         port = Zstr(':') + numberTo<Zstring>(login.portCfg);
@@ -2599,7 +2606,7 @@ Zstring concatenateFtpFolderPathPhrase(const FtpLogin& login, const AfsPath& fol
     else
         options += Zstr("|pwprompt");
 
-    return Zstring(ftpPrefix) + Zstr("//") + username + login.server + port + relPath + options;
+    return Zstring(ftpPrefix) + Zstr("//") + username + server + port + relPath + options;
 }
 }
 
@@ -2651,6 +2658,9 @@ AfsDevice fff::condenseToFtpDevice(const FtpLogin& login) //noexcept
         loginTmp.server = afterFirst(loginTmp.server, Zstr(':'), IfNotFoundReturn::none);
     trim(loginTmp.server, TrimSide::both, [](Zchar c) { return c == Zstr('/') || c == Zstr('\\'); });
 
+    if (std::optional<std::pair<Zstring, int>> ip6AndPort = parseIpv6Address(loginTmp.server))
+        loginTmp.server = ip6AndPort->first; //remove leading/trailing brackets
+
     return makeSharedRef<FtpFileSystem>(loginTmp);
 }
 
@@ -2676,6 +2686,8 @@ bool fff::acceptsItemPathPhraseFtp(const Zstring& itemPathPhrase) //noexcept
 /* syntax: ftp://[<user>[:<password>]@]<server>[:port]/<relative-path>[|option_name=value]
 
    e.g. ftp://user001:secretpassword@private.example.com:222/mydirectory/
+        ftp://user001:secretpassword@[::1]:80/ipv6folder/
+        ftp://user001:secretpassword@::1/ipv6withoutPort/
         ftp://user001@private.example.com/mydirectory|pass64=c2VjcmV0cGFzc3dvcmQ       */
 AbstractPath fff::createItemPathFtp(const Zstring& itemPathPhrase) //noexcept
 {
@@ -2700,9 +2712,17 @@ AbstractPath fff::createItemPathFtp(const Zstring& itemPathPhrase) //noexcept
     const ZstringView serverPort = makeStringView(fullPath.begin(), it);
     const AfsPath serverRelPath = sanitizeDeviceRelativePath({it, fullPath.end()});
 
-    login.server           = Zstring(beforeLast(serverPort, Zstr(':'), IfNotFoundReturn::all));
-    const ZstringView port =          afterLast(serverPort, Zstr(':'), IfNotFoundReturn::none);
-    login.portCfg = stringTo<int>(port); //0 if empty
+    if (std::optional<std::pair<Zstring, int /*optional: port*/>> ip6AndPort = parseIpv6Address(serverPort)) //e.g. 2001:db8::ff00:42:8329 or [::1]:80
+    {
+        login.server  = ip6AndPort->first;
+        login.portCfg = ip6AndPort->second; //0 if empty
+    }
+    else
+    {
+        login.server           = Zstring(beforeLast(serverPort, Zstr(':'), IfNotFoundReturn::all));
+        const ZstringView port =          afterLast(serverPort, Zstr(':'), IfNotFoundReturn::none);
+        login.portCfg = stringTo<int>(port); //0 if empty
+    }
 
     split(options, Zstr('|'), [&](ZstringView optPhrase)
     {

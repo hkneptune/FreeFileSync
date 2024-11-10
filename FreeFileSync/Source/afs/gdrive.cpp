@@ -2618,7 +2618,7 @@ public:
                     gdriveRevokeAccess(userSession->accessBuf.ref().getAccessToken()); //throw SysError
             });
         }
-        catch (SysError&) { assert(false); } //best effort: try to invalidate the access token
+        catch ([[maybe_unused]] const SysError& e) { assert(false); } //best effort: try to invalidate the access token
         //=> expected to fail 1. if offline => not worse than removing FFS via "Uninstall Programs" 2. already revoked 3. if DB is corrupted
 
         try

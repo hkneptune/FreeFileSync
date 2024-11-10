@@ -456,13 +456,12 @@ void MainDialog::insertAddFolder(const std::vector<Zstring>& newFolders, size_t 
     const size_t visibleRows = std::min(additionalFolderPanels_.size(), MAX_ADD_FOLDERS); //up to MAX_ADD_FOLDERS additional folders shall be shown
 
     m_scrolledWinFolders->SetMinSize({-1, folderHeight * static_cast<int>(visibleRows)});
+    m_panelMain->Layout(); //[!] get scrollbars to update correctly   
 
     //adapt delete top folder pair button
     m_bpButtonRemoveTopFolder->Show(!additionalFolderPanels_.empty());
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
-
-    m_scrolledWinFolders->Layout(); //fix GUI distortion after .ffs_batch drag & drop (Linux)
 
     Refresh(); //remove a little flicker near the start button
 }
@@ -488,7 +487,7 @@ void MainDialog::removeAddFolder(size_t pos)
         const size_t visibleRows = std::min(additionalFolderPanels_.size(), MAX_ADD_FOLDERS); //up to MAX_ADD_FOLDERS additional folders shall be shown
 
         m_scrolledWinFolders->SetMinSize({-1, folderHeight * static_cast<int>(visibleRows)});
-        m_scrolledWinFolders->Layout(); //[!] needed when scrollbars are shown
+        m_panelMain->Layout(); //[!] get scrollbars to update correctly
 
         //adapt delete top folder pair button
         m_bpButtonRemoveTopFolder->Show(!additionalFolderPanels_.empty());

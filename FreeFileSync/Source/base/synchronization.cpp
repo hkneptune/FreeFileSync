@@ -2498,6 +2498,35 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
     std::set<AbstractPath> checkVersioningLimitPaths;
 
     //------------------- start checking folder pairs -------------------
+
+    //skip incomplete folder pairs with only one folder selected, or all <empty> => don't support "deletion via <empty> source folder"
+    {
+        bool haveFullPair = false;
+        std::wstring partialPairList;
+
+        std::for_each(begin(folderCmp), end(folderCmp), [&](const BaseFolderPair& baseFolder)
+        {
+            const AbstractPath& folderPathL = baseFolder.getAbstractPath<SelectSide::left >();
+            const AbstractPath& folderPathR = baseFolder.getAbstractPath<SelectSide::right>();
+
+            if (AFS::isNullPath(folderPathL) != AFS::isNullPath(folderPathR))
+            {
+                partialPairList += L"\n" +
+                                   (AFS::isNullPath(folderPathL) ? L"<" + _("empty") + L">" : AFS::getDisplayPath(folderPathL)) + L" | " +
+                                   (AFS::isNullPath(folderPathR) ? L"<" + _("empty") + L">" : AFS::getDisplayPath(folderPathR));
+            }
+            else if (!AFS::isNullPath(folderPathL))
+                haveFullPair = true;
+        });
+
+        //error if: partial pairs or all empty -> single-folder comparison scenario doesn't include synchronization
+        if (!partialPairList.empty() || !haveFullPair)
+            callback.reportFatalError(trimCpy(_("A folder input field is empty.") + L" \n\n" +
+                                              _("Please select both left and right folders for synchronization.") + L"\n" + partialPairList)); //throw X
+        //"skipFolderPair[folderIndex] = true" will be set below
+    }
+
+
     for (size_t folderIndex = 0; folderIndex < folderCmp.size(); ++folderIndex)
     {
         BaseFolderPair&          baseFolder     = folderCmp[folderIndex].ref();
@@ -2507,19 +2536,18 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
         //=============== start with checks that may SKIP folder pairs ===============
         //============================================================================
 
-        //exclude a few pathological cases, e.g. empty folder pair
-        if (baseFolder.getAbstractPath<SelectSide::left >() ==
-            baseFolder.getAbstractPath<SelectSide::right>())
+        //skip incomplete folder pairs (fatal error already reported above)
+        if (AFS::isNullPath(baseFolder.getAbstractPath<SelectSide::left >()) ||
+            AFS::isNullPath(baseFolder.getAbstractPath<SelectSide::right>()))
         {
             skipFolderPair[folderIndex] = true;
             continue;
         }
 
-        //synchronization with only one folder selected, doesn't make sense => don't support "deletion via empty source folder"
-        if (AFS::isNullPath(baseFolder.getAbstractPath<SelectSide::left >()) ||
-            AFS::isNullPath(baseFolder.getAbstractPath<SelectSide::right>()))
+        //exclude a few pathological cases
+        if (baseFolder.getAbstractPath<SelectSide::left >() ==
+            baseFolder.getAbstractPath<SelectSide::right>())
         {
-            callback.reportFatalError(_("A folder input field is empty."));
             skipFolderPair[folderIndex] = true;
             continue;
         }

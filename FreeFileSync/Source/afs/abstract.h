@@ -488,7 +488,7 @@ AbstractFileSystem::OutputStream::~OutputStream()
         try { AbstractFileSystem::removeFilePlain(filePath_); /*throw FileError*/ }
         catch (const zen::FileError& e) { zen::logExtraError(e.toString()); }
 
-        warn_static("we should not log if not existing anymore!?:       ERROR_FILE_NOT_FOUND: ddddddddddd [DeleteFile]")
+    warn_static("we should not log if not existing anymore!?:       ERROR_FILE_NOT_FOUND: ddddddddddd [DeleteFile]")
     //solution: integrate cleanup into ~OutputStreamImpl() including appropriate loggin!
 }
 

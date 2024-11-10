@@ -8,6 +8,7 @@
 #define FTP_COMMON_H_92889457091324321454
 
 #include <zen/base64.h>
+#include <zen/string_tools.h>
 #include "abstract.h"
 
 
@@ -51,6 +52,49 @@ Zstring decodeFtpUsername(Zstring name)
     replace(name, Zstr("%3a"), Zstr(':'));
     replace(name, Zstr("%25"), Zstr('%')); //last!
     return name;
+}
+
+
+inline
+std::optional<std::pair<Zstring, int /*optional: port*/>> parseIpv6Address(ZstringView str)
+{
+    using namespace zen;
+
+    str = trimCpy(str);
+
+    int port = 0;
+
+    //https://en.wikipedia.org/wiki/IPv6#Address_representation
+    if (startsWith(str, Zstr('[')))
+    {
+        str = str.substr(1);
+        if (!contains(str, Zstr(']')))
+            return std::nullopt;
+
+        ZstringView portStr = afterLast (str, Zstr(']'), IfNotFoundReturn::none);
+        str = beforeLast(str, Zstr(']'), IfNotFoundReturn::none);
+
+        if (!portStr.empty())
+        {
+            if (!startsWith(portStr, Zstr(':')))
+                return std::nullopt;
+            portStr = portStr.substr(1);
+
+            if (!std::all_of(portStr.begin(), portStr.end(), &isDigit<Zchar>))
+                return std::nullopt;
+
+            port = stringTo<int>(portStr); //valid range: [0, 65535]
+        }
+    }
+
+    if (!contains(str, Zstr(':')) ||
+        !std::all_of(str.begin(), str.end(), [](Zchar c)
+{
+    return isHexDigit(c) || c == Zstr(':');
+    }))
+    return std::nullopt;
+
+    return std::make_pair(Zstring(str), port);
 }
 
 

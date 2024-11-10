@@ -841,7 +841,7 @@ void fff::redetermineSyncDirection(const std::vector<std::pair<BaseFolderPair*, 
     if (directCfgs.empty())
         return;
 
-    std::unordered_set<const BaseFolderPair*> allEqualPairs;
+    std::unordered_set<const BaseFolderPair*> pairsToSkip;
     std::unordered_map<const BaseFolderPair*, SharedRef<const InSyncFolder>> lastSyncStates;
 
     //best effort: always set sync directions (even on DB load error and when user cancels during file loading)
@@ -849,9 +849,18 @@ void fff::redetermineSyncDirection(const std::vector<std::pair<BaseFolderPair*, 
     (
         //*INDENT-OFF*
         for (const auto& [baseFolder, dirCfg] : directCfgs)
-            if (!allEqualPairs.contains(baseFolder))
+            if (!pairsToSkip.contains(baseFolder))
             {
-                if (const DirectionByDiff* diffDirs = std::get_if<DirectionByDiff>(&dirCfg.dirs))
+                //if only one folder is selected instead of a pair, sync directions don't make sense: (user already received warning during comparison)
+                if (AFS::isNullPath(baseFolder->getAbstractPath<SelectSide::left >()) ||
+                    AFS::isNullPath(baseFolder->getAbstractPath<SelectSide::right>()))
+                {
+                    SetSyncDirViaDifferences::execute({.leftOnly   = SyncDirection::none,
+                                                       .rightOnly  = SyncDirection::none,
+                                                       .leftNewer  = SyncDirection::none,
+                                                       .rightNewer = SyncDirection::none}, *baseFolder);
+                }
+                else if (const DirectionByDiff* diffDirs = std::get_if<DirectionByDiff>(&dirCfg.dirs))
                     SetSyncDirViaDifferences::execute(*diffDirs, *baseFolder);
                 else
                 {
@@ -860,7 +869,7 @@ void fff::redetermineSyncDirection(const std::vector<std::pair<BaseFolderPair*, 
                     auto it = lastSyncStates.find(baseFolder);
                     if (const InSyncFolder* lastSyncState = it != lastSyncStates.end() ? &it->second.ref() : nullptr)
                     {
-                        //detect moved files (*before* setting sync directions: might combine moved files into single file pairs, wich changes category!)
+                        //detect moved files (*before* setting sync directions: might combine moved files into single file pairs, which changes category!)
                         DetectMovedFiles::execute(*baseFolder, *lastSyncState);                
 
                         SetSyncDirViaChanges::execute(*baseFolder, *lastSyncState, changeDirs);
@@ -885,7 +894,7 @@ void fff::redetermineSyncDirection(const std::vector<std::pair<BaseFolderPair*, 
         if (std::get_if<DirectionByChange>(&dirCfg.dirs))
         {
             if (allItemsCategoryEqual(*baseFolder)) //nothing to do: don't even try to open DB files
-                allEqualPairs.insert(baseFolder);
+                pairsToSkip.insert(baseFolder);
             else
                 baseFoldersForDbLoad.push_back(baseFolder);
         }

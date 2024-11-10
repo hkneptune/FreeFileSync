@@ -152,7 +152,7 @@ private:
 
 struct ConstNumberExp : public Expr<int64_t>
 {
-    ConstNumberExp(int64_t n) : n_(n) {}
+    explicit ConstNumberExp(int64_t n) : n_(n) {}
     int64_t eval() const override { return n_; }
 private:
     int64_t n_;
@@ -161,7 +161,7 @@ private:
 
 struct VariableNumberNExp : public Expr<int64_t>
 {
-    VariableNumberNExp(int64_t& n) : n_(n) {}
+    explicit VariableNumberNExp(int64_t& n) : n_(n) {}
     int64_t eval() const override { return n_; }
 private:
     int64_t& n_;
@@ -444,7 +444,7 @@ PluralFormInfo::PluralFormInfo(const std::string& definition, int pluralCount) /
         PluralForm pf(definition); //throw ParsingError
         //PERF_START
 
-        //perf: 80ns per iteration max (for arabic)
+        //perf: 80ns per iteration max (for Arabic)
         //=> 1000 iterations should be fast enough and still detect all "single number forms"
         for (int j = 0; j < 1000; ++j)
             if (const size_t formNo = pf.getForm(j);

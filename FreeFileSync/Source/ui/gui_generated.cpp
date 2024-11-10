@@ -926,7 +926,7 @@ MainDialogGenerated::MainDialogGenerated( wxWindow* parent, wxWindowID id, const
     bSizerStatistics->Add( bSizer173, 0, wxEXPAND, 5 );
 
 
-    bSizerStatistics->Add( 5, 5, 0, 0, 5 );
+    bSizerStatistics->Add( 10, 10, 0, 0, 5 );
 
     wxBoxSizer* bSizer172;
     bSizer172 = new wxBoxSizer( wxVERTICAL );
@@ -952,7 +952,7 @@ MainDialogGenerated::MainDialogGenerated( wxWindow* parent, wxWindowID id, const
     bSizerStatistics->Add( bSizer172, 0, wxEXPAND, 5 );
 
 
-    bSizerStatistics->Add( 5, 5, 0, 0, 5 );
+    bSizerStatistics->Add( 10, 5, 0, 0, 5 );
 
     wxBoxSizer* bSizer1712;
     bSizer1712 = new wxBoxSizer( wxVERTICAL );
@@ -978,7 +978,7 @@ MainDialogGenerated::MainDialogGenerated( wxWindow* parent, wxWindowID id, const
     bSizerStatistics->Add( bSizer1712, 0, wxEXPAND, 5 );
 
 
-    bSizerStatistics->Add( 5, 5, 0, 0, 5 );
+    bSizerStatistics->Add( 10, 5, 0, 0, 5 );
 
     bSizerData = new wxBoxSizer( wxVERTICAL );
 
@@ -1003,7 +1003,7 @@ MainDialogGenerated::MainDialogGenerated( wxWindow* parent, wxWindowID id, const
     bSizerStatistics->Add( bSizerData, 0, wxEXPAND, 5 );
 
 
-    bSizerStatistics->Add( 5, 5, 0, 0, 5 );
+    bSizerStatistics->Add( 10, 5, 0, 0, 5 );
 
     wxBoxSizer* bSizer178;
     bSizer178 = new wxBoxSizer( wxVERTICAL );
@@ -1029,7 +1029,7 @@ MainDialogGenerated::MainDialogGenerated( wxWindow* parent, wxWindowID id, const
     bSizerStatistics->Add( bSizer178, 0, wxEXPAND, 5 );
 
 
-    bSizerStatistics->Add( 5, 5, 0, 0, 5 );
+    bSizerStatistics->Add( 10, 5, 0, 0, 5 );
 
     wxBoxSizer* bSizer177;
     bSizer177 = new wxBoxSizer( wxVERTICAL );
@@ -1055,7 +1055,7 @@ MainDialogGenerated::MainDialogGenerated( wxWindow* parent, wxWindowID id, const
     bSizerStatistics->Add( bSizer177, 0, wxEXPAND, 5 );
 
 
-    bSizerStatistics->Add( 5, 5, 0, 0, 5 );
+    bSizerStatistics->Add( 10, 10, 0, 0, 5 );
 
     wxBoxSizer* bSizer176;
     bSizer176 = new wxBoxSizer( wxVERTICAL );
@@ -3355,7 +3355,7 @@ SyncConfirmationDlgGenerated::SyncConfirmationDlgGenerated( wxWindow* parent, wx
     bSizer181->Add( m_staticText83, 0, wxALL, 5 );
 
     wxFlexGridSizer* fgSizer11;
-    fgSizer11 = new wxFlexGridSizer( 2, 7, 2, 5 );
+    fgSizer11 = new wxFlexGridSizer( 2, 7, 2, 10 );
     fgSizer11->SetFlexibleDirection( wxBOTH );
     fgSizer11->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
 

@@ -386,7 +386,6 @@ struct WarningDialogs
     bool warnNotEnoughDiskSpace         = true;
     bool warnUnresolvedConflicts        = true;
     bool warnRecyclerMissing            = true;
-    bool warnInputFieldEmpty            = true;
     bool warnDirectoryLockFailed        = true;
     bool warnVersioningFolderPartOfSync = true;
 

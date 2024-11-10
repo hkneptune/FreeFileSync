@@ -1103,18 +1103,25 @@ FolderComparison fff::compare(WarningDialogs& warnings,
 
     //check for incomplete input
     {
-        bool havePartialPair = false;
-        bool haveFullPair    = false;
+        bool haveFullPair = false;
+        std::wstring partialPairList;
 
         for (const ResolvedFolderPair& fp : resInfo.resolvedPairs)
             if (AFS::isNullPath(fp.folderPathLeft) != AFS::isNullPath(fp.folderPathRight))
-                havePartialPair = true;
+            {
+                partialPairList += L"\n" +
+                                   (AFS::isNullPath(fp.folderPathLeft ) ? L"<" + _("empty") + L">" : AFS::getDisplayPath(fp.folderPathLeft)) + L" | " +
+                                   (AFS::isNullPath(fp.folderPathRight) ? L"<" + _("empty") + L">" : AFS::getDisplayPath(fp.folderPathRight));
+            }
             else if (!AFS::isNullPath(fp.folderPathLeft))
                 haveFullPair = true;
 
-        if (havePartialPair == haveFullPair) //error if: all empty or exist both full and partial pairs -> support single-folder comparison scenario
-            callback.reportWarning(_("A folder input field is empty.") + L" \n\n" +
-                                   _("The corresponding folder will be considered as empty."), warnings.warnInputFieldEmpty); //throw X
+        //error if: all empty or exist both full and partial pairs -> support single-folder comparison scenario
+        if (!partialPairList.empty() == haveFullPair)
+            callback.reportFatalError(trimCpy(_("A folder input field is empty.") + L" \n\n" +
+                                              _("Please select both left and right folders for synchronization.") + L"\n" + partialPairList)); //throw X
+        else if (!partialPairList.empty()) //partial pairs only => maybe deliberate, maybe accidental, so give some hint
+            callback.logMessage(_("A folder input field is empty.") + L"\n" + partialPairList, PhaseCallback::MsgType::warning); //throw X
     }
 
     //Check whether one side is a sub directory of the other side (folder-pair-wise!)

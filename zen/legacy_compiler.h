@@ -29,6 +29,7 @@ namespace std
 {
 
 
+
 //W(hy)TF is this not standard? https://stackoverflow.com/a/47735624
 template <class Char, class Traits, class Alloc> inline
 basic_string<Char, Traits, Alloc> operator+(basic_string<Char, Traits, Alloc>&& lhs, const basic_string_view<Char> rhs)

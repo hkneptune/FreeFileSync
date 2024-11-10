@@ -184,7 +184,10 @@ std::wstring getSftpDisplayPath(const SshDeviceId& deviceId, const AfsPath& item
     if (!deviceId.username.empty()) //show username! consider AFS::compareDeviceSameAfsType()
         displayPath += deviceId.username + Zstr('@');
 
-    displayPath += deviceId.server;
+    if (parseIpv6Address(deviceId.server) && deviceId.port != DEFAULT_PORT_SFTP)
+        displayPath += Zstr('[') + deviceId.server + Zstr(']');
+    else
+        displayPath += deviceId.server;
 
     if (deviceId.port != DEFAULT_PORT_SFTP)
         displayPath += Zstr(':') + numberTo<Zstring>(deviceId.port);
@@ -1966,6 +1969,10 @@ Zstring concatenateSftpFolderPathPhrase(const SftpLogin& login, const AfsPath& f
     if (!login.username.empty())
         username = encodeFtpUsername(login.username) + Zstr("@");
 
+    Zstring server = login.server;
+    if (parseIpv6Address(server) && login.portCfg > 0)
+        server = Zstr('[') + server + Zstr(']'); //e.g. [::1]:80
+
     Zstring port;
     if (login.portCfg > 0)
         port = Zstr(':') + numberTo<Zstring>(login.portCfg);
@@ -2011,7 +2018,7 @@ Zstring concatenateSftpFolderPathPhrase(const SftpLogin& login, const AfsPath& f
             options += Zstr("|pwprompt");
     }
 
-    return Zstring(sftpPrefix) + Zstr("//") + username + login.server + port + relPath + options;
+    return Zstring(sftpPrefix) + Zstr("//") + username + server + port + relPath + options;
 }
 }
 
@@ -2054,6 +2061,9 @@ AfsDevice fff::condenseToSftpDevice(const SftpLogin& login) //noexcept
         startsWithAsciiNoCase(loginTmp.server, "sftp:" ))
         loginTmp.server = afterFirst(loginTmp.server, Zstr(':'), IfNotFoundReturn::none);
     trim(loginTmp.server, TrimSide::both, [](Zchar c) { return c == Zstr('/') || c == Zstr('\\'); });
+
+    if (std::optional<std::pair<Zstring, int>> ip6AndPort = parseIpv6Address(loginTmp.server))
+        loginTmp.server = ip6AndPort->first; //remove IPv6 leading/trailing brackets
 
     return makeSharedRef<SftpFileSystem>(loginTmp);
 }
@@ -2111,6 +2121,8 @@ bool fff::acceptsItemPathPhraseSftp(const Zstring& itemPathPhrase) //noexcept
 /* syntax: sftp://[<user>[:<password>]@]<server>[:port]/<relative-path>[|option_name=value]
 
    e.g. sftp://user001:secretpassword@private.example.com:222/mydirectory/
+        sftp://user001:secretpassword@[::1]:80/ipv6folder/
+        sftp://user001:secretpassword@::1/ipv6withoutPort/
         sftp://user001@private.example.com/mydirectory|con=2|cpc=10|keyfile=%AppData%\id_rsa|pass64=c2VjcmV0cGFzc3dvcmQ          */
 AbstractPath fff::createItemPathSftp(const Zstring& itemPathPhrase) //noexcept
 {
@@ -2135,9 +2147,17 @@ AbstractPath fff::createItemPathSftp(const Zstring& itemPathPhrase) //noexcept
     const ZstringView serverPort = makeStringView(fullPath.begin(), it);
     const AfsPath serverRelPath = sanitizeDeviceRelativePath({it, fullPath.end()});
 
-    login.server           = Zstring(beforeLast(serverPort, Zstr(':'), IfNotFoundReturn::all));
-    const ZstringView port =          afterLast(serverPort, Zstr(':'), IfNotFoundReturn::none);
-    login.portCfg = stringTo<int>(port); //0 if empty
+    if (std::optional<std::pair<Zstring, int /*optional: port*/>> ip6AndPort = parseIpv6Address(serverPort)) //e.g. 2001:db8::ff00:42:8329 or [::1]:80
+    {
+        login.server  = ip6AndPort->first;
+        login.portCfg = ip6AndPort->second; //0 if empty
+    }
+    else
+    {
+        login.server           = Zstring(beforeLast(serverPort, Zstr(':'), IfNotFoundReturn::all));
+        const ZstringView port =          afterLast(serverPort, Zstr(':'), IfNotFoundReturn::none);
+        login.portCfg = stringTo<int>(port); //0 if empty
+    }
 
     assert(login.allowZlib == false);
 

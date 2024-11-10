@@ -1354,8 +1354,6 @@ private:
          [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnUnresolvedConflicts = show; }, _("The following items have unresolved conflicts and will not be synchronized:")},
         {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnRecyclerMissing; },
          [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnRecyclerMissing = show; }, _("The recycle bin is not available for %x.") + L' ' + _("Ignore and delete permanently each time recycle bin is unavailable?")},
-        {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnInputFieldEmpty; },
-         [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnInputFieldEmpty = show; }, _("A folder input field is empty.") + L' ' + _("The corresponding folder will be considered as empty.")},
         {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnDirectoryLockFailed; },
          [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnDirectoryLockFailed = show; }, _("Cannot set directory locks for the following folders:")},
         {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnVersioningFolderPartOfSync; },

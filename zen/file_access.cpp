@@ -374,7 +374,7 @@ void setWriteTimeNative(const Zstring& itemPath, const timespec& modTime, ProcSy
 
     //hell knows why files on gvfs-mounted Samba shares fail to open(O_WRONLY) returning EOPNOTSUPP:
     //https://freefilesync.org/forum/viewtopic.php?t=2803 => utimensat() works (but not for gvfs SFTP)
-    if (::utimensat(AT_FDCWD, itemPath.c_str(), newTimes, procSl == ProcSymlink::asLink ? AT_SYMLINK_NOFOLLOW : 0) == 0)
+    if (::utimensat(AT_FDCWD /*'dirfd' ignored for absolute paths*/, itemPath.c_str(), newTimes, procSl == ProcSymlink::asLink ? AT_SYMLINK_NOFOLLOW : 0) == 0)
         return;
     const ErrorCode ecUtimensat = errno;
     try

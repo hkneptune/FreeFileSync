@@ -268,13 +268,13 @@ void ConfigView::sortListViewImpl()
         if (lhs->second.isLastRunCfg != rhs->second.isLastRunCfg)
             return lhs->second.isLastRunCfg < rhs->second.isLastRunCfg; //"last session" label should be (always) last
 
-        const bool wasRunL = lhs->second.cfgItem.lastRunStats.startTime != 0;
-        const bool wasRunR = rhs->second.cfgItem.lastRunStats.startTime != 0;
-        if (wasRunL != wasRunR)
-            return wasRunL > wasRunR; //move sync jobs that were never run to the back
+        const bool haveResultL = !AFS::isNullPath(lhs->second.cfgItem.lastRunStats.logFilePath);
+        const bool haveResultR = !AFS::isNullPath(rhs->second.cfgItem.lastRunStats.logFilePath);
+        if (haveResultL != haveResultR)
+            return haveResultL > haveResultR; //move sync jobs that were never run to the back
 
         //primary sort order
-        if (wasRunL && lhs->second.cfgItem.lastRunStats.syncResult != rhs->second.cfgItem.lastRunStats.syncResult)
+        if (haveResultL && lhs->second.cfgItem.lastRunStats.syncResult != rhs->second.cfgItem.lastRunStats.syncResult)
             return makeSortDirection(std::greater(), std::bool_constant<ascending>())(lhs->second.cfgItem.lastRunStats.syncResult, rhs->second.cfgItem.lastRunStats.syncResult);
 
         //secondary sort order
@@ -375,10 +375,10 @@ private:
                     return utfTo<std::wstring>(item->name);
 
                 case ColumnTypeCfg::lastSync:
-                    if (!item->isLastRunCfg)
+                    if (!item->isLastRunCfg && item->cfgItem.lastRunStats.startTime > 0)
                     {
-                        if (item->cfgItem.lastRunStats.startTime == 0)
-                            return std::wstring(1, EN_DASH);
+                        //if (item->cfgItem.lastRunStats.startTime == 0)
+                        //    return std::wstring(1, EN_DASH);
 
                         //return utfTo<std::wstring>(formatTime(formatDateTimeTag, getLocalTime(item->cfgItem.lastRunStats.startTime)));
 
@@ -391,7 +391,7 @@ private:
                     break;
 
                 case ColumnTypeCfg::lastLog:
-                    if (!item->isLastRunCfg && item->cfgItem.lastRunStats.startTime != 0)
+                    if (!item->isLastRunCfg && !AFS::isNullPath(item->cfgItem.lastRunStats.logFilePath))
                         return getSyncResultLabel(item->cfgItem.lastRunStats.syncResult);
                     break;
             }
@@ -506,7 +506,7 @@ private:
                 break;
 
                 case ColumnTypeCfg::lastLog:
-                    if (!item->isLastRunCfg && item->cfgItem.lastRunStats.startTime != 0)
+                    if (!item->isLastRunCfg && !AFS::isNullPath(item->cfgItem.lastRunStats.logFilePath))
                     {
                         const wxImage statusIcon = [&]
                         {
@@ -654,7 +654,7 @@ private:
                     break;
 
                 case ColumnTypeCfg::lastLog:
-                    if (!item->isLastRunCfg && item->cfgItem.lastRunStats.startTime != 0)
+                    if (!item->isLastRunCfg && !AFS::isNullPath(item->cfgItem.lastRunStats.logFilePath))
                     {
                         std::wstring tooltip = getSyncResultLabel(item->cfgItem.lastRunStats.syncResult) + L"\n";
 
@@ -667,8 +667,10 @@ private:
                         const int64_t totalTimeSec = std::chrono::duration_cast<std::chrono::seconds>(item->cfgItem.lastRunStats.totalTime).count();
                         tooltip += TAB_SPACE + _("Total time:") + L' ' + utfTo<std::wstring>(formatTimeSpan(totalTimeSec));
 
-                        //if (!AFS::isNullPath(item->cfgItem.lastRunStats.logFilePath))
-                        //    tooltip += L"\n" + AFS::getDisplayPath(item->cfgItem.lastRunStats.logFilePath);
+                        //non-native path won't be clickable => at least show in tooltip:
+                         if (getNativeItemPath(item->cfgItem.lastRunStats.logFilePath).empty())
+                            tooltip += L"\n" + AFS::getDisplayPath(item->cfgItem.lastRunStats.logFilePath);
+
                         return tooltip;
                     }
                     break;

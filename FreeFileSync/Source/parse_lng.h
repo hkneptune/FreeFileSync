@@ -39,11 +39,11 @@ struct ParsingError
     size_t row = 0; //starting with 0
     size_t col = 0; //
 };
-TransHeader parseHeader(const std::string& fileStream); //throw ParsingError
-void parseLng(const std::string& fileStream, TransHeader& header, TranslationMap& out, TranslationPluralMap& pluralOut); //throw ParsingError
+TransHeader parseHeader(const std::string& byteStream); //throw ParsingError
+void parseLng(const std::string& byteStream, TransHeader& header, TranslationMap& out, TranslationPluralMap& pluralOut); //throw ParsingError
 
 class TranslationUnorderedList; //unordered list of unique translation items
-std::string generateLng(const TranslationUnorderedList& in, const TransHeader& header);
+std::string generateLng(const TranslationUnorderedList& in, const TransHeader& header, bool untranslatedToTop);
 
 
 
@@ -147,23 +147,8 @@ private:
 
 enum class TokenType
 {
-    //header information
     headerBegin,
     headerEnd,
-    langNameBegin,
-    langNameEnd,
-    transNameBegin,
-    transNameEnd,
-    localeBegin,
-    localeEnd,
-    flagFileBegin,
-    flagFileEnd,
-    pluralCountBegin,
-    pluralCountEnd,
-    pluralDefBegin,
-    pluralDefEnd,
-
-    //item level
     srcBegin,
     srcEnd,
     trgBegin,
@@ -204,23 +189,8 @@ public:
 private:
     const TokenMap tokens_ =
     {
-        //header details
-        {TokenType::headerBegin,      "<header>"},
-        {TokenType::headerEnd,        "</header>"},
-        {TokenType::langNameBegin,    "<language>"},
-        {TokenType::langNameEnd,      "</language>"},
-        {TokenType::transNameBegin,   "<translator>"},
-        {TokenType::transNameEnd,     "</translator>"},
-        {TokenType::localeBegin,      "<locale>"},
-        {TokenType::localeEnd,        "</locale>"},
-        {TokenType::flagFileBegin,    "<image>"},
-        {TokenType::flagFileEnd,      "</image>"},
-        {TokenType::pluralCountBegin, "<plural_count>"},
-        {TokenType::pluralCountEnd,   "</plural_count>"},
-        {TokenType::pluralDefBegin,   "<plural_definition>"},
-        {TokenType::pluralDefEnd,     "</plural_definition>"},
-
-        //item level
+        {TokenType::headerBegin, "<header>"},
+        {TokenType::headerEnd,   "</header>"},
         {TokenType::srcBegin,    "<source>"},
         {TokenType::srcEnd,      "</source>"},
         {TokenType::trgBegin,    "<target>"},
@@ -234,7 +204,7 @@ private:
 class Scanner
 {
 public:
-    Scanner(const std::string& byteStream) : stream_(byteStream), pos_(stream_.begin())
+    explicit Scanner(const std::string& byteStream) : stream_(byteStream), pos_(stream_.begin())
     {
         if (zen::startsWith(stream_, zen::BYTE_ORDER_MARK_UTF8))
             pos_ += zen::strLength(zen::BYTE_ORDER_MARK_UTF8);
@@ -327,11 +297,11 @@ private:
 class LngParser
 {
 public:
-    explicit LngParser(const std::string& fileStream) : scn_(fileStream), tk_(scn_.getNextToken()) {}
+    explicit LngParser(const std::string& byteStream) : scn_(byteStream), tk_(scn_.getNextToken()) {}
 
-    void parse(TranslationMap& out, TranslationPluralMap& pluralOut, TransHeader& header)
+    void parse(TranslationMap& out, TranslationPluralMap& pluralOut, TransHeader& header) //throw ParsingError
     {
-        parseHeader(header);
+        parseHeader(header); //throw ParsingError
 
         try
         {
@@ -339,7 +309,7 @@ public:
 
             //items
             while (token().type != TokenType::end)
-                parseRegular(out, pluralOut, pi);
+                parseRegular(out, pluralOut, pi); //throw ParsingError
         }
         catch (const plural::InvalidPluralForm&)
         {
@@ -347,50 +317,50 @@ public:
         }
     }
 
-    void parseHeader(TransHeader& header)
+    void parseHeader(TransHeader& header) //throw ParsingError
     {
+        using namespace zen;
+
         consumeToken(TokenType::headerBegin); //throw ParsingError
 
-        consumeToken(TokenType::langNameBegin); //throw ParsingError
-        header.languageName = token().text;
-        consumeToken(TokenType::text);        //throw ParsingError
-        consumeToken(TokenType::langNameEnd); //
+        const std::string headerRaw = token().text;
+        consumeToken(TokenType::text); //throw ParsingError
 
-        consumeToken(TokenType::transNameBegin); //throw ParsingError
-        header.translatorName = token().text;
-        consumeToken(TokenType::text);         //throw ParsingError
-        consumeToken(TokenType::transNameEnd); //
+        std::unordered_map<std::string_view, std::string_view> items;
 
-        consumeToken(TokenType::localeBegin); //throw ParsingError
-        header.locale = token().text;
-        consumeToken(TokenType::text);      //throw ParsingError
-        consumeToken(TokenType::localeEnd); //
+        split2(headerRaw, [](const char c) { return isLineBreak(c); },
+        [&items](const std::string_view block)
+        {
+            const std::string_view name = trimCpy(beforeFirst(block, ':', IfNotFoundReturn::none));
+            if (!name.empty())
+                items.emplace(name, trimCpy(afterFirst(block, ':', IfNotFoundReturn::none)));
+        });
 
-        consumeToken(TokenType::flagFileBegin); //throw ParsingError
-        header.flagFile = token().text;
-        consumeToken(TokenType::text);        //throw ParsingError
-        consumeToken(TokenType::flagFileEnd); //
+        auto getValue = [&](const std::string_view name)
+        {
+            auto it = items.find(name);
+            if (it == items.end())
+                throw ParsingError({replaceCpy<std::wstring>(L"Cannot find header item \"%x:\"", L"%x", utfTo<std::wstring>(name)), scn_.posRow(), scn_.posCol()});
+            return it->second;
+        };
 
-        consumeToken(TokenType::pluralCountBegin); //throw ParsingError
-        header.pluralCount = zen::stringTo<int>(token().text);
-        consumeToken(TokenType::text);           //throw ParsingError
-        consumeToken(TokenType::pluralCountEnd); //
-
-        consumeToken(TokenType::pluralDefBegin); //throw ParsingError
-        header.pluralDefinition = token().text;
-        consumeToken(TokenType::text);         //throw ParsingError
-        consumeToken(TokenType::pluralDefEnd); //
+        header.languageName     = getValue("language"); //throw ParsingError
+        header.locale           = getValue("locale"); //throw ParsingError
+        header.flagFile         = getValue("image"); //throw ParsingError
+        header.pluralCount      = stringTo<int>(getValue("plural_count")); //throw ParsingError
+        header.pluralDefinition = getValue("plural_definition"); //throw ParsingError
+        header.translatorName   = getValue("translator"); //throw ParsingError
 
         consumeToken(TokenType::headerEnd); //throw ParsingError
     }
 
 private:
-    void parseRegular(TranslationMap& out, TranslationPluralMap& pluralOut, const plural::PluralFormInfo& pluralInfo)
+    void parseRegular(TranslationMap& out, TranslationPluralMap& pluralOut, const plural::PluralFormInfo& pluralInfo) //throw ParsingError
     {
         consumeToken(TokenType::srcBegin); //throw ParsingError
 
         if (token().type == TokenType::pluralBegin)
-            return parsePlural(pluralOut, pluralInfo);
+            return parsePlural(pluralOut, pluralInfo); //throw ParsingError
 
         std::string original = token().text;
         consumeToken(TokenType::text);   //throw ParsingError
@@ -409,7 +379,7 @@ private:
         out.emplace(original, std::move(translation));
     }
 
-    void parsePlural(TranslationPluralMap& pluralOut, const plural::PluralFormInfo& pluralInfo)
+    void parsePlural(TranslationPluralMap& pluralOut, const plural::PluralFormInfo& pluralInfo) //throw ParsingError
     {
         //TokenType::srcBegin already consumed
 
@@ -576,7 +546,7 @@ private:
                     contains(original.second, placeholder))
                     for (const std::string& str : allTexts)
                         if (!contains(str, placeholder))
-                            throw ParsingError({zen::replaceCpy<std::wstring>(L"Placeholder %x missing in text", L"%x", zen::utfTo<std::wstring>(placeholder)), scn_.posRow(), scn_.posCol()});
+                            throw ParsingError({replaceCpy<std::wstring>(L"Placeholder %x missing in text", L"%x", utfTo<std::wstring>(placeholder)), scn_.posRow(), scn_.posCol()});
             };
             checkSecondaryPlaceholder("%y");
             checkSecondaryPlaceholder("%z");
@@ -667,8 +637,8 @@ private:
                 endsWith(s, "\xe3\x80\x82")) //chinese period
                &&
                (!endsWith(s, "..")                      &&
-                !endsWith(s, "\xe0\xa5\xa4\xe0\xa5\xa4") && //hindi period
-                !endsWith(s, "\xe3\x80\x82\xe3\x80\x82")); //chinese period
+                !endsWith(s, "\xe0\xa5\xa4" "\xe0\xa5\xa4") && //hindi period
+                !endsWith(s, "\xe3\x80\x82" "\xe3\x80\x82")); //chinese period
     }
 
 
@@ -694,20 +664,20 @@ private:
 
 
 inline
-void parseLng(const std::string& fileStream, TransHeader& header, TranslationMap& out, TranslationPluralMap& pluralOut) //throw ParsingError
+void parseLng(const std::string& byteStream, TransHeader& header, TranslationMap& out, TranslationPluralMap& pluralOut) //throw ParsingError
 {
     out.clear();
     pluralOut.clear();
 
-    LngParser(fileStream).parse(out, pluralOut, header);
+    LngParser(byteStream).parse(out, pluralOut, header); //throw ParsingError
 }
 
 
 inline
-TransHeader parseHeader(const std::string& fileStream) //throw ParsingError
+TransHeader parseHeader(const std::string& byteStream) //throw ParsingError
 {
     TransHeader header;
-    LngParser(fileStream).parseHeader(header);
+    LngParser(byteStream).parseHeader(header); //throw ParsingError
     return header;
 }
 
@@ -730,17 +700,19 @@ void formatMultiLineText(std::string& text)
 inline
 std::string generateLng(const TranslationUnorderedList& in, const TransHeader& header, bool untranslatedToTop)
 {
+    using namespace zen;
+
     const KnownTokens tokens; //no need for static non-POD!
 
     std::string headerLines;
     headerLines += tokens.text(TokenType::headerBegin) + '\n';
 
-    headerLines += '\t' + tokens.text(TokenType::langNameBegin)  + header.languageName      + tokens.text(TokenType::langNameEnd)  + '\n';
-    headerLines += '\t' + tokens.text(TokenType::transNameBegin) + header.translatorName    + tokens.text(TokenType::transNameEnd) + '\n';
-    headerLines += '\t' + tokens.text(TokenType::localeBegin)    + header.locale            + tokens.text(TokenType::localeEnd)    + '\n';
-    headerLines += '\t' + tokens.text(TokenType::flagFileBegin)  + header.flagFile          + tokens.text(TokenType::flagFileEnd)  + '\n';
-    headerLines += '\t' + tokens.text(TokenType::pluralCountBegin) + zen::numberTo<std::string>(header.pluralCount) + tokens.text(TokenType::pluralCountEnd) + '\n';
-    headerLines += '\t' + tokens.text(TokenType::pluralDefBegin) + header.pluralDefinition + tokens.text(TokenType::pluralDefEnd) + '\n';
+    headerLines += "\t" "language: " + header.languageName + '\n';
+    headerLines += "\t" "locale: "   + header.locale + '\n';
+    headerLines += "\t" "image: "    + header.flagFile + '\n';
+    headerLines += "\t" "plural_count: "      + numberTo<std::string>(header.pluralCount) + '\n';
+    headerLines += "\t" "plural_definition: " + header.pluralDefinition + '\n';
+    headerLines += "\t" "translator: " + header.translatorName + '\n';
 
     headerLines += tokens.text(TokenType::headerEnd) + "\n\n";
 
@@ -789,8 +761,8 @@ std::string generateLng(const TranslationUnorderedList& in, const TransHeader& h
     });
 
     std::string output = headerLines + topLines + mainLines;
-    assert(!zen::contains(output, "\r\n") && !zen::contains(output, "\r"));
-    return zen::replaceCpy(output, '\n', "\r\n"); //back to Windows line endings
+    assert(!contains(output, "\r\n") && !contains(output, "\r"));
+    return replaceCpy(output, '\n', "\r\n"); //back to Windows line endings
 }
 }
 

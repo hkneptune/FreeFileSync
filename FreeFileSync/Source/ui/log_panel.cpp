@@ -53,7 +53,7 @@ enum class ColumnTypeLog
 class fff::MessageView
 {
 public:
-    MessageView(const SharedRef<const ErrorLog>& log) : log_(log) {}
+    explicit MessageView(const SharedRef<const ErrorLog>& log) : log_(log) {}
 
     size_t rowsOnView() const { return viewRef_.size(); }
 
@@ -114,7 +114,7 @@ private:
         auto it1 = message.begin();
         for (;;)
         {
-            auto it2 = std::find_if(it1, message.end(), [](char c) { return c == '\n'; });
+            auto it2 = std::find_if(it1, message.end(), [](const char c) { return c == '\n'; });
             if (textRow == 0)
                 return makeStringView(it1, it2 - it1);
 

@@ -55,8 +55,8 @@ OsVersionDetail zen::getOsVersionDetail() //throw SysError
                 osVersion = utfTo<std::wstring>(afterFirst(line, '=', IfNotFoundReturn::none));
             //PRETTY_NAME? too wordy! e.g. "Fedora 17 (Beefy Miracle)"
         });
-        trim(osName,    TrimSide::both, [](char c) { return c == L'"' || c == L'\''; });
-        trim(osVersion, TrimSide::both, [](char c) { return c == L'"' || c == L'\''; });
+        trim(osName,    TrimSide::both, [](const char c) { return c == L'"' || c == L'\''; });
+        trim(osVersion, TrimSide::both, [](const char c) { return c == L'"' || c == L'\''; });
     }
 
     if (osName.empty())

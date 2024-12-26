@@ -50,7 +50,7 @@ std::optional<PathComponents> zen::parsePathComponents(const Zstring& itemPath)
     {
         Zstring tmp(itemPath.begin() + strLength("/run/user/"), itemPath.end());
         tmp = beforeFirst(tmp, "/gvfs/", IfNotFoundReturn::none);
-        if (!tmp.empty() && std::all_of(tmp.begin(), tmp.end(), [](char c) { return isDigit(c); }))
+        if (!tmp.empty() && std::all_of(tmp.begin(), tmp.end(), [](const char c) { return isDigit(c); }))
         /**/pc = doParse(6 /*sepCountVolumeRoot*/, false /*rootWithSep*/);
     }
 

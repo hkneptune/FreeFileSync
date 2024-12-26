@@ -18,14 +18,15 @@ namespace fff
 {
 struct LastRunStats
 {
-    AbstractPath logFilePath = getNullPath(); //optional
-    time_t startTime = 0;
+    time_t startTime = 0; //may be updated separately from log file, e.g. "nothing to sync" after comparison
+    //----------------------------------------------
+    AbstractPath logFilePath = getNullPath(); //optional: available <=> sync took place
     TaskResult syncResult = TaskResult::cancelled;
-    int     itemsProcessed = 0;
-    int64_t bytesProcessed = 0;
+    int     itemsProcessed = -1;
+    int64_t bytesProcessed = -1;
     std::chrono::milliseconds totalTime{};
-    int errors   = 0;
-    int warnings = 0;
+    int errors   = -1;
+    int warnings = -1;
 };
 
 struct ConfigFileItem

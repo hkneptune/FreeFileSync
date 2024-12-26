@@ -379,6 +379,9 @@ struct OutputStreamNative : public AFS::OutputStreamImpl
         result.filePrint = getNativeFileInfo(fileOut_).filePrint; //throw FileError
 
         fileOut_.close(); //throw FileError
+        //output finalized => no more exceptions from here on!
+        //--------------------------------------------------------------------
+
         /* is setting modtime after closing the file handle a pessimization?
            no, needed for functional correctness, see file_access.cpp::copyNewFile() for macOS/Linux
            even required on Windows: https://freefilesync.org/forum/viewtopic.php?t=10781 */

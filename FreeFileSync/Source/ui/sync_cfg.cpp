@@ -34,7 +34,7 @@ using namespace fff;
 
 namespace
 {
-const int CFG_DESCRIPTION_WIDTH_DIP = 230;
+const int CFG_DESCRIPTION_WIDTH_DIP = 250;
 const wchar_t arrowRight[] = L"\u2192"; //"RIGHTWARDS ARROW"
 
 
@@ -566,8 +566,6 @@ globalLogFolderPhrase_(globalLogFolderPhrase)
     setDefaultWidth(*m_spinCtrlMinSize);
     setDefaultWidth(*m_spinCtrlMaxSize);
     setDefaultWidth(*m_spinCtrlTimespan);
-
-    m_staticTextFilterDescr->Wrap(dipToWxsize(450));
 
     setImage(*m_bpButtonDefaultContext, mirrorIfRtl(loadImage("button_arrow_right")));
 

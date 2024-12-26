@@ -1,3 +1,13 @@
+FreeFileSync 13.9 [2024-12-07]
+------------------------------
+Fixed CURLE_SEND_ERROR: OpenSSL SSL_write: SSL_ERROR_SYSCALL, errno 0
+Added comparison and sync context menu options for multiple folder pairs
+Show file include/exclude filter directly in tooltip
+Fixed file not found error when cancelling file up-/download
+Fixed showing cancelled config log status after nothing to sync
+Updated translation files
+
+
 FreeFileSync 13.8 [2024-11-04]
 ------------------------------
 Support raw IPv6 server address for (S)FTP

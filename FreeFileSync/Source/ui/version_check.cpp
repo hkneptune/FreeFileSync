@@ -148,7 +148,7 @@ void showUpdateAvailableDialog(wxWindow* parent, const std::string& onlineVersio
 
     switch (showConfirmationDialog(parent, DialogInfoType::info, PopupDialogCfg().
                                    setIcon(loadImage("FreeFileSync", dipToScreen(48))).
-                                   setTitle(_("Check for Program Updates")).
+                                   setTitle(_("Check for Software Updates")).
                                    setMainInstructions(replaceCpy(_("FreeFileSync %x is available!"), L"%x", utfTo<std::wstring>(onlineVersion)) + L"\n\n" + _("Download now?")).
                                    setDetailInstructions(updateDetailsMsg), _("&Download")))
     {
@@ -167,7 +167,7 @@ std::string getOnlineVersion(const std::vector<std::pair<std::string, std::strin
                                               ffsUpdateCheckUserAgent, Zstring() /*caCertFilePath*/).readAll(nullptr /*notifyUnbufferedIO*/); //throw SysError
 
     if (response.empty() ||
-    !std::all_of(response.begin(), response.end(), [](char c) { return isDigit(c) || c == FFS_VERSION_SEPARATOR; }) ||
+    !std::all_of(response.begin(), response.end(), [](const char c) { return isDigit(c) || c == FFS_VERSION_SEPARATOR; }) ||
     startsWith(response, FFS_VERSION_SEPARATOR) ||
     endsWith(response, FFS_VERSION_SEPARATOR) ||
     contains(response, std::string() + FFS_VERSION_SEPARATOR + FFS_VERSION_SEPARATOR))
@@ -180,7 +180,7 @@ std::string getOnlineVersion(const std::vector<std::pair<std::string, std::strin
 
 std::string getUnknownVersionTag()
 {
-    return '<' + utfTo<std::string>(_("version unknown")) + '>';
+    return '<' + utfTo<std::string>(_("unknown version")) + '>';
 }
 }
 
@@ -217,7 +217,7 @@ void fff::checkForUpdateNow(wxWindow& parent, std::string& lastOnlineVersion)
         else
             showNotificationDialog(&parent, DialogInfoType::info, PopupDialogCfg().
                                    setIcon(loadImage("update_check")).
-                                   setTitle(_("Check for Program Updates")).
+                                   setTitle(_("Check for Software Updates")).
                                    setMainInstructions(_("FreeFileSync is up-to-date.")));
     }
     catch (const SysError& e)
@@ -227,7 +227,7 @@ void fff::checkForUpdateNow(wxWindow& parent, std::string& lastOnlineVersion)
             lastOnlineVersion = getUnknownVersionTag();
 
             switch (showConfirmationDialog(&parent, DialogInfoType::error, PopupDialogCfg().
-                                           setTitle(_("Check for Program Updates")).
+                                           setTitle(_("Check for Software Updates")).
                                            setMainInstructions(_("Cannot find current FreeFileSync version number online. A newer version is likely available. Check manually now?")).
                                            setDetailInstructions(e.toString()), _("&Check"), _("&Retry")))
             {
@@ -243,7 +243,7 @@ void fff::checkForUpdateNow(wxWindow& parent, std::string& lastOnlineVersion)
         }
         else
             switch (showConfirmationDialog(&parent, DialogInfoType::error, PopupDialogCfg().
-                                           setTitle(_("Check for Program Updates")).
+                                           setTitle(_("Check for Software Updates")).
                                            setMainInstructions(replaceCpy(_("Unable to connect to %x."), L"%x", L"freefilesync.org")).
                                            setDetailInstructions(e.toString()), _("&Retry")))
             {
@@ -327,7 +327,7 @@ void fff::automaticUpdateCheckEval(wxWindow& parent, time_t& lastUpdateCheck, st
         {
             if (lastOnlineVersion != getUnknownVersionTag())
                 switch (showConfirmationDialog(&parent, DialogInfoType::error, PopupDialogCfg().
-                                               setTitle(_("Check for Program Updates")).
+                                               setTitle(_("Check for Software Updates")).
                                                setMainInstructions(_("Cannot find current FreeFileSync version number online. A newer version is likely available. Check manually now?")).
                                                setDetailInstructions(result.error->toString()),
                                                _("&Check"), _("&Retry")))

@@ -1357,7 +1357,7 @@ private:
         {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnDirectoryLockFailed; },
          [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnDirectoryLockFailed = show; }, _("Cannot set directory locks for the following folders:")},
         {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnVersioningFolderPartOfSync; },
-         [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnVersioningFolderPartOfSync = show; }, _("The versioning folder is part of the synchronization.") + L' ' +  _("The folder should be excluded via filter.")},
+         [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnVersioningFolderPartOfSync = show; }, _("The versioning folder must not be part of the synchronization.") + L' ' +  _("The folder should be excluded via filter.")},
         //*INDENT-ON*
     };
 

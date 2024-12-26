@@ -4431,10 +4431,10 @@ void MainDialog::onGlobalFilterContext(wxEvent& event)
     };
 
     ContextMenu menu;
-    menu.addItem( _("Cu&t"), cutFilter, loadImage("item_cut_sicon"), !isNullFilter(currentCfg_.mainCfg.globalFilter));
-    menu.addSeparator();
     menu.addItem( _("&Copy"), copyFilter, loadImage("item_copy_sicon"), !isNullFilter(currentCfg_.mainCfg.globalFilter));
     menu.addItem( _("&Paste"), pasteFilter, loadImage("item_paste_sicon"), filterCfgOnClipboard.has_value());
+    menu.addSeparator();
+    menu.addItem( _("Cu&t"), cutFilter, loadImage("item_cut_sicon"), !isNullFilter(currentCfg_.mainCfg.globalFilter));
 
     menu.popup(*m_bpButtonFilterContext, {m_bpButtonFilterContext->GetSize().x, 0});
 }
@@ -4550,8 +4550,7 @@ void MainDialog::updateGlobalFilterButton()
     //global filter: test for Null-filter
     setImage(*m_bpButtonFilter, greyScaleIfDisabled(loadImage("options_filter"), !isNullFilter(currentCfg_.mainCfg.globalFilter)));
 
-    const std::wstring status = !isNullFilter(currentCfg_.mainCfg.globalFilter) ? _("Active") : _("None");
-    m_bpButtonFilter->SetToolTip(_("Filter") + L" (F7) (" + status + L')');
+    m_bpButtonFilter->SetToolTip(_("Filter") + L" (F7)" + getFilterSummaryForTooltip(currentCfg_.mainCfg.globalFilter));
     //m_bpButtonFilterContext->SetToolTip(m_bpButtonFilter->GetToolTipText());
 }
 
@@ -5029,8 +5028,8 @@ void MainDialog::onStartSync(wxCommandEvent& event)
 
     cfggrid::getDataView(*m_gridCfgHistory).setLastRunStats(activeConfigFiles_,
     {
-        logFilePath,
         std::chrono::system_clock::to_time_t(fullSummary.startTime),
+        logFilePath,
         fullSummary.result,
         fullSummary.statsProcessed.items,
         fullSummary.statsProcessed.bytes,
@@ -6366,7 +6365,7 @@ void MainDialog::onStartupUpdateCheck(wxIdleEvent& event)
 
     if (automaticUpdateCheckDue(globalCfg_.lastUpdateCheck))
     {
-        flashStatusInfo(_("Searching for program updates..."));
+        flashStatusInfo(_("Searching for software updates..."));
 
         guiQueue_.processAsync([resultPrep = automaticUpdateCheckPrepare(*this) /*prepare on main thread*/]
         { return automaticUpdateCheckRunAsync(resultPrep.ref()); }, //run on worker thread: (long-running part of the check)
@@ -6379,7 +6378,7 @@ void MainDialog::onStartupUpdateCheck(wxIdleEvent& event)
             showNewVersionReminder();
 
             if (globalCfg_.lastUpdateCheck == lastUpdateCheckOld)
-                flashStatusInfo(_("Update check failed!"));
+                flashStatusInfo(_("Software update check failed!"));
         });
     }
     else

@@ -293,7 +293,7 @@ bool NameFilter::passDirFilter(const Zstring& relDirPath, bool* childItemMightMa
 
 bool NameFilter::isNull(const Zstring& includePhrase, const Zstring& excludePhrase)
 {
-    return trimCpy(includePhrase) == Zstr("*") &&
+    return trimCpy(includePhrase) == Zstr("*") && //harmonize with ui/folder_pair.cpp tooltip
            trimCpy(excludePhrase).empty();
     //return NameFilter(includePhrase, excludePhrase).isNull(); -> very expensive for huge lists
 }

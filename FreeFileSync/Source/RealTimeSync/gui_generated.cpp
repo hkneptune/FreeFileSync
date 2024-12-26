@@ -164,6 +164,36 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
     m_staticline212 = new wxStaticLine( m_panelMain, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
     bSizer1->Add( m_staticline212, 0, wxEXPAND, 5 );
 
+    wxBoxSizer* bSizer131;
+    bSizer131 = new wxBoxSizer( wxVERTICAL );
+
+    wxBoxSizer* bSizer14;
+    bSizer14 = new wxBoxSizer( wxHORIZONTAL );
+
+    m_staticText8 = new wxStaticText( m_panelMain, wxID_ANY, _("Idle time (in seconds):"), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticText8->Wrap( -1 );
+    bSizer14->Add( m_staticText8, 0, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxLEFT, 5 );
+
+    m_spinCtrlDelay = new wxSpinCtrl( m_panelMain, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 2000000000, 0 );
+    m_spinCtrlDelay->SetToolTip( _("Idle time between last detected change and execution of command") );
+
+    bSizer14->Add( m_spinCtrlDelay, 0, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL|wxALL, 5 );
+
+
+    bSizer131->Add( bSizer14, 0, 0, 5 );
+
+    m_staticText71 = new wxStaticText( m_panelMain, wxID_ANY, _("Ensures folders are not in heavy use when running the command."), wxDefaultPosition, wxDefaultSize, 0 );
+    m_staticText71->Wrap( -1 );
+    m_staticText71->SetForegroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_GRAYTEXT ) );
+
+    bSizer131->Add( m_staticText71, 0, wxBOTTOM|wxRIGHT|wxLEFT, 5 );
+
+
+    bSizer1->Add( bSizer131, 0, wxALL, 10 );
+
+    m_staticline211 = new wxStaticLine( m_panelMain, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
+    bSizer1->Add( m_staticline211, 0, wxEXPAND, 5 );
+
     wxBoxSizer* bSizer141;
     bSizer141 = new wxBoxSizer( wxVERTICAL );
 
@@ -187,24 +217,6 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
 
 
     bSizer1->Add( bSizer141, 0, wxALL|wxEXPAND, 10 );
-
-    m_staticline211 = new wxStaticLine( m_panelMain, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
-    bSizer1->Add( m_staticline211, 0, wxEXPAND, 5 );
-
-    wxBoxSizer* bSizer14;
-    bSizer14 = new wxBoxSizer( wxHORIZONTAL );
-
-    m_staticText8 = new wxStaticText( m_panelMain, wxID_ANY, _("Minimum idle time (in seconds) before running command:"), wxDefaultPosition, wxDefaultSize, 0 );
-    m_staticText8->Wrap( -1 );
-    bSizer14->Add( m_staticText8, 0, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxLEFT, 5 );
-
-    m_spinCtrlDelay = new wxSpinCtrl( m_panelMain, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 2000000000, 0 );
-    m_spinCtrlDelay->SetToolTip( _("Idle time between last detected change and execution of command") );
-
-    bSizer14->Add( m_spinCtrlDelay, 0, wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL|wxALL, 5 );
-
-
-    bSizer1->Add( bSizer14, 0, wxALL|wxEXPAND, 10 );
 
 
     m_panelMain->SetSizer( bSizer1 );

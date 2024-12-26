@@ -170,18 +170,18 @@ struct AbstractFileSystem //THREAD-SAFETY: "const" member functions must model t
         virtual FinalizeResult finalize(const zen::IoCallback& notifyUnbufferedIO /*throw X*/) = 0; //throw FileError, X
     };
 
-    struct OutputStream //call finalize when done!
+    struct OutputStream
     {
         OutputStream(std::unique_ptr<OutputStreamImpl>&& outStream, const AbstractPath& filePath, std::optional<uint64_t> streamSize);
         ~OutputStream();
         size_t getBlockSize() { return outStream_->getBlockSize(); } //throw FileError
         size_t tryWrite(const void* buffer, size_t bytesToWrite, const zen::IoCallback& notifyUnbufferedIO /*throw X*/); //throw FileError, X may return short!
         FinalizeResult finalize(const zen::IoCallback& notifyUnbufferedIO /*throw X*/); //throw FileError, X
+        //call finalize when done!() when done, or (incomplete) file will be automatically deleted
 
     private:
         std::unique_ptr<OutputStreamImpl> outStream_; //bound!
         const AbstractPath filePath_;
-        bool finalizeSucceeded_ = false;
         const std::optional<uint64_t> bytesExpected_;
         uint64_t bytesWrittenTotal_ = 0;
     };
@@ -479,17 +479,6 @@ AbstractFileSystem::OutputStream::OutputStream(std::unique_ptr<OutputStreamImpl>
 inline
 AbstractFileSystem::OutputStream::~OutputStream()
 {
-    //we delete the file on errors: => file should not have existed prior to creating OutputStream instance!!
-    outStream_.reset(); //close file handle *before* remove!
-
-    if (!finalizeSucceeded_) //transactional output stream! => clean up!
-        //- needed for Google Drive: e.g. user might cancel during OutputStreamImpl::finalize(), just after file was written transactionally
-        //- also for Native: setFileTime() may fail *after* FileOutput::finalize()
-        try { AbstractFileSystem::removeFilePlain(filePath_); /*throw FileError*/ }
-        catch (const zen::FileError& e) { zen::logExtraError(e.toString()); }
-
-    warn_static("we should not log if not existing anymore!?:       ERROR_FILE_NOT_FOUND: ddddddddddd [DeleteFile]")
-    //solution: integrate cleanup into ~OutputStreamImpl() including appropriate loggin!
 }
 
 
@@ -514,7 +503,6 @@ AbstractFileSystem::FinalizeResult AbstractFileSystem::OutputStream::finalize(co
                         _("Expected:") + L' ' + formatNumber(*bytesExpected_));
 
     const FinalizeResult result = outStream_->finalize(notifyUnbufferedIO); //throw FileError, X
-    finalizeSucceeded_ = true;
     return result;
 }
 

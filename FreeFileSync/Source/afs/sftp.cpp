@@ -381,7 +381,7 @@ public:
                                 return L"OpenSSH public key"; //OpenSSH SSH-2 public key
 
                             if (std::count(pkStream.begin(), pkStream.end(), ' ') == 2 &&
-                            /**/std::all_of(pkStream.begin(), pkStream.end(), [](char c) { return isDigit(c) || c == ' '; }))
+                            /**/std::all_of(pkStream.begin(), pkStream.end(), [](const char c) { return isDigit(c) || c == ' '; }))
                             return L"SSH-1 public key";
 
                             //"-----BEGIN PRIVATE KEY-----"                => OpenSSH SSH-2 private key (PKCS#8 PrivateKeyInfo)          => should work
@@ -1385,8 +1385,8 @@ struct OutputStreamSftp : public AFS::OutputStreamImpl
     OutputStreamSftp(const SftpLogin& login, //throw FileError
                      const AfsPath& filePath,
                      std::optional<time_t> modTime) :
+        login_(login),
         filePath_(filePath),
-        displayPath_(getSftpDisplayPath(login, filePath)),
         modTime_(modTime)
     {
         try
@@ -1404,7 +1404,7 @@ struct OutputStreamSftp : public AFS::OutputStreamImpl
                 return LIBSSH2_ERROR_NONE;
             });
         }
-        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(displayPath_)), e.toString()); }
+        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getSftpDisplayPath(login_, filePath_))), e.toString()); }
 
         //NOTE: fileHandle_ still unowned until end of constructor!!!
 
@@ -1413,12 +1413,24 @@ struct OutputStreamSftp : public AFS::OutputStreamImpl
 
     ~OutputStreamSftp()
     {
-        if (fileHandle_)
-            try
+        if (fileHandle_) //=> cleanup non-finalized output file
+        {
+            if (!closeFailed_) //otherwise there's no much point in calling libssh2_sftp_close() a second time => let it leak!?
+                try { close(); /*throw FileError*/ }
+                catch (const FileError& e) { logExtraError(e.toString()); }
+
+            session_.reset(); //reset before file deletion to potentially get new session if !SshSession::isHealthy()
+
+            try //see removeFilePlain()
             {
-                close(); //throw FileError
+                runSftpCommand(login_, "libssh2_sftp_unlink", //throw SysError, SysErrorSftpProtocol
+                [&](const SshSession::Details& sd) { return ::libssh2_sftp_unlink(sd.sftpChannel, getLibssh2Path(filePath_)); }); //noexcept!
             }
-            catch (const FileError& e) { logExtraError(e.toString()); }
+            catch (const SysError& e)
+            {
+                logExtraError(replaceCpy(_("Cannot delete file %x."), L"%x", fmtPath(getSftpDisplayPath(login_, filePath_))) + L"\n\n" + e.toString());
+            }
+        }
     }
 
     size_t getBlockSize() override { return SFTP_OPTIMAL_BLOCK_SIZE_WRITE; } //throw (FileError)
@@ -1445,7 +1457,7 @@ struct OutputStreamSftp : public AFS::OutputStreamImpl
 
             ASSERT_SYSERROR(makeUnsigned(bytesWritten) <= bytesToWrite); //better safe than sorry
         }
-        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(displayPath_)), e.toString()); }
+        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getSftpDisplayPath(login_, filePath_))), e.toString()); }
 
         if (notifyUnbufferedIO) notifyUnbufferedIO(bytesWritten); //throw X!
 
@@ -1454,10 +1466,9 @@ struct OutputStreamSftp : public AFS::OutputStreamImpl
 
     AFS::FinalizeResult finalize(const IoCallback& notifyUnbufferedIO /*throw X*/) override //throw FileError, X
     {
-        //~OutputStreamSftp() would call this one, too, but we want to propagate errors if any:
         close(); //throw FileError
-
-        //it seems libssh2_sftp_fsetstat() triggers bugs on synology server => set mtime by path! https://freefilesync.org/forum/viewtopic.php?t=1281
+        //output finalized => no more exceptions from here on!
+        //--------------------------------------------------------------------
 
         AFS::FinalizeResult result;
         //result.filePrint = ... -> not supported by SFTP
@@ -1478,13 +1489,18 @@ private:
         if (!fileHandle_)
             throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
 
-        ZEN_ON_SCOPE_EXIT(fileHandle_ = nullptr); //reset on error, too! there's no point in, calling libssh2_sftp_close() a second time in ~OutputStreamSftp()
         try
         {
             session_->executeBlocking("libssh2_sftp_close", //throw SysError, SysErrorSftpProtocol
             [&](const SshSession::Details& sd) { return ::libssh2_sftp_close(fileHandle_); }); //noexcept!
+
+            fileHandle_ = nullptr;
         }
-        catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(displayPath_)), e.toString()); }
+        catch (const SysError& e)
+        {
+            closeFailed_ = true;
+            throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getSftpDisplayPath(login_, filePath_))), e.toString());
+        }
     }
 
     void setModTimeIfAvailable() const //throw FileError, follows symlinks
@@ -1497,19 +1513,21 @@ private:
             attribNew.mtime = static_cast<decltype(attribNew.mtime)>(*modTime_);        //32-bit target! loss of data!
             attribNew.atime = static_cast<decltype(attribNew.atime)>(::time(nullptr));  //
 
+            //it seems libssh2_sftp_fsetstat() triggers bugs on synology server => set mtime by path! https://freefilesync.org/forum/viewtopic.php?t=1281
             try
             {
                 session_->executeBlocking("libssh2_sftp_setstat", //throw SysError, SysErrorSftpProtocol
                 [&](const SshSession::Details& sd) { return ::libssh2_sftp_setstat(sd.sftpChannel, getLibssh2Path(filePath_), &attribNew); }); //noexcept!
             }
-            catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot write modification time of %x."), L"%x", fmtPath(displayPath_)), e.toString()); }
+            catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot write modification time of %x."), L"%x", fmtPath(getSftpDisplayPath(login_, filePath_))), e.toString()); }
         }
     }
 
+    const SftpLogin login_;
     const AfsPath filePath_;
-    const std::wstring displayPath_;
-    LIBSSH2_SFTP_HANDLE* fileHandle_ = nullptr;
     const std::optional<time_t> modTime_;
+    LIBSSH2_SFTP_HANDLE* fileHandle_ = nullptr;
+    bool closeFailed_ = false;
     std::shared_ptr<SftpSessionManager::SshSessionShared> session_;
 };
 

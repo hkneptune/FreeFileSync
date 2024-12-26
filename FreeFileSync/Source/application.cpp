@@ -524,7 +524,7 @@ void Application::runBatchMode(const Zstring& globalConfigFilePath, const XmlBat
 
     //all settings have been read successfully...
 
-    /* regular check for program updates -> disabled for batch
+    /* regular check for software updates -> disabled for batch
         if (batchCfg.showProgress && manualProgramUpdateRequired())
             checkForUpdatePeriodically(globalCfg.lastUpdateCheck);
         -> WinInet not working when FFS is running as a service!!! https://support.microsoft.com/en-us/help/238425/info-wininet-not-supported-for-use-in-services   */
@@ -694,13 +694,13 @@ void Application::runBatchMode(const Zstring& globalConfigFilePath, const XmlBat
     for (ConfigFileItem& cfi : globalCfg.mainDlg.config.fileHistory)
         if (equalNativePath(cfi.cfgFilePath, cfgFilePath))
         {
-            assert(!AFS::isNullPath(logFilePath));
             assert(r.summary.startTime == syncStartTime);
+            assert(!AFS::isNullPath(logFilePath));
 
             cfi.lastRunStats =
             {
-                logFilePath,
                 std::chrono::system_clock::to_time_t(r.summary.startTime),
+                logFilePath,
                 r.summary.result,
                 r.summary.statsProcessed.items,
                 r.summary.statsProcessed.bytes,

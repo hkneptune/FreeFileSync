@@ -110,7 +110,7 @@ std::string normalize(const std::string_view& str, Predicate pred) //pred: unary
 inline
 std::string normalizeName(const std::string& str)
 {
-    /*const*/ std::string nameFmt = normalize(str, [](char c) { return isWhiteSpace(c) || c == '=' || c == '/' || c == '\'' || c == '"'; });
+    /*const*/ std::string nameFmt = normalize(str, [](const char c) { return isWhiteSpace(c) || c == '=' || c == '/' || c == '\'' || c == '"'; });
     assert(!nameFmt.empty());
     return nameFmt;
 }
@@ -118,13 +118,13 @@ std::string normalizeName(const std::string& str)
 inline
 std::string normalizeElementValue(const std::string& str)
 {
-    return normalize(str, [](char c) { return static_cast<unsigned char>(c) < 32; });
+    return normalize(str, [](const char c) { return static_cast<unsigned char>(c) < 32; });
 }
 
 inline
 std::string normalizeAttribValue(const std::string& str)
 {
-    return normalize(str, [](char c) { return static_cast<unsigned char>(c) < 32 || c == '\'' || c == '"'; });
+    return normalize(str, [](const char c) { return static_cast<unsigned char>(c) < 32 || c == '\'' || c == '"'; });
 }
 
 
@@ -343,7 +343,7 @@ public:
                 return it->second;
             }
 
-        const auto itNameEnd = std::find_if(pos_, stream_.end(), [](char c)
+        const auto itNameEnd = std::find_if(pos_, stream_.end(), [](const char c)
         {
             return c == '<'  ||
                    c == '>'  ||
@@ -367,7 +367,7 @@ public:
 
     std::string extractElementValue()
     {
-        auto it = std::find_if(pos_, stream_.end(), [](char c)
+        auto it = std::find_if(pos_, stream_.end(), [](const char c)
         {
             return c == '<'  ||
                    c == '>';
@@ -379,7 +379,7 @@ public:
 
     std::string extractAttributeValue()
     {
-        auto it = std::find_if(pos_, stream_.end(), [](char c)
+        auto it = std::find_if(pos_, stream_.end(), [](const char c)
         {
             return c == '<'  ||
                    c == '>'  ||

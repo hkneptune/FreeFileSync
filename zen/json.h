@@ -140,11 +140,11 @@ namespace
         {
             UtfDecoder<impl::Char16> decoder(utf16Buf.c_str(), utf16Buf.size());
             while (std::optional<impl::CodePoint> cp = decoder.getNext())
-                codePointToUtf<char>(*cp, [&](char c) { output += c; });
+                codePointToUtf<char>(*cp, [&](const char c) { output += c; });
             utf16Buf.clear();
         }
     };
-    auto writeOut = [&](char c)
+    auto writeOut = [&](const char c)
     {
         flushUtf16();
         output += c;
@@ -419,8 +419,8 @@ private:
     Scanner           (const Scanner&) = delete;
     Scanner& operator=(const Scanner&) = delete;
 
-    static bool isJsonWhiteSpace(char c) { return c == ' ' || c == '\t' || c == '\r' || c == '\n'; }
-    static bool isJsonNumDigit  (char c) { return ('0' <= c && c <= '9') || c == '-' || c == '+' || c == '.' || c == 'e'|| c == 'E'; }
+    static bool isJsonWhiteSpace(const char c) { return c == ' ' || c == '\t' || c == '\r' || c == '\n'; }
+    static bool isJsonNumDigit  (const char c) { return ('0' <= c && c <= '9') || c == '-' || c == '+' || c == '.' || c == 'e'|| c == 'E'; }
 
     bool startsWith(const std::string& prefix) const
     {

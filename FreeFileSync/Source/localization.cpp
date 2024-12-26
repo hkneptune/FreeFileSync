@@ -11,7 +11,6 @@
 #include <wx/zipstrm.h>
 #include <wx/mstream.h>
 #include <wx/uilocale.h>
-#include "parse_plural.h"
 #include "parse_lng.h"
 
 using namespace zen;
@@ -91,36 +90,49 @@ FFSTranslation::FFSTranslation(const std::string& lngStream, bool haveRtlLayout)
 
 std::vector<TranslationInfo> loadTranslations(const Zstring& zipPath) //throw FileError
 {
-    std::vector<std::pair<Zstring /*file name*/, std::string /*byte stream*/>> streams;
-
-    try //to load from ZIP first:
+    std::vector<std::pair<Zstring /*file path*/, std::string /*byte stream*/>> streams;
+    [&]
     {
-        const std::string rawStream = getFileContent(zipPath, nullptr /*notifyUnbufferedIO*/); //throw FileError
-        wxMemoryInputStream memStream(rawStream.c_str(), rawStream.size()); //does not take ownership
-        wxZipInputStream zipStream(memStream, wxConvUTF8);
+        std::string rawStream;
+        try //to load from ZIP first:
+        {
+            rawStream = getFileContent(zipPath, nullptr /*notifyUnbufferedIO*/); //throw FileError
+        }
+        catch (FileError&) //fall back to folder: dev build (only!?)
+        {
+            const Zstring fallbackFolder = beforeLast(zipPath, Zstr(".zip"), IfNotFoundReturn::none);
+            if (!itemExists(fallbackFolder)) //throw FileError
+                throw;
+
+            traverseFolder(fallbackFolder, [&](const FileInfo& fi)
+            {
+                if (endsWith(fi.fullPath, Zstr(".lng")))
+                {
+                    std::string stream = getFileContent(fi.fullPath, nullptr /*notifyUnbufferedIO*/); //throw FileError
+                    streams.emplace_back(fi.fullPath, std::move(stream));
+                }
+            }, nullptr, nullptr); //throw FileError
+            return;
+        }
+        //-------------------------------------------------------------
+
+        wxMemoryInputStream byteStream(rawStream.c_str(), rawStream.size()); //does not take ownership
+        wxZipInputStream zipStream(byteStream, wxConvUTF8);
 
         while (const auto& entry = std::unique_ptr<wxZipEntry>(zipStream.GetNextEntry())) //take ownership!
+        {
+            if (entry->IsDir()) //e.g. translators accidentally ZIPing "Languages" directory
+                throw FileError(replaceCpy(replaceCpy<std::wstring>(L"ZIP file %x contains unexpected sub directory %y.",
+                                                      L"%x", fmtPath(zipPath)),
+                                           L"%y", fmtPath(utfTo<std::wstring>(entry->GetName()))));
+
             if (std::string stream(entry->GetSize(), '\0');
                 zipStream.ReadAll(stream.data(), stream.size()))
-                streams.emplace_back(utfTo<Zstring>(entry->GetName()), std::move(stream));
+                streams.emplace_back(zipPath + Zstr(':') + utfTo<Zstring>(entry->GetName()), std::move(stream));
             else
                 assert(false);
-    }
-    catch (FileError&) //fall back to folder: dev build (only!?)
-    {
-        const Zstring fallbackFolder = beforeLast(zipPath, Zstr(".zip"), IfNotFoundReturn::none);
-        if (!itemExists(fallbackFolder)) //throw FileError
-            throw;
-
-        traverseFolder(fallbackFolder, [&](const FileInfo& fi)
-        {
-            if (endsWith(fi.fullPath, Zstr(".lng")))
-            {
-                std::string stream = getFileContent(fi.fullPath, nullptr /*notifyUnbufferedIO*/); //throw FileError
-                streams.emplace_back(fi.itemName, std::move(stream));
-            }
-        }, nullptr, nullptr); //throw FileError
-    }
+        }
+    }();
     //--------------------------------------------------------------------
 
     std::vector<TranslationInfo> translations
@@ -137,7 +149,7 @@ std::vector<TranslationInfo> loadTranslations(const Zstring& zipPath) //throw Fi
         }
     };
 
-    for (/*const*/ auto& [fileName, stream] : streams)
+    for (/*const*/ auto& [filePath, stream] : streams)
         try
         {
             const lng::TransHeader lngHeader = lng::parseHeader(stream); //throw ParsingError
@@ -156,14 +168,14 @@ std::vector<TranslationInfo> loadTranslations(const Zstring& zipPath) //throw Fi
                 .languageName   = utfTo<std::wstring>(lngHeader.languageName),
                 .translatorName = utfTo<std::wstring>(lngHeader.translatorName),
                 .languageFlag   = lngHeader.flagFile,
-                .lngFileName    = fileName,
+                .lngFileName    = filePath,
                 .lngStream      = std::move(stream),
             });
         }
         catch (const lng::ParsingError& e)
         {
             throw FileError(replaceCpy(replaceCpy(replaceCpy(_("Error parsing file %x, row %y, column %z."),
-                                                             L"%x", fmtPath(fileName)),
+                                                             L"%x", fmtPath(filePath)),
                                                   L"%y", formatNumber(e.row + 1)),
                                        L"%z", formatNumber(e.col + 1))
                             + L"\n\n" + e.msg);

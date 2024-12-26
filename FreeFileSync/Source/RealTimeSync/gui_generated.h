@@ -69,12 +69,13 @@ protected:
     wxScrolledWindow* m_scrolledWinFolders;
     wxBoxSizer* bSizerFolders;
     wxStaticLine* m_staticline212;
+    wxStaticText* m_staticText8;
+    wxSpinCtrl* m_spinCtrlDelay;
+    wxStaticText* m_staticText71;
+    wxStaticLine* m_staticline211;
     wxStaticBitmap* m_bitmapConsole;
     wxStaticText* m_staticText6;
     wxTextCtrl* m_textCtrlCommand;
-    wxStaticLine* m_staticline211;
-    wxStaticText* m_staticText8;
-    wxSpinCtrl* m_spinCtrlDelay;
     wxStaticLine* m_staticline5;
     zen::BitmapTextButton* m_buttonStart;
 

@@ -118,7 +118,7 @@ std::set<Zstring, LessNativePath> waitForMissingDirs(const std::vector<Zstring>&
 DirWatcher::Change waitForChanges(const std::set<Zstring, LessNativePath>& folderPaths, //throw FileError
                                   const std::function<void(bool readyForSync)>& requestUiUpdate, std::chrono::milliseconds cbInterval)
 {
-    if (folderPaths.empty()) //pathological case, but we have to check else this function will wait endlessly
+    if (folderPaths.empty()) //pathological case, but we have to check or this function waits forever
         throw FileError(_("A folder input field is empty.")); //should have been checked by caller!
 
     std::vector<std::pair<Zstring, std::unique_ptr<DirWatcher>>> watches;

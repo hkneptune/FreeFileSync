@@ -87,17 +87,17 @@ void saveStreams(const DbStreams& streamList, const AbstractPath& dbPath, const 
     //------------------------------------------------------------------------------------------------------------------------
 
     //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
-    const std::unique_ptr<AFS::OutputStream> fileStreamOut = AFS::getOutputStream(dbPath,
+    const std::unique_ptr<AFS::OutputStream> byteStreamOut = AFS::getOutputStream(dbPath,
                                                                                   memStreamOut.ref().size(),
                                                                                   std::nullopt /*modTime*/); //throw FileError
 
     unbufferedSave(memStreamOut.ref(), [&](const void* buffer, size_t bytesToWrite)
     {
-        return fileStreamOut->tryWrite(buffer, bytesToWrite, notifyUnbufferedIO); //throw FileError, X
+        return byteStreamOut->tryWrite(buffer, bytesToWrite, notifyUnbufferedIO); //throw FileError, X
     },
-    fileStreamOut->getBlockSize()); //throw FileError, X
+    byteStreamOut->getBlockSize()); //throw FileError, X
 
-    fileStreamOut->finalize(notifyUnbufferedIO); //throw FileError, X
+    byteStreamOut->finalize(notifyUnbufferedIO); //throw FileError, X
 
 }
 

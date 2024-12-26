@@ -104,7 +104,7 @@ Zstring getUpperCaseNonAscii(const Zstring& str)
 
         UtfDecoder<char> decoder(strNorm.c_str(), strNorm.size());
         while (const std::optional<impl::CodePoint> cp = decoder.getNext())
-            codePointToUtf<char>(::g_unichar_toupper(*cp), [&](char c) { output += c; }); //don't use std::towupper: *incomplete* and locale-dependent!
+            codePointToUtf<char>(::g_unichar_toupper(*cp), [&](const char c) { output += c; }); //don't use std::towupper: *incomplete* and locale-dependent!
 
         static_assert(sizeof(impl::CodePoint) == sizeof(gunichar));
         return output;

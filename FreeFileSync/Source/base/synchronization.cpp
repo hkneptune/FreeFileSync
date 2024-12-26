@@ -2834,7 +2834,7 @@ break2:
                     }
         }
         if (!msg.empty())
-            callback.reportWarning(_("The versioning folder is part of the synchronization.") +
+            callback.reportWarning(_("The versioning folder must not be part of the synchronization.") +
                                    (shouldExclude ? L' ' + _("The folder should be excluded via filter.") : L"") +
                                    msg, warnings.warnVersioningFolderPartOfSync); //throw X
     }

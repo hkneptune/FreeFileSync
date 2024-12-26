@@ -431,7 +431,7 @@ template <class S, class Char, class Function> inline
 void split(const S& str, Char delimiter, Function onStringPart)
 {
     static_assert(std::is_same_v<GetCharTypeT<S>, Char>);
-    split2(str, [delimiter](Char c) { return c == delimiter; }, onStringPart);
+    split2(str, [delimiter](const Char c) { return c == delimiter; }, onStringPart);
 }
 
 
@@ -441,7 +441,7 @@ std::vector<S> splitCpy(const S& str, Char delimiter, SplitOnEmpty soe)
     static_assert(std::is_same_v<GetCharTypeT<S>, Char>);
     std::vector<S> output;
 
-    split2(str, [delimiter](Char c) { return c == delimiter; }, [&, soe](std::basic_string_view<Char> block)
+    split2(str, [delimiter](const Char c) { return c == delimiter; }, [&, soe](std::basic_string_view<Char> block)
     {
         if (!block.empty() || soe == SplitOnEmpty::allow)
             output.emplace_back(block.data(), block.size());
@@ -921,7 +921,7 @@ std::pair<char, char> hexify(unsigned char c, bool upperCase)
 inline //unhexify beats "::sscanf(&it[3], "%02X", &tmp)" by a factor of 3000 for ~250000 calls!!!
 char unhexify(char high, char low)
 {
-    auto unhexifyDigit = [](char hex) -> int //input 0-9, a-f, A-F; output range: [0, 15]
+    auto unhexifyDigit = [](const char hex) -> int //input 0-9, a-f, A-F; output range: [0, 15]
     {
         if ('0' <= hex && hex <= '9') //no signed/unsigned char problem here!
             return hex - '0';

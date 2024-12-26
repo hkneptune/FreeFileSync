@@ -2034,7 +2034,7 @@ public:
     {
         FileStateDelta() {}
     private:
-        FileStateDelta(const std::shared_ptr<const ItemIdDelta>& cids) : changedIds(cids) {}
+        explicit FileStateDelta(const std::shared_ptr<const ItemIdDelta>& cids) : changedIds(cids) {}
         friend class GdriveFileState;
         std::shared_ptr<const ItemIdDelta> changedIds; //lifetime is managed by caller; access *only* by GdriveFileState!
     };
@@ -3178,7 +3178,8 @@ struct OutputStreamGdrive : public AFS::OutputStreamImpl
     OutputStreamGdrive(const GdrivePath& gdrivePath,
                        std::optional<uint64_t> /*streamSize*/,
                        std::optional<time_t> modTime,
-                       std::unique_ptr<PathAccessLock>&& pal) //throw SysError
+                       std::unique_ptr<PathAccessLock>&& pal) : //throw SysError
+        gdrivePath_(gdrivePath)
     {
         std::promise<AFS::FingerPrint> promFilePrint;
         futFilePrint_ = promFilePrint.get_future();
@@ -3256,8 +3257,36 @@ struct OutputStreamGdrive : public AFS::OutputStreamImpl
 
     ~OutputStreamGdrive()
     {
-        if (asyncStreamOut_) //finalize() was not called (successfully)
+        if (asyncStreamOut_) //=> cleanup non-finalized output file
+        {
             asyncStreamOut_->setWriteError(std::make_exception_ptr(ThreadStopRequest()));
+            worker_.join();
+
+            try //see removeFilePlain()
+            {
+                std::optional<std::string> itemId;
+                const GdrivePersistentSessions::AsyncAccessInfo aai = accessGlobalFileState(gdrivePath_.gdriveLogin, [&](GdriveFileStateAtLocation& fileState) //throw SysError
+                {
+                    const GdriveFileState::PathStatus ps = fileState.getPathStatus(gdrivePath_.itemPath, false /*followLeafShortcut*/); //throw SysError
+                    if (ps.relPath.empty())
+                        itemId = ps.existingItemId;
+                });
+                if (itemId)
+                {
+                    gdriveDeleteItem(*itemId, aai.access); //throw SysError
+
+                    //buffer new file state ASAP (don't wait GDRIVE_SYNC_INTERVAL)
+                    accessGlobalFileState(gdrivePath_.gdriveLogin, [&](GdriveFileStateAtLocation& fileState) //throw SysError
+                    {
+                        fileState.all().notifyItemDeleted(aai.stateDelta, *itemId);
+                    });
+                }
+            }
+            catch (const SysError& e)
+            {
+                logExtraError(replaceCpy(_("Cannot delete file %x."), L"%x", fmtPath(getGdriveDisplayPath(gdrivePath_))) + L"\n\n" + e.toString());
+            }
+        }
     }
 
     size_t getBlockSize() override { return GDRIVE_BLOCK_SIZE_UPLOAD; } //throw (FileError)
@@ -3285,7 +3314,7 @@ struct OutputStreamGdrive : public AFS::OutputStreamImpl
         result.filePrint = futFilePrint_.get(); //throw FileError
 
         //asyncStreamOut_->checkReadErrors(); //throw FileError -> not needed after *successful* upload
-        asyncStreamOut_.reset(); //do NOT reset on error, so that ~OutputStreamGdrive() will request worker thread to stop
+        asyncStreamOut_.reset(); //output finalized => no more exceptions from here on!
         //--------------------------------------------------------------------
 
         //result.errorModTime -> already (successfully) set during file creation
@@ -3300,6 +3329,7 @@ private:
         if (notifyUnbufferedIO) notifyUnbufferedIO(bytesDelta); //throw X
     }
 
+    const GdrivePath gdrivePath_;
     int64_t totalBytesReported_ = 0;
     std::shared_ptr<AsyncStreamBuffer> asyncStreamOut_ = std::make_shared<AsyncStreamBuffer>(GDRIVE_STREAM_BUFFER_SIZE);
     InterruptibleThread worker_;

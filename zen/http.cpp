@@ -513,7 +513,7 @@ bool zen::isValidEmail(const std::string_view& email)
                         contains(local, '\\'); //e.g. "t\@st@email.com"
     if (!quoted)
         for (const std::string_view& comp : splitCpy(local, '.', SplitOnEmpty::allow))
-            if (comp.empty() || !std::all_of(comp.begin(), comp.end(), [](char c)
+            if (comp.empty() || !std::all_of(comp.begin(), comp.end(), [](const char c)
         {
             constexpr std::string_view printable("!#$%&'*+-/=?^_`{|}~");
                 return isAsciiAlpha(c) || isDigit(c) || !isAsciiChar(c) ||
@@ -531,7 +531,7 @@ bool zen::isValidEmail(const std::string_view& email)
 
         for (const std::string_view& comp : splitCpy(domain, '.', SplitOnEmpty::allow))
             if (comp.empty() || comp.size() > 63 ||
-            !std::all_of(comp.begin(), comp.end(), [](char c) { return isAsciiAlpha(c) ||isDigit(c) || !isAsciiChar(c) || c ==  '-'; }))
+            !std::all_of(comp.begin(), comp.end(), [](const char c) { return isAsciiAlpha(c) ||isDigit(c) || !isAsciiChar(c) || c ==  '-'; }))
         return false;
     }
 

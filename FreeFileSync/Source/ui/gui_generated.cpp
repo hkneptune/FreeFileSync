@@ -1633,7 +1633,7 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     m_panelCompSettingsTab->SetSizer( bSizer275 );
     m_panelCompSettingsTab->Layout();
     bSizer275->Fit( m_panelCompSettingsTab );
-    m_notebook->AddPage( m_panelCompSettingsTab, _("dummy"), true );
+    m_notebook->AddPage( m_panelCompSettingsTab, _("dummy"), false );
     m_panelFilterSettingsTab = new wxPanel( m_notebook, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
     m_panelFilterSettingsTab->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
 
@@ -1841,7 +1841,7 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     wxBoxSizer* bSizer302;
     bSizer302 = new wxBoxSizer( wxHORIZONTAL );
 
-    m_staticTextFilterDescr = new wxStaticText( m_panel571, wxID_ANY, _("Select filter rules to exclude certain files from synchronization. Enter file paths relative to their corresponding folder pair."), wxDefaultPosition, wxSize( -1, -1 ), 0 );
+    m_staticTextFilterDescr = new wxStaticText( m_panel571, wxID_ANY, _("Select filter rules to exclude certain files from synchronization.\nEnter file paths relative to their corresponding folder pair."), wxDefaultPosition, wxSize( -1, -1 ), 0 );
     m_staticTextFilterDescr->Wrap( -1 );
     m_staticTextFilterDescr->SetForegroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_GRAYTEXT ) );
 
@@ -1994,18 +1994,18 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     bSizer3121 = new wxBoxSizer( wxHORIZONTAL );
 
     m_bitmapMoveLeft = new wxStaticBitmap( m_panelSyncSettings, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), 0 );
-    m_bitmapMoveLeft->SetToolTip( _("- Not supported by all file systems\n- Requires and creates database files\n- Detection not available for first sync") );
+    m_bitmapMoveLeft->SetToolTip( _("- Available not before the *second* synchronization\n- Not supported by all file systems") );
 
     bSizer3121->Add( m_bitmapMoveLeft, 0, wxALIGN_CENTER_VERTICAL, 5 );
 
     m_bitmapMoveRight = new wxStaticBitmap( m_panelSyncSettings, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxSize( -1, -1 ), 0 );
-    m_bitmapMoveRight->SetToolTip( _("- Not supported by all file systems\n- Requires and creates database files\n- Detection not available for first sync") );
+    m_bitmapMoveRight->SetToolTip( _("- Available not before the *second* synchronization\n- Not supported by all file systems") );
 
     bSizer3121->Add( m_bitmapMoveRight, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
 
     m_staticTextDetectMove = new wxStaticText( m_panelSyncSettings, wxID_ANY, _("Detect moved files"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticTextDetectMove->Wrap( -1 );
-    m_staticTextDetectMove->SetToolTip( _("- Not supported by all file systems\n- Requires and creates database files\n- Detection not available for first sync") );
+    m_staticTextDetectMove->SetToolTip( _("- Available not before the *second* synchronization\n- Not supported by all file systems") );
 
     bSizer3121->Add( m_staticTextDetectMove, 0, wxALIGN_CENTER_VERTICAL, 5 );
 
@@ -2536,7 +2536,7 @@ ConfigDlgGenerated::ConfigDlgGenerated( wxWindow* parent, wxWindowID id, const w
     m_panelSyncSettingsTab->SetSizer( bSizer276 );
     m_panelSyncSettingsTab->Layout();
     bSizer276->Fit( m_panelSyncSettingsTab );
-    m_notebook->AddPage( m_panelSyncSettingsTab, _("dummy"), false );
+    m_notebook->AddPage( m_panelSyncSettingsTab, _("dummy"), true );
 
     bSizer190->Add( m_notebook, 1, wxEXPAND, 5 );
 

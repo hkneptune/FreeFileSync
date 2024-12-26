@@ -182,7 +182,7 @@ std::vector<std::string_view> splitFtpResponse(const std::string& buf)
 {
     std::vector<std::string_view> lines;
 
-    split2(buf, [](char c) { return isLineBreak(c) || c == '\0'; }, //is 0-char check even needed?
+    split2(buf, [](const char c) { return isLineBreak(c) || c == '\0'; }, //is 0-char check even needed?
     [&lines](const std::string_view block)
     {
         if (!block.empty()) //consider Windows' <CR><LF>
@@ -1522,13 +1522,13 @@ private:
         {
             FtpLineParser parser(rawLine);
 
-            const std::string_view typeTag = parser.readRange(1, [](char c) //throw SysError
+            const std::string_view typeTag = parser.readRange(1, [](const char c) //throw SysError
             {
                 return c == '-' || c == 'b' || c == 'c' || c == 'd' || c == 'l' || c == 'p' || c == 's';
             });
             //------------------------------------------------------------------------------------
             //permissions
-            parser.readRange(9, [](char c) //throw SysError
+            parser.readRange(9, [](const char c) //throw SysError
             {
                 return c == '-' || c == 'r' || c == 'w' || c == 'x' || c == 's' || c == 'S' || c == 't' || c == 'T';
             });
@@ -1563,7 +1563,7 @@ private:
             if (day < 1 || day > 31)
                 throw SysError(L"Failed to parse day of month.");
             //------------------------------------------------------------------------------------
-            const std::string_view timeOrYear = parser.readRange([](char c) { return c == ':' || isDigit(c); }); //throw SysError
+            const std::string_view timeOrYear = parser.readRange([](const char c) { return c == ':' || isDigit(c); }); //throw SysError
             parser.readRange(&isWhiteSpace<char>);                                                               //throw SysError
 
             TimeComp timeComp;
@@ -1677,9 +1677,9 @@ private:
                 FtpLineParser parser(line);
 
                 const int month = stringTo<int>(parser.readRange(2, &isDigit<char>)); //throw SysError
-                parser.readRange(1, [](char c) { return c == '-' || c == '/'; });     //throw SysError
+                parser.readRange(1, [](const char c) { return c == '-' || c == '/'; });     //throw SysError
                 const int day = stringTo<int>(parser.readRange(2, &isDigit<char>));   //throw SysError
-                parser.readRange(1, [](char c) { return c == '-' || c == '/'; });     //throw SysError
+                parser.readRange(1, [](const char c) { return c == '-' || c == '/'; });     //throw SysError
                 const std::string_view yearString = parser.readRange(&isDigit<char>); //throw SysError
                 parser.readRange(&isWhiteSpace<char>);                                //throw SysError
 
@@ -1699,11 +1699,11 @@ private:
                     throw SysError(L"Failed to parse modification time.");
                 //------------------------------------------------------------------------------------
                 int hour = stringTo<int>(parser.readRange(2, &isDigit<char>));         //throw SysError
-                parser.readRange(1, [](char c) { return c == ':'; });                  //throw SysError
+                parser.readRange(1, [](const char c) { return c == ':'; });                  //throw SysError
                 const int minute = stringTo<int>(parser.readRange(2, &isDigit<char>)); //throw SysError
                 if (!isWhiteSpace(parser.peekNextChar()))
                 {
-                    const std::string_view period = parser.readRange(2, [](char c) { return c == 'A' || c == 'P' || c == 'M'; }); //throw SysError
+                    const std::string_view period = parser.readRange(2, [](const char c) { return c == 'A' || c == 'P' || c == 'M'; }); //throw SysError
                     if (period == "PM")
                     {
                         if (0 <= hour && hour < 12)
@@ -2087,8 +2087,23 @@ struct OutputStreamFtp : public AFS::OutputStreamImpl
 
     ~OutputStreamFtp()
     {
-        if (asyncStreamOut_) //finalize() was not called (successfully)
+        if (asyncStreamOut_) //=> cleanup non-finalized output file
+        {
             asyncStreamOut_->setWriteError(std::make_exception_ptr(ThreadStopRequest()));
+            worker_.join();
+
+            try //see removeFilePlain()
+            {
+                accessFtpSession(login_, [&](FtpSession& session) //throw SysError
+                {
+                    session.runSingleFtpCommand("DELE " + session.getServerPathInternal(filePath_), true /*requestUtf8*/); //throw SysError, SysErrorFtpProtocol
+                });
+            }
+            catch (const SysError& e)
+            {
+                logExtraError(replaceCpy(_("Cannot delete file %x."), L"%x", fmtPath(getCurlDisplayPath(login_, filePath_))) + L"\n\n" + e.toString());
+            }
+        }
     }
 
     size_t getBlockSize() override { return FTP_BLOCK_SIZE_UPLOAD; } //throw (FileError)
@@ -2115,7 +2130,7 @@ struct OutputStreamFtp : public AFS::OutputStreamImpl
         futUploadDone_.get(); //throw FileError
 
         //asyncStreamOut_->checkReadErrors(); //throw FileError -> not needed after *successful* upload
-        asyncStreamOut_.reset(); //do NOT reset on error, so that ~OutputStreamFtp() will request worker thread to stop
+        asyncStreamOut_.reset(); //output finalized => no more exceptions from here on!
         //--------------------------------------------------------------------
 
         AFS::FinalizeResult result;

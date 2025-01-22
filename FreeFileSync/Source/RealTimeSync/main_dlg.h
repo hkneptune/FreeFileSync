@@ -8,18 +8,18 @@
 #define MAIN_DLG_H_2384790842252445
 
 #include "gui_generated.h"
-#include <vector>
-#include <memory>
+//#include <vector>
+//#include <memory>
 #include <zen/zstring.h>
 #include <wx+/async_task.h>
 #include <wx+/file_drop.h>
-#include <wx/timer.h>
+//#include <wx/timer.h>
 #include "folder_selector2.h"
 
 
 namespace rts
 {
-struct XmlRealConfig;
+struct FfsRealConfig;
 class DirectoryPanel;
 
 
@@ -50,8 +50,8 @@ private:
     void onMenuQuit       (wxCommandEvent& event) override { Close(); }
     void onFilesDropped(zen::FileDropEvent& event);
 
-    void setConfiguration(const XmlRealConfig& cfg);
-    XmlRealConfig getConfiguration();
+    void setConfiguration(const FfsRealConfig& cfg);
+    FfsRealConfig getConfiguration();
     void setLastUsedConfig(const Zstring& filepath);
 
     void insertAddFolder(const std::vector<Zstring>& newFolders, size_t pos);

@@ -14,6 +14,7 @@
 #include <wx/settings.h>
 #include <wx/bitmap.h>
 #include <zen/string_tools.h>
+#include "color_tools.h"
 #include "dc.h"
 
 
@@ -218,11 +219,16 @@ public:
     void addCurve(const SharedRef<CurveData>& data, const CurveAttributes& ca = CurveAttributes());
     void clearCurves() { curves_.clear(); }
 
-    static wxColor getBorderColor() { return {130, 135, 144}; } //medium grey, the same Win7 uses for other frame borders => not accessible! but no big deal...
-
     class MainAttributes
     {
     public:
+        MainAttributes()
+        {
+            //accessibility: consider system text and background colors;
+            //small drawback: color of graphs is NOT related to the background! => responsibility of client to use correct colors
+            setBaseColors(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT),
+                          wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW));
+        }
         MainAttributes& setMinX(double newMinX) { minX = newMinX; return *this; }
         MainAttributes& setMaxX(double newMaxX) { maxX = newMaxX; return *this; }
 
@@ -248,8 +254,16 @@ public:
 
         MainAttributes& setCornerText(const wxString& txt, GraphCorner pos) { cornerTexts[pos] = txt; return *this; }
 
-        //accessibility: always set both colors
-        MainAttributes& setBaseColors(const wxColor& text, const wxColor& back) { colorText = text; colorBack = back; return *this; }
+        MainAttributes& setBaseColors(const wxColor& text, const wxColor& back) //accessibility: always set both colors
+        {
+            colorText = text;
+            colorBack = back;
+            colorGridLine = enhanceContrast(colorBack, //start with back color and deviate only as little as required
+                                            colorText, colorBack, 4 /*contrastRatioMin*/); //W3C recommends >= 4.5 for text
+            return *this;
+        }
+    
+        wxColor getGridLineColor() const { return colorGridLine; }
 
         MainAttributes& setSelectionMode(GraphSelMode mode) { mouseSelMode = mode; return *this; }
 
@@ -272,10 +286,9 @@ public:
 
         std::map<GraphCorner, wxString> cornerTexts;
 
-        //accessibility: consider system text and background colors;
-        //small drawback: color of graphs is NOT connected to the background! => responsibility of client to use correct colors
-        wxColor colorText = wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT);
-        wxColor colorBack = wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW);
+        wxColor colorText;
+        wxColor colorBack;
+        wxColor colorGridLine;
 
         GraphSelMode mouseSelMode = GraphSelMode::rect;
     };
@@ -324,9 +337,9 @@ private:
 
     MainAttributes attr_; //global attributes
 
-    std::optional<wxBitmap> doubleBuffer_;
-
     std::vector<std::pair<SharedRef<CurveData>, CurveAttributes>> curves_;
+
+    std::optional<wxBitmap> doubleBuffer_;
 };
 }
 

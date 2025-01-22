@@ -28,7 +28,7 @@ using namespace xbrz;
 namespace
 {
 //blend front color with opacity M / N over opaque background: https://en.wikipedia.org/wiki/Alpha_compositing
-    //TODO!? gamma correction:                                 https://en.wikipedia.org/wiki/Alpha_compositing#Gamma_correction
+//TODO!? gamma correction:                                     https://en.wikipedia.org/wiki/Alpha_compositing#Gamma_correction
 template <unsigned int M, unsigned int N> inline
 uint32_t gradientRGB(uint32_t pixFront, uint32_t pixBack)
 {
@@ -1235,7 +1235,7 @@ void xbrz::bilinearScale(const uint32_t* src, int srcWidth, int srcHeight,
     const auto pixWriter = [trg](const xbrz::BytePixel& pix) mutable
     {
         const unsigned char a = pix[0];
-        *trg++ = makePixel(a,
+        * trg++ = makePixel(a,
                             xbrz::demultiply(pix[1], a),  //r
                             xbrz::demultiply(pix[2], a),  //g
                             xbrz::demultiply(pix[3], a)); //b

@@ -10,7 +10,6 @@
 #include <zenxml/xml.h>
 #include <wx/uilocale.h>
 #include "../ffs_paths.h"
-#include "../localization.h"
 
 using namespace zen;
 using namespace rts;
@@ -32,6 +31,22 @@ bool readText(const std::string& input, wxLanguage& value)
     }
     return false;
 }
+
+
+template <> inline
+bool readText(const std::string& input, ColorTheme& value)
+{
+    const std::string tmp = trimCpy(input);
+    if (tmp == "Default")
+        value = ColorTheme::System;
+    else if (tmp == "Light")
+        value = ColorTheme::Light;
+    else if (tmp == "Dark")
+        value = ColorTheme::Dark;
+    else
+        return false;
+    return true;
+}
 }
 
 
@@ -49,21 +64,15 @@ std::string getConfigType(const XmlDoc& doc)
 }
 
 
-void readConfig(const XmlIn& in, XmlRealConfig& cfg, int formatVer)
+void readConfig(const XmlIn& in, FfsRealConfig& cfg, int /*formatVer*/)
 {
     in["Directories"](cfg.directories);
     in["Delay"      ](cfg.delay);
     in["Commandline"](cfg.commandline);
-
-    //TODO: remove if clause after migration! 2020-04-14
-    if (formatVer < 2)
-        if (startsWithAsciiNoCase(cfg.commandline, "cmd /c ") ||
-            startsWithAsciiNoCase(cfg.commandline, "cmd.exe /c "))
-            cfg.commandline = afterFirst(cfg.commandline, Zstr("/c "), IfNotFoundReturn::all);
 }
 
 
-void writeConfig(const XmlRealConfig& cfg, XmlOut& out)
+void writeConfig(const FfsRealConfig& cfg, XmlOut& out)
 {
     out["Directories"](cfg.directories);
     out["Delay"      ](cfg.delay);
@@ -72,7 +81,7 @@ void writeConfig(const XmlRealConfig& cfg, XmlOut& out)
 }
 
 
-std::pair<XmlRealConfig, std::wstring /*warningMsg*/> rts::readConfig(const Zstring& filePath) //throw FileError
+std::pair<FfsRealConfig, std::wstring /*warningMsg*/> rts::readConfig(const Zstring& filePath) //throw FileError
 {
     XmlDoc doc = loadXml(filePath); //throw FileError
 
@@ -83,7 +92,7 @@ std::pair<XmlRealConfig, std::wstring /*warningMsg*/> rts::readConfig(const Zstr
     /*bool success =*/ doc.root().getAttribute("XmlFormat", formatVer);
 
     XmlIn in(doc);
-    XmlRealConfig cfg;
+    FfsRealConfig cfg;
     ::readConfig(in, cfg, formatVer);
 
     std::wstring warningMsg;
@@ -103,7 +112,7 @@ std::pair<XmlRealConfig, std::wstring /*warningMsg*/> rts::readConfig(const Zstr
 }
 
 
-void rts::writeConfig(const XmlRealConfig& cfg, const Zstring& filePath) //throw FileError
+void rts::writeConfig(const FfsRealConfig& cfg, const Zstring& filePath) //throw FileError
 {
     XmlDoc doc("FreeFileSync");
     doc.root().setAttribute("XmlType", "REAL");
@@ -116,7 +125,7 @@ void rts::writeConfig(const XmlRealConfig& cfg, const Zstring& filePath) //throw
 }
 
 
-std::pair<XmlRealConfig, std::wstring /*warningMsg*/> rts::readRealOrBatchConfig(const Zstring& filePath) //throw FileError
+std::pair<FfsRealConfig, std::wstring /*warningMsg*/> rts::readRealOrBatchConfig(const Zstring& filePath) //throw FileError
 {
     XmlDoc doc = loadXml(filePath); //throw FileError
     //quick exit if file is not an FFS XML
@@ -165,7 +174,7 @@ std::pair<XmlRealConfig, std::wstring /*warningMsg*/> rts::readRealOrBatchConfig
             }
         }();
 
-        XmlRealConfig cfg
+        FfsRealConfig cfg
         {
             .directories = {uniqueFolders.begin(), uniqueFolders.end()},
             .commandline = escapeCommandArg(ffsLaunchPath) + Zstr(' ') + escapeCommandArg(filePath),
@@ -177,8 +186,10 @@ std::pair<XmlRealConfig, std::wstring /*warningMsg*/> rts::readRealOrBatchConfig
 }
 
 
-wxLanguage rts::getProgramLanguage() //throw FileError
+GlobalConfig rts::getGlobalConfig() //throw FileError
 {
+    GlobalConfig globalCfg;
+
     const Zstring& filePath = appendPath(fff::getConfigDirPath(), Zstr("GlobalSettings.xml"));
 
     XmlDoc doc;
@@ -189,7 +200,7 @@ wxLanguage rts::getProgramLanguage() //throw FileError
     catch (FileError&)
     {
         if (!itemExists(filePath)) //throw FileError
-            return fff::getDefaultLanguage();
+            return globalCfg;
         throw;
     }
 
@@ -198,14 +209,13 @@ wxLanguage rts::getProgramLanguage() //throw FileError
 
     XmlIn in(doc);
 
-    wxLanguage lng = wxLANGUAGE_UNKNOWN;
-    in["Language"].attribute("Code", lng);
-
+    in["Language"].attribute("Code", globalCfg.programLanguage);
+    in["ColorTheme"].attribute("Appearance", globalCfg.appColorTheme);
 
     if (const std::wstring& errors = in.getErrors();
         !errors.empty())
         throw FileError(replaceCpy(_("File %x does not contain a valid configuration."), L"%x", fmtPath(filePath)),
                         _("The following XML elements could not be read:") + L'\n' + errors);
 
-    return lng;
+    return globalCfg;
 }

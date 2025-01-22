@@ -4,19 +4,17 @@
 // * Copyright (C) Zenju (zenju AT freefilesync DOT org) - All Rights Reserved *
 // *****************************************************************************
 
-//#include <set>
 #include "tree_grid.h"
 #include <wx/settings.h>
-//#include <wx/menu.h>
 #include <zen/i18n.h>
 #include <zen/utf.h>
 #include <zen/stl_tools.h>
 #include <zen/format_unit.h>
 #include <wx+/rtl.h>
+#include <wx+/color_tools.h>
 #include <wx+/dc.h>
 #include <wx+/context_menu.h>
 #include <wx+/image_resources.h>
-//#include <wx+/image_tools.h>
 #include "../icon_buffer.h"
 
 using namespace zen;
@@ -44,14 +42,13 @@ Zstring getFolderPairName(const FolderPair& folder)
 }
 
 
-TreeView::TreeView(FolderComparison& folderCmp, const SortInfo& si) : folderCmp_(folderCmp), currentSort_(si)
+TreeView::TreeView(FolderComparison& folderCmp, const SortInfo& si) : currentSort_(si)
 {
-    //remove truly empty folder pairs as early as this: we want to distinguish single/multiple folder pair cases by looking at "folderCmp"
-    std::erase_if(folderCmp_, [](const SharedRef<BaseFolderPair>& baseObj)
-    {
-        return AFS::isNullPath(baseObj.ref().getAbstractPath<SelectSide::left >()) &&
-               AFS::isNullPath(baseObj.ref().getAbstractPath<SelectSide::right>());
-    });
+    for (SharedRef<BaseFolderPair>& baseObj : folderCmp)
+        //remove truly empty folder pairs as early as this: we want to distinguish single/multiple folder pair cases by looking at "folderCmp"
+        if (!AFS::isNullPath(baseObj.ref().getAbstractPath<SelectSide::left >()) ||
+            !AFS::isNullPath(baseObj.ref().getAbstractPath<SelectSide::right>()))
+            folderCmp_.push_back(baseObj.ptr());
 }
 
 
@@ -59,13 +56,13 @@ inline
 void TreeView::compressNode(Container& cont) //remove single-element sub-trees -> gain clarity + usability (call *after* inclusion check!!!)
 {
     if (cont.subDirs.empty()) //single files node
-        cont.firstFileId = nullptr;
+        cont.showFilesNode = false;
 
 #if 0 //let's not go overboard: empty folders should not be condensed => used for file exclusion filter; user expects to see them
-    if (cont.firstFileId == nullptr && //single dir node...
-        cont.subDirs.size() == 1   && //
-        cont.subDirs[0].firstFileId == nullptr && //...that is empty
-        cont.subDirs[0].subDirs.empty())          //
+    if (!cont.showFilesNode &&      //single dir node...
+        cont.subDirs.size() == 1 && //
+        !cont.subDirs[0].showFilesNode && //...that is empty
+        cont.subDirs[0].subDirs.empty())  //
         cont.subDirs.clear();
 #endif
 }
@@ -94,32 +91,25 @@ void TreeView::extractVisibleSubtree(ContainerObject& conObj, //in
                         file.isEmpty<SelectSide::right>() ? 0 : file.getFileSize<SelectSide::right>());
     };
 
-    cont.firstFileId = nullptr;
-    for (FilePair& file : conObj.refSubFiles())
+    for (FilePair& file : conObj.files())
         if (pred(file))
         {
             cont.bytesNet += getBytes(file);
             ++cont.itemCountNet;
-
-            if (!cont.firstFileId)
-                cont.firstFileId = file.getId();
         }
 
-    for (SymlinkPair& symlink : conObj.refSubLinks())
+    for (SymlinkPair& symlink : conObj.symlinks())
         if (pred(symlink))
-        {
             ++cont.itemCountNet;
 
-            if (!cont.firstFileId)
-                cont.firstFileId = symlink.getId();
-        }
+    cont.showFilesNode = cont.itemCountNet > 0;
 
     cont.bytesGross     += cont.bytesNet;
     cont.itemCountGross += cont.itemCountNet;
 
-    cont.subDirs.reserve(conObj.refSubFolders().size()); //avoid expensive reallocations!
+    cont.subDirs.reserve(conObj.subfolders().size()); //avoid expensive reallocations!
 
-    for (FolderPair& folder : conObj.refSubFolders())
+    for (FolderPair& folder : conObj.subfolders())
     {
         const bool included = pred(folder);
 
@@ -132,11 +122,11 @@ void TreeView::extractVisibleSubtree(ContainerObject& conObj, //in
         cont.bytesGross     += subDirCont.bytesGross;
         cont.itemCountGross += subDirCont.itemCountGross;
 
-        if (!included && !subDirCont.firstFileId && subDirCont.subDirs.empty())
+        if (!included && subDirCont.subDirs.empty() && !subDirCont.showFilesNode)
             cont.subDirs.pop_back();
         else
         {
-            subDirCont.objId = folder.getId();
+            subDirCont.containerRef = std::static_pointer_cast<FolderPair>(folder.shared_from_this());
             compressNode(subDirCont);
         }
     }
@@ -206,10 +196,10 @@ struct TreeView::LessShortName
                                                                           utfTo<Zstring>(static_cast<const RootNodeImpl*>(rhs.node)->displayName));
             case NodeType::folder:
             {
-                const auto* folderL = dynamic_cast<const FolderPair*>(FileSystemObject::retrieve(static_cast<const DirNodeImpl*>(lhs.node)->objId));
-                const auto* folderR = dynamic_cast<const FolderPair*>(FileSystemObject::retrieve(static_cast<const DirNodeImpl*>(rhs.node)->objId));
+                const auto* folderL = static_cast<FolderPair*>(lhs.node->containerRef.lock().get());
+                const auto* folderR = static_cast<FolderPair*>(rhs.node->containerRef.lock().get());
 
-                if (!folderL) //might be pathologic, but it's covered
+                if (!folderL)
                     return false;
                 else if (!folderR)
                     return true;
@@ -282,13 +272,13 @@ void TreeView::getChildren(const Container& cont, unsigned int level, std::vecto
     output.reserve(cont.subDirs.size() + 1); //keep pointers in "workList" valid
     std::vector<std::pair<uint64_t, int*>> workList;
 
-    for (const DirNodeImpl& subDir : cont.subDirs)
+    for (const Container& subDir : cont.subDirs)
     {
         output.push_back({level, 0, &subDir, NodeType::folder});
         workList.emplace_back(subDir.bytesGross, &output.back().percent);
     }
 
-    if (cont.firstFileId)
+    if (cont.showFilesNode)
     {
         output.push_back({level, 0, &cont, NodeType::files});
         workList.emplace_back(cont.bytesNet, &output.back().percent);
@@ -305,17 +295,13 @@ void TreeView::getChildren(const Container& cont, unsigned int level, std::vecto
 void TreeView::applySubView(std::vector<RootNodeImpl>&& newView)
 {
     //preserve current node expansion status
-    auto getHierAlias = [](const TreeView::TreeLine& tl) -> const ContainerObject*
+    auto getContainer = [](const TreeView::TreeLine& tl) -> const ContainerObject*
     {
         switch (tl.type)
         {
             case NodeType::root:
-                return static_cast<const RootNodeImpl*>(tl.node)->baseFolder.get();
-
             case NodeType::folder:
-                if (auto folder = dynamic_cast<const FolderPair*>(FileSystemObject::retrieve(static_cast<const DirNodeImpl*>(tl.node)->objId)))
-                    return folder;
-                break;
+                return tl.node->containerRef.lock().get();
 
             case NodeType::files:
                 break; //none!!!
@@ -329,7 +315,7 @@ void TreeView::applySubView(std::vector<RootNodeImpl>&& newView)
         auto it = flatTree_.begin();
         for (auto itNext = flatTree_.begin() + 1; itNext != flatTree_.end(); ++itNext, ++it)
             if (it->level < itNext->level)
-                if (auto conObj = getHierAlias(*it))
+                if (auto conObj = getContainer(*it))
                     expandedNodes.insert(conObj);
     }
 
@@ -346,8 +332,8 @@ void TreeView::applySubView(std::vector<RootNodeImpl>&& newView)
     }
     else
     {
-        //following is almost identical with TreeView::getChildren(): however we *cannot* reuse code here;
-        //this were only possible if we replaced "std::vector<RootNodeImpl>" with "Container"!
+        //following is almost identical with TreeView::getChildren():
+        // however we *cannot* reuse code here since "std::vector<RootNodeImpl>" is not a "Container"!
 
         flatTree_.reserve(folderCmpView_.size()); //keep pointers in "workList" valid
         std::vector<std::pair<uint64_t, int*>> workList;
@@ -371,7 +357,7 @@ void TreeView::applySubView(std::vector<RootNodeImpl>&& newView)
     {
         const TreeLine& line = flatTree_[row];
 
-        if (auto conObj = getHierAlias(line))
+        if (auto conObj = getContainer(line))
             if (expandedNodes.contains(conObj))
             {
                 std::vector<TreeLine> newLines;
@@ -390,25 +376,25 @@ void TreeView::updateView(Predicate pred)
     std::vector<RootNodeImpl> newView;
     newView.reserve(folderCmp_.size()); //avoid expensive reallocations!
 
-    for (SharedRef<BaseFolderPair>& baseObj : folderCmp_)
-    {
-        newView.emplace_back();
-        RootNodeImpl& root = newView.back();
-        this->extractVisibleSubtree(baseObj.ref(), root, pred); //"this->" is bogus for a static method, but GCC screws this one up
-
-        //warning: the following lines are almost 1:1 copy from extractVisibleSubtree:
-        //however we *cannot* reuse code here; this were only possible if we replaced "std::vector<RootNodeImpl>" with "Container"!
-        if (!root.firstFileId && root.subDirs.empty())
-            newView.pop_back();
-        else
+    for (const std::weak_ptr<BaseFolderPair>& baseObjRef : folderCmp_)
+        if (BaseFolderPair* baseObj = baseObjRef.lock().get())
         {
-            root.baseFolder = baseObj.ptr();
-            root.displayName = getShortDisplayNameForFolderPair(baseObj.ref().getAbstractPath<SelectSide::left >(),
-                                                                baseObj.ref().getAbstractPath<SelectSide::right>());
+            newView.emplace_back();
+            RootNodeImpl& root = newView.back();
+            this->extractVisibleSubtree(*baseObj, root, pred); //"this->" is bogus for a static method, but GCC screws this one up
 
-            this->compressNode(root); //"this->" required by two-pass lookup as enforced by GCC 4.7
+            //warning: the following lines are almost 1:1 copy from extractVisibleSubtree, adapted for BaseFolderPair:
+            if (root.subDirs.empty() && !root.showFilesNode)
+                newView.pop_back();
+            else
+            {
+                root.containerRef = baseObjRef;
+                root.displayName = getShortDisplayNameForFolderPair(baseObj->getAbstractPath<SelectSide::left >(),
+                                                                    baseObj->getAbstractPath<SelectSide::right>());
+
+                this->compressNode(root); //"this->" required by two-pass lookup as enforced by GCC 4.7
+            }
         }
-    }
 
     lastViewFilterPred_ = pred;
     applySubView(std::move(newView));
@@ -429,26 +415,26 @@ TreeView::NodeStatus TreeView::getStatus(size_t row) const
     if (row < flatTree_.size())
     {
         if (row + 1 < flatTree_.size() && flatTree_[row + 1].level > flatTree_[row].level)
-            return TreeView::STATUS_EXPANDED;
+            return NodeStatus::expanded;
 
         //it's either reduced or empty
         switch (flatTree_[row].type)
         {
             case NodeType::root:
             case NodeType::folder:
-                return flatTree_[row].node->firstFileId || !flatTree_[row].node->subDirs.empty() ? TreeView::STATUS_REDUCED : TreeView::STATUS_EMPTY;
+                return flatTree_[row].node->showFilesNode || !flatTree_[row].node->subDirs.empty() ? NodeStatus::reduced : NodeStatus::empty;
 
             case NodeType::files:
-                return TreeView::STATUS_EMPTY;
+                return NodeStatus::empty;
         }
     }
-    return TreeView::STATUS_EMPTY;
+    return NodeStatus::empty;
 }
 
 
 void TreeView::expandNode(size_t row)
 {
-    if (getStatus(row) != TreeView::STATUS_REDUCED)
+    if (getStatus(row) != NodeStatus::reduced)
     {
         assert(false);
         return;
@@ -626,36 +612,39 @@ std::unique_ptr<TreeView::Node> TreeView::getLine(size_t row) const
             case NodeType::root:
             {
                 const auto& root = *static_cast<const TreeView::RootNodeImpl*>(flatTree_[row].node);
-                return std::make_unique<TreeView::RootNode>(percent, root.bytesGross, root.itemCountGross, getStatus(row), *root.baseFolder, root.displayName);
+
+                if (BaseFolderPair* baseFolder = static_cast<BaseFolderPair*>(root.containerRef.lock().get()))
+                    return std::make_unique<TreeView::RootNode>(percent, root.bytesGross, root.itemCountGross, getStatus(row), *baseFolder, root.displayName);
             }
             break;
 
             case NodeType::folder:
             {
-                const auto* dir = static_cast<const TreeView::DirNodeImpl*>(flatTree_[row].node);
-                if (auto folder = dynamic_cast<FolderPair*>(FileSystemObject::retrieve(dir->objId)))
-                    return std::make_unique<TreeView::DirNode>(percent, dir->bytesGross, dir->itemCountGross, level, getStatus(row), *folder);
+                const Container& contObj = *flatTree_[row].node;
+
+                if (FolderPair* folder = static_cast<FolderPair*>(contObj.containerRef.lock().get()))
+                    return std::make_unique<TreeView::DirNode>(percent, contObj.bytesGross, contObj.itemCountGross, level, getStatus(row), *folder);
             }
             break;
 
             case NodeType::files:
             {
-                const auto* parentDir = flatTree_[row].node;
-                if (FileSystemObject* firstFile = FileSystemObject::retrieve(parentDir->firstFileId))
+                const auto& parentFolder = *flatTree_[row].node;
+
+                if (ContainerObject* conObj = parentFolder.containerRef.lock().get())
                 {
                     std::vector<FileSystemObject*> filesAndLinks;
-                    ContainerObject& parent = firstFile->parent();
 
                     //lazy evaluation: recheck "lastViewFilterPred" again rather than buffer and bloat "lastViewFilterPred"
-                    for (FileSystemObject& fsObj : parent.refSubFiles())
+                    for (FileSystemObject& fsObj : conObj->files())
                         if (lastViewFilterPred_(fsObj))
                             filesAndLinks.push_back(&fsObj);
 
-                    for (FileSystemObject& fsObj : parent.refSubLinks())
+                    for (FileSystemObject& fsObj : conObj->symlinks())
                         if (lastViewFilterPred_(fsObj))
                             filesAndLinks.push_back(&fsObj);
 
-                    return std::make_unique<TreeView::FilesNode>(percent, parentDir->bytesNet, parentDir->itemCountNet, level, filesAndLinks);
+                    return std::make_unique<TreeView::FilesNode>(percent, parentFolder.bytesNet, parentFolder.itemCountNet, level, std::move(filesAndLinks));
                 }
             }
             break;
@@ -797,10 +786,10 @@ private:
 
     void renderRowBackgound(wxDC& dc, const wxRect& rect, size_t row, bool enabled, bool selected, HoverArea rowHover) override
     {
-        if (!enabled || !selected)
-            ; //clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW)); -> already the default
-        else
+        if (enabled && selected)
             GridData::renderRowBackgound(dc, rect, row, true /*enabled*/, true /*selected*/, rowHover);
+        else
+            ; //clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW)); -> already the default
     }
 
 
@@ -874,13 +863,13 @@ private:
                         const bool drawMouseHover = static_cast<HoverAreaTree>(rowHover) == HoverAreaTree::node;
                         switch (node->status_)
                         {
-                            case TreeView::STATUS_EXPANDED:
+                            case TreeView::NodeStatus::expanded:
                                 drawIcon(loadImage(drawMouseHover ? "node_expanded_hover" : "node_expanded"), rectTmp, true /*drawActive*/);
                                 break;
-                            case TreeView::STATUS_REDUCED:
+                            case TreeView::NodeStatus::reduced:
                                 drawIcon(loadImage(drawMouseHover ? "node_reduced_hover" : "node_reduced"), rectTmp, true /*drawActive*/);
                                 break;
-                            case TreeView::STATUS_EMPTY:
+                            case TreeView::NodeStatus::empty:
                                 break;
                         }
 
@@ -904,14 +893,15 @@ private:
                             drawIcon(nodeIcon, rectTmp, isActive);
 
                             if (static_cast<HoverAreaTree>(rowHover) == HoverAreaTree::item)
-                                drawRectangleBorder(dc, rectTmp, *wxBLUE, dipToWxsize(1));
+                                drawRectangleBorder(dc, rectTmp, mouseHighlightColor_, dipToWxsize(1));
 
                             rectTmp.x     += widthNodeIcon_ + gapSize_;
                             rectTmp.width -= widthNodeIcon_ + gapSize_;
 
                             if (rectTmp.width > 0)
                             {
-                                if (!isActive)
+                                if (!isActive &&
+                                    (!enabled  || !selected))
                                     textColor.Set(wxSystemSettings::GetColour(wxSYS_COLOUR_GRAYTEXT));
 
                                 drawCellText(dc, rectTmp, getValue(row, colType), wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
@@ -942,7 +932,7 @@ private:
         }
     }
 
-    int getBestSize(wxDC& dc, size_t row, ColumnType colType) override
+    int getBestSize(const wxReadOnlyDC& dc, size_t row, ColumnType colType) override
     {
         // -> synchronize renderCell() <-> getBestSize() <-> getMouseHover()
 
@@ -960,7 +950,7 @@ private:
                    2 * gapSize_; //include gap from right!
     }
 
-    HoverArea getMouseHover(wxDC& dc, size_t row, ColumnType colType, int cellRelativePosX, int cellWidth) override
+    HoverArea getMouseHover(const wxReadOnlyDC& dc, size_t row, ColumnType colType, int cellRelativePosX, int cellWidth) override
     {
         if (static_cast<ColumnTypeOverview>(colType) == ColumnTypeOverview::folder)
             if (std::unique_ptr<TreeView::Node> node = getDataView().getLine(row))
@@ -997,11 +987,11 @@ private:
             case HoverAreaTree::node:
                 switch (getDataView().getStatus(event.row_))
                 {
-                    case TreeView::STATUS_EXPANDED:
+                    case TreeView::NodeStatus::expanded:
                         return reduceNode(event.row_);
-                    case TreeView::STATUS_REDUCED:
+                    case TreeView::NodeStatus::reduced:
                         return expandNode(event.row_);
-                    case TreeView::STATUS_EMPTY:
+                    case TreeView::NodeStatus::empty:
                         break;
                 }
                 break;
@@ -1015,11 +1005,11 @@ private:
     {
         switch (getDataView().getStatus(event.row_))
         {
-            case TreeView::STATUS_EXPANDED:
+            case TreeView::NodeStatus::expanded:
                 return reduceNode(event.row_);
-            case TreeView::STATUS_REDUCED:
+            case TreeView::NodeStatus::reduced:
                 return expandNode(event.row_);
-            case TreeView::STATUS_EMPTY:
+            case TreeView::NodeStatus::empty:
                 break;
         }
         event.Skip();
@@ -1052,10 +1042,10 @@ private:
                 case WXK_NUMPAD_SUBTRACT: //https://docs.microsoft.com/en-us/previous-versions/windows/desktop/dnacc/guidelines-for-keyboard-user-interface-design#windows-shortcut-keys
                     switch (getDataView().getStatus(row))
                     {
-                        case TreeView::STATUS_EXPANDED:
+                        case TreeView::NodeStatus::expanded:
                             return reduceNode(row);
-                        case TreeView::STATUS_REDUCED:
-                        case TreeView::STATUS_EMPTY:
+                        case TreeView::NodeStatus::reduced:
+                        case TreeView::NodeStatus::empty:
 
                             const int parentRow = getDataView().getParent(row);
                             if (parentRow >= 0)
@@ -1069,12 +1059,12 @@ private:
                 case WXK_NUMPAD_ADD:
                     switch (getDataView().getStatus(row))
                     {
-                        case TreeView::STATUS_EXPANDED:
+                        case TreeView::NodeStatus::expanded:
                             grid_.setGridCursor(std::min(rowCount - 1, row + 1), GridEventPolicy::allow);
                             break;
-                        case TreeView::STATUS_REDUCED:
+                        case TreeView::NodeStatus::reduced:
                             return expandNode(row);
-                        case TreeView::STATUS_EMPTY:
+                        case TreeView::NodeStatus::empty:
                             break;
                     }
                     return; //swallow event
@@ -1178,6 +1168,9 @@ private:
     const int widthNodeStatus_;
 
     const wxImage rootIcon_;
+    const wxColor mouseHighlightColor_ =  enhanceContrast(*wxBLUE, //primarily needed for dark mode!
+                                                          wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT),
+                                                          wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW), 5 /*contrastRatioMin*/); //W3C recommends >= 4.5
 
     Grid& grid_;
     bool showPercentBar_ = true;

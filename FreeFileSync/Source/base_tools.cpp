@@ -5,7 +5,6 @@
 // *****************************************************************************
 
 #include "base_tools.h"
-#include <wx/app.h>
 #include "base/path_filter.h"
 
 using namespace zen;
@@ -53,31 +52,31 @@ std::wstring fff::toTimeShiftPhrase(const std::vector<unsigned int>& ignoreTimeS
 }
 
 
-void fff::logNonDefaultSettings(const XmlGlobalSettings& activeSettings, PhaseCallback& callback)
+void fff::logNonDefaultSettings(const GlobalConfig& globalCfg, PhaseCallback& callback)
 {
-    const XmlGlobalSettings defaultSettings;
+    const GlobalConfig defaultSettings;
     std::wstring changedSettingsMsg;
 
-    if (activeSettings.failSafeFileCopy != defaultSettings.failSafeFileCopy)
-        changedSettingsMsg += L"\n" + (TAB_SPACE + _("Fail-safe file copy")) + L": " + (activeSettings.failSafeFileCopy ? _("Enabled") : _("Disabled"));
+    if (globalCfg.failSafeFileCopy != defaultSettings.failSafeFileCopy)
+        changedSettingsMsg += L"\n" + (TAB_SPACE + _("Fail-safe file copy")) + L": " + (globalCfg.failSafeFileCopy ? _("Enabled") : _("Disabled"));
 
-    if (activeSettings.copyLockedFiles != defaultSettings.copyLockedFiles)
-        changedSettingsMsg += L"\n" + (TAB_SPACE + _("Copy locked files")) + L": " + (activeSettings.copyLockedFiles ? _("Enabled") : _("Disabled"));
+    if (globalCfg.copyLockedFiles != defaultSettings.copyLockedFiles)
+        changedSettingsMsg += L"\n" + (TAB_SPACE + _("Copy locked files")) + L": " + (globalCfg.copyLockedFiles ? _("Enabled") : _("Disabled"));
 
-    if (activeSettings.copyFilePermissions != defaultSettings.copyFilePermissions)
-        changedSettingsMsg += L"\n" + (TAB_SPACE + _("Copy file access permissions")) + L": " + (activeSettings.copyFilePermissions ? _("Enabled") : _("Disabled"));
+    if (globalCfg.copyFilePermissions != defaultSettings.copyFilePermissions)
+        changedSettingsMsg += L"\n" + (TAB_SPACE + _("Copy file access permissions")) + L": " + (globalCfg.copyFilePermissions ? _("Enabled") : _("Disabled"));
 
-    if (activeSettings.fileTimeTolerance != defaultSettings.fileTimeTolerance)
-        changedSettingsMsg += L"\n" + (TAB_SPACE + _("File time tolerance")) + L": " + formatNumber(activeSettings.fileTimeTolerance);
+    if (globalCfg.fileTimeTolerance != defaultSettings.fileTimeTolerance)
+        changedSettingsMsg += L"\n" + (TAB_SPACE + _("File time tolerance")) + L": " + formatNumber(globalCfg.fileTimeTolerance);
 
-    if (activeSettings.runWithBackgroundPriority != defaultSettings.runWithBackgroundPriority)
-        changedSettingsMsg += L"\n" + (TAB_SPACE + _("Run with background priority")) + L": " + (activeSettings.runWithBackgroundPriority ? _("Enabled") : _("Disabled"));
+    if (globalCfg.runWithBackgroundPriority != defaultSettings.runWithBackgroundPriority)
+        changedSettingsMsg += L"\n" + (TAB_SPACE + _("Run with background priority")) + L": " + (globalCfg.runWithBackgroundPriority ? _("Enabled") : _("Disabled"));
 
-    if (activeSettings.createLockFile != defaultSettings.createLockFile)
-        changedSettingsMsg += L"\n" + (TAB_SPACE + _("Lock directories during sync")) + L": " + (activeSettings.createLockFile ? _("Enabled") : _("Disabled"));
+    if (globalCfg.createLockFile != defaultSettings.createLockFile)
+        changedSettingsMsg += L"\n" + (TAB_SPACE + _("Lock directories during sync")) + L": " + (globalCfg.createLockFile ? _("Enabled") : _("Disabled"));
 
-    if (activeSettings.verifyFileCopy != defaultSettings.verifyFileCopy)
-        changedSettingsMsg += L"\n" + (TAB_SPACE + _("Verify copied files")) + L": " + (activeSettings.verifyFileCopy ? _("Enabled") : _("Disabled"));
+    if (globalCfg.verifyFileCopy != defaultSettings.verifyFileCopy)
+        changedSettingsMsg += L"\n" + (TAB_SPACE + _("Verify copied files")) + L": " + (globalCfg.verifyFileCopy ? _("Enabled") : _("Disabled"));
 
     if (!changedSettingsMsg.empty())
         callback.logMessage(_("Using non-default global settings:") + changedSettingsMsg, PhaseCallback::MsgType::info); //throw X
@@ -147,26 +146,27 @@ bool effectivelyEmpty(const LocalPairConfig& lpc)
 }
 
 
-MainConfiguration fff::merge(const std::vector<MainConfiguration>& mainCfgs)
+FfsGuiConfig fff::merge(const std::vector<FfsGuiConfig>& guiCfgs)
 {
-    assert(!mainCfgs.empty());
-    if (mainCfgs.empty())
-        return MainConfiguration();
+    assert(!guiCfgs.empty());
+    if (guiCfgs.empty())
+        return FfsGuiConfig();
 
-    if (mainCfgs.size() == 1) //mergeConfigFilesImpl relies on this!
-        return mainCfgs[0];   //
+    if (guiCfgs.size() == 1) //
+        return guiCfgs[0];   //return "as is"
 
     //merge folder pair config
     std::vector<LocalPairConfig> mergedCfgs;
-    for (const MainConfiguration& mainCfg : mainCfgs)
+
+    for (const FfsGuiConfig& guiCfg : guiCfgs)
     {
         std::vector<LocalPairConfig> tmpCfgs;
 
         //skip empty folder pairs
-        if (!effectivelyEmpty(mainCfg.firstPair))
-            tmpCfgs.push_back(mainCfg.firstPair);
+        if (!effectivelyEmpty(guiCfg.mainCfg.firstPair))
+            tmpCfgs.push_back(guiCfg.mainCfg.firstPair);
 
-        for (const LocalPairConfig& lpc : mainCfg.additionalPairs)
+        for (const LocalPairConfig& lpc : guiCfg.mainCfg.additionalPairs)
             if (!effectivelyEmpty(lpc))
                 tmpCfgs.push_back(lpc);
 
@@ -174,18 +174,18 @@ MainConfiguration fff::merge(const std::vector<MainConfiguration>& mainCfgs)
         for (LocalPairConfig& lpc : tmpCfgs)
         {
             if (!lpc.localCmpCfg)
-                lpc.localCmpCfg = mainCfg.cmpCfg;
+                lpc.localCmpCfg = guiCfg.mainCfg.cmpCfg;
 
             if (!lpc.localSyncCfg)
-                lpc.localSyncCfg = mainCfg.syncCfg;
+                lpc.localSyncCfg = guiCfg.mainCfg.syncCfg;
 
-            lpc.localFilter = mergeFilterConfig(mainCfg.globalFilter, lpc.localFilter);
+            lpc.localFilter = mergeFilterConfig(guiCfg.mainCfg.globalFilter, lpc.localFilter);
         }
         append(mergedCfgs, tmpCfgs);
     }
 
     if (mergedCfgs.empty())
-        return MainConfiguration();
+        mergedCfgs.emplace_back();
 
     //optimization: remove redundant configuration
 
@@ -250,40 +250,51 @@ MainConfiguration fff::merge(const std::vector<MainConfiguration>& mainCfgs)
     }
 
     std::map<AfsDevice, size_t> mergedParallelOps;
-    for (const MainConfiguration& mainCfg : mainCfgs)
-        for (const auto& [rootPath, parallelOps] : mainCfg.deviceParallelOps)
+    for (const FfsGuiConfig& guiCfg : guiCfgs)
+        for (const auto& [rootPath, parallelOps] : guiCfg.mainCfg.deviceParallelOps)
             mergedParallelOps[rootPath] = std::max(mergedParallelOps[rootPath], parallelOps);
 
     //final assembly
-    MainConfiguration cfgOut;
-    cfgOut.cmpCfg       = cmpCfgHead;
-    cfgOut.syncCfg      = syncCfgHead;
-    cfgOut.globalFilter = globalFilter;
-    cfgOut.firstPair    = mergedCfgs[0];
-    cfgOut.additionalPairs.assign(mergedCfgs.begin() + 1, mergedCfgs.end());
-    cfgOut.deviceParallelOps = mergedParallelOps;
-
-    cfgOut.ignoreErrors = std::all_of(mainCfgs.begin(), mainCfgs.end(), [](const MainConfiguration& mainCfg) { return mainCfg.ignoreErrors; });
-
-    cfgOut.autoRetryCount = std::max_element(mainCfgs.begin(), mainCfgs.end(),
-    [](const MainConfiguration& lhs, const MainConfiguration& rhs) { return lhs.autoRetryCount < rhs.autoRetryCount; })->autoRetryCount;
-
-    cfgOut.autoRetryDelay = std::max_element(mainCfgs.begin(), mainCfgs.end(),
-    [](const MainConfiguration& lhs, const MainConfiguration& rhs) { return lhs.autoRetryDelay < rhs.autoRetryDelay; })->autoRetryDelay;
-
-    for (const MainConfiguration& mainCfg : mainCfgs)
+    FfsGuiConfig cfgOut
     {
-        if (!mainCfg.altLogFolderPathPhrase.empty())
-            cfgOut.altLogFolderPathPhrase = mainCfg.altLogFolderPathPhrase;
+        .mainCfg = MainConfiguration
+        {
+            .cmpCfg       = cmpCfgHead,
+            .syncCfg      = syncCfgHead,
+            .globalFilter = globalFilter,
+            .firstPair    = mergedCfgs[0],
+            .deviceParallelOps = mergedParallelOps,
 
-        if (!mainCfg.notes.empty())
-            cfgOut.notes += mainCfg.notes + L"\n\n";
+            .ignoreErrors = std::all_of(guiCfgs.begin(), guiCfgs.end(), [](const FfsGuiConfig& guiCfg) { return guiCfg.mainCfg.ignoreErrors; }),
+
+            .autoRetryCount = std::max_element(guiCfgs.begin(), guiCfgs.end(),
+            [](const FfsGuiConfig& lhs, const FfsGuiConfig& rhs) { return lhs.mainCfg.autoRetryCount < rhs.mainCfg.autoRetryCount; })->mainCfg.autoRetryCount,
+
+            .autoRetryDelay = std::max_element(guiCfgs.begin(), guiCfgs.end(),
+            [](const FfsGuiConfig& lhs, const FfsGuiConfig& rhs) { return lhs.mainCfg.autoRetryDelay < rhs.mainCfg.autoRetryDelay; })->mainCfg.autoRetryDelay,
+        }
+    };
+    cfgOut.mainCfg.additionalPairs.assign(mergedCfgs.begin() + 1, mergedCfgs.end());
+
+
+    for (const FfsGuiConfig& guiCfg : guiCfgs)
+    {
+        if (cfgOut.mainCfg.altLogFolderPathPhrase.empty())
+            cfgOut.mainCfg.altLogFolderPathPhrase = guiCfg.mainCfg.altLogFolderPathPhrase;
+
+        if (cfgOut.mainCfg.emailNotifyAddress.empty())
+        {
+            cfgOut.mainCfg.emailNotifyAddress   = guiCfg.mainCfg.emailNotifyAddress;
+            cfgOut.mainCfg.emailNotifyCondition = guiCfg.mainCfg.emailNotifyCondition;
+        }
+
+        if (!guiCfg.notes.empty())
+            cfgOut.notes += guiCfg.notes + L"\n\n";
     }
-
     trim(cfgOut.notes);
-    //cfgOut.postSyncCommand   = -> better leave at default ... !?
-    //cfgOut.postSyncCondition = ->
-    //cfgOut.emailNotifyAddress   = -> better leave at default ... !?
-    //cfgOut.emailNotifyCondition = ->
+
+    //cfgOut.mainCfg.postSyncCommand   = -> better leave at default ... !?
+    //cfgOut.mainCfg.postSyncCondition = ->
+    //cfgOut.gridViewType        ->
     return cfgOut;
 }

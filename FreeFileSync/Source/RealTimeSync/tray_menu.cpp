@@ -6,7 +6,6 @@
 
 #include "tray_menu.h"
 #include <chrono>
-//#include <zen/thread.h>
 #include <zen/resolve_path.h>
 #include <wx/taskbar.h>
 #include <wx/icon.h> //Linux needs this
@@ -228,7 +227,7 @@ private:
 }
 
 
-rts::CancelReason rts::runFolderMonitor(const XmlRealConfig& config, const wxString& jobname)
+rts::CancelReason rts::runFolderMonitor(const FfsRealConfig& config, const wxString& jobname)
 {
     std::vector<Zstring> dirNamesNonFmt = config.directories;
     std::erase_if(dirNamesNonFmt, [](const Zstring& str) { return trimCpy(str).empty(); }); //remove empty entries WITHOUT formatting paths yet!

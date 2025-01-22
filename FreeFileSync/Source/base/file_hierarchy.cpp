@@ -57,13 +57,11 @@ std::wstring fff::getShortDisplayNameForFolderPair(const AbstractPath& itemPathL
 
 void ContainerObject::removeDoubleEmpty()
 {
-    auto isEmpty = [](const FileSystemObject& fsObj) { return fsObj.isPairEmpty(); };
+    eraseIf(files_,      [](const auto& fsObj) { return fsObj.ref().isPairEmpty(); });
+    eraseIf(symlinks_,   [](const auto& fsObj) { return fsObj.ref().isPairEmpty(); });
+    eraseIf(subfolders_, [](const auto& fsObj) { return fsObj.ref().isPairEmpty(); });
 
-    refSubFiles  ().remove_if(isEmpty);
-    refSubLinks  ().remove_if(isEmpty);
-    refSubFolders().remove_if(isEmpty);
-
-    for (FolderPair& folder : refSubFolders())
+    for (FolderPair& folder : subfolders())
         folder.removeDoubleEmpty();
 }
 
@@ -236,9 +234,9 @@ SyncOperation getIsolatedSyncOperation(const FileSystemObject& fsObj,
 template <class Predicate> inline
 bool hasDirectChild(const ContainerObject& conObj, Predicate p)
 {
-    return std::any_of(conObj.refSubFiles  ().begin(), conObj.refSubFiles  ().end(), p) ||
-           std::any_of(conObj.refSubLinks  ().begin(), conObj.refSubLinks  ().end(), p) ||
-           std::any_of(conObj.refSubFolders().begin(), conObj.refSubFolders().end(), p);
+    return std::any_of(conObj.files     ().begin(), conObj.files     ().end(), p) ||
+           std::any_of(conObj.symlinks  ().begin(), conObj.symlinks  ().end(), p) ||
+           std::any_of(conObj.subfolders().begin(), conObj.subfolders().end(), p);
 }
 }
 
@@ -343,27 +341,23 @@ SyncOperation FilePair::applyMoveOptimization(SyncOperation op) const
 {
     /* check whether we can optimize "create + delete" via "move":
        note: as long as we consider "create + delete" cases only, detection of renamed files, should be fine even for "binary" comparison variant!       */
-    if (moveFileRef_)
-        if (auto refFile = dynamic_cast<const FilePair*>(FileSystemObject::retrieve(moveFileRef_)))
-        {
-            if (refFile->moveFileRef_ == getId()) //both ends should agree...
-            {
-                const SyncOperation opRef = refFile->FileSystemObject::getSyncOperation(); //do *not* make a virtual call!
-                if (op    == SO_CREATE_LEFT &&
-                    opRef == SO_DELETE_LEFT)
-                    op = SO_MOVE_LEFT_TO;
-                else if (op    == SO_DELETE_LEFT &&
-                         opRef == SO_CREATE_LEFT)
-                    op = SO_MOVE_LEFT_FROM;
-                else if (op    == SO_CREATE_RIGHT &&
-                         opRef == SO_DELETE_RIGHT)
-                    op = SO_MOVE_RIGHT_TO;
-                else if (op    == SO_DELETE_RIGHT &&
-                         opRef == SO_CREATE_RIGHT)
-                    op = SO_MOVE_RIGHT_FROM;
-            }
-            else assert(false); //...and why shouldn't they?
-        }
+    if (FilePair* refFile = getMovePair())
+    {
+        const SyncOperation opRef = refFile->FileSystemObject::getSyncOperation(); //do *not* make a virtual call!
+        if (op    == SO_CREATE_LEFT &&
+            opRef == SO_DELETE_LEFT)
+            op = SO_MOVE_LEFT_TO;
+        else if (op    == SO_DELETE_LEFT &&
+                 opRef == SO_CREATE_LEFT)
+            op = SO_MOVE_LEFT_FROM;
+        else if (op    == SO_CREATE_RIGHT &&
+                 opRef == SO_DELETE_RIGHT)
+            op = SO_MOVE_RIGHT_TO;
+        else if (op    == SO_DELETE_RIGHT &&
+                 opRef == SO_CREATE_RIGHT)
+            op = SO_MOVE_RIGHT_FROM;
+    }
+
     return op;
 }
 
@@ -560,9 +554,8 @@ std::wstring fff::getSyncOpDescription(const FileSystemObject& fsObj)
         case SO_MOVE_RIGHT_FROM:
         case SO_MOVE_RIGHT_TO:
             if (auto fileFrom = dynamic_cast<const FilePair*>(&fsObj))
-                if (auto fileTo = dynamic_cast<const FilePair*>(FileSystemObject::retrieve(fileFrom->getMoveRef())))
+                if (const FilePair* fileTo = fileFrom->getMovePair())
                 {
-                    assert(fileTo->getMoveRef() == fileFrom->getId());
                     const bool onLeft       = op == SO_MOVE_LEFT_FROM || op == SO_MOVE_LEFT_TO;
                     const bool isMoveSource = op == SO_MOVE_LEFT_FROM || op == SO_MOVE_RIGHT_FROM;
 

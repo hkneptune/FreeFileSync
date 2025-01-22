@@ -36,13 +36,13 @@ std::vector<ColumnAttribOverview> getOverviewDefaultColAttribs()
     using namespace zen;
     return //harmonize with tree_view.cpp::onGridLabelContext() => expects stretched folder and non-stretched other columns!
     {
-        {ColumnTypeOverview::folder, - 2 * dipToWxsize(60), 1, true}, //stretch to full width and substract sum of fixed size widths
-        {ColumnTypeOverview::itemCount,    dipToWxsize(60), 0, true},
-        {ColumnTypeOverview::bytes,        dipToWxsize(60), 0, true}, //GTK needs a few pixels more width
+        {ColumnTypeOverview::folder,   -dipToWxsize(140), 1, true},
+        {ColumnTypeOverview::itemCount, dipToWxsize( 70), 0, true},
+        {ColumnTypeOverview::bytes,     dipToWxsize( 70), 0, true},
     };
 }
 
-const           bool overviewPanelShowPercentageDefault = true;
+const               bool overviewPanelShowPercentageDefault = true;
 const ColumnTypeOverview overviewPanelLastSortColumnDefault = ColumnTypeOverview::bytes;
 
 inline

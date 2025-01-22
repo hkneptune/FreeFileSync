@@ -8,7 +8,6 @@
 #define SCOPE_GUARD_H_8971632487321434
 
 #include <cassert>
-//#include "type_traits.h"
 #include "legacy_compiler.h" //std::uncaught_exceptions
 
 //best of Zen, Loki and C++17

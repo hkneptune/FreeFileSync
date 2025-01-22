@@ -34,9 +34,6 @@ wxImage getImageButtonReleased(const char* imageName)
     return greyScale(loadImage(imageName));
     //loadImage(utfTo<wxString>(imageName)).ConvertToGreyscale(1.0/3, 1.0/3, 1.0/3); //treat all channels equally!
     //brighten(output, 30);
-
-    //moveImage(output, 1, 0); //move image right one pixel
-    //return output;
 }
 
 
@@ -248,7 +245,7 @@ public:
             }
     }
 
-    int getBestSize(wxDC& dc, size_t row, ColumnType colType) override
+    int getBestSize(const wxReadOnlyDC& dc, size_t row, ColumnType colType) override
     {
         // -> synchronize renderCell() <-> getBestSize()
 
@@ -269,7 +266,7 @@ public:
 
     static int getColumnTimeDefaultWidth(Grid& grid)
     {
-        wxClientDC dc(&grid.getMainWin());
+        wxInfoDC dc(&grid.getMainWin());
         dc.SetFont(grid.getMainWin().GetFont());
         return 2 * getColumnGapLeft() + dc.GetTextExtent(utfTo<wxString>(formatTime(formatTimeTag))).GetWidth();
     }
@@ -523,23 +520,19 @@ void LogPanel::copySelectionToClipboard()
 {
     try
     {
-        std::wstring clipBuf; //perf: wxString doesn't model exponential growth => unsuitable for large data sets
+        wxString clipBuf; //perf: old wxString didn't model exponential growth, but now it's std::string-based:
+        static_assert(std::is_same_v<wxStringImpl, std::wstring>);
 
         if (auto prov = m_gridMessages->getDataProvider())
         {
             std::vector<Grid::ColAttributes> colAttr = m_gridMessages->getColumnConfig();
             std::erase_if(colAttr, [](const Grid::ColAttributes& ca) { return !ca.visible; });
-            if (!colAttr.empty())
-                for (size_t row : m_gridMessages->getSelectedRows())
+
+            for (size_t row : m_gridMessages->getSelectedRows())
+                for (auto it = colAttr.begin(); it != colAttr.end(); ++it)
                 {
-                    std::for_each(colAttr.begin(), --colAttr.end(),
-                                  [&](const Grid::ColAttributes& ca)
-                    {
-                        clipBuf += prov->getValue(row, ca.type);
-                        clipBuf += L'\t';
-                    });
-                    clipBuf += prov->getValue(row, colAttr.back().type);
-                    clipBuf += L'\n';
+                    clipBuf += prov->getValue(row, it->type);
+                    clipBuf += it == colAttr.end() - 1 ?  L'\n' : L'\t';
                 }
         }
 

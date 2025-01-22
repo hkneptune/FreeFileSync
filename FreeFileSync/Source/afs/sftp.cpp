@@ -1034,7 +1034,7 @@ private:
                                 /**/            cache.idleSshSessions.pop_back(); //run ~SshSession *inside* the lock! => avoid hitting server limits!
                                 return; //don't hold lock for too long: delete only one session at a time, then yield...
                             }
-                        std::erase_if(cache.sshSessionsWithThreadAffinity, [](const auto& v) { return !v.second.lock(); }); //clean up dangling weak pointer
+                        std::erase_if(cache.sshSessionsWithThreadAffinity, [](const auto& v) { return v.second.expired(); }); //clean up dangling weak pointer
                         done = true;
                     });
                     if (done)

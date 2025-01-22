@@ -8,10 +8,8 @@
 #define STREAM_BUFFER_H_08492572089560298
 
 #include <thread>
-//#include <condition_variable>
 #include "ring_buffer.h"
 #include "string_tools.h"
-//#include "thread.h"
 
 
 namespace zen

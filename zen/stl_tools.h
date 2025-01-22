@@ -14,7 +14,6 @@
 #include <unordered_map>
 #include <memory>
 #include <cassert>
-//#include <algorithm>
 #include <optional>
 #include "type_traits.h"
 
@@ -93,21 +92,22 @@ class SharedRef //why is there no std::shared_ref???
 public:
     SharedRef() = delete; //no surprise memory allocations!
 
-    explicit SharedRef(std::shared_ptr<T> ptr) : ref_(std::move(ptr)) { assert(ref_); }
+    explicit SharedRef(const std::shared_ptr<T>&  ptr) : ptr_          (ptr)  { assert(ptr_); }
+    explicit SharedRef(      std::shared_ptr<T>&& ptr) : ptr_(std::move(ptr)) { assert(ptr_); }
 
-    template <class U>
-    SharedRef(const SharedRef<U>& other) : ref_(other.ref_) {}
+    template <class U> SharedRef(const SharedRef<U>&  other) : ptr_          (other.ptr_)  {}
+    template <class U> SharedRef(      SharedRef<U>&& other) : ptr_(std::move(other.ptr_)) {}
 
-    /**/  T& ref()       { return *ref_; };
-    const T& ref() const { return *ref_; };
+    /**/  T& ref()       { return *ptr_; };
+    const T& ref() const { return *ptr_; };
 
-    std::shared_ptr<      T> ptr()       { return ref_; };
-    std::shared_ptr<const T> ptr() const { return ref_; };
+    const std::shared_ptr<      T>& ptr()       { return ptr_; };
+    /**/  std::shared_ptr<const T>  ptr() const { return ptr_; }; //careful: return value has different type => creates temporary!
 
 private:
     template <class U> friend class SharedRef;
 
-    std::shared_ptr<T> ref_; //always bound
+    std::shared_ptr<T> ptr_; //always bound
 };
 
 template <class T, class... Args> inline
@@ -115,8 +115,49 @@ SharedRef<T> makeSharedRef(Args&& ... args) { return SharedRef<T>(std::make_shar
 
 
 
+//hide SharedRef as an implementation detail
+template <class IterImpl, //underlying iterator type
+          class T>        //target value type
+class DerefIter
+{
+public:
+    using iterator_category = std::bidirectional_iterator_tag;
+    using value_type = T;
+    using difference_type = ptrdiff_t;
+    using pointer   = T*;
+    using reference = T&;
+
+    DerefIter() {}
+    DerefIter(IterImpl it) : it_(std::move(it)) {}
+    //DerefIter(const DerefIter& other) : it_(other.it_) {}
+    DerefIter& operator++() { ++it_; return *this; }
+    DerefIter& operator--() { --it_; return *this; }
+    inline friend DerefIter operator++(DerefIter& it, int) { return it++; }
+    inline friend DerefIter operator--(DerefIter& it, int) { return it--; }
+    inline friend ptrdiff_t operator-(const DerefIter& lhs, const DerefIter& rhs) { return lhs.it_ - rhs.it_; }
+    bool operator==(const DerefIter&) const = default;
+    T& operator* () const { return  it_->ref(); }
+    T* operator->() const { return &it_->ref(); }
+private:
+    IterImpl it_{};
+};
 
 
+template <class Iterator>
+class Range
+{
+public:
+    Range(Iterator first, Iterator last) : first_(std::move(first)), last_(std::move(last)) {}
+    Iterator begin() const { return first_; }
+    Iterator end  () const { return last_; }
+
+    bool  empty() const { return first_ == last_; }
+    size_t size() const { return last_ - first_; }
+
+private:
+    Iterator first_;
+    Iterator last_;
+};
 
 //######################## implementation ########################
 

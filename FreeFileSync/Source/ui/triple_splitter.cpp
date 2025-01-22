@@ -5,8 +5,6 @@
 // *****************************************************************************
 
 #include "triple_splitter.h"
-//#include <algorithm>
-//#include <zen/stl_tools.h>
 #include <wx/settings.h>
 #include <wx+/dc.h>
 
@@ -58,11 +56,10 @@ TripleSplitter::TripleSplitter(wxWindow* parent,
     sashSize_          (dipToWxsize(SASH_SIZE_DIP)),
     childWindowMinSize_(dipToWxsize(CHILD_WINDOW_MIN_SIZE_DIP))
 {
+    //https://wiki.wxwidgets.org/Flicker-Free_Drawing
+    SetBackgroundStyle(wxBG_STYLE_PAINT); //get's rid of needless wxEVT_ERASE_BACKGROUND
     Bind(wxEVT_PAINT, [this](wxPaintEvent& event) { onPaintEvent(event); });
     Bind(wxEVT_SIZE,  [this](wxSizeEvent&  event) { updateWindowSizes(); event.Skip(); });
-    Bind(wxEVT_ERASE_BACKGROUND, [](wxEraseEvent& event) {}); //https://wiki.wxwidgets.org/Flicker-Free_Drawing
-
-    SetBackgroundStyle(wxBG_STYLE_PAINT);
 
     Bind(wxEVT_LEFT_DOWN,    [this](wxMouseEvent& event) { onMouseLeftDown  (event); });
     Bind(wxEVT_LEFT_UP,      [this](wxMouseEvent& event) { onMouseLeftUp    (event); });
@@ -130,7 +127,9 @@ int TripleSplitter::getCenterPosX() const
 
 void TripleSplitter::onPaintEvent(wxPaintEvent& event)
 {
-    BufferedPaintDC dc(*this, doubleBuffer_);
+    wxPaintDC dc(this);
+    static_assert(wxALWAYS_NATIVE_DOUBLE_BUFFER);
+
     //GetUpdateRegion()? nah, just redraw everything
 
     assert(GetSize() == GetClientSize());

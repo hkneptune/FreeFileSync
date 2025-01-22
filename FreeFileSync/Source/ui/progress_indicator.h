@@ -9,7 +9,6 @@
 
 #include <functional>
 #include <zen/error_log.h>
-//#include <wx/frame.h>
 #include "wx+/window_tools.h"
 #include "../status_handler.h"
 

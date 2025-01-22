@@ -5,7 +5,6 @@
 // *****************************************************************************
 
 #include "image_resources.h"
-//#include <map>
 #include <zen/utf.h>
 #include <zen/thread.h>
 #include <zen/file_io.h>
@@ -74,7 +73,7 @@ auto createScalerTask(const std::string& imageName, const wxImage& img, int hqSc
     assert(runningOnMainThread());
     return [imageName,
             width  = img.GetWidth(),  //
-            height = img.GetHeight(), //don't call wxWidgets functions from worker thread
+            height = img.GetHeight(), //don't call these wxWidgets functions from worker thread
             rgb    = img.GetData(),   //
             alpha  = img.GetAlpha(),  //
             hqScale, &protResult]

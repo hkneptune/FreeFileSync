@@ -7,9 +7,6 @@
 #include "synchronization.h"
 #include <tuple>
 #include <zen/process_priority.h>
-//#include <zen/perf.h>
-//#include <zen/guid.h>
-//#include <zen/crc.h>
 #include "algorithm.h"
 #include "db_file.h"
 #include "status_handler_impl.h"
@@ -35,7 +32,8 @@ const size_t CONFLICTS_PREVIEW_MAX = 25; //=> consider memory consumption, log f
 
 SyncStatistics::SyncStatistics(const FolderComparison& folderCmp)
 {
-    std::for_each(begin(folderCmp), end(folderCmp), [&](const BaseFolderPair& baseFolder) { recurse(baseFolder); });
+    for (const BaseFolderPair& baseFolder : asRange(folderCmp))
+        recurse(baseFolder);
 }
 
 
@@ -55,16 +53,16 @@ SyncStatistics::SyncStatistics(const FilePair& file)
 inline
 void SyncStatistics::recurse(const ContainerObject& conObj)
 {
-    for (const FilePair& file : conObj.refSubFiles())
+    for (const FilePair& file : conObj.files())
         processFile(file);
-    for (const SymlinkPair& symlink : conObj.refSubLinks())
+    for (const SymlinkPair& symlink : conObj.symlinks())
         processLink(symlink);
-    for (const FolderPair& folder : conObj.refSubFolders())
+    for (const FolderPair& folder : conObj.subfolders())
         processFolder(folder);
 
-    rowsTotal_ += conObj.refSubFolders().size();
-    rowsTotal_ += conObj.refSubFiles  ().size();
-    rowsTotal_ += conObj.refSubLinks  ().size();
+    rowsTotal_ += conObj.subfolders().size();
+    rowsTotal_ += conObj.files     ().size();
+    rowsTotal_ += conObj.symlinks  ().size();
 }
 
 
@@ -269,7 +267,7 @@ private:
     void recurse(const ContainerObject& conObj)
     {
         //process files
-        for (const FilePair& file : conObj.refSubFiles())
+        for (const FilePair& file : conObj.files())
             switch (file.getSyncOperation()) //evaluate comparison result and sync direction
             {
                 case SO_CREATE_LEFT:
@@ -318,7 +316,7 @@ private:
         //[...]
 
         //recurse into sub-dirs
-        for (const FolderPair& folder : conObj.refSubFolders())
+        for (const FolderPair& folder : conObj.subfolders())
             switch (folder.getSyncOperation())
             {
                 case SO_DELETE_LEFT:
@@ -503,14 +501,14 @@ private:
 
     void recurse(const ContainerObject& conObj, uint64_t parentPathHash)
     {
-        for (const FilePair& file : conObj.refSubFiles())
+        for (const FilePair& file : conObj.files())
             childPathRefs_.push_back({&file, getPathHash(file, parentPathHash)});
         //S1 -> T (update)   is not a conflict (anymore) if S1, S2 contain different files
         //S2 -> T (update)   https://freefilesync.org/forum/viewtopic.php?t=9365#p36466
-        for (const SymlinkPair& symlink : conObj.refSubLinks())
+        for (const SymlinkPair& symlink : conObj.symlinks())
             childPathRefs_.push_back({&symlink, getPathHash(symlink, parentPathHash)});
 
-        for (const FolderPair& subFolder : conObj.refSubFolders())
+        for (const FolderPair& subFolder : conObj.subfolders())
         {
             const uint64_t folderPathHash = getPathHash(subFolder, parentPathHash);
 
@@ -609,7 +607,7 @@ void checkPathRaceCondition(const BaseFolderPair& baseFolderP, const BaseFolderP
                 std::vector<const ContainerObject*> childFolderP2;
 
                 for (const ContainerObject* childFolder : childFolderP)
-                    for (const FolderPair& folder : childFolder->refSubFolders())
+                    for (const FolderPair& folder : childFolder->subfolders())
                         if (equalNoCase(folder.getItemName<sideP>(), itemName))
                             childFolderP2.push_back(&folder);
                 //no "break": yes, weird, but there could be more than one (for case-sensitive file system)
@@ -1380,7 +1378,7 @@ RingBuffer<Workload::WorkItems> FolderPairSyncer::getFolderLevelWorkItems(PassNo
         if (pass == PassNo::zero)
         {
             //create folders as required by file move targets:
-            for (FolderPair& folder : conObj.refSubFolders())
+            for (FolderPair& folder : conObj.subfolders())
                 if (needZeroPass(folder))
                     workItems.push_back([this, &folder, &workload, pass]
                 {
@@ -1391,14 +1389,14 @@ RingBuffer<Workload::WorkItems> FolderPairSyncer::getFolderLevelWorkItems(PassNo
             else
                 foldersToInspect.push_back(&folder);
 
-            for (FilePair& file : conObj.refSubFiles())
+            for (FilePair& file : conObj.files())
                 if (needZeroPass(file))
                     workItems.push_back([this, &file] { executeFileMove(file); /*throw ThreadStopRequest*/ });
         }
         else
         {
             //synchronize folders *first* (see comment above "Multithreaded File Copy")
-            for (FolderPair& folder : conObj.refSubFolders())
+            for (FolderPair& folder : conObj.subfolders())
                 if (pass == getPass(folder))
                     workItems.push_back([this, &folder, &workload, pass]
                 {
@@ -1410,7 +1408,7 @@ RingBuffer<Workload::WorkItems> FolderPairSyncer::getFolderLevelWorkItems(PassNo
                 foldersToInspect.push_back(&folder);
 
             //synchronize files:
-            for (FilePair& file : conObj.refSubFiles())
+            for (FilePair& file : conObj.files())
                 if (pass == getPass(file))
                     workItems.push_back([this, &file]
                 {
@@ -1418,7 +1416,7 @@ RingBuffer<Workload::WorkItems> FolderPairSyncer::getFolderLevelWorkItems(PassNo
                 });
 
             //synchronize symbolic links:
-            for (SymlinkPair& symlink : conObj.refSubLinks())
+            for (SymlinkPair& symlink : conObj.symlinks())
                 if (pass == getPass(symlink))
                     workItems.push_back([this, &symlink]
                 {
@@ -1464,6 +1462,8 @@ RingBuffer<Workload::WorkItems> FolderPairSyncer::getFolderLevelWorkItems(PassNo
 template <SelectSide side>
 void FolderPairSyncer::executeFileMoveImpl(FilePair& fileFrom, FilePair& fileTo) //throw ThreadStopRequest
 {
+    assert(fileFrom.getMovePair() == &fileTo);
+
     const bool fallBackCopyDelete = [&]
     {
         //creation of parent folder has failed earlier? => fall back to delete + copy
@@ -1479,8 +1479,8 @@ void FolderPairSyncer::executeFileMoveImpl(FilePair& fileFrom, FilePair& fileTo)
         }
 
         //name clash with folders/symlinks? obscure => fall back to delete + copy
-        if (haveNameClash<side>(fileTo, fileTo.parent().refSubFolders()) ||
-            haveNameClash<side>(fileTo, fileTo.parent().refSubLinks  ()))
+        if (haveNameClash<side>(fileTo, fileTo.parent().subfolders()) ||
+            haveNameClash<side>(fileTo, fileTo.parent().symlinks  ()))
         {
             reportInfo(AFS::generateMoveErrorMsg(fileFrom.getAbstractPath<side>(), fileTo.getAbstractPath<side>()) + L"\n\n" +
                        replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(fileTo.getItemName<side>())), acb_); //throw ThreadStopRequest
@@ -1513,8 +1513,7 @@ void FolderPairSyncer::executeFileMoveImpl(FilePair& fileFrom, FilePair& fileTo)
             return {getCUD(statSrc) + getCUD(statTrg), statSrc.getBytesToProcess() + statTrg.getBytesToProcess()};
         };
         const auto [itemsBefore, bytesBefore] = getStats();
-        fileFrom.setMoveRef(nullptr);
-        fileTo  .setMoveRef(nullptr);
+        fileFrom.setMovePair(nullptr);
         const auto [itemsAfter, bytesAfter] = getStats();
 
         //fix statistics total to match "copy + delete"
@@ -1530,10 +1529,8 @@ void FolderPairSyncer::executeFileMove(FilePair& file) //throw ThreadStopRequest
     {
         case SO_MOVE_LEFT_TO:
         case SO_MOVE_RIGHT_TO:
-            if (FilePair* fileFrom = dynamic_cast<FilePair*>(FileSystemObject::retrieve(file.getMoveRef())))
+            if (FilePair* fileFrom = file.getMovePair())
             {
-                assert(fileFrom->getMoveRef() == file.getId());
-
                 if (syncOp == SO_MOVE_LEFT_TO)
                     executeFileMoveImpl<SelectSide::left>(*fileFrom, file); //throw ThreadStopRequest
                 else
@@ -1564,11 +1561,11 @@ void FolderPairSyncer::executeFileMove(FilePair& file) //throw ThreadStopRequest
 
 bool FolderPairSyncer::containsMoveTarget(const FolderPair& parent)
 {
-    for (const FilePair& file : parent.refSubFiles())
+    for (const FilePair& file : parent.files())
         if (needZeroPass(file))
             return true;
 
-    for (const FolderPair& subFolder : parent.refSubFolders())
+    for (const FolderPair& subFolder : parent.subfolders())
         if (containsMoveTarget(subFolder))
             return true;
     return false;
@@ -1582,13 +1579,13 @@ bool FolderPairSyncer::needZeroPass(const FolderPair& folder)
     {
         case SO_CREATE_LEFT:
             return containsMoveTarget(folder) && //recursive! watch perf!
-                   !haveNameClash<SelectSide::left>(folder, folder.parent().refSubFiles()) && //name clash with files/symlinks? obscure => skip folder creation
-                   !haveNameClash<SelectSide::left>(folder, folder.parent().refSubLinks());   // => move: fall back to delete + copy
+                   !haveNameClash<SelectSide::left>(folder, folder.parent().files   ()) && //name clash with files/symlinks? obscure => skip folder creation
+                   !haveNameClash<SelectSide::left>(folder, folder.parent().symlinks());   // => move: fall back to delete + copy
 
         case SO_CREATE_RIGHT:
             return containsMoveTarget(folder) && //recursive! watch perf!
-                   !haveNameClash<SelectSide::right>(folder, folder.parent().refSubFiles()) && //name clash with files/symlinks? obscure => skip folder creation
-                   !haveNameClash<SelectSide::right>(folder, folder.parent().refSubLinks());   // => move: fall back to delete + copy
+                   !haveNameClash<SelectSide::right>(folder, folder.parent().files   ()) && //name clash with files/symlinks? obscure => skip folder creation
+                   !haveNameClash<SelectSide::right>(folder, folder.parent().symlinks());   // => move: fall back to delete + copy
 
         case SO_DO_NOTHING:          //implies !isEmpty<side>(); see FolderPair::getSyncOperation()
         case SO_UNRESOLVED_CONFLICT: //
@@ -1853,10 +1850,9 @@ void FolderPairSyncer::synchronizeFileInt(FilePair& file, SyncOperation syncOp) 
 
         case SO_MOVE_LEFT_TO:
         case SO_MOVE_RIGHT_TO:
-            if (FilePair* fileFrom = dynamic_cast<FilePair*>(FileSystemObject::retrieve(file.getMoveRef())))
+            if (FilePair* fileFrom = file.getMovePair())
             {
                 FilePair* fileTo = &file;
-                assert(fileFrom->getMoveRef() == fileTo->getId());
 
                 assert((fileFrom->getSyncOperation() == SO_MOVE_LEFT_FROM  && fileTo->getSyncOperation() == SO_MOVE_LEFT_TO  && sideTrg == SelectSide::left) ||
                        (fileFrom->getSyncOperation() == SO_MOVE_RIGHT_FROM && fileTo->getSyncOperation() == SO_MOVE_RIGHT_TO && sideTrg == SelectSide::right));
@@ -2199,9 +2195,9 @@ void FolderPairSyncer::synchronizeFolderInt(FolderPair& folder, SyncOperation sy
 
                 //attention when fixing statistics due to missing folder: child items may be scheduled for move, so deletion will have move-references flip back to copy + delete!
                 const SyncStatistics statsBefore(folder.base()); //=> don't bother considering individual move operations, just calculate over the whole tree
-                folder.refSubFiles  ().clear(); //
-                folder.refSubLinks  ().clear(); //update FolderPair
-                folder.refSubFolders().clear(); //
+                folder.clearFiles();          //
+                folder.clearSymlinks();       //update FolderPair
+                folder.clearSubfolders();     //
                 folder.removeItem<sideSrc>(); //
                 const SyncStatistics statsAfter(folder.base());
 
@@ -2226,10 +2222,10 @@ void FolderPairSyncer::synchronizeFolderInt(FolderPair& folder, SyncOperation sy
 
             //TODO: implement parallel folder deletion
 
-            folder.refSubFiles  ().clear(); //
-            folder.refSubLinks  ().clear(); //update FolderPair
-            folder.refSubFolders().clear(); //
-            folder.removeItem<sideTrg>();   //
+            folder.clearFiles();          //
+            folder.clearSymlinks();       //update FolderPair
+            folder.clearSubfolders();     //
+            folder.removeItem<sideTrg>(); //
         }
         break;
 
@@ -2444,14 +2440,13 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
     {
         int     itemsTotal = 0;
         int64_t bytesTotal = 0;
-        std::for_each(begin(folderCmp), end(folderCmp),
-                      [&](const BaseFolderPair& baseFolder)
+        for (const BaseFolderPair& baseFolder : asRange(folderCmp))
         {
             SyncStatistics fpStats(baseFolder);
             itemsTotal += getCUD(fpStats);
             bytesTotal += fpStats.getBytesToProcess();
             folderPairStats.push_back(fpStats);
-        });
+        }
 
         //inform about the total amount of data that will be processed from now on
         //keep at beginning so that all gui elements are initialized properly
@@ -2462,19 +2457,11 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
 
     //-------------------------------------------------------------------------------
 
-    //specify process and resource handling priorities
-    std::unique_ptr<ScheduleForBackgroundProcessing> backgroundPrio;
-    if (runWithBackgroundPriority)
-        tryReportingError([&]
-    {
-        backgroundPrio = std::make_unique<ScheduleForBackgroundProcessing>(); //throw FileError
-    }, callback); //throw X
-
     //prevent operating system going into sleep state
-    std::unique_ptr<PreventStandby> noStandby;
+    std::unique_ptr<SetProcessPriority> noStandby;
     try
     {
-        noStandby = std::make_unique<PreventStandby>(); //throw FileError
+        noStandby = std::make_unique<SetProcessPriority>(runWithBackgroundPriority ? ProcessPriority::background : ProcessPriority::normal); //throw FileError
     }
     catch (const FileError& e) //failure is not critical => log only
     {
@@ -2504,7 +2491,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
         bool haveFullPair = false;
         std::wstring partialPairList;
 
-        std::for_each(begin(folderCmp), end(folderCmp), [&](const BaseFolderPair& baseFolder)
+        for (const BaseFolderPair& baseFolder : asRange(folderCmp))
         {
             const AbstractPath& folderPathL = baseFolder.getAbstractPath<SelectSide::left >();
             const AbstractPath& folderPathR = baseFolder.getAbstractPath<SelectSide::right>();
@@ -2517,7 +2504,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
             }
             else if (!AFS::isNullPath(folderPathL))
                 haveFullPair = true;
-        });
+        }
 
         //error if: partial pairs or all empty -> single-folder comparison scenario doesn't include synchronization
         if (!partialPairList.empty() || !haveFullPair)

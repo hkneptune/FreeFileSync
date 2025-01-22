@@ -9,25 +9,32 @@
 
 #include <vector>
 #include <zen/zstring.h>
+#include <wx+/darkmode.h>
 #include <wx/language.h>
+#include "../localization.h"
 
 namespace rts
 {
-struct XmlRealConfig
+struct FfsRealConfig
 {
     std::vector<Zstring> directories;
     Zstring commandline;
     unsigned int delay = 10;
 };
 
-std::pair<XmlRealConfig, std::wstring /*warningMsg*/>  readConfig(const Zstring& filePath); //throw FileError
-void writeConfig(const XmlRealConfig& config, const Zstring& filePath); //throw FileError
+std::pair<FfsRealConfig, std::wstring /*warningMsg*/> readConfig(const Zstring& filePath); //throw FileError
+void writeConfig(const FfsRealConfig& config, const Zstring& filePath); //throw FileError
 
 
 //reuse (some of) FreeFileSync's xml files
-std::pair<XmlRealConfig, std::wstring /*warningMsg*/> readRealOrBatchConfig(const Zstring& filePath); //throw FileError
+std::pair<FfsRealConfig, std::wstring /*warningMsg*/> readRealOrBatchConfig(const Zstring& filePath); //throw FileError
 
-wxLanguage getProgramLanguage(); //throw FileError
+struct GlobalConfig
+{
+    wxLanguage programLanguage = fff::getDefaultLanguage();
+    zen::ColorTheme appColorTheme = zen::ColorTheme::System;
+};
+GlobalConfig getGlobalConfig(); //throw FileError
 }
 
 #endif //XML_PROC_H_0813748158321813490

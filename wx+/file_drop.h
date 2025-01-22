@@ -8,7 +8,6 @@
 #define FILE_DROP_H_09457802957842560325626
 
 #include <vector>
-//#include <functional>
 #include <zen/zstring.h>
 #include <wx/window.h>
 #include <wx/event.h>

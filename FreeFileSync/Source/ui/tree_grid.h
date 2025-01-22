@@ -26,7 +26,7 @@ public:
     };
 
     TreeView() {}
-    TreeView(FolderComparison& folderCmp, const SortInfo& si); //takes (shared) ownership
+    TreeView(FolderComparison& folderCmp, const SortInfo& si);
 
     //apply view filter: comparison results
     void applyDifferenceFilter(bool showExcluded,
@@ -50,11 +50,11 @@ public:
                            bool syncEqualActive,
                            bool conflictFilesActive);
 
-    enum NodeStatus
+    enum class NodeStatus
     {
-        STATUS_EXPANDED,
-        STATUS_REDUCED,
-        STATUS_EMPTY
+        expanded,
+        reduced,
+        empty
     };
 
     //---------------------------------------------------------------------
@@ -73,8 +73,8 @@ public:
 
     struct FilesNode : public Node
     {
-        FilesNode(int percent, uint64_t bytes, int itemCount, unsigned int level, const std::vector<FileSystemObject*>& fsos) :
-            Node(percent, bytes, itemCount, level, STATUS_EMPTY), filesAndLinks(fsos)  {}
+        FilesNode(int percent, uint64_t bytes, int itemCount, unsigned int level, std::vector<FileSystemObject*>&& fsos) :
+            Node(percent, bytes, itemCount, level, NodeStatus::empty), filesAndLinks(std::move(fsos))  {}
 
         std::vector<FileSystemObject*> filesAndLinks; //files and symlinks matching view filter; pointers are bound!
     };
@@ -109,37 +109,28 @@ private:
     TreeView           (const TreeView&) = delete;
     TreeView& operator=(const TreeView&) = delete;
 
-    struct DirNodeImpl;
-
     struct Container
     {
         uint64_t bytesGross = 0;
         uint64_t bytesNet   = 0; //bytes for files on view in this directory only
         int itemCountGross  = 0;
-        int itemCountNet    = 0; //number of files on view for in this directory only
+        int itemCountNet    = 0; //number of files on view in this directory only
 
-        std::vector<DirNodeImpl> subDirs;
-        FileSystemObject::ObjectId firstFileId = nullptr; //weak pointer to first FilePair or SymlinkPair
-        //- "compress" algorithm may hide file nodes for directories with a single included file, i.e. itemCountGross == itemCountNet == 1
-        //- a ContainerObject* would be a better fit, but we need weak pointer semantics!
-        //- a std::vector<FileSystemObject::ObjectId> would be a better design, but we don't want a second memory structure as large as custom grid!
-    };
-
-    struct DirNodeImpl : public Container
-    {
-        FileSystemObject::ObjectId objId = nullptr; //weak pointer to FolderPair
+        std::vector<Container> subDirs;
+        bool showFilesNode = false; //"compress" algorithm may hide file nodes for directories with a single included file, i.e. itemCountGross == itemCountNet == 1
+        std::weak_ptr<ContainerObject> containerRef; //-> BaseFolderPair if NodeType::root,
+        //FolderPair if NodeType::folder, and parent ContainerObject if NodeType::files
     };
 
     struct RootNodeImpl : public Container
     {
-        std::shared_ptr<BaseFolderPair> baseFolder;
         std::wstring displayName;
     };
 
     enum class NodeType
     {
         root,   //-> RootNodeImpl
-        folder, //-> DirNodeImpl
+        folder, //-> Container
         files   //-> Container
     };
 
@@ -147,8 +138,8 @@ private:
     {
         unsigned int level = 0;
         int percent = 0; //[0, 100]
-        const Container* node = nullptr;     //
-        NodeType type = NodeType::root; //we increase size of "flatTree" using C-style types rather than have a polymorphic "folderCmpView"
+        const Container* node = nullptr; //
+        NodeType type = NodeType::root;  //increase size of "flatTree" using C-style types rather than have a polymorphic "folderCmpView"
     };
 
     static void compressNode(Container& cont);
@@ -163,14 +154,12 @@ private:
 
     std::vector<TreeLine> flatTree_; //collapsable/expandable sub-tree of folderCmpView -> always sorted!
     /*             /|\
-                    | (update...)
-                    |                         */
+                    | (update...)             */
     std::vector<RootNodeImpl> folderCmpView_; //partial view on folderCmp -> unsorted (cannot be, because files are not a separate entity)
     std::function<bool(const FileSystemObject& fsObj)> lastViewFilterPred_; //buffer view filter predicate for lazy evaluation of files/symlinks corresponding to a TYPE_FILES node
     /*             /|\
-                    | (update...)
-                    |                         */
-    std::vector<zen::SharedRef<BaseFolderPair>> folderCmp_; //full raw data
+                    | (update...)             */
+    std::vector<std::weak_ptr<BaseFolderPair>> folderCmp_; //full raw data
 
     SortInfo currentSort_;
 };
@@ -180,7 +169,7 @@ namespace treegrid
 {
 void init(zen::Grid& grid);
 TreeView& getDataView(zen::Grid& grid);
-void setData(zen::Grid& grid, FolderComparison& folderCmp); //takes (shared) ownership
+void setData(zen::Grid& grid, FolderComparison& folderCmp);
 
 void setShowPercentage(zen::Grid& grid, bool value);
 bool getShowPercentage(const zen::Grid& grid);

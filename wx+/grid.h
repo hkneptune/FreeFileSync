@@ -8,7 +8,6 @@
 #define GRID_H_834702134831734869987
 
 #include <memory>
-//#include <numeric>
 #include <optional>
 #include <vector>
 #include <zen/stl_tools.h>
@@ -108,9 +107,9 @@ public:
     virtual std::wstring getValue(size_t row, ColumnType colType) const = 0;
     virtual void         renderRowBackgound(wxDC& dc, const wxRect& rect, size_t row,                     bool enabled, bool selected, HoverArea rowHover); //default implementation
     virtual void         renderCell        (wxDC& dc, const wxRect& rect, size_t row, ColumnType colType, bool enabled, bool selected, HoverArea rowHover);
-    virtual int          getBestSize       (wxDC& dc, size_t row, ColumnType colType); //must correspond to renderCell()!
-    virtual HoverArea    getMouseHover     (wxDC& dc, size_t row, ColumnType colType, int cellRelativePosX, int cellWidth) { return HoverArea::none; }
-    virtual std::wstring getToolTip        (          size_t row, ColumnType colType, HoverArea rowHover) { return std::wstring(); }
+    virtual int          getBestSize  (const wxReadOnlyDC& dc, size_t row, ColumnType colType); //must correspond to renderCell()!
+    virtual HoverArea    getMouseHover(const wxReadOnlyDC& dc, size_t row, ColumnType colType, int cellRelativePosX, int cellWidth) { return HoverArea::none; }
+    virtual std::wstring getToolTip                           (size_t row, ColumnType colType, HoverArea rowHover) { return std::wstring(); }
 
     //label area:
     virtual std::wstring getColumnLabel(ColumnType colType) const = 0;

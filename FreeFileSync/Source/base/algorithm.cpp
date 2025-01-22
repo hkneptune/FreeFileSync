@@ -5,7 +5,6 @@
 // *****************************************************************************
 
 #include "algorithm.h"
-//#include <zen/perf.h>
 #include <zen/crc.h>
 #include <zen/guid.h>
 #include <zen/file_access.h> //needed for TempFileBuffer only
@@ -23,7 +22,8 @@ using namespace fff;
 void fff::swapGrids(const MainConfiguration& mainCfg, FolderComparison& folderCmp,
                     PhaseCallback& callback /*throw X*/) //throw X
 {
-    std::for_each(begin(folderCmp), end(folderCmp), [](BaseFolderPair& baseFolder) { baseFolder.flip(); });
+    for (BaseFolderPair& baseFolder : asRange(folderCmp))
+        baseFolder.flip();
 
     redetermineSyncDirection(extractDirectionCfg(folderCmp, mainCfg),
                              callback); //throw FileError
@@ -44,11 +44,11 @@ private:
 
     void recurse(ContainerObject& conObj) const
     {
-        for (FilePair& file : conObj.refSubFiles())
+        for (FilePair& file : conObj.files())
             processFile(file);
-        for (SymlinkPair& link : conObj.refSubLinks())
+        for (SymlinkPair& link : conObj.symlinks())
             processLink(link);
-        for (FolderPair& folder : conObj.refSubFolders())
+        for (FolderPair& folder : conObj.subfolders())
             processFolder(folder);
     }
 
@@ -195,22 +195,29 @@ private:
 //test if non-equal items exist in scanned data
 bool allItemsCategoryEqual(const ContainerObject& conObj)
 {
-    return std::all_of(conObj.refSubFiles().begin(), conObj.refSubFiles().end(),
-    [](const FilePair& file) { return file.getCategory() == FILE_EQUAL; })&&
+    for (const FilePair& file : conObj.files())
+        if (file.getCategory() != FILE_EQUAL)
+            return false;
 
-    std::all_of(conObj.refSubLinks().begin(), conObj.refSubLinks().end(),
-    [](const SymlinkPair& symlink) { return symlink.getLinkCategory() == SYMLINK_EQUAL; })&&
+    for (const SymlinkPair& symlink : conObj.symlinks())
+        if (symlink.getLinkCategory() != SYMLINK_EQUAL)
+            return false;
 
-    std::all_of(conObj.refSubFolders().begin(), conObj.refSubFolders().end(), [](const FolderPair& folder)
-    {
-        return folder.getDirCategory() == DIR_EQUAL && allItemsCategoryEqual(folder); //short-circuit behavior!
-    });
+    for (const FolderPair& folder : conObj.subfolders())
+        if (folder.getDirCategory() != DIR_EQUAL || !allItemsCategoryEqual(folder)) //short-circuit behavior!
+            return false;
+
+    return true;
 }
 }
 
 bool fff::allElementsEqual(const FolderComparison& folderCmp)
 {
-    return std::all_of(begin(folderCmp), end(folderCmp), [](const BaseFolderPair& baseFolder) { return allItemsCategoryEqual(baseFolder); });
+    for (const BaseFolderPair& baseFolder : asRange(folderCmp))
+        if (!allItemsCategoryEqual(baseFolder))
+            return false;
+
+    return true;
 }
 
 //---------------------------------------------------------------------------------------------------------------
@@ -351,9 +358,9 @@ private:
 
     void recurse(ContainerObject& conObj, const InSyncFolder* dbFolderL, const InSyncFolder* dbFolderR)
     {
-        for (FilePair& file : conObj.refSubFiles())
+        for (FilePair& file : conObj.files())
         {
-            file.setMoveRef(nullptr); //discard remnants from previous move detection and start fresh (e.g. consider manual folder rename)
+            file.setMovePair(nullptr); //discard remnants from previous move detection and start fresh (e.g. consider manual folder rename)
 
             const AFS::FingerPrint filePrintL = file.isEmpty<SelectSide::left >() ? 0 : file.getFilePrint<SelectSide::left >();
             const AFS::FingerPrint filePrintR = file.isEmpty<SelectSide::right>() ? 0 : file.getFilePrint<SelectSide::right>();
@@ -383,7 +390,7 @@ private:
             }
         }
 
-        for (FolderPair& folder : conObj.refSubFolders())
+        for (FolderPair& folder : conObj.subfolders())
         {
             auto getDbEntry = [](const InSyncFolder* dbFolder, const ZstringNorm& folderName) -> const InSyncFolder*
             {
@@ -495,8 +502,8 @@ private:
                     if (FilePair* fileRightOnly = getAssocFilePair<SelectSide::right>(dbFile))
                         if (sameSizeAndDate<SelectSide::right>(*fileRightOnly, dbFile))
                         {
-                            if (fileLeftOnly ->getMoveRef() == nullptr &&              //needless checks? (file prints are unique in this context)
-                                fileRightOnly->getMoveRef() == nullptr &&              //
+                            if (!fileLeftOnly ->getMovePair() &&                   //needless checks? (file prints are unique in this context)
+                                !fileRightOnly->getMovePair() &&                   //
                                 fileLeftOnly ->getCategory() == FILE_LEFT_ONLY && //is it possible we could get conflicting matches!?
                                 fileRightOnly->getCategory() == FILE_RIGHT_ONLY)  //=> likely 'yes', but only in obscure cases
                                 //--------------- found a match ---------------
@@ -523,14 +530,10 @@ private:
                                     fileRightOnly->removeItem<SelectSide::right>(); //=> call ContainerObject::removeDoubleEmpty() later!
                                 }
                                 else //regular move pair: mark it!
-                                {
-                                    fileLeftOnly ->setMoveRef(fileRightOnly->getId());
-                                    fileRightOnly->setMoveRef(fileLeftOnly ->getId());
-                                }
+                                    fileLeftOnly->setMovePair(fileRightOnly);
                             }
                             else
-                                assert(fileLeftOnly ->getMoveRef() == fileRightOnly->getId() &&
-                                       fileRightOnly->getMoveRef() == fileLeftOnly ->getId());
+                                assert(fileLeftOnly->getMovePair() == fileRightOnly);
                         }
     }
 
@@ -593,11 +596,11 @@ private:
 
     void recurse(ContainerObject& conObj, const InSyncFolder* dbFolder) const
     {
-        for (FilePair& file : conObj.refSubFiles())
+        for (FilePair& file : conObj.files())
             processFile(file, dbFolder);
-        for (SymlinkPair& symlink : conObj.refSubLinks())
+        for (SymlinkPair& symlink : conObj.symlinks())
             processSymlink(symlink, dbFolder);
-        for (FolderPair& folder : conObj.refSubFolders())
+        for (FolderPair& folder : conObj.subfolders())
             processDir(folder, dbFolder);
     }
 
@@ -639,17 +642,7 @@ private:
             return file.setSyncDirConflict(txtDbNotInSync_);
 
         //consider renamed/moved files as "updated" with regards to "changes"-based sync settings: https://freefilesync.org/forum/viewtopic.php?t=10594
-        const bool renamedOrMoved = cat == FILE_RENAMED || [&file]
-        {
-            if (const FileSystemObject::ObjectId moveFileRef = file.getMoveRef())
-                if (auto refFile = dynamic_cast<const FilePair*>(FileSystemObject::retrieve(moveFileRef)))
-                {
-                    if (refFile->getMoveRef() == file.getId()) //both ends should agree...
-                        return true;
-                    else assert(false); //...and why shouldn't they?
-                }
-            return false;
-        }();
+        const bool renamedOrMoved = cat == FILE_RENAMED || file.getMovePair();
         const CudAction changeL = compareDbEntry<SelectSide::left >(file, dbEntryL, fileTimeTolerance_, ignoreTimeShiftMinutes_, renamedOrMoved);
         const CudAction changeR = compareDbEntry<SelectSide::right>(file, dbEntryR, fileTimeTolerance_, ignoreTimeShiftMinutes_, renamedOrMoved);
 
@@ -925,10 +918,8 @@ void fff::setActiveStatus(bool newStatus, FolderComparison& folderCmp)
 {
     auto onFsItem = [newStatus](FileSystemObject& fsObj) { fsObj.setActive(newStatus); };
 
-    std::for_each(begin(folderCmp), end(folderCmp), [onFsItem](BaseFolderPair& baseFolder)
-    {
+    for (BaseFolderPair& baseFolder : asRange(folderCmp))
         visitFSObjectRecursively(baseFolder, onFsItem, onFsItem, onFsItem);
-    });
 }
 
 
@@ -977,11 +968,11 @@ private:
 
     void recurse(ContainerObject& conObj) const
     {
-        for (FilePair& file : conObj.refSubFiles())
+        for (FilePair& file : conObj.files())
             processFile(file);
-        for (SymlinkPair& symlink : conObj.refSubLinks())
+        for (SymlinkPair& symlink : conObj.symlinks())
             processLink(symlink);
-        for (FolderPair& folder : conObj.refSubFolders())
+        for (FolderPair& folder : conObj.subfolders())
             processDir(folder);
     }
 
@@ -1031,11 +1022,11 @@ private:
 
     void recurse(fff::ContainerObject& conObj) const
     {
-        for (FilePair& file : conObj.refSubFiles())
+        for (FilePair& file : conObj.files())
             processFile(file);
-        for (SymlinkPair& symlink : conObj.refSubLinks())
+        for (SymlinkPair& symlink : conObj.symlinks())
             processLink(symlink);
-        for (FolderPair& folder : conObj.refSubFolders())
+        for (FolderPair& folder : conObj.subfolders())
             processDir(folder);
     }
 
@@ -1165,7 +1156,7 @@ bool matchesTime(const T& obj, time_t timeFrom, time_t timeTo)
 
 void fff::applyTimeSpanFilter(FolderComparison& folderCmp, time_t timeFrom, time_t timeTo)
 {
-    std::for_each(begin(folderCmp), end(folderCmp), [timeFrom, timeTo](BaseFolderPair& baseFolder)
+    for (BaseFolderPair& baseFolder : asRange(folderCmp))
     {
         visitFSObjectRecursively(baseFolder, [](FolderPair& folder) { folder.setActive(false); },
 
@@ -1190,7 +1181,7 @@ void fff::applyTimeSpanFilter(FolderComparison& folderCmp, time_t timeFrom, time
                 symlink.setActive(matchesTime<SelectSide::right>(symlink, timeFrom, timeTo) ||
                                   matchesTime<SelectSide::left> (symlink, timeFrom, timeTo));
         });
-    });
+    }
 }
 
 
@@ -1639,15 +1630,15 @@ void renameItemsOneSide(const std::vector<FileSystemObject*>& selection,
 
         const bool nameAlreadyExisting = [&]
         {
-            for (const FilePair& file : fsObj.parent().refSubFiles())
+            for (const FilePair& file : fsObj.parent().files())
                 if (haveNameClash(file))
                     return true;
 
-            for (const SymlinkPair& symlink : fsObj.parent().refSubLinks())
+            for (const SymlinkPair& symlink : fsObj.parent().symlinks())
                 if (haveNameClash(symlink))
                     return true;
 
-            for (const FolderPair& folder : fsObj.parent().refSubFolders())
+            for (const FolderPair& folder : fsObj.parent().subfolders())
                 if (haveNameClash(folder))
                     return true;
             return false;

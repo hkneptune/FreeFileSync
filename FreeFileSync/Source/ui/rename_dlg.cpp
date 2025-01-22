@@ -6,6 +6,7 @@
 
 #include "rename_dlg.h"
 #include <chrono>
+#include <zen/file_path.h>
 #include <wx/valtext.h>
 #include <wx+/window_layout.h>
 #include <wx+/image_resources.h>
@@ -154,7 +155,7 @@ public:
         }
     }
 
-    int getBestSize(wxDC& dc, size_t row, ColumnType colType) override
+    int getBestSize(const wxReadOnlyDC& dc, size_t row, ColumnType colType) override
     {
         // -> synchronize renderCell() <-> getBestSize()
         return dc.GetTextExtent(getValue(row, colType)).GetWidth() + 2 * getColumnGapLeft() + dipToWxsize(1); //gap on left and right side + border
@@ -339,8 +340,8 @@ RenameDialog::RenameDialog(wxWindow* parent,
     });
 
     wxTextValidator inputValidator(wxFILTER_EXCLUDE_CHAR_LIST);
-    inputValidator.SetCharExcludes(LR"(<>:"/\|?*)"); //chars forbidden for file names (at least on Windows)
-    //https://docs.microsoft.com/de-de/windows/win32/fileio/naming-a-file#naming-conventions
+
+    inputValidator.SetCharExcludes(L"/\\"); //let's not silently forbid "fileNameForbiddenChars", but let it fail explicitly!
     m_textCtrlNewName->SetValidator(inputValidator);
     m_textCtrlNewName->SetValue(renamePhrase); //SetValue() generates a text change event, unlike ChangeValue()
 

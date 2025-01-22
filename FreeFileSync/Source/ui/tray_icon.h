@@ -10,7 +10,6 @@
 #include <functional>
 #include <memory>
 #include <wx/string.h>
-//#include <wx/image.h>
 
 
 /*  show tray icon with progress during lifetime of this instance

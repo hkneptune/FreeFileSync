@@ -5,8 +5,6 @@
 // *****************************************************************************
 
 #include "dir_watcher.h"
-//#include <algorithm>
-//#include <set>
 #include "thread.h"
 #include "scope_guard.h"
 #include "file_access.h"

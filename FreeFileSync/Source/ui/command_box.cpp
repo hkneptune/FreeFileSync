@@ -5,10 +5,7 @@
 // *****************************************************************************
 
 #include "command_box.h"
-//#include <deque>
-//#include <zen/i18n.h>
 #include <algorithm>
-//#include <zen/stl_tools.h>
 #include <zen/utf.h>
 #include <wx+/dc.h>
 

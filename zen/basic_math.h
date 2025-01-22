@@ -27,7 +27,7 @@ template <class N, class D> auto intDivCeil (N numerator, D denominator);
 template <class N, class D> auto intDivFloor(N numerator, D denominator);
 
 template <size_t N, class T>
-T power(T value);
+constexpr T power(T value);
 
 double radToDeg(double rad);    //convert unit [rad] into [°]
 double degToRad(double degree); //convert unit [°] into [rad]
@@ -207,12 +207,12 @@ namespace
 {
 template <size_t N, class T> struct PowerImpl;
 //let's use non-recursive specializations to help the compiler
-template <class T> struct PowerImpl<2, T> { static T result(T value) { return value * value; } };
-template <class T> struct PowerImpl<3, T> { static T result(T value) { return value * value * value; } };
+template <class T> struct PowerImpl<2, T> { static constexpr T result(T value) { return value * value; } };
+template <class T> struct PowerImpl<3, T> { static constexpr T result(T value) { return value * value * value; } };
 }
 
 template <size_t N, class T> inline
-T power(T value)
+constexpr T power(T value)
 {
     return PowerImpl<N, T>::result(value);
 }

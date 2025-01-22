@@ -124,9 +124,7 @@ struct ConvertElement<T, ValueType::stlContainer>
         value.clear();
 
         bool success = true;
-        auto [it, itEnd] = input.getChildren();
-
-        std::for_each(it, itEnd, [&](const XmlElement& xmlChild)
+        for (const XmlElement& xmlChild : input.getChildren())
         {
             typename T::value_type childVal;
             if (zen::readStruc(xmlChild, childVal))
@@ -134,7 +132,7 @@ struct ConvertElement<T, ValueType::stlContainer>
             else
                 success = false;
             //should we support insertion of partially-loaded struct??
-        });
+        }
         return success;
     }
 };

@@ -129,7 +129,7 @@ MainDialog::MainDialog(const Zstring& cfgFilePath) :
                                                           nullptr /*staticText*/, getDroppedPathsFilter(*this));
 
     //--------------------------- load config values ------------------------------------
-    XmlRealConfig newConfig;
+    FfsRealConfig newConfig;
 
     Zstring currentConfigFile = cfgFilePath;
     if (currentConfigFile.empty())
@@ -187,7 +187,7 @@ MainDialog::MainDialog(const Zstring& cfgFilePath) :
 
 MainDialog::~MainDialog()
 {
-    const XmlRealConfig currentCfg = getConfiguration();
+    const FfsRealConfig currentCfg = getConfiguration();
     try
     {
         writeConfig(currentCfg, lastRunConfigPath_); //throw FileError
@@ -244,7 +244,7 @@ void MainDialog::onStart(wxCommandEvent& event)
 {
     Hide();
 
-    XmlRealConfig currentCfg = getConfiguration();
+    FfsRealConfig currentCfg = getConfiguration();
     const Zstring activeCfgFilePath = !equalNativePath(activeConfigFile_, lastRunConfigPath_) ? activeConfigFile_ : Zstring();
 
     switch (runFolderMonitor(currentCfg, ::extractJobName(activeCfgFilePath)))
@@ -286,7 +286,7 @@ void MainDialog::onConfigSave(wxCommandEvent& event)
     if (!endsWithAsciiNoCase(targetFilePath, Zstr(".ffs_real"))) //no weird shit!
         targetFilePath += Zstr(".ffs_real");          //https://freefilesync.org/forum/viewtopic.php?t=9451#p34724
 
-    const XmlRealConfig currentCfg = getConfiguration();
+    const FfsRealConfig currentCfg = getConfiguration();
     try
     {
         writeConfig(currentCfg, targetFilePath); //throw FileError
@@ -301,7 +301,7 @@ void MainDialog::onConfigSave(wxCommandEvent& event)
 
 void MainDialog::loadConfig(const Zstring& filepath)
 {
-    XmlRealConfig newConfig;
+    FfsRealConfig newConfig;
 
     if (!filepath.empty())
         try
@@ -361,7 +361,7 @@ void MainDialog::onFilesDropped(FileDropEvent& event)
 }
 
 
-void MainDialog::setConfiguration(const XmlRealConfig& cfg)
+void MainDialog::setConfiguration(const FfsRealConfig& cfg)
 {
     const Zstring& firstFolderPath = cfg.directories.empty() ? Zstring() : cfg.directories[0];
     const std::vector<Zstring> addFolderPaths = cfg.directories.empty() ? std::vector<Zstring>() :
@@ -379,9 +379,9 @@ void MainDialog::setConfiguration(const XmlRealConfig& cfg)
 }
 
 
-XmlRealConfig MainDialog::getConfiguration()
+FfsRealConfig MainDialog::getConfiguration()
 {
-    XmlRealConfig output;
+    FfsRealConfig output;
 
     output.directories.push_back(firstFolderPanel_->getPath());
 

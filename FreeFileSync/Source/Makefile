@@ -101,6 +101,7 @@ cppFiles+=../../zen/sys_info.cpp
 cppFiles+=../../zen/sys_version.cpp
 cppFiles+=../../zen/thread.cpp
 cppFiles+=../../zen/zlib_wrap.cpp
+cppFiles+=../../wx+/darkmode.cpp
 cppFiles+=../../wx+/file_drop.cpp
 cppFiles+=../../wx+/grid.cpp
 cppFiles+=../../wx+/image_tools.cpp

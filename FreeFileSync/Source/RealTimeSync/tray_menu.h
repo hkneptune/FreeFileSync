@@ -18,7 +18,7 @@ enum class CancelReason
     requestGui,
     requestExit
 };
-CancelReason runFolderMonitor(const XmlRealConfig& config, const wxString& jobname); //jobname may be empty
+CancelReason runFolderMonitor(const FfsRealConfig& config, const wxString& jobname); //jobname may be empty
 }
 
 #endif //TRAY_MENU_H_3967857420987534253245

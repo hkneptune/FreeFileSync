@@ -19,10 +19,10 @@ std::vector<unsigned int> fromTimeShiftPhrase(const std::wstring_view timeShiftP
 std::wstring              toTimeShiftPhrase  (const std::vector<unsigned int>& ignoreTimeShiftMinutes);
 
 //inform about (important) non-default global settings related to comparison and synchronization
-void logNonDefaultSettings(const XmlGlobalSettings& currentSettings, PhaseCallback& callback);
+void logNonDefaultSettings(const GlobalConfig& globalCfg, PhaseCallback& callback);
 
 //facilitate drag & drop config merge:
-MainConfiguration merge(const std::vector<MainConfiguration>& mainCfgs);
+FfsGuiConfig merge(const std::vector<FfsGuiConfig>& guiCfgs);
 }
 
 #endif //STRUCTURE_TOOLS_H_7823097420397434

@@ -7,8 +7,6 @@
 #ifndef HARD_FILTER_H_825780275842758345
 #define HARD_FILTER_H_825780275842758345
 
-//#include <vector>
-//#include <memory>
 #include <unordered_set>
 #include <zen/zstring.h>
 

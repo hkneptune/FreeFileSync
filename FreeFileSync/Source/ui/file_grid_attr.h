@@ -44,8 +44,8 @@ std::vector<ColAttributesRim> getFileGridDefaultColAttribsLeft()
     {
         {ColumnTypeRim::path,     -dipToWxsize(100), 1, true },
         {ColumnTypeRim::extension, dipToWxsize( 60), 0, false},
-        {ColumnTypeRim::date,      dipToWxsize(140), 0, false},
-        {ColumnTypeRim::size,      dipToWxsize(100), 0, true },
+        {ColumnTypeRim::date,      dipToWxsize(140), 0, false}, //optimal: Ubuntu: 138, macOS: 121
+        {ColumnTypeRim::size,      dipToWxsize(100), 0, true }, //optimal: Ubuntu: 96, macOS: 94 for 2GB size
     };
 }
 

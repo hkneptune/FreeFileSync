@@ -7,7 +7,6 @@
 #ifndef ALGORITHM_H_34218518475321452548
 #define ALGORITHM_H_34218518475321452548
 
-//#include <functional>
 #include <span>
 #include "structures.h"
 #include "file_hierarchy.h"

@@ -8,17 +8,10 @@
 #define FOLDER_PAIR_H_89341750847252345
 
 #include <wx/event.h>
-//#include <wx/menu.h>
 #include <wx+/context_menu.h>
-//#include <wx+/bitmap_button.h>
 #include <wx+/image_tools.h>
 #include <wx+/image_resources.h>
-//#include <wx+/std_button_layout.h>
-//#include "folder_selector.h"
-//#include "small_dlgs.h"
-//#include "sync_cfg.h"
 #include "../base/norm_filter.h"
-//#include "../base_tools.h"
 
 
 namespace fff

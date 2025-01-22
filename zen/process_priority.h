@@ -13,23 +13,20 @@
 
 namespace zen
 {
-//signal a "busy" state to the operating system
-class PreventStandby
+enum class ProcessPriority
 {
-public:
-    PreventStandby(); //throw FileError
-    ~PreventStandby();
-private:
-    struct Impl;
-    const std::unique_ptr<Impl> pimpl_;
+    normal,
+    background, //lower CPU and file I/O priorities
 };
 
-//lower CPU and file I/O priorities
-class ScheduleForBackgroundProcessing
+//- prevent operating system going into sleep state
+//- set process I/O priorities
+class SetProcessPriority
 {
 public:
-    ScheduleForBackgroundProcessing(); //throw FileError
-    ~ScheduleForBackgroundProcessing();
+    explicit SetProcessPriority(ProcessPriority prio); //throw FileError
+    ~SetProcessPriority();
+
 private:
     struct Impl;
     const std::unique_ptr<Impl> pimpl_;

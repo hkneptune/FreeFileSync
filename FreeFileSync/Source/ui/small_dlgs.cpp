@@ -10,13 +10,13 @@
 #include <zen/format_unit.h>
 #include <zen/build_info.h>
 #include <zen/file_io.h>
-//#include <zen/http.h>
 #include <wx/wupdlock.h>
 #include <wx/filedlg.h>
 #include <wx/sound.h>
-//#include <wx+/choice_enum.h>
 #include <wx+/context_menu.h>
 #include <wx+/bitmap_button.h>
+#include <wx+/choice_enum.h>
+//#include <wx+/darkmode.h>
 #include <wx+/rtl.h>
 #include <wx+/no_flicker.h>
 #include <wx+/image_tools.h>
@@ -26,15 +26,12 @@
 #include <wx+/image_resources.h>
 #include "gui_generated.h"
 #include "folder_selector.h"
-//#include "version_check.h"
 #include "abstract_folder_picker.h"
 #include "../afs/concrete.h"
 #include "../afs/gdrive.h"
 #include "../afs/ftp.h"
 #include "../afs/sftp.h"
-//#include "../base/algorithm.h"
 #include "../base/synchronization.h"
-//#include "../base/path_filter.h"
 #include "../base/icon_loader.h"
 #include "../status_handler.h" //uiUpdateDue()
 #include "../version/version.h"
@@ -61,8 +58,7 @@ private:
     void onDonate   (wxCommandEvent& event) override { wxLaunchDefaultBrowser(L"https://freefilesync.org/donate"); }
     void onSendEmail(wxCommandEvent& event) override
     {
-        wxLaunchDefaultBrowser(wxString() + L"mailto:zenju@" +
-                               /*don't leave full email in either source or binary*/ L"freefilesync.org");
+        wxLaunchDefaultBrowser(wxString() + L"mailto:zenju" + L'@' + /*don't leave full email in either source or binary*/ L"freefilesync.org");
     }
 
     void onLocalKeyEvent(wxKeyEvent& event);
@@ -73,14 +69,16 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
 {
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonClose));
 
-    assert(m_buttonClose->GetId() == wxID_OK); //we cannot use wxID_CLOSE else Esc key won't work: yet another wxWidgets bug??
+    assert(m_buttonClose->GetId() == wxID_OK); //we cannot use wxID_CLOSE else ESC key won't work: yet another wxWidgets bug??
 
-    setImage(*m_bitmapLogo,     loadImage("logo"));
-    setImage(*m_bitmapLogoLeft, loadImage("logo-left"));
+    const bool darkAppearance = wxSystemSettings::GetAppearance().IsDark(); //not "dark mode" necessarily!
+
+    setImage(*m_bitmapLogo,     loadImage(darkAppearance ? "ffs-header-dark" : "ffs-header-light"));
+    setImage(*m_bitmapLogoLeft, loadImage(darkAppearance ? "ffs-logo-dark"   : "ffs-logo-light"));
 
     setBitmapTextLabel(*m_bpButtonForum, loadImage("ffs_forum"), L"FreeFileSync Forum");
-    setBitmapTextLabel(*m_bpButtonEmail, loadImage("ffs_email"), wxString() + L"zenju@" + /*don't leave full email in either source or binary*/ L"freefilesync.org");
-    m_bpButtonEmail->SetToolTip(                          wxString() + L"mailto:zenju@" + /*don't leave full email in either source or binary*/ L"freefilesync.org");
+    setBitmapTextLabel(*m_bpButtonEmail, loadImage("ffs_email"), wxString() + L"zenju" + L'@' + /*don't leave full email in either source or binary*/ L"freefilesync.org");
+    m_bpButtonEmail->SetToolTip(                          wxString() + L"mailto:zenju" + L'@' + /*don't leave full email in either source or binary*/ L"freefilesync.org");
 
     wxString build = utfTo<wxString>(ffsVersion);
 
@@ -1275,7 +1273,7 @@ namespace
 class OptionsDlg : public OptionsDlgGenerated
 {
 public:
-    OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalCfg);
+    OptionsDlg(wxWindow* parent, GlobalConfig& globalCfg);
 
 private:
     void onOkay          (wxCommandEvent& event) override;
@@ -1296,6 +1294,7 @@ private:
     void selectSound(wxTextCtrl& txtCtrl);
 
     void onChangeSoundFilePath(wxCommandEvent& event) override { updateGui(); }
+    void onChangeColorTheme   (wxCommandEvent& event) override { updateGui(); }
 
     void onPlayCompareDone (wxCommandEvent& event) override { playSoundWithDiagnostics(trimCpy(m_textCtrlSoundPathCompareDone ->GetValue())); }
     void onPlaySyncDone    (wxCommandEvent& event) override { playSoundWithDiagnostics(trimCpy(m_textCtrlSoundPathSyncDone    ->GetValue())); }
@@ -1303,7 +1302,12 @@ private:
     void playSoundWithDiagnostics(const wxString& filePath);
 
     void onGridResize(wxEvent& event);
+    void onGridContext(wxGridEvent& event);
+    void copySelectionToClipboard() const;
+
     void updateGui();
+
+    void onLocalKeyEvent(wxKeyEvent& event);
 
     enum class ConfigArea
     {
@@ -1318,57 +1322,69 @@ private:
     void setExtApp(const std::vector<ExternalApp>& extApp);
     std::vector<ExternalApp> getExtApp() const;
 
-    std::unordered_map<std::wstring, std::wstring> descriptionTransToEng_; //"translated description" -> "english" mapping for external application config
+    std::unordered_map<std::wstring /*translation*/, std::wstring /*english*/> descriptionTransToEng_; //mapping for external application config
 
-    const XmlGlobalSettings defaultCfg_;
+    const GlobalConfig defaultCfg_;
 
-    std::vector<std::tuple<std::function<bool(const XmlGlobalSettings& gs)> /*get dialog shown status*/,
-        std::function<void(XmlGlobalSettings& gs, bool show)> /*set dialog shown status*/,
+    EnumDescrList<ColorTheme> enumColorTheme_
+    {
+        *m_choiceColorTheme,
+        {
+            {ColorTheme::System, wxControl::RemoveMnemonics(_("&Default")), {}/*tooltip*/},
+            {ColorTheme::Light,  _("Light"), {}/*tooltip*/},
+            {ColorTheme::Dark,   _("Dark"),  {}/*tooltip*/},
+        }
+    };
+
+    std::optional<ColorTheme> colorThemeIcon_; //perf: don't update icon unless needed
+
+    std::vector<std::tuple<std::function<bool(const GlobalConfig& cfg)> /*get dialog shown status*/,
+        std::function<void(GlobalConfig& gs, bool show)> /*set dialog shown status*/,
         wxString /*dialog message*/>> hiddenDialogCfgMapping_
     {
         //*INDENT-OFF*
-        {[](const XmlGlobalSettings& gs){     return gs.confirmDlgs.confirmSyncStart; },
-         [](      XmlGlobalSettings& gs, bool show){ gs.confirmDlgs.confirmSyncStart = show; }, _("Start synchronization now?")},
-        {[](const XmlGlobalSettings& gs){     return gs.confirmDlgs.confirmSaveConfig; },
-         [](      XmlGlobalSettings& gs, bool show){ gs.confirmDlgs.confirmSaveConfig = show; }, _("Do you want to save changes to %x?")},
-        {[](const XmlGlobalSettings& gs){    return !gs.progressDlgAutoClose; },
-         [](      XmlGlobalSettings& gs, bool show){ gs.progressDlgAutoClose = !show; }, _("Leave progress dialog open after synchronization. (don't auto-close)")},
-        {[](const XmlGlobalSettings& gs){     return gs.confirmDlgs.confirmSwapSides; },
-         [](      XmlGlobalSettings& gs, bool show){ gs.confirmDlgs.confirmSwapSides = show; }, _("Please confirm you want to swap sides.")},
-        {[](const XmlGlobalSettings& gs){     return gs.confirmDlgs.confirmCommandMassInvoke; }, 
-         [](      XmlGlobalSettings& gs, bool show){ gs.confirmDlgs.confirmCommandMassInvoke = show; }, _P("Do you really want to execute the command %y for one item?",
+        {[](const GlobalConfig& cfg){     return cfg.confirmDlgs.confirmSyncStart; },
+         [](      GlobalConfig& cfg, bool show){ cfg.confirmDlgs.confirmSyncStart = show; }, _("Start synchronization now?")},
+        {[](const GlobalConfig& cfg){     return cfg.confirmDlgs.confirmSaveConfig; },
+         [](      GlobalConfig& cfg, bool show){ cfg.confirmDlgs.confirmSaveConfig = show; }, _("Do you want to save changes to %x?")},
+        {[](const GlobalConfig& cfg){    return !cfg.progressDlgAutoClose; },
+         [](      GlobalConfig& cfg, bool show){ cfg.progressDlgAutoClose = !show; }, _("Leave progress dialog open after synchronization. (don't auto-close)")},
+        {[](const GlobalConfig& cfg){     return cfg.confirmDlgs.confirmSwapSides; },
+         [](      GlobalConfig& cfg, bool show){ cfg.confirmDlgs.confirmSwapSides = show; }, _("Please confirm you want to swap sides.")},
+        {[](const GlobalConfig& cfg){     return cfg.confirmDlgs.confirmCommandMassInvoke; }, 
+         [](      GlobalConfig& cfg, bool show){ cfg.confirmDlgs.confirmCommandMassInvoke = show; }, _P("Do you really want to execute the command %y for one item?",
                                                                                                            "Do you really want to execute the command %y for %x items?", 42)},
-        {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnFolderNotExisting; },
-         [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnFolderNotExisting = show; }, _("The following folders do not yet exist:") + L" [...] " + _("The folders are created automatically when needed.")},
-        {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnFoldersDifferInCase; },
-         [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnFoldersDifferInCase = show; }, _("The following folder paths differ in case. Please use a single form in order to avoid duplicate accesses.")},
-        {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnDependentFolderPair; },
-         [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnDependentFolderPair = show; }, _("One folder of the folder pair is a subfolder of the other.") + L' ' + _("The folder should be excluded via filter.")},
-        {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnDependentBaseFolders; },
-         [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnDependentBaseFolders = show; }, _("Some files will be synchronized as part of multiple folder pairs.") + L' ' + _("To avoid conflicts, set up exclude filters so that each updated file is included by only one folder pair.")},
-        {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnSignificantDifference; },
-         [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnSignificantDifference = show; }, _("The following folders are significantly different. Please check that the correct folders are selected for synchronization.")},
-        {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnNotEnoughDiskSpace; },
-         [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnNotEnoughDiskSpace = show; }, _("Not enough free disk space available in:")},
-        {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnUnresolvedConflicts; },
-         [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnUnresolvedConflicts = show; }, _("The following items have unresolved conflicts and will not be synchronized:")},
-        {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnRecyclerMissing; },
-         [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnRecyclerMissing = show; }, _("The recycle bin is not available for %x.") + L' ' + _("Ignore and delete permanently each time recycle bin is unavailable?")},
-        {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnDirectoryLockFailed; },
-         [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnDirectoryLockFailed = show; }, _("Cannot set directory locks for the following folders:")},
-        {[](const XmlGlobalSettings& gs){     return gs.warnDlgs.warnVersioningFolderPartOfSync; },
-         [](      XmlGlobalSettings& gs, bool show){ gs.warnDlgs.warnVersioningFolderPartOfSync = show; }, _("The versioning folder must not be part of the synchronization.") + L' ' +  _("The folder should be excluded via filter.")},
+        {[](const GlobalConfig& cfg){     return cfg.warnDlgs.warnFolderNotExisting; },
+         [](      GlobalConfig& cfg, bool show){ cfg.warnDlgs.warnFolderNotExisting = show; }, _("The following folders do not yet exist:") + L" [...] " + _("The folders are created automatically when needed.")},
+        {[](const GlobalConfig& cfg){     return cfg.warnDlgs.warnFoldersDifferInCase; },
+         [](      GlobalConfig& cfg, bool show){ cfg.warnDlgs.warnFoldersDifferInCase = show; }, _("The following folder paths differ in case. Please use a single form in order to avoid duplicate accesses.")},
+        {[](const GlobalConfig& cfg){     return cfg.warnDlgs.warnDependentFolderPair; },
+         [](      GlobalConfig& cfg, bool show){ cfg.warnDlgs.warnDependentFolderPair = show; }, _("One folder of the folder pair is a subfolder of the other.") + L' ' + _("The folder should be excluded via filter.")},
+        {[](const GlobalConfig& cfg){     return cfg.warnDlgs.warnDependentBaseFolders; },
+         [](      GlobalConfig& cfg, bool show){ cfg.warnDlgs.warnDependentBaseFolders = show; }, _("Some files will be synchronized as part of multiple folder pairs.") + L' ' + _("To avoid conflicts, set up exclude filters so that each updated file is included by only one folder pair.")},
+        {[](const GlobalConfig& cfg){     return cfg.warnDlgs.warnSignificantDifference; },
+         [](      GlobalConfig& cfg, bool show){ cfg.warnDlgs.warnSignificantDifference = show; }, _("The following folders are significantly different. Please check that the correct folders are selected for synchronization.")},
+        {[](const GlobalConfig& cfg){     return cfg.warnDlgs.warnNotEnoughDiskSpace; },
+         [](      GlobalConfig& cfg, bool show){ cfg.warnDlgs.warnNotEnoughDiskSpace = show; }, _("Not enough free disk space available in:")},
+        {[](const GlobalConfig& cfg){     return cfg.warnDlgs.warnUnresolvedConflicts; },
+         [](      GlobalConfig& cfg, bool show){ cfg.warnDlgs.warnUnresolvedConflicts = show; }, _("The following items have unresolved conflicts and will not be synchronized:")},
+        {[](const GlobalConfig& cfg){     return cfg.warnDlgs.warnRecyclerMissing; },
+         [](      GlobalConfig& cfg, bool show){ cfg.warnDlgs.warnRecyclerMissing = show; }, _("The recycle bin is not available for %x.") + L' ' + _("Ignore and delete permanently each time recycle bin is unavailable?")},
+        {[](const GlobalConfig& cfg){     return cfg.warnDlgs.warnDirectoryLockFailed; },
+         [](      GlobalConfig& cfg, bool show){ cfg.warnDlgs.warnDirectoryLockFailed = show; }, _("Cannot set directory locks for the following folders:")},
+        {[](const GlobalConfig& cfg){     return cfg.warnDlgs.warnVersioningFolderPartOfSync; },
+         [](      GlobalConfig& cfg, bool show){ cfg.warnDlgs.warnVersioningFolderPartOfSync = show; }, _("The versioning folder must not be part of the synchronization.") + L' ' +  _("The folder should be excluded via filter.")},
         //*INDENT-ON*
     };
 
     FolderSelector logFolderSelector_;
 
     //output-only parameters:
-    XmlGlobalSettings& globalCfgOut_;
+    GlobalConfig& globalCfgOut_;
 };
 
 
-OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalCfg) :
+OptionsDlg::OptionsDlg(wxWindow* parent, GlobalConfig& globalCfg) :
     OptionsDlgGenerated(parent),
 
     logFolderSelector_(this, *m_panelLogfile, *m_buttonSelectLogFolder, *m_bpButtonSelectAltLogFolder, *m_logFolderPath, globalCfg.logFolderLastSelected, globalCfg.sftpKeyFileLastSelected,
@@ -1379,7 +1395,6 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalCfg) :
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
 
     //setMainInstructionFont(*m_staticTextHeader);
-    m_gridCustomCommand->SetTabBehaviour(wxGrid::Tab_Leave);
 
     const wxImage imgFileManagerSmall_([]
     {
@@ -1467,8 +1482,11 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalCfg) :
     m_checkBoxCopyLocked     ->SetValue(globalCfg.copyLockedFiles);
     m_checkBoxCopyPermissions->SetValue(globalCfg.copyFilePermissions);
 
+    bSizerColorTheme->Show(darkModeAvailable());
+    enumColorTheme_.set(globalCfg.appColorTheme);
+
     m_checkBoxLogFilesMaxAge->SetValue(globalCfg.logfilesMaxAgeDays > 0);
-    m_spinCtrlLogFilesMaxAge->SetValue(globalCfg.logfilesMaxAgeDays > 0 ? globalCfg.logfilesMaxAgeDays : XmlGlobalSettings().logfilesMaxAgeDays);
+    m_spinCtrlLogFilesMaxAge->SetValue(globalCfg.logfilesMaxAgeDays > 0 ? globalCfg.logfilesMaxAgeDays : GlobalConfig().logfilesMaxAgeDays);
 
     switch (globalCfg.logFormat)
     {
@@ -1486,14 +1504,90 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalCfg) :
     //--------------------------------------------------------------------------------
 
     bSizerLockedFiles->Show(false);
-    m_gridCustomCommand->SetMargins(0, 0);
+    m_gridCustomCommand->SetMargins(0, 0); //for onGridResize(): ensure GetClientSize() calculations are correct
+    m_gridCustomCommand->SetTabBehaviour(wxGrid::Tab_Leave);
+    m_gridCustomCommand->SetSelectionMode(wxGrid::wxGridSelectRows);
 
-    //automatically fit column width to match total grid width
-    m_gridCustomCommand->GetGridWindow()->Bind(wxEVT_SIZE, [this](wxSizeEvent& event) { onGridResize(event); });
+    //getting rid of column header highlight the stupid way but the alternative "wxGrid::DisableOverlaySelection()" looks like ass
+    class wxGridCellAttrProviderNoColHighlight : public wxGridCellAttrProvider
+    {
+        const wxGridColumnHeaderRenderer& GetColumnHeaderRenderer(int col) override { return colRenderNoHighlight_; }
+
+        class : public wxGridColumnHeaderRendererDefault
+        {
+            void DrawHighlighted(const wxGrid& grid, wxDC& dc, wxRect& rect, int col, int flags) const override { DrawBorder(grid, dc, rect); }
+        } colRenderNoHighlight_;
+    };
+    m_gridCustomCommand->GetTable()->SetAttrProvider(new wxGridCellAttrProviderNoColHighlight);
+
+    m_gridCustomCommand->GetGridWindow()->Bind(wxEVT_SIZE,  [this](wxSizeEvent& event) { onGridResize(event); });
+    m_gridCustomCommand->Bind(wxEVT_GRID_CELL_RIGHT_CLICK,  [this](wxGridEvent& event) { onGridContext(event); });
+    m_gridCustomCommand->Bind(wxEVT_GRID_LABEL_RIGHT_CLICK, [this](wxGridEvent& event) { onGridContext(event); });
+
+    m_gridCustomCommand->Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event)
+    {
+        switch (event.GetKeyCode())
+        {
+            //fix \src\generic\grid.cpp calling wxGrid::MoveCursorDown() after pressing ENTER: 1. instead of showing edit control 2. after ending edit mode
+            case WXK_RETURN:
+            case WXK_NUMPAD_ENTER:
+                m_gridCustomCommand->EnableCellEditControl(!m_gridCustomCommand->IsCellEditControlEnabled());
+                return;
+
+            case WXK_HOME: //make wxGrid behave like a list instead of a spreadsheet:
+            case WXK_END:  //=> add fake CTRL to move up/down instead of left/right
+            {
+                assert(!m_gridCustomCommand->IsCellEditControlEnabled()); //cell edit already handles this event
+                event.m_controlDown = true;
+                break;
+            }
+            case 'A': //CTRL + A - select all
+                if (event.ControlDown())
+                {
+                    assert(!m_gridCustomCommand->IsCellEditControlEnabled()); //cell edit already handles this event
+                    m_gridCustomCommand->SelectAll();
+                    return;
+                }
+                break;
+
+            case 'C':
+            case WXK_INSERT: //CTRL + C || CTRL + INS
+            case WXK_NUMPAD_INSERT:
+                if (event.ControlDown())
+                {
+                    copySelectionToClipboard();
+                    return;
+                }
+                break;
+        }
+        event.Skip();
+    });
+
+    m_gridCustomCommand->Bind(wxEVT_CHAR_HOOK, [this](wxKeyEvent& event)
+    {
+        switch (event.GetKeyCode())
+        {
+            case WXK_ESCAPE: //exit cell edit mode + undo (instead of cancelling the whole dialog!!!)
+                if (m_gridCustomCommand->IsCellEditControlEnabled())
+                {
+                    const wxGridCellCoords coords = m_gridCustomCommand->GetGridCursorCoords();
+                    assert(coords != wxGridNoCellCoords); //otherwise what exactly are we editting???
+                    const wxString oldVal = m_gridCustomCommand->GetCellValue(coords);
+
+                    m_gridCustomCommand->DisableCellEditControl(); //saves editted value, unless wxEVT_GRID_CELL_CHANGED is vetoed
+                    m_gridCustomCommand->SetCellValue(coords, oldVal); //=> instead of veto, restore old value manually
+                    return;
+                }
+                break;
+        }
+        event.Skip();
+    });
 
     //temporarily set dummy value for window height calculations:
     setExtApp(std::vector<ExternalApp>(globalCfg.externalApps.size() + 1));
     updateGui();
+
+    Bind(wxEVT_CHAR_HOOK, [this](wxKeyEvent& event) { onLocalKeyEvent(event); }); //enable dialog-specific key events
 
     GetSizer()->SetSizeHints(this); //~=Fit() + SetMinSize()
 #ifdef __WXGTK3__
@@ -1510,6 +1604,26 @@ OptionsDlg::OptionsDlg(wxWindow* parent, XmlGlobalSettings& globalCfg) :
 }
 
 
+void OptionsDlg::onLocalKeyEvent(wxKeyEvent& event) //process key events without explicit menu entry :)
+{
+    switch (event.GetKeyCode())
+    {
+        case WXK_RETURN:
+        case WXK_NUMPAD_ENTER:
+            if (event.ControlDown()) //Ctrl+Enter or on macOS: Command+Enter
+            {
+                m_gridCustomCommand->DisableCellEditControl();
+                wxCommandEvent dummy(wxEVT_COMMAND_BUTTON_CLICKED);
+                m_buttonOkay->Command(dummy); //simulate click
+                return;
+            }
+            break;
+    }
+    event.Skip();
+}
+
+
+//automatically fit column width to match total grid width
 void OptionsDlg::onGridResize(wxEvent& event)
 {
     const int widthTotal = m_gridCustomCommand->GetGridWindow()->GetClientSize().GetWidth();
@@ -1525,8 +1639,67 @@ void OptionsDlg::onGridResize(wxEvent& event)
 }
 
 
+void OptionsDlg::onGridContext(wxGridEvent& event)
+{
+    m_gridCustomCommand->SetFocus(); //ensure cell cursor is highlighted
+
+    ContextMenu menu;
+
+    const bool canCopy = m_gridCustomCommand->IsSelection() || m_gridCustomCommand->GetGridCursorCoords() != wxGridNoCellCoords;
+    menu.addItem(_("&Copy") + L"\tCtrl+C", [this] { copySelectionToClipboard(); }, loadImage("item_copy_sicon"), canCopy);
+    menu.addSeparator();
+
+    const int rowCount = m_gridCustomCommand->GetNumberRows();
+    menu.addItem(_("Select all") + L"\tCtrl+A", [this] { m_gridCustomCommand->SelectAll(); }, wxNullImage, rowCount > 0);
+
+    menu.popup(*m_gridCustomCommand, event.GetPosition());
+}
+
+
+//why the fuck does wxGrid even allow multi-block selection and then fail in wxGrid::CopySelection()????????????? => fix [t... s...]
+void OptionsDlg::copySelectionToClipboard() const
+{
+    const wxGridBlocks& selBlocks = m_gridCustomCommand->GetSelectedBlocks();
+
+    std::vector<wxGridBlockCoords> blocks(selBlocks.begin(), selBlocks.end());
+    if (blocks.empty()) //=> select cursor position instead
+        if (const wxGridCellCoords curPos = m_gridCustomCommand->GetGridCursorCoords();
+            curPos != wxGridNoCellCoords)
+            blocks.emplace_back(curPos.GetRow(), curPos.GetCol(),
+                                curPos.GetRow(), curPos.GetCol());
+
+    wxString clipBuf; //perf: old wxString didn't model exponential growth, but now it's std::string-based:
+    static_assert(std::is_same_v<wxStringImpl, std::wstring>);
+
+    for (const wxGridBlockCoords& block : blocks)
+        for (int row = block.GetTopRow(); row <= block.GetBottomRow(); ++row)
+            for (int col = block.GetLeftCol(); col <= block.GetRightCol(); ++col)
+            {
+                clipBuf += m_gridCustomCommand->GetCellValue(row, col);
+                clipBuf += col == block.GetRightCol() ? L'\n' : L'\t';
+            }
+
+    setClipboardText(clipBuf);
+}
+
+
 void OptionsDlg::updateGui()
 {
+    if (!colorThemeIcon_ || *colorThemeIcon_ != enumColorTheme_.get())
+        switch (enumColorTheme_.get())
+        {
+            case ColorTheme::System:
+                setImage(*m_bitmapColorTheme, loadImage("theme-default"));
+                break;
+            case ColorTheme::Light:
+                setImage(*m_bitmapColorTheme, loadImage("theme-light"));
+                break;
+            case ColorTheme::Dark:
+                setImage(*m_bitmapColorTheme, loadImage("theme-dark"));
+                break;
+        }
+    colorThemeIcon_ = enumColorTheme_.get();
+
     m_spinCtrlLogFilesMaxAge->Enable(m_checkBoxLogFilesMaxAge->GetValue());
 
     m_bpButtonPlayCompareDone ->Enable(!trimCpy(m_textCtrlSoundPathCompareDone ->GetValue()).empty());
@@ -1598,6 +1771,8 @@ void OptionsDlg::onDefault(wxCommandEvent& event)
     m_checkBoxCopyLocked     ->SetValue(defaultCfg_.copyLockedFiles);
     m_checkBoxCopyPermissions->SetValue(defaultCfg_.copyFilePermissions);
 
+    enumColorTheme_.set(defaultCfg_.appColorTheme);
+
     unsigned int itemPos = 0;
     for (const auto& [dlgShown, dlgSetShown, msg] : hiddenDialogCfgMapping_)
         m_checkListHiddenDialogs->Check(itemPos++, dlgShown(defaultCfg_));
@@ -1639,6 +1814,8 @@ void OptionsDlg::onOkay(wxCommandEvent& event)
     globalCfgOut_.failSafeFileCopy    = m_checkBoxFailSafe->GetValue();
     globalCfgOut_.copyLockedFiles     = m_checkBoxCopyLocked->GetValue();
     globalCfgOut_.copyFilePermissions = m_checkBoxCopyPermissions->GetValue();
+
+    globalCfgOut_.appColorTheme = enumColorTheme_.get();
 
     globalCfgOut_.logFolderPhrase = logFolderPhrase;
     m_logFolderPath->getHistory()->addItem(logFolderPhrase);
@@ -1745,7 +1922,7 @@ void OptionsDlg::onShowLogFolder(wxCommandEvent& event)
 }
 }
 
-ConfirmationButton fff::showOptionsDlg(wxWindow* parent, XmlGlobalSettings& globalCfg)
+ConfirmationButton fff::showOptionsDlg(wxWindow* parent, GlobalConfig& globalCfg)
 {
     OptionsDlg dlg(parent, globalCfg);
     return static_cast<ConfirmationButton>(dlg.ShowModal());
@@ -2151,7 +2328,7 @@ private:
     {
         const double fraction = bytesTotal_ == 0 ? 0 : 1.0 * bytesCurrent_ / bytesTotal_;
         m_staticTextHeader->SetLabelText(_("Downloading update...") + L' ' + formatProgressPercent(fraction) + L" (" + formatFilesizeShort(bytesCurrent_) + L')');
-        m_gaugeProgress->SetValue(std::round(fraction * GAUGE_FULL_RANGE));
+        m_gaugeProgress->SetValue(std::floor(fraction * GAUGE_FULL_RANGE));
 
         m_staticTextDetails->SetLabelText(utfTo<std::wstring>(filePath_));
     }

@@ -7,9 +7,7 @@
 #include "file_view.h"
 #include <span>
 #include <zen/stl_tools.h>
-//#include <zen/perf.h>
 #include <zen/thread.h>
-//#include "../base/synchronization.h"
 
 using namespace zen;
 using namespace fff;
@@ -17,17 +15,17 @@ using namespace fff;
 
 namespace
 {
-void serializeHierarchy(ContainerObject& conObj, std::vector<FileSystemObject::ObjectId>& output)
+void serializeHierarchy(ContainerObject& conObj, std::vector<std::weak_ptr<FileSystemObject>>& output)
 {
-    for (FilePair& file : conObj.refSubFiles())
-        output.push_back(file.getId());
+    for (FilePair& file : conObj.files())
+        output.push_back(file.weak_from_this());
 
-    for (SymlinkPair& symlink : conObj.refSubLinks())
-        output.push_back(symlink.getId());
+    for (SymlinkPair& symlink : conObj.symlinks())
+        output.push_back(symlink.weak_from_this());
 
-    for (FolderPair& folder : conObj.refSubFolders())
+    for (FolderPair& folder : conObj.subfolders())
     {
-        output.push_back(folder.getId());
+        output.push_back(folder.weak_from_this());
         serializeHierarchy(folder, output); //add recursion here to list sub-objects directly below parent!
     }
 
@@ -58,14 +56,17 @@ void serializeHierarchy(ContainerObject& conObj, std::vector<FileSystemObject::O
 
 FileView::FileView(FolderComparison& folderCmp)
 {
-    std::for_each(begin(folderCmp), end(folderCmp), [&](BaseFolderPair& baseObj)
-    {
-        serializeHierarchy(baseObj, sortedRef_);
+    for (BaseFolderPair& baseObj : asRange(folderCmp))
+        //remove truly empty folder pairs as early as this: we want to distinguish single/multiple folder pair cases by looking at "folderPairs_"
+        if (!AFS::isNullPath(baseObj.getAbstractPath<SelectSide::left >()) ||
+            !AFS::isNullPath(baseObj.getAbstractPath<SelectSide::right>()))
+        {
+            serializeHierarchy(baseObj, sortedRef_);
 
-        folderPairs_.emplace_back(&baseObj,
-                                  baseObj.getAbstractPath<SelectSide::left >(),
-                                  baseObj.getAbstractPath<SelectSide::right>());
-    });
+            folderPairs_.emplace_back(&baseObj,
+                                      baseObj.getAbstractPath<SelectSide::left >(),
+                                      baseObj.getAbstractPath<SelectSide::right>());
+        }
 }
 
 
@@ -84,14 +85,14 @@ void FileView::updateView(Predicate pred)
     std::vector<const ContainerObject*> parentsBuf; //from bottom to top of hierarchy
     const ContainerObject* groupStartObj = nullptr;
 
-    for (const FileSystemObject::ObjectId& objId : sortedRef_)
-        if (const FileSystemObject* const fsObj = FileSystemObject::retrieve(objId))
+    for (const std::weak_ptr<FileSystemObject>& objRef : sortedRef_)
+        if (const FileSystemObject* fsObj = objRef.lock().get())
             if (pred(*fsObj))
             {
                 const size_t row = viewRef_.size();
 
                 //save row position for direct random access to FilePair or FolderPair
-                rowPositions_.emplace(objId, row); //costs: 0.28 µs per call - MSVC based on std::set
+                rowPositions_.emplace(fsObj, row); //costs: 0.28 µs per call - MSVC based on std::set
 
                 parentsBuf.clear();
                 for (const FileSystemObject* fsObj2 = fsObj;;)
@@ -124,14 +125,14 @@ void FileView::updateView(Predicate pred)
                 assert(!groupDetails_.empty());
                 const size_t groupIdx = groupDetails_.size() - 1;
                 //-----------------------------------------------------------
-                viewRef_.push_back({objId, groupIdx});
+                viewRef_.push_back({objRef, groupIdx});
             }
 }
 
 
-ptrdiff_t FileView::findRowDirect(FileSystemObject::ObjectIdConst objId) const
+ptrdiff_t FileView::findRowDirect(const FileSystemObject* fsObj) const
 {
-    auto it = rowPositions_.find(objId);
+    auto it = rowPositions_.find(fsObj);
     return it != rowPositions_.end() ? it->second : -1;
 }
 
@@ -322,8 +323,8 @@ std::vector<FileSystemObject*> FileView::getAllFileRef(const std::vector<size_t>
 
     for (size_t pos : rows)
         if (pos < viewSize)
-            if (FileSystemObject* fsObj = FileSystemObject::retrieve(viewRef_[pos].objId))
-                output.push_back(fsObj);
+            if (const std::shared_ptr<FileSystemObject> fsObj = viewRef_[pos].objRef.lock())
+                output.push_back(fsObj.get());
 
     return output;
 }
@@ -341,7 +342,7 @@ FileView::PathDrawInfo FileView::getDrawInfo(size_t row)
         const size_t groupLastRow = groupIdx + 1 < groupDetails_.size() ?
                                     groupDetails_[groupIdx + 1].groupFirstRow :
                                     viewRef_.size();
-        FileSystemObject* fsObj = FileSystemObject::retrieve(viewRef_[row].objId);
+        FileSystemObject* fsObj = viewRef_[row].objRef.lock().get();
 
         FolderPair* folderGroupObj = dynamic_cast<FolderPair*>(fsObj);
         if (fsObj && !folderGroupObj)
@@ -357,24 +358,12 @@ FileView::PathDrawInfo FileView::getDrawInfo(size_t row)
 void FileView::removeInvalidRows()
 {
     //remove rows that have been deleted meanwhile
-    std::erase_if(sortedRef_, [&](const FileSystemObject::ObjectId& objId) { return !FileSystemObject::retrieve(objId); });
+    std::erase_if(sortedRef_, [&](const std::weak_ptr<FileSystemObject>& objRef) { return objRef.expired(); });
 
     viewRef_               .clear();
     groupDetails_          .clear();
     rowPositions_          .clear();
     rowPositionsFirstChild_.clear();
-}
-
-
-size_t FileView::getEffectiveFolderPairCount() const
-{
-    return std::count_if(folderPairs_.begin(), folderPairs_.end(), [](const auto& folderPair)
-    {
-        const auto& [baseObj, basePathL, basePathR] = folderPair;
-
-        return !AFS::isNullPath(basePathL) ||
-               !AFS::isNullPath(basePathR);
-    });
 }
 
 
@@ -421,12 +410,12 @@ bool lessFileName(const FileSystemObject& lhs, const FileSystemObject& rhs)
 
 
 template <bool ascending, SelectSide side>  inline
-bool lessFilePath(const FileSystemObject::ObjectId& lhs, const FileSystemObject::ObjectId& rhs,
+bool lessFilePath(const std::weak_ptr<FileSystemObject>& lhs, const std::weak_ptr<FileSystemObject>& rhs,
                   const std::unordered_map<const void* /*BaseFolderPair*/, size_t /*position*/>& sortedPos,
                   std::vector<const FolderPair*>& tempBuf)
 {
-    const FileSystemObject* fsObjL = FileSystemObject::retrieve(lhs);
-    const FileSystemObject* fsObjR = FileSystemObject::retrieve(rhs);
+    const FileSystemObject* fsObjL = lhs.lock().get();
+    const FileSystemObject* fsObjR = rhs.lock().get();
     if (!fsObjL) //invalid rows shall appear at the end
         return false;
     else if (!fsObjR)
@@ -632,23 +621,27 @@ struct LessFullPath
             const AbstractPath& basePathA = selectParam<side>(basePathLA, basePathRA);
             const AbstractPath& basePathB = selectParam<side>(basePathLB, basePathRB);
 
-            return LessNaturalSort()/*even on Linux*/(zen::utfTo<Zstring>(AFS::getDisplayPath(basePathA)),
-                                                      zen::utfTo<Zstring>(AFS::getDisplayPath(basePathB)));
+            return LessNaturalSort()/*even on Linux*/(utfTo<Zstring>(AFS::getDisplayPath(basePathA)),
+                                                      utfTo<Zstring>(AFS::getDisplayPath(basePathB)));
         });
 
         size_t pos = 0;
         for (const auto& [baseObj, basePathL, basePathR] : folderPairs)
-            sortedPos_.ref().emplace(baseObj, pos++);
+            shared_.ref().sortedPos.emplace(baseObj, pos++);
     }
 
-    bool operator()(const FileSystemObject::ObjectId& lhs, const FileSystemObject::ObjectId& rhs) const
+    bool operator()(const std::weak_ptr<FileSystemObject>& lhs, const std::weak_ptr<FileSystemObject>& rhs) const
     {
-        return lessFilePath<ascending, side>(lhs, rhs, sortedPos_.ref(), tempBuf_);
+        return lessFilePath<ascending, side>(lhs, rhs, shared_.ref().sortedPos, shared_.ref().tempBuf);
     }
 
 private:
-    SharedRef<std::unordered_map<const void* /*BaseFolderPair*/, size_t /*position*/>> sortedPos_ = makeSharedRef<std::unordered_map<const void*, size_t>>();
-    mutable std::vector<const FolderPair*> tempBuf_; //avoid repeated memory allocation in lessFilePath()
+    struct Shared
+    {
+        std::unordered_map<const void* /*BaseFolderPair*/, size_t /*position*/> sortedPos;
+        mutable std::vector<const FolderPair*> tempBuf; //avoid repeated memory allocation in lessFilePath()
+    };
+    SharedRef<Shared> shared_ = makeSharedRef<Shared>(); //std::sort makes lots of predicate copies during its "divide and conquer"
 };
 
 
@@ -657,36 +650,39 @@ struct LessRelativeFolder
 {
     LessRelativeFolder(const std::vector<std::tuple<const void* /*BaseFolderPair*/, AbstractPath, AbstractPath>>& folderPairs)
     {
-        //take over positions of base folders as set up by user
-        size_t pos = 0;
+        size_t pos = 0; //take over positions of base folders as set up by user
         for (const auto& [baseObj, basePathL, basePathR] : folderPairs)
-            sortedPos_.ref().emplace(baseObj, pos++);
+            shared_.ref().sortedPos.emplace(baseObj, pos++);
     }
 
-    bool operator()(const FileSystemObject::ObjectId& lhs, const FileSystemObject::ObjectId& rhs) const
+    bool operator()(const std::weak_ptr<FileSystemObject>& lhs, const std::weak_ptr<FileSystemObject>& rhs) const
     {
-        return lessFilePath<ascending, side>(lhs, rhs, sortedPos_.ref(), tempBuf_);
+        return lessFilePath<ascending, side>(lhs, rhs, shared_.ref().sortedPos, shared_.ref().tempBuf);
     }
 
 private:
-    SharedRef<std::unordered_map<const void* /*BaseFolderPair*/, size_t /*position*/>> sortedPos_ = makeSharedRef<std::unordered_map<const void*, size_t>>();
-    mutable std::vector<const FolderPair*> tempBuf_; //avoid repeated memory allocation in lessFilePath()
+    struct Shared
+    {
+        std::unordered_map<const void* /*BaseFolderPair*/, size_t /*position*/> sortedPos;
+        mutable std::vector<const FolderPair*> tempBuf; //avoid repeated memory allocation in lessFilePath()
+    };
+    SharedRef<Shared> shared_ = makeSharedRef<Shared>(); //std::sort makes lots of predicate copies during its "divide and conquer"
 };
 
 
 template <bool ascending, SelectSide side>
 struct LessFileName
 {
-    bool operator()(const FileSystemObject::ObjectId& lhs, const FileSystemObject::ObjectId& rhs) const
+    bool operator()(const std::weak_ptr<FileSystemObject>& lhs, const std::weak_ptr<FileSystemObject>& rhs) const
     {
-        const FileSystemObject* fsObjA = FileSystemObject::retrieve(lhs);
-        const FileSystemObject* fsObjB = FileSystemObject::retrieve(rhs);
-        if (!fsObjA) //invalid rows shall appear at the end
+        const std::shared_ptr<FileSystemObject> fsObjL = lhs.lock();
+        const std::shared_ptr<FileSystemObject> fsObjR = rhs.lock();
+        if (!fsObjL) //invalid rows shall appear at the end
             return false;
-        else if (!fsObjB)
+        else if (!fsObjR)
             return true;
 
-        return lessFileName<ascending, side>(*fsObjA, *fsObjB);
+        return lessFileName<ascending, side>(*fsObjL, *fsObjR);
     }
 };
 
@@ -694,16 +690,16 @@ struct LessFileName
 template <bool ascending, SelectSide side>
 struct LessFilesize
 {
-    bool operator()(const FileSystemObject::ObjectId& lhs, const FileSystemObject::ObjectId& rhs) const
+    bool operator()(const std::weak_ptr<FileSystemObject>& lhs, const std::weak_ptr<FileSystemObject>& rhs) const
     {
-        const FileSystemObject* fsObjA = FileSystemObject::retrieve(lhs);
-        const FileSystemObject* fsObjB = FileSystemObject::retrieve(rhs);
-        if (!fsObjA) //invalid rows shall appear at the end
+        const std::shared_ptr<FileSystemObject> fsObjL = lhs.lock();
+        const std::shared_ptr<FileSystemObject> fsObjR = rhs.lock();
+        if (!fsObjL) //invalid rows shall appear at the end
             return false;
-        else if (!fsObjB)
+        else if (!fsObjR)
             return true;
 
-        return lessFilesize<ascending, side>(*fsObjA, *fsObjB);
+        return lessFilesize<ascending, side>(*fsObjL, *fsObjR);
     }
 };
 
@@ -711,16 +707,16 @@ struct LessFilesize
 template <bool ascending, SelectSide side>
 struct LessFiletime
 {
-    bool operator()(const FileSystemObject::ObjectId& lhs, const FileSystemObject::ObjectId& rhs) const
+    bool operator()(const std::weak_ptr<FileSystemObject>& lhs, const std::weak_ptr<FileSystemObject>& rhs) const
     {
-        const FileSystemObject* fsObjA = FileSystemObject::retrieve(lhs);
-        const FileSystemObject* fsObjB = FileSystemObject::retrieve(rhs);
-        if (!fsObjA) //invalid rows shall appear at the end
+        const std::shared_ptr<FileSystemObject> fsObjL = lhs.lock();
+        const std::shared_ptr<FileSystemObject> fsObjR = rhs.lock();
+        if (!fsObjL) //invalid rows shall appear at the end
             return false;
-        else if (!fsObjB)
+        else if (!fsObjR)
             return true;
 
-        return lessFiletime<ascending, side>(*fsObjA, *fsObjB);
+        return lessFiletime<ascending, side>(*fsObjL, *fsObjR);
     }
 };
 
@@ -728,16 +724,16 @@ struct LessFiletime
 template <bool ascending, SelectSide side>
 struct LessExtension
 {
-    bool operator()(const FileSystemObject::ObjectId& lhs, const FileSystemObject::ObjectId& rhs) const
+    bool operator()(const std::weak_ptr<FileSystemObject>& lhs, const std::weak_ptr<FileSystemObject>& rhs) const
     {
-        const FileSystemObject* fsObjA = FileSystemObject::retrieve(lhs);
-        const FileSystemObject* fsObjB = FileSystemObject::retrieve(rhs);
-        if (!fsObjA) //invalid rows shall appear at the end
+        const std::shared_ptr<FileSystemObject> fsObjL = lhs.lock();
+        const std::shared_ptr<FileSystemObject> fsObjR = rhs.lock();
+        if (!fsObjL) //invalid rows shall appear at the end
             return false;
-        else if (!fsObjB)
+        else if (!fsObjR)
             return true;
 
-        return lessExtension<ascending, side>(*fsObjA, *fsObjB);
+        return lessExtension<ascending, side>(*fsObjL, *fsObjR);
     }
 };
 
@@ -745,16 +741,16 @@ struct LessExtension
 template <bool ascending>
 struct LessCmpResult
 {
-    bool operator()(const FileSystemObject::ObjectId& lhs, const FileSystemObject::ObjectId& rhs) const
+    bool operator()(const std::weak_ptr<FileSystemObject>& lhs, const std::weak_ptr<FileSystemObject>& rhs) const
     {
-        const FileSystemObject* fsObjA = FileSystemObject::retrieve(lhs);
-        const FileSystemObject* fsObjB = FileSystemObject::retrieve(rhs);
-        if (!fsObjA) //invalid rows shall appear at the end
+        const std::shared_ptr<FileSystemObject> fsObjL = lhs.lock();
+        const std::shared_ptr<FileSystemObject> fsObjR = rhs.lock();
+        if (!fsObjL) //invalid rows shall appear at the end
             return false;
-        else if (!fsObjB)
+        else if (!fsObjR)
             return true;
 
-        return lessCmpResult<ascending>(*fsObjA, *fsObjB);
+        return lessCmpResult<ascending>(*fsObjL, *fsObjR);
     }
 };
 
@@ -762,16 +758,16 @@ struct LessCmpResult
 template <bool ascending>
 struct LessSyncDirection
 {
-    bool operator()(const FileSystemObject::ObjectId& lhs, const FileSystemObject::ObjectId& rhs) const
+    bool operator()(const std::weak_ptr<FileSystemObject>& lhs, const std::weak_ptr<FileSystemObject>& rhs) const
     {
-        const FileSystemObject* fsObjA = FileSystemObject::retrieve(lhs);
-        const FileSystemObject* fsObjB = FileSystemObject::retrieve(rhs);
-        if (!fsObjA) //invalid rows shall appear at the end
+        const std::shared_ptr<FileSystemObject> fsObjL = lhs.lock();
+        const std::shared_ptr<FileSystemObject> fsObjR = rhs.lock();
+        if (!fsObjL) //invalid rows shall appear at the end
             return false;
-        else if (!fsObjB)
+        else if (!fsObjR)
             return true;
 
-        return lessSyncDirection<ascending>(*fsObjA, *fsObjB);
+        return lessSyncDirection<ascending>(*fsObjL, *fsObjR);
     }
 };
 }

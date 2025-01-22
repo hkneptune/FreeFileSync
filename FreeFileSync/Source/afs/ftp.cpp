@@ -5,7 +5,6 @@
 // *****************************************************************************
 
 #include "ftp.h"
-//#include <zen/basic_math.h>
 #include <zen/sys_error.h>
 #include <zen/globals.h>
 #include <zen/resolve_path.h>
@@ -1186,7 +1185,7 @@ FtpItem getFtpSymlinkInfo(const FtpLogin& login, const AfsPath& linkPath) //thro
             //...or some server return ASCII size or fail with '550 SIZE not allowed in ASCII mode: https://freefilesync.org/forum/viewtopic.php?t=7669&start=30#p27742
             const std::string sizeBuf = session.runSingleFtpCommand("*SIZE " + session.getServerPathInternal(linkPath),
                                                                     true /*requestUtf8*/); //throw SysError, SysErrorFtpProtocol
-            //alternative: use libcurl + CURLINFO_CONTENT_LENGTH_DOWNLOAD_T? => nah, suprise (motherfucker)! libcurl adds needless "REST 0" command!
+            //alternative: use libcurl + CURLINFO_CONTENT_LENGTH_DOWNLOAD_T? => nah, surprise (motherfucker)! libcurl adds needless "REST 0" command!
             for (const std::string_view& line : splitFtpResponse(sizeBuf))
                 if (startsWith(line, "213 ")) // 213<space>[rubbish]<file size>        according to libcurl
                 {

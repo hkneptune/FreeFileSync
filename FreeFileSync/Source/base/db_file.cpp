@@ -8,9 +8,7 @@
 #include <bit> //std::endian
 #include <zen/guid.h>
 #include <zen/crc.h>
-//#include <zen/build_info.h>
 #include <zen/zlib_wrap.h>
-//#include "../afs/concrete.h"
 #include "../afs/native.h"
 #include "status_handler_impl.h"
 
@@ -579,16 +577,16 @@ private:
 
     void recurse(const ContainerObject& conObj, const Zstring& relPath, InSyncFolder& dbFolder)
     {
-        process(conObj.refSubFiles  (), relPath, dbFolder.files);
-        process(conObj.refSubLinks  (), relPath, dbFolder.symlinks);
-        process(conObj.refSubFolders(), relPath, dbFolder.folders);
+        processFiles  (conObj, relPath, dbFolder.files);
+        processLinks  (conObj, relPath, dbFolder.symlinks);
+        processFolders(conObj, relPath, dbFolder.folders);
     }
 
-    void process(const ContainerObject::FileList& currentFiles, const Zstring& parentRelPath, InSyncFolder::FileList& dbFiles)
+    void processFiles(const ContainerObject& conObj, const Zstring& parentRelPath, InSyncFolder::FileList& dbFiles)
     {
         std::unordered_set<ZstringNorm> toPreserve;
 
-        for (const FilePair& file : currentFiles)
+        for (const FilePair& file : conObj.files())
             if (!file.isPairEmpty())
             {
                 if (file.getCategory() == FILE_EQUAL) //data in sync: write current state
@@ -628,11 +626,11 @@ private:
         });
     }
 
-    void process(const ContainerObject::SymlinkList& currentSymlinks, const Zstring& parentRelPath, InSyncFolder::SymlinkList& dbSymlinks)
+    void processLinks(const ContainerObject& conObj, const Zstring& parentRelPath, InSyncFolder::SymlinkList& dbSymlinks)
     {
         std::unordered_set<ZstringNorm> toPreserve;
 
-        for (const SymlinkPair& symlink : currentSymlinks)
+        for (const SymlinkPair& symlink : conObj.symlinks())
             if (!symlink.isPairEmpty())
             {
                 if (symlink.getLinkCategory() == SYMLINK_EQUAL) //data in sync: write current state
@@ -667,11 +665,11 @@ private:
         });
     }
 
-    void process(const ContainerObject::FolderList& currentFolders, const Zstring& parentRelPath, InSyncFolder::FolderList& dbFolders)
+    void processFolders(const ContainerObject& conObj, const Zstring& parentRelPath, InSyncFolder::FolderList& dbFolders)
     {
         std::unordered_map<ZstringNorm, const FolderPair*> toPreserve;
 
-        for (const FolderPair& folder : currentFolders)
+        for (const FolderPair& folder : conObj.subfolders())
             if (!folder.isPairEmpty())
             {
                 if (folder.getDirCategory() == DIR_EQUAL)

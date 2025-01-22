@@ -9,9 +9,7 @@
 #include <unordered_set> //needed by clang
 #include <unordered_map> //
 #include <libcurl/curl_wrap.h> //DON'T include <curl/curl.h> directly!
-//#include <zen/basic_math.h>
 #include <zen/base64.h>
-//#include <zen/crc.h>
 #include <zen/file_access.h>
 #include <zen/file_io.h>
 #include <zen/file_traverser.h>
@@ -463,7 +461,7 @@ GdriveAccessInfo gdriveAuthorizeAccess(const std::string& gdriveLoginHint, const
         .ai_flags =  
                     AI_ADDRCONFIG | //no such issue on Linux: https://bugs.chromium.org/p/chromium/issues/detail?id=5234
                     AI_PASSIVE, //the returned socket addresses will be suitable for bind(2)ing a socket that will accept(2) connections.
-        .ai_family   = AF_INET, //make sure our server is reached by IPv4 127.0.0.1, not IPv6 [::1]
+        .ai_family   = AF_UNSPEC, //don't care if AF_INET or AF_INET6
         .ai_socktype = SOCK_STREAM, //we *do* care about this one!
     };
     addrinfo* servinfo = nullptr;
@@ -477,7 +475,8 @@ GdriveAccessInfo gdriveAuthorizeAccess(const std::string& gdriveLoginHint, const
     if (rcGai != 0)
         THROW_LAST_SYS_ERROR_GAI(rcGai);
     if (!servinfo)
-        throw SysError(L"getaddrinfo: empty server info");
+        throw SysError(formatSystemError("getaddrinfo", L"" /*errorCode*/, L"No local IP address available"));
+
 
     const auto getBoundSocket = [](const auto& /*::addrinfo*/ ai)
     {
@@ -497,33 +496,48 @@ GdriveAccessInfo gdriveAuthorizeAccess(const std::string& gdriveLoginHint, const
 
 
     SocketType socket = invalidSocket;
-
     std::optional<SysError> firstError;
+
     for (const auto* /*::addrinfo*/ si = servinfo; si; si = si->ai_next)
-        try
-        {
-            socket = getBoundSocket(*si); //throw SysError; pass ownership
-            break;
-        }
-        catch (const SysError& e) { if (!firstError) firstError = e; }
+        if (si->ai_family == AF_INET || 
+            si->ai_family == AF_INET6)
+            try
+            {
+                socket = getBoundSocket(*si); //throw SysError; pass ownership
+                break;
+            }
+            catch (const SysError& e) { if (!firstError) firstError = e; }
 
     if (socket == invalidSocket)
-        throw* firstError; //list was not empty, so there must have been an error!
-
+    {
+        if (firstError)
+            throw *firstError;
+        throw SysError(formatSystemError("getaddrinfo", L"" /*errorCode*/, L"No local IPv4 or IPv6 address available"));
+    }
     ZEN_ON_SCOPE_EXIT(closeSocket(socket));
 
 
-    sockaddr_storage addr = {}; //"sufficiently large to store address information for IPv4 (AF_INET) or IPv6 (AF_INET6)" => sockaddr_in and sockaddr_in6
+    sockaddr_storage addr = {}; //"sufficiently large to store address information for IPv4 (AF_INET/sockaddr_in) or IPv6 (AF_INET6/sockaddr_in6)"
     socklen_t addrLen = sizeof(addr);
     if (::getsockname(socket, reinterpret_cast<sockaddr*>(&addr), &addrLen) != 0)
         THROW_LAST_SYS_ERROR_WSA("getsockname");
 
-    if (addr.ss_family != AF_INET)
+    std::string redirectUrl;
+    if (addr.ss_family == AF_INET)
+    {
+        //the socket is not bound to a specific local IP:
+        //  char buf[INET_ADDRSTRLEN] = {}; //inet_ntop -> "0.0.0.0"
+        //  inet_ntop(AF_INET, &reinterpret_cast<const sockaddr_in&>(addr).sin_addr, buf, std::size(buf));
+        const int port = ntohs(reinterpret_cast<const sockaddr_in&>(addr).sin_port);
+        redirectUrl = "http://127.0.0.1:" + numberTo<std::string>(port);
+    }
+    else if (addr.ss_family == AF_INET6) //inet_ntop() == "::"
+    {
+        const int port = ntohs(reinterpret_cast<const sockaddr_in6&>(addr).sin6_port);
+        redirectUrl = "http://[::1]:" + numberTo<std::string>(port);
+    }
+    else
         throw SysError(formatSystemError("getsockname", L"", L"Unexpected protocol family: " + numberTo<std::wstring>(addr.ss_family)));
-
-    const int port = ntohs(reinterpret_cast<const sockaddr_in&>(addr).sin_port);
-    //the socket is not bound to a specific local IP => inet_ntoa(reinterpret_cast<const sockaddr_in&>(addr).sin_addr) == "0.0.0.0"
-    const std::string redirectUrl = "http://127.0.0.1:" + numberTo<std::string>(port);
 
     if (::listen(socket, SOMAXCONN) != 0)
         THROW_LAST_SYS_ERROR_WSA("listen");
@@ -859,7 +873,7 @@ std::vector<StarredFolderDetails> getStarredFolders(const GdriveAccess& access) 
                 {"corpora", "allDrives"}, //"The 'user' corpus includes all files in "My Drive" and "Shared with me" https://developers.google.com/drive/api/v3/reference/files/list
                 {"includeItemsFromAllDrives", "true"},
                 {"pageSize", "1000"}, //"[1, 1000] Default: 100"
-                {"q", std::string("not trashed and starred and mimeType = '") + gdriveFolderMimeType + "'"},
+                {"q", std::string("starred and mimeType = '") + gdriveFolderMimeType + "' and not trashed"},
                 {"spaces", "drive"},
                 {"supportsAllDrives", "true"},
                 {"fields", "nextPageToken,incompleteSearch,files(id,name,driveId)"}, //https://developers.google.com/drive/api/v3/reference/files
@@ -1036,7 +1050,7 @@ std::vector<GdriveItem> readFolderContent(const std::string& folderId, const Gdr
                 {"corpora", "allDrives"}, //"The 'user' corpus includes all files in "My Drive" and "Shared with me" https://developers.google.com/drive/api/v3/reference/files/list
                 {"includeItemsFromAllDrives", "true"},
                 {"pageSize", "1000"}, //"[1, 1000] Default: 100"
-                {"q", "not trashed and '" + folderId + "' in parents"},
+                {"q", "'" + folderId + "' in parents and not trashed"},
                 {"spaces", "drive"},
                 {"supportsAllDrives", "true"},
                 {"fields", "nextPageToken,incompleteSearch,files(id,name,mimeType,ownedByMe,size,modifiedTime,parents,shortcutDetails(targetId))"}, //https://developers.google.com/drive/api/v3/reference/files

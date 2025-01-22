@@ -9,6 +9,7 @@
 #include <zen/scope_guard.h>
 #include <wx/app.h>
 #include <wx/dcmemory.h>
+#include <wx/settings.h>
 #include <wx+/dc.h>
 #include <xBRZ/src/xbrz_tools.h>
 
@@ -188,6 +189,8 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
     if (maxWidth == 0 || lineHeight == 0)
         return wxNullImage;
 
+    const bool darkMode = wxSystemSettings::GetAppearance().IsDark(); //small but noticeable difference for "ClearType"
+
     wxBitmap newBitmap(wxsizeToScreen(maxWidth),
                        wxsizeToScreen(static_cast<int>(lineHeight * lineInfo.size()))); //seems we don't need to pass 24-bit depth here even for high-contrast color schemes
     newBitmap.SetScaleFactor(getScreenDpiScale());
@@ -198,11 +201,11 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
         if (wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft)
             dc.SetLayoutDirection(wxLayout_RightToLeft); //handle e.g. "weak" bidi characters: -> arrows in hebrew/arabic
 
-        dc.SetBackground(*wxWHITE_BRUSH);
+        dc.SetBackground(darkMode ? *wxBLACK_BRUSH : *wxWHITE_BRUSH);
         dc.Clear();
 
-        dc.SetTextForeground(*wxBLACK); //for proper alpha-channel calculation
-        dc.SetTextBackground(*wxWHITE); //
+        dc.SetTextBackground(darkMode ? *wxBLACK : *wxWHITE); //for proper alpha-channel calculation
+        dc.SetTextForeground(darkMode ? *wxWHITE : *wxBLACK); //
 
         int posY = 0;
         for (const auto& [lineText, lineSize] : lineInfo)
@@ -225,6 +228,7 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
     }
 
     //wxDC::DrawLabel() doesn't respect alpha channel => calculate alpha values manually:
+    //gamma correction? does not seem to apply here!
     wxImage output(newBitmap.ConvertToImage());
     output.SetAlpha();
 
@@ -232,15 +236,29 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
     unsigned char* alpha = output.GetAlpha();
     const int pixelCount = output.GetWidth() * output.GetHeight();
 
-    for (int i = 0; i < pixelCount; ++i)
-    {
-        //black(0,0,0) becomes wxIMAGE_ALPHA_OPAQUE(255), while white(255,255,255) becomes wxIMAGE_ALPHA_TRANSPARENT(0)
-        //gamma correction? does not seem to apply here!
-        *alpha++ = static_cast<unsigned char>(numeric::intDivRound(3 * 255 - rgb[0] - rgb[1] - rgb[2], 3)); //mixed-mode arithmetics!
-        *rgb++ = col.Red  (); //
-        *rgb++ = col.Green(); //apply actual text color
-        *rgb++ = col.Blue (); //
-    }
+    const unsigned char r = col.Red  (); //
+    const unsigned char g = col.Green(); //getting RGB involves virtual function calls!
+    const unsigned char b = col.Blue (); //
+        
+    if (darkMode)
+        for (int i = 0; i < pixelCount; ++i)
+        {
+            //black(0,0,0) becomes wxIMAGE_ALPHA_TRANSPARENT(0), white(255,255,255) becomes wxIMAGE_ALPHA_OPAQUE(255)
+            *alpha++ = static_cast<unsigned char>(numeric::intDivRound(rgb[0] + rgb[1] + rgb[2], 3)); //mixed-mode arithmetics!
+            *rgb++ = r; //
+            *rgb++ = g; //apply actual text color
+            *rgb++ = b; //
+        }
+    else
+        for (int i = 0; i < pixelCount; ++i)
+        {
+            //black(0,0,0) becomes wxIMAGE_ALPHA_OPAQUE(255), white(255,255,255) becomes wxIMAGE_ALPHA_TRANSPARENT(0)
+            *alpha++ = static_cast<unsigned char>(numeric::intDivRound(3 * 255 - rgb[0] - rgb[1] - rgb[2], 3)); //mixed-mode arithmetics!
+            *rgb++ = r; //
+            *rgb++ = g; //apply actual text color
+            *rgb++ = b; //
+        }
+
     return output;
 }
 
@@ -304,7 +322,7 @@ wxImage zen::resizeCanvas(const wxImage& img, wxSize newSize, int alignment)
     std::memset(output.GetAlpha(), wxIMAGE_ALPHA_TRANSPARENT, newSize.x * newSize.y);
 
     copySubImage(img, wxPoint(), output, newPos, img.GetSize());
-    //about 50x faster than e.g. wxImage::Resize!!! suprise :>
+    //about 50x faster than e.g. wxImage::Resize!!! surprise :>
     return output;
 }
 
@@ -418,18 +436,23 @@ void zen::convertToVanillaImage(wxImage& img)
     }
 }
 
+
 wxImage zen::rectangleImage(wxSize size, const wxColor& col)
 {
     assert(col.IsSolid());
     wxImage img(size);
 
+    const unsigned char r = col.Red  (); //
+    const unsigned char g = col.Green(); //getting RGB involves virtual function calls!
+    const unsigned char b = col.Blue (); //
+
     unsigned char* rgb = img.GetData();
     const int pixelCount = size.GetWidth() * size.GetHeight();
     for (int i = 0; i < pixelCount; ++i)
     {
-        *rgb++ = col.GetRed();
-        *rgb++ = col.GetGreen();
-        *rgb++ = col.GetBlue();
+        *rgb++ = r;
+        *rgb++ = g;
+        *rgb++ = b;
     }
     convertToVanillaImage(img);
     return img;
@@ -439,10 +462,15 @@ wxImage zen::rectangleImage(wxSize size, const wxColor& col)
 wxImage zen::rectangleImage(wxSize size, const wxColor& innerCol, const wxColor& borderCol, int borderWidth)
 {
     assert(innerCol.IsSolid() && borderCol.IsSolid());
+    assert(borderWidth > 0);
     wxImage img = rectangleImage(size, borderCol);
 
     const int heightInner = size.GetHeight() - 2 * borderWidth;
     const int widthInner  = size.GetWidth () - 2 * borderWidth;
+
+    const unsigned char r = innerCol.Red  (); //
+    const unsigned char g = innerCol.Green(); //getting RGB involves virtual function calls!
+    const unsigned char b = innerCol.Blue (); //
 
     if (widthInner > 0 && heightInner > 0 && innerCol != borderCol)
         //copyImageLayover(rectangleImage({widthInner, heightInner}, innerCol), img, {borderWidth, borderWidth}); => inline:
@@ -452,9 +480,9 @@ wxImage zen::rectangleImage(wxSize size, const wxColor& innerCol, const wxColor&
 
             for (int x = 0; x < widthInner; ++x)
             {
-                *rgb++ = innerCol.GetRed();
-                *rgb++ = innerCol.GetGreen();
-                *rgb++ = innerCol.GetBlue();
+                *rgb++ = r;
+                *rgb++ = g;
+                *rgb++ = b;
             }
         }
 

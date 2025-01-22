@@ -60,7 +60,7 @@ TimeComp parseTime(const String& format, const String2& str); //similar to ::str
 //----------------------------------------------------------------------------------------------------------------------------------
 
 //format: [-][[d.]HH:]MM:SS    e.g. -1.23:45:67
-Zstring formatTimeSpan(int64_t timeInSec, bool hourOptional = false);
+Zstring formatTimeSpan(int64_t timeInSec, bool hourRequired = true);
 
 
 
@@ -389,7 +389,7 @@ TimeComp parseTime(const String& format, const String2& str)
 
 
 inline
-Zstring formatTimeSpan(int64_t timeInSec, bool hourOptional)
+Zstring formatTimeSpan(int64_t timeInSec, bool hourRequired)
 {
     Zstring timespanStr;
 
@@ -400,7 +400,7 @@ Zstring formatTimeSpan(int64_t timeInSec, bool hourOptional)
     }
 
     //check *before* subtracting days!
-    const Zchar* timeSpanFmt = hourOptional && timeInSec < 3600 ? Zstr("%M:%S") : formatIsoTimeTag;
+    const Zchar* timeSpanFmt = timeInSec < 3600 && !hourRequired ? Zstr("%M:%S") : formatIsoTimeTag;
 
     const int secsPerDay = 24 * 3600;
     const int64_t days = numeric::intDivFloor(timeInSec, secsPerDay);

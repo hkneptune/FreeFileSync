@@ -123,7 +123,7 @@ std::vector<TranslationInfo> loadTranslations(const Zstring& zipPath) //throw Fi
         {
             if (entry->IsDir()) //e.g. translators accidentally ZIPing "Languages" directory
                 throw FileError(replaceCpy(replaceCpy<std::wstring>(L"ZIP file %x contains unexpected sub directory %y.",
-                                                      L"%x", fmtPath(zipPath)),
+                                                                    L"%x", fmtPath(zipPath)),
                                            L"%y", fmtPath(utfTo<std::wstring>(entry->GetName()))));
 
             if (std::string stream(entry->GetSize(), '\0');
@@ -359,12 +359,12 @@ void fff::localizationInit(const Zstring& zipPath) //throw FileError
 
 void fff::localizationCleanup()
 {
+    assert(!globalTranslations.empty());
 #if 0 //good place for clean up rather than some time during static destruction: is this an actual benefit???
     globalLang = wxLANGUAGE_UNKNOWN;
 
     setTranslator(nullptr);
 
-    assert(!globalTranslations.empty());
     globalTranslations.clear();
 #endif
 }
@@ -421,9 +421,11 @@ void fff::setLanguage(wxLanguage lng) //throw FileError
     //add translation for wxWidgets-internal strings:
     std::map<std::string, std::wstring> transMapping =
     {
+        {"&OK",     _("OK")},     //for wxTextEntryDialog
+        {"&Cancel", _("Cancel")}, //=> shouldn't use accelerator keys!
     };
     wxTranslations& wxtrans = *wxTranslations::Get(); //*assert* creation by localizationInit()!
-    wxtrans.SetLanguage(lng); //!= wxLocale's language, which could be wxLANGUAGE_DEFAULT (see ZenLocale)
+    wxtrans.SetLanguage(lng); //!= wxLocale's language, which could be wxLANGUAGE_DEFAULT
     wxtrans.SetLoader(new MemoryTranslationLoader(lng, std::move(transMapping)));
     [[maybe_unused]] const bool catalogAdded = wxtrans.AddCatalog(wxString());
     assert(catalogAdded || lng == wxLANGUAGE_ENGLISH_US);

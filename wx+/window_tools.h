@@ -93,6 +93,8 @@ struct FocusPreserver
         assert(oldFocusId_ != wxID_ANY);
     }
 
+    void dismiss() { oldFocusId_ = wxID_ANY; }
+
 private:
     wxWindowID oldFocusId_ = wxID_ANY;
     //don't store wxWindow* which may be dangling during ~FocusPreserver()!

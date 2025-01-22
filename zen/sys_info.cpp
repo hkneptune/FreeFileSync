@@ -8,7 +8,6 @@
 #include "crc.h"
 #include "file_access.h"
 #include "sys_version.h"
-//#include "time.h"
 
     #include "symlink_target.h"
     #include "file_io.h"

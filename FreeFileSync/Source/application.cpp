@@ -7,20 +7,17 @@
 #include "application.h"
 #include <memory>
 #include <zen/file_access.h>
-//#include <zen/perf.h>
 #include <zen/shutdown.h>
 #include <zen/process_exec.h>
 #include <zen/resolve_path.h>
 #include <zen/sys_info.h>
 #include <wx/clipbrd.h>
 #include <wx/tooltip.h>
-//#include <wx/log.h>
 #include <wx+/app_main.h>
+#include <wx+/darkmode.h>
 #include <wx+/popup_dlg.h>
 #include <wx+/image_resources.h>
-//#include <wx/msgdlg.h>
 #include "afs/concrete.h"
-//#include "base/algorithm.h"
 #include "base/comparison.h"
 #include "base/synchronization.h"
 #include "ui/batch_status_handler.h"
@@ -83,7 +80,7 @@ void showSyntaxHelp()
                                                  L"-DirPair " + _("directory") + L' ' + _("directory") + L'\n' +
                                                  _("Any number of alternative directory pairs for at most one config file.") + L"\n\n" +
 
-                                                 L"-Edit" + '\n' +
+                                                 L"-Edit" + L'\n' +
                                                  _("Open the selected configuration for editing only, without executing it.") + L"\n\n" +
 
                                                  _("global config file:") + L'\n' +
@@ -119,6 +116,10 @@ bool Application::OnInit()
         }
         catch (const FileError& e) { assert(false); notifyAppError(e.toString()); }
     });
+
+    //tentatively set program language to OS default until GlobalSettings.xml is read later
+    try { localizationInit(appendPath(getResourceDirPath(), Zstr("Languages.zip"))); } //throw FileError
+    catch (const FileError& e) { logExtraError(e.toString()); }
 
     //parallel xBRZ-scaling! => run as early as possible
     try { imageResourcesInit(appendPath(getResourceDirPath(), Zstr("Icons.zip"))); }
@@ -169,7 +170,7 @@ bool Application::OnInit()
         {
             loadCSS("Gtk3Styles.old.css"); //throw SysError
         }
-        catch (const SysError& e2) { logExtraError(_("Error during process initialization.") + L"\n\n" + e2.toString()); }
+        catch (const SysError& e2) { logExtraError(_("Failed to update the color theme.") + L"\n\n" + e2.toString()); }
     }
 #else
 #error unknown GTK version!
@@ -190,10 +191,6 @@ bool Application::OnInit()
 
     SetAppName(L"FreeFileSync"); //if not set, defaults to executable name
 
-
-    //tentatively set program language to OS default until GlobalSettings.xml is read later
-    try { localizationInit(appendPath(getResourceDirPath(), Zstr("Languages.zip"))); } //throw FileError
-    catch (const FileError& e) { logExtraError(e.toString()); }
 
     initAfs({getResourceDirPath(), getConfigDirPath()}); //bonus: using FTP Gdrive implicitly inits OpenSSL (used in runSanityChecks() on Linux) already during globals init
 
@@ -222,7 +219,7 @@ bool Application::OnInit()
     //Note: app start is deferred: batch mode requires the wxApp eventhandler to be established for UI update events. This is not the case at the time of OnInit()!
     CallAfter([&] { onEnterEventLoop(); });
 
-    return true; //true: continue processing; false: exit immediately.
+    return true; //true: continue processing; false: exit immediately
 }
 
 
@@ -233,7 +230,7 @@ int Application::OnExit()
     localizationCleanup();
     imageResourcesCleanup();
     teardownAfs();
-
+    colorThemeCleanup();
     return wxApp::OnExit();
 }
 
@@ -268,7 +265,7 @@ void Application::onEnterEventLoop()
         //parse command line arguments
         std::vector<std::pair<Zstring, Zstring>> dirPathPhrasePairs;
         std::vector<Zstring> cfgFilePaths;
-        Zstring globalConfigFile;
+        Zstring globalCfgPathAlt;
         bool openForEdit = false;
         {
             const char* optionEdit    = "-edit";
@@ -359,7 +356,7 @@ void Application::onEnterEventLoop()
                         endsWithAsciiNoCase(filePath, Zstr(".ffs_batch")))
                         cfgFilePaths.push_back(filePath);
                     else if (endsWithAsciiNoCase(filePath, Zstr(".xml")))
-                        globalConfigFile = filePath;
+                        globalCfgPathAlt = filePath;
                     else
                         throw FileError(replaceCpy(_("Cannot open file %x."), L"%x", fmtPath(filePath)),
                                         _("Unexpected file extension:") + L' ' + fmtPath(getFileExtension(filePath)) + L'\n' +
@@ -379,6 +376,9 @@ void Application::onEnterEventLoop()
         {
             if (!dirPathPhrasePairs.empty())
             {
+                if (cfgFilePaths.size() > 1)
+                    throw FileError(_("Directories cannot be set for more than one configuration file."));
+
                 //check if config at folder-pair level is present: this probably doesn't make sense when replacing/adding the user-specified directories
                 if (hasNonDefaultConfig(mainCfg.firstPair) || std::any_of(mainCfg.additionalPairs.begin(), mainCfg.additionalPairs.end(), hasNonDefaultConfig))
                     throw FileError(_("The config file must not contain settings at directory pair level when directories are set via command line."));
@@ -396,68 +396,80 @@ void Application::onEnterEventLoop()
             }
         };
 
-        //distinguish sync scenarios:
-        //---------------------------
-        const Zstring globalConfigFilePath = !globalConfigFile.empty() ? globalConfigFile : getGlobalConfigDefaultPath();
+        const Zstring globalCfgFilePath = !globalCfgPathAlt.empty() ? globalCfgPathAlt : getGlobalConfigDefaultPath();
 
+        GlobalConfig globalCfg;
+        try
+        {
+            std::wstring warningMsg;
+            std::tie(globalCfg, warningMsg) = readGlobalConfig(globalCfgFilePath); //throw FileError
+            assert(warningMsg.empty()); //ignore parsing errors: should be migration problems only *cross-fingers*
+        }
+        catch (const FileError& e)
+        {
+            try
+            {
+                bool cfgFileExists = true;
+                try { cfgFileExists  = itemExists(globalCfgFilePath); /*throw FileError*/ } //=> unclear which exception is more relevant/useless:
+                catch (const FileError& e2) { throw FileError(replaceCpy(e.toString(), L"\n\n", L'\n'), replaceCpy(e2.toString(), L"\n\n", L'\n')); }
+
+                if (cfgFileExists)
+                    throw;
+            }
+            catch (const FileError& e3) { logExtraError(e3.toString()); }
+        }
+
+        //late GlobalSettings.xml-dependent app initialization:
+        try { setLanguage(globalCfg.programLanguage); } //throw FileError
+        catch (const FileError& e) { logExtraError(e.toString()); }
+
+        try { colorThemeInit(*this, globalCfg.appColorTheme); } //throw FileError
+        catch (const FileError& e) { logExtraError(e.toString()); } //not critical in this context
+
+
+        //-----------------------------------------------------------
+        //distinguish sync scenarios:
+        //-----------------------------------------------------------
         if (cfgFilePaths.empty())
         {
             //gui mode: default startup
             if (dirPathPhrasePairs.empty())
-                runGuiMode(globalConfigFilePath);
+                MainDialog::create(globalCfg, globalCfgFilePath);
             //gui mode: default config with given directories
             else
             {
-                XmlGuiConfig guiCfg;
+                FfsGuiConfig guiCfg;
                 guiCfg.mainCfg.syncCfg.directionCfg = getDefaultSyncCfg(SyncVariant::mirror);
 
                 replaceDirectories(guiCfg.mainCfg); //throw FileError
 
-                runGuiMode(globalConfigFilePath, guiCfg, std::vector<Zstring>(), !openForEdit /*startComparison*/);
+                MainDialog::create(guiCfg, {} /*cfgFilePaths*/, globalCfg, globalCfgFilePath, !openForEdit /*startComparison*/);
             }
         }
-        else if (cfgFilePaths.size() == 1)
+        else if (const Zstring filePath0 = cfgFilePaths[0];
+                 //batch mode (single config)
+                 cfgFilePaths.size() == 1 && endsWithAsciiNoCase(filePath0, Zstr(".ffs_batch")) && !openForEdit)
         {
-            const Zstring filePath = cfgFilePaths[0];
+            auto [batchCfg, warningMsg] = readBatchConfig(filePath0); //throw FileError
+            if (!warningMsg.empty())
+                throw FileError(warningMsg); //batch mode: break on errors AND even warnings!
 
-            //batch mode
-            if (endsWithAsciiNoCase(filePath, Zstr(".ffs_batch")) && !openForEdit)
-            {
-                auto [batchCfg, warningMsg] = readBatchConfig(filePath); //throw FileError
-                if (!warningMsg.empty())
-                    throw FileError(warningMsg); //batch mode: break on errors AND even warnings!
+            replaceDirectories(batchCfg.guiCfg.mainCfg); //throw FileError
 
-                replaceDirectories(batchCfg.guiCfg.mainCfg); //throw FileError
-
-                runBatchMode(globalConfigFilePath, batchCfg, filePath);
-            }
-            //GUI mode: single config (ffs_gui *or* ffs_batch)
-            else
-            {
-                auto [guiCfg, warningMsg] = readAnyConfig({filePath}); //throw FileError
-                if (!warningMsg.empty())
-                    showNotificationDialog(nullptr, DialogInfoType::warning, PopupDialogCfg().setDetailInstructions(warningMsg));
-                //what about simulating changed config on parsing errors?
-
-                replaceDirectories(guiCfg.mainCfg); //throw FileError
-                //what about simulating changed config due to directory replacement?
-                //-> propably fine to not show as changed on GUI and not ask user to save on exit!
-
-                runGuiMode(globalConfigFilePath, guiCfg, {filePath}, !openForEdit); //caveat: guiCfg and filepath do not match if directories were set/replaced via command line!
-            }
+            runBatchMode(batchCfg, filePath0, globalCfg, globalCfgFilePath);
         }
-        //gui mode: merged configs
-        else
+        else //GUI mode: (ffs_gui *or* ffs_batch)
         {
-            if (!dirPathPhrasePairs.empty())
-                throw FileError(_("Directories cannot be set for more than one configuration file."));
-
-            const auto& [guiCfg, warningMsg] = readAnyConfig(cfgFilePaths); //throw FileError
+            auto [guiCfg, warningMsg] = readAnyConfig(cfgFilePaths); //throw FileError
             if (!warningMsg.empty())
                 showNotificationDialog(nullptr, DialogInfoType::warning, PopupDialogCfg().setDetailInstructions(warningMsg));
             //what about simulating changed config on parsing errors?
 
-            runGuiMode(globalConfigFilePath, guiCfg, cfgFilePaths, !openForEdit /*startComparison*/);
+            replaceDirectories(guiCfg.mainCfg); //throw FileError
+            //what about simulating changed config due to directory replacement?
+            //-> propably fine to not show as changed on GUI and not ask user to save on exit!
+
+            MainDialog::create(guiCfg, cfgFilePaths, globalCfg, globalCfgFilePath, !openForEdit /*startComparison*/);
         }
     }
     catch (const FileError& e)
@@ -468,61 +480,11 @@ void Application::onEnterEventLoop()
 }
 
 
-void Application::runGuiMode(const Zstring& globalConfigFilePath) { MainDialog::create(globalConfigFilePath); }
-
-
-void Application::runGuiMode(const Zstring& globalConfigFilePath,
-                             const XmlGuiConfig& guiCfg,
-                             const std::vector<Zstring>& cfgFilePaths,
-                             bool startComparison)
-{
-    MainDialog::create(globalConfigFilePath, nullptr, guiCfg, cfgFilePaths, startComparison);
-}
-
-
-void Application::runBatchMode(const Zstring& globalConfigFilePath, const XmlBatchConfig& batchCfg, const Zstring& cfgFilePath)
+void Application::runBatchMode(const FfsBatchConfig& batchCfg, const Zstring& cfgFilePath, GlobalConfig globalCfg, const Zstring& globalCfgFilePath)
 {
     const bool allowUserInteraction = !batchCfg.batchExCfg.autoCloseSummary ||
                                       (!batchCfg.guiCfg.mainCfg.ignoreErrors && batchCfg.batchExCfg.batchErrorHandling == BatchErrorHandling::showPopup);
 
-    XmlGlobalSettings globalCfg;
-    try
-    {
-        std::wstring warningMsg;
-        std::tie(globalCfg, warningMsg) = readGlobalConfig(globalConfigFilePath); //throw FileError
-        assert(warningMsg.empty()); //ignore parsing errors: should be migration problems only *cross-fingers*
-    }
-    catch (const FileError& e)
-    {
-        try
-        {
-            bool cfgFileExists = true;
-            try { cfgFileExists  = itemExists(globalConfigFilePath); /*throw FileError*/ } //=> unclear which exception is more relevant/useless:
-            catch (const FileError& e2) { throw FileError(replaceCpy(e.toString(), L"\n\n", L'\n'), replaceCpy(e2.toString(), L"\n\n", L'\n')); }
-
-            if (cfgFileExists)
-                throw;
-        }
-        catch (const FileError& e3)
-        {
-            raiseExitCode(exitCode_, FfsExitCode::exception);
-
-            if (allowUserInteraction)
-                showNotificationDialog(nullptr, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e3.toString()));
-            else
-                logExtraError(e3.toString());
-
-            return;
-        }
-    }
-
-    try
-    {
-        setLanguage(globalCfg.programLanguage); //throw FileError
-    }
-    catch (const FileError& e) { logExtraError(e.toString()); }
-
-    //all settings have been read successfully...
 
     /* regular check for software updates -> disabled for batch
         if (batchCfg.showProgress && manualProgramUpdateRequired())
@@ -737,7 +699,7 @@ void Application::runBatchMode(const Zstring& globalConfigFilePath, const XmlBat
     //---------------------------------------------------------------------------
     try //save global settings to XML: e.g. ignored warnings, last sync stats
     {
-        writeConfig(globalCfg, globalConfigFilePath); //FileError
+        writeConfig(globalCfg, globalCfgFilePath); //FileError
     }
     catch (const FileError& e)
     {
@@ -757,7 +719,7 @@ void Application::runBatchMode(const Zstring& globalConfigFilePath, const XmlBat
             break;
 
         case FinalRequest::switchGui: //open new top-level window *after* progress dialog is gone => run on main event loop
-            MainDialog::create(globalConfigFilePath, &globalCfg, batchCfg.guiCfg, {cfgFilePath}, true /*startComparison*/);
+            MainDialog::create(batchCfg.guiCfg, {cfgFilePath}, globalCfg, globalCfgFilePath, true /*startComparison*/);
             break;
 
         case FinalRequest::shutdown:

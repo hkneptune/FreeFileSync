@@ -183,7 +183,7 @@ FileBase::FileHandle openHandleForWrite(const Zstring& filePath) //throw FileErr
 {
     try
     {
-        //checkForUnsupportedType(filePath); -> not needed, open() + O_WRONLY should fail fast
+        //check for named pipe, etc.? not needed, open() + O_WRONLY should fail fast
 
         const mode_t lockFileMode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH; //0666 => umask will be applied implicitly!
 
@@ -195,10 +195,20 @@ FileBase::FileHandle openHandleForWrite(const Zstring& filePath) //throw FileErr
         if (fdFile == -1)
         {
             const int ec = errno; //copy before making other system calls!
-            if (ec == EEXIST)
-                throw ErrorTargetExisting(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(filePath)), formatSystemError("open", ec));
+            std::wstring errorDescr = formatSystemError("open", ec);
 
-            THROW_LAST_SYS_ERROR("open");
+            if (ec == EEXIST)
+                throw ErrorTargetExisting(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(filePath)), errorDescr);
+
+            if (ec == EINVAL)
+                for (const Zchar c : getItemName(filePath))
+                    if (contains(fileNameForbiddenChars, c))
+                    {
+                        errorDescr += L' ' +  replaceCpy(_("Unsupported character %x"), L"%x", L"'" + utfTo<std::wstring>(c) + L"'");
+                        break;
+                    }
+
+            throw SysError(errorDescr);
         }
         return fdFile; //pass ownership
     }

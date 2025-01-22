@@ -7,7 +7,6 @@
 #ifndef CONTEXT_MENU_H_18047302153418174632141234
 #define CONTEXT_MENU_H_18047302153418174632141234
 
-//#include <map>
 #include <vector>
 #include <functional>
 #include <wx/app.h>
@@ -87,7 +86,7 @@ public:
 
     void popup(wxWindow& wnd, const wxPoint& pos = wxDefaultPosition) //show popup menu + process lambdas
     {
-        //eventually all events from submenu items will be received by this menu
+        //eventually all events from submenu items will be received by the parent menu
         for (const auto& [itemId, command] : commandList_)
             menu_->Bind(wxEVT_COMMAND_MENU_SELECTED, [command /*clang bug*/= command](wxCommandEvent& event) { command(); }, itemId);
 

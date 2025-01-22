@@ -94,7 +94,7 @@ public:
                 pal->protPathLocks_.access([&](std::map<NativePath, std::weak_ptr<BlockInfo>>& pathLocks)
             {
                 //clean up obsolete entries
-                std::erase_if(pathLocks, [](const auto& v) { return !v.second.lock(); });
+                std::erase_if(pathLocks, [](const auto& v) { return v.second.expired(); });
 
                 //get or create:
                 std::weak_ptr<BlockInfo>& weakPtr = pathLocks[nativePath];

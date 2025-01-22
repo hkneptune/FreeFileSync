@@ -14,6 +14,14 @@ namespace zen
 {
     const Zchar FILE_NAME_SEPARATOR = '/';
 
+/* forbidden characters in file names:
+   Windows: <>:"/\|?*   https://docs.microsoft.com/de-de/windows/win32/fileio/naming-a-file#naming-conventions
+   Linux: /
+   macOS: :
+*/
+const Zchar fileNameForbiddenChars[] = Zstr(R"(<>:"/\|?*)");
+
+
 struct PathComponents
 {
     Zstring rootPath; //itemPath = rootPath + (FILE_NAME_SEPARATOR?) + relPath

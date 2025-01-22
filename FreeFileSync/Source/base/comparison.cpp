@@ -6,7 +6,6 @@
 
 #include "comparison.h"
 #include <zen/process_priority.h>
-//#include <zen/perf.h>
 #include <zen/time.h>
 #include "algorithm.h"
 #include "parallel_scan.h"
@@ -758,7 +757,7 @@ void MergeSides::fillOneSide(const FolderContainer& folderCont, const Zstringc* 
 
     forEachSorted(folderCont.symlinks, [&](const Zstring& linkName, const LinkAttributes& attrib)
     {
-        SymlinkPair& newItem = output.addLink<side>(linkName, attrib);
+        SymlinkPair& newItem = output.addSymlink<side>(linkName, attrib);
         checkFailedRead<side>(newItem, errorMsg);
     });
 
@@ -868,7 +867,8 @@ void MergeSides::mergeFolders(const FolderContainer& lhs, const FolderContainer&
                                            fileRight.second);
         if (!checkFailedRead(newItem, errorMsg))
             undefinedFiles_.push_back(&newItem);
-        static_assert(std::is_same_v<ContainerObject::FileList, std::list<FilePair>>); //ContainerObject::addFile() must NOT invalidate references used in "undefinedFiles"!
+        static_assert(std::is_same_v<ContainerObject::FileList::value_type, SharedRef<FilePair>>);
+        //ContainerObject::addFile() must NOT invalidate references used in "undefinedFiles"!
     });
 
     //-----------------------------------------------------------------------------------------------
@@ -876,20 +876,20 @@ void MergeSides::mergeFolders(const FolderContainer& lhs, const FolderContainer&
 
     matchFolders(lhs.symlinks, rhs.symlinks, [&](const SymlinkData& symlinkLeft, const Zstringc* conflictMsg)
     {
-        SymlinkPair& newItem = output.addLink<SelectSide::left>(symlinkLeft.first, symlinkLeft.second);
+        SymlinkPair& newItem = output.addSymlink<SelectSide::left>(symlinkLeft.first, symlinkLeft.second);
         checkFailedRead(newItem, conflictMsg ? conflictMsg : errorMsg);
     },
     [&](const SymlinkData& symlinkRight, const Zstringc* conflictMsg)
     {
-        SymlinkPair& newItem = output.addLink<SelectSide::right>(symlinkRight.first, symlinkRight.second);
+        SymlinkPair& newItem = output.addSymlink<SelectSide::right>(symlinkRight.first, symlinkRight.second);
         checkFailedRead(newItem, conflictMsg ? conflictMsg : errorMsg);
     },
     [&](const SymlinkData& symlinkLeft, const SymlinkData& symlinkRight) //both sides
     {
-        SymlinkPair& newItem = output.addLink(symlinkLeft.first,
-                                              symlinkLeft.second,
-                                              symlinkRight.first,
-                                              symlinkRight.second);
+        SymlinkPair& newItem = output.addSymlink(symlinkLeft.first,
+                                                 symlinkLeft.second,
+                                                 symlinkRight.first,
+                                                 symlinkRight.second);
         if (!checkFailedRead(newItem, errorMsg))
             undefinedSymlinks_.push_back(&newItem);
     });
@@ -922,15 +922,15 @@ void MergeSides::mergeFolders(const FolderContainer& lhs, const FolderContainer&
 //uncheck excluded directories (see parallelDeviceTraversal()) + remove superfluous excluded subdirectories
 void stripExcludedDirectories(ContainerObject& conObj, const PathFilter& filter)
 {
-    for (FolderPair& folder : conObj.refSubFolders())
+    for (FolderPair& folder : conObj.subfolders())
         stripExcludedDirectories(folder, filter);
 
     /*  remove superfluous directories:
             this does not invalidate "std::vector<FilePair*>& undefinedFiles", since we delete folders only
-            and there is no side-effect for memory positions of FilePair and SymlinkPair thanks to std::list!     */
-    static_assert(std::is_same_v<std::list<FolderPair>, ContainerObject::FolderList>);
+            and there is no side-effect for memory positions of FilePair and SymlinkPair thanks to SharedRef!     */
+    static_assert(std::is_same_v<ContainerObject::FolderList::value_type, SharedRef<FolderPair>>);
 
-    conObj.refSubFolders().remove_if([&](FolderPair& folder)
+    conObj.foldersRemoveIf([&](FolderPair& folder)
     {
         const bool included = folder.passDirFilter(filter, nullptr /*childItemMightMatch*/); //child items were already excluded during scanning
 
@@ -938,9 +938,9 @@ void stripExcludedDirectories(ContainerObject& conObj, const PathFilter& filter)
             folder.setActive(false);
 
         return !included && //don't check active status, but eval filter directly!
-               folder.refSubFolders().empty() &&
-               folder.refSubLinks  ().empty() &&
-               folder.refSubFiles  ().empty();
+               folder.subfolders().empty() &&
+               folder.symlinks  ().empty() &&
+               folder.files     ().empty();
     });
 }
 
@@ -1070,19 +1070,11 @@ FolderComparison fff::compare(WarningDialogs& warnings,
 
     //-------------------------------------------------------------------------------
 
-    //specify process and resource handling priorities
-    std::unique_ptr<ScheduleForBackgroundProcessing> backgroundPrio;
-    if (runWithBackgroundPriority)
-        tryReportingError([&]
-    {
-        backgroundPrio = std::make_unique<ScheduleForBackgroundProcessing>(); //throw FileError
-    }, callback); //throw X
-
     //prevent operating system going into sleep state
-    std::unique_ptr<PreventStandby> noStandby;
+    std::unique_ptr<SetProcessPriority> noStandby;
     try
     {
-        noStandby = std::make_unique<PreventStandby>(); //throw FileError
+        noStandby = std::make_unique<SetProcessPriority>(runWithBackgroundPriority ? ProcessPriority::background : ProcessPriority::normal); //throw FileError
     }
     catch (const FileError& e) //failure is not critical => log only
     {

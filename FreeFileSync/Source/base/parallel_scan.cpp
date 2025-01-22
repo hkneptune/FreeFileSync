@@ -6,7 +6,6 @@
 
 #include "parallel_scan.h"
 #include <chrono>
-//#include <zen/file_error.h>
 #include <zen/thread.h>
 #include <zen/scope_guard.h>
 
@@ -360,7 +359,7 @@ DirCallback::HandleLink DirCallback::onSymlink(const AFS::SymlinkInfo& si) //thr
         case SymLinkHandling::asLink:
             if (cfg_.filter.ref().passFileFilter(relPath)) //always use file filter: Link type may not be "stable" on Linux!
             {
-                output_.addLink(si.itemName, {.modTime = si.modTime});
+                output_.addSymlink(si.itemName, {.modTime = si.modTime});
                 cfg_.acb.incItemsScanned(); //add 1 element to the progress indicator
             }
             return HandleLink::skip;

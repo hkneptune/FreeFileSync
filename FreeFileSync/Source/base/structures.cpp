@@ -5,8 +5,6 @@
 // *****************************************************************************
 
 #include "structures.h"
-//#include <iterator>
-//#include <ctime>
 #include <zen/i18n.h>
 #include <zen/time.h>
 #include "../afs/concrete.h"

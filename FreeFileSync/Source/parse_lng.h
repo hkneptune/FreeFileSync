@@ -147,15 +147,12 @@ private:
 
 enum class TokenType
 {
-    headerBegin,
-    headerEnd,
-    srcBegin,
-    srcEnd,
-    trgBegin,
-    trgEnd,
+    header,
+    source,
+    target,
+    empty,
     text,
-    pluralBegin,
-    pluralEnd,
+    plural,
     end,
 };
 
@@ -189,14 +186,11 @@ public:
 private:
     const TokenMap tokens_ =
     {
-        {TokenType::headerBegin, "<header>"},
-        {TokenType::headerEnd,   "</header>"},
-        {TokenType::srcBegin,    "<source>"},
-        {TokenType::srcEnd,      "</source>"},
-        {TokenType::trgBegin,    "<target>"},
-        {TokenType::trgEnd,      "</target>"},
-        {TokenType::pluralBegin, "<pluralform>"},
-        {TokenType::pluralEnd,   "</pluralform>"},
+        {TokenType::header, "<header>"},
+        {TokenType::source, "<source>"},
+        {TokenType::target, "<target>"},
+        {TokenType::empty,  "<empty>"},
+        {TokenType::plural, "<pluralform>"},
     };
 };
 
@@ -225,7 +219,7 @@ public:
                 return Token(tokenEnum);
             }
 
-        //rest must be "text"
+        //otherwise assume "text"
         auto itBegin = pos_;
         while (pos_ != stream_.end() && !startsWithKnownTag())
             pos_ = std::find(pos_ + 1, stream_.end(), '<');
@@ -305,9 +299,8 @@ public:
 
         try
         {
-            plural::PluralFormInfo pi(header.pluralDefinition, header.pluralCount);
+            plural::PluralFormInfo pi(header.pluralDefinition, header.pluralCount); //throw InvalidPluralForm
 
-            //items
             while (token().type != TokenType::end)
                 parseRegular(out, pluralOut, pi); //throw ParsingError
         }
@@ -321,7 +314,7 @@ public:
     {
         using namespace zen;
 
-        consumeToken(TokenType::headerBegin); //throw ParsingError
+        consumeToken(TokenType::header); //throw ParsingError
 
         const std::string headerRaw = token().text;
         consumeToken(TokenType::text); //throw ParsingError
@@ -350,65 +343,64 @@ public:
         header.pluralCount      = stringTo<int>(getValue("plural_count")); //throw ParsingError
         header.pluralDefinition = getValue("plural_definition"); //throw ParsingError
         header.translatorName   = getValue("translator"); //throw ParsingError
-
-        consumeToken(TokenType::headerEnd); //throw ParsingError
     }
 
 private:
     void parseRegular(TranslationMap& out, TranslationPluralMap& pluralOut, const plural::PluralFormInfo& pluralInfo) //throw ParsingError
     {
-        consumeToken(TokenType::srcBegin); //throw ParsingError
+        consumeToken(TokenType::source); //throw ParsingError
 
-        if (token().type == TokenType::pluralBegin)
+        if (token().type == TokenType::plural)
             return parsePlural(pluralOut, pluralInfo); //throw ParsingError
 
         std::string original = token().text;
-        consumeToken(TokenType::text);   //throw ParsingError
-        consumeToken(TokenType::srcEnd); //
+        consumeToken(TokenType::text); //throw ParsingError
 
-        consumeToken(TokenType::trgBegin); //throw ParsingError
+        consumeToken(TokenType::target); //throw ParsingError
         std::string translation;
         if (token().type == TokenType::text)
         {
             translation = token().text;
             nextToken();
         }
-        validateTranslation(original, translation); //throw ParsingError
-        consumeToken(TokenType::trgEnd);            //
+        else
+            consumeToken(TokenType::empty); //throw ParsingError
 
-        out.emplace(original, std::move(translation));
+        validateTranslation(original, translation); //throw ParsingError
+
+        out.emplace(std::move(original), std::move(translation));
     }
 
     void parsePlural(TranslationPluralMap& pluralOut, const plural::PluralFormInfo& pluralInfo) //throw ParsingError
     {
-        //TokenType::srcBegin already consumed
+        //TokenType::source already consumed
 
-        consumeToken(TokenType::pluralBegin); //throw ParsingError
+        consumeToken(TokenType::plural); //throw ParsingError
         std::string engSingular = token().text;
-        consumeToken(TokenType::text);      //throw ParsingError
-        consumeToken(TokenType::pluralEnd); //
+        consumeToken(TokenType::text); //throw ParsingError
 
-        consumeToken(TokenType::pluralBegin); //throw ParsingError
+        consumeToken(TokenType::plural); //throw ParsingError
         std::string engPlural = token().text;
-        consumeToken(TokenType::text);      //throw ParsingError
-        consumeToken(TokenType::pluralEnd); //
+        consumeToken(TokenType::text); //throw ParsingError
 
-        consumeToken(TokenType::srcEnd); //throw ParsingError
         const SingularPluralPair original(engSingular, engPlural);
 
-        consumeToken(TokenType::trgBegin); //throw ParsingError
+        consumeToken(TokenType::target); //throw ParsingError
 
         PluralForms pluralList;
-        while (token().type == TokenType::pluralBegin)
+        while (token().type == TokenType::plural)
         {
-            consumeToken(TokenType::pluralBegin); //throw ParsingError
+            nextToken();
             std::string pluralForm = token().text;
-            consumeToken(TokenType::text);      //throw ParsingError
-            consumeToken(TokenType::pluralEnd); //
+            consumeToken(TokenType::text); //throw ParsingError
+
             pluralList.push_back(pluralForm);
         }
+
+        if (pluralList.empty())
+            consumeToken(TokenType::empty); //throw ParsingError
+
         validateTranslation(original, pluralList, pluralInfo);
-        consumeToken(TokenType::trgEnd); //throw ParsingError
 
         pluralOut.emplace(original, std::move(pluralList));
     }
@@ -683,21 +675,6 @@ TransHeader parseHeader(const std::string& byteStream) //throw ParsingError
 
 
 inline
-void formatMultiLineText(std::string& text)
-{
-    assert(!zen::contains(text, "\r\n"));
-
-    if (zen::contains(text, '\n')) //multiple lines
-    {
-        if (*text.begin() != '\n')
-            text = '\n' + text;
-        if (*text.rbegin() != '\n')
-            text += '\n';
-    }
-}
-
-
-inline
 std::string generateLng(const TranslationUnorderedList& in, const TransHeader& header, bool untranslatedToTop)
 {
     using namespace zen;
@@ -705,16 +682,14 @@ std::string generateLng(const TranslationUnorderedList& in, const TransHeader& h
     const KnownTokens tokens; //no need for static non-POD!
 
     std::string headerLines;
-    headerLines += tokens.text(TokenType::headerBegin) + '\n';
+    headerLines += tokens.text(TokenType::header) + '\n';
 
     headerLines += "\t" "language: " + header.languageName + '\n';
     headerLines += "\t" "locale: "   + header.locale + '\n';
     headerLines += "\t" "image: "    + header.flagFile + '\n';
     headerLines += "\t" "plural_count: "      + numberTo<std::string>(header.pluralCount) + '\n';
     headerLines += "\t" "plural_definition: " + header.pluralDefinition + '\n';
-    headerLines += "\t" "translator: " + header.translatorName + '\n';
-
-    headerLines += tokens.text(TokenType::headerEnd) + "\n\n";
+    headerLines += "\t" "translator: " + header.translatorName;
 
 
     std::string topLines; //untranslated items first?
@@ -727,11 +702,15 @@ std::string generateLng(const TranslationUnorderedList& in, const TransHeader& h
         std::string original    = trans.first;
         std::string translation = trans.second;
 
-        formatMultiLineText(original);
-        formatMultiLineText(translation);
+        out += + "\n\n" + tokens.text(TokenType::source) + ' ' + original + '\n';
 
-        out += tokens.text(TokenType::srcBegin) + original    + tokens.text(TokenType::srcEnd) + '\n';
-        out += tokens.text(TokenType::trgBegin) + translation + tokens.text(TokenType::trgEnd) + "\n\n";
+        if (contains(original, '\n')) //multiple lines
+            out += + '\n';
+
+        out += tokens.text(TokenType::target) + ' ' + translation;
+
+        if (translation.empty()) //help translators search for untranslated items
+            out += tokens.text(TokenType::empty);
     },
     [&](const TranslationPluralMap::value_type& transPlural)
     {
@@ -741,23 +720,17 @@ std::string generateLng(const TranslationUnorderedList& in, const TransHeader& h
         std::string engPlural    = transPlural.first.second;
         const PluralForms& forms = transPlural.second;
 
-        formatMultiLineText(engSingular);
-        formatMultiLineText(engPlural);
+        out += "\n\n" + tokens.text(TokenType::source) + '\n';
+        out += '\t' + tokens.text(TokenType::plural) + ' ' + engSingular + '\n';
+        out += '\t' + tokens.text(TokenType::plural) + ' ' + engPlural   + '\n';
 
-        out += tokens.text(TokenType::srcBegin) + '\n';
-        out += '\t' + tokens.text(TokenType::pluralBegin) + engSingular + tokens.text(TokenType::pluralEnd) + '\n';
-        out += '\t' + tokens.text(TokenType::pluralBegin) + engPlural   + tokens.text(TokenType::pluralEnd) + '\n';
-        out += tokens.text(TokenType::srcEnd) + '\n';
+        out += tokens.text(TokenType::target);
 
-        out += tokens.text(TokenType::trgBegin);
-        if (!forms.empty()) //translators will be searching for "<target></target>"
-            out += '\n';
         for (std::string plForm : forms)
-        {
-            formatMultiLineText(plForm);
-            out += '\t' + tokens.text(TokenType::pluralBegin) + plForm + tokens.text(TokenType::pluralEnd) + '\n';
-        }
-        out += tokens.text(TokenType::trgEnd) + "\n\n";
+            out += + "\n\t" + tokens.text(TokenType::plural) + ' ' + plForm;
+
+        if (forms.empty()) //help translators search for untranslated items
+            out += ' ' + tokens.text(TokenType::empty);
     });
 
     std::string output = headerLines + topLines + mainLines;

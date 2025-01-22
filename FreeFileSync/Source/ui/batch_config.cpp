@@ -6,13 +6,11 @@
 
 #include "batch_config.h"
 #include <wx/wupdlock.h>
-//#include <wx+/window_layout.h>
 #include <wx+/image_resources.h>
 #include <wx+/image_tools.h>
 #include <wx+/choice_enum.h>
 #include <wx+/popup_dlg.h>
 #include "gui_generated.h"
-//#include "folder_selector.h"
 
 
 using namespace zen;
@@ -55,7 +53,15 @@ private:
     //output-only parameters
     BatchDialogConfig& dlgCfgOut_;
 
-    EnumDescrList<PostBatchAction> enumPostBatchAction_;
+    EnumDescrList<PostBatchAction> enumPostBatchAction_
+    {
+        *m_choicePostSyncAction,
+        {
+            {PostBatchAction::none,     L"",                    {}/*tooltip*/},
+            {PostBatchAction::sleep,    _("System: Sleep"),     {}/*tooltip*/},
+            {PostBatchAction::shutdown, _("System: Shut down"), {}/*tooltip*/},
+        }
+    };
 };
 
 //###################################################################################################################################
@@ -70,11 +76,6 @@ BatchDialog::BatchDialog(wxWindow* parent, BatchDialogConfig& dlgCfg) :
     m_staticTextHeader->Wrap(dipToWxsize(520));
 
     setImage(*m_bitmapBatchJob, loadImage("cfg_batch"));
-
-    enumPostBatchAction_.
-    add(PostBatchAction::none,     L"").
-    add(PostBatchAction::sleep,    _("System: Sleep")).
-    add(PostBatchAction::shutdown, _("System: Shut down"));
 
     setConfig(dlgCfg);
 
@@ -124,7 +125,7 @@ void BatchDialog::setConfig(const BatchDialogConfig& dlgCfg)
 
     m_checkBoxRunMinimized->SetValue(dlgCfg.batchExCfg.runMinimized);
     m_checkBoxAutoClose   ->SetValue(dlgCfg.batchExCfg.autoCloseSummary);
-    setEnumVal(enumPostBatchAction_, *m_choicePostSyncAction, dlgCfg.batchExCfg.postBatchAction);
+    enumPostBatchAction_.set(dlgCfg.batchExCfg.postBatchAction);
 
     updateGui(); //re-evaluate gui after config changes
 }
@@ -136,10 +137,10 @@ BatchDialogConfig BatchDialog::getConfig() const
     {
         .batchExCfg
         {
-            .runMinimized        = m_checkBoxRunMinimized->GetValue(),
-            .autoCloseSummary    = m_checkBoxAutoClose   ->GetValue(),
-            .batchErrorHandling  = m_radioBtnErrorDialogCancel->GetValue() ? BatchErrorHandling::cancel : BatchErrorHandling::showPopup,
-            .postBatchAction = getEnumVal(enumPostBatchAction_, *m_choicePostSyncAction),
+            .runMinimized       = m_checkBoxRunMinimized->GetValue(),
+            .autoCloseSummary   = m_checkBoxAutoClose   ->GetValue(),
+            .batchErrorHandling = m_radioBtnErrorDialogCancel->GetValue() ? BatchErrorHandling::cancel : BatchErrorHandling::showPopup,
+            .postBatchAction    = enumPostBatchAction_.get(),
         },
         .ignoreErrors = m_checkBoxIgnoreErrors->GetValue(),
     };

@@ -7,22 +7,18 @@
 #ifndef MAIN_DLG_H_8910481324545644545
 #define MAIN_DLG_H_8910481324545644545
 
-//#include <map>
-#include <memory>
+//#include <memory>
+#include <wx/aui/aui.h>
 #include <wx+/async_task.h>
 #include <wx+/file_drop.h>
-#include <wx/aui/aui.h>
 #include "gui_generated.h"
-#include "folder_selector.h"
 #include "file_grid.h"
-#include "tree_grid.h"
 #include "sync_cfg.h"
 #include "log_panel.h"
 #include "folder_history_box.h"
 #include "../config.h"
 #include "../status_handler.h"
 #include "../base/algorithm.h"
-//#include "../return_codes.h"
 #include "../base/synchronization.h"
 
 
@@ -38,22 +34,18 @@ class MainDialog : public MainDialogGenerated
 {
 public:
     //default behavior, application start, restores last used config
-    static void create(const Zstring& globalConfigFilePath);
+    static void create(const GlobalConfig& globalCfg, const Zstring& globalCfgFilePath);
 
-    //when loading dynamically assembled config,
-    //when switching language,
-    //or switching from batch run to GUI on warnings
-    static void create(const Zstring& globalConfigFilePath,
-                       const XmlGlobalSettings* globalSettings, //optional: take over ownership => save on exit
-                       const XmlGuiConfig& guiCfg,
-                       const std::vector<Zstring>& referenceFiles,
+    //- when loading dynamically assembled config
+    //- when switching language
+    //- switching from batch run to GUI on warnings dialog
+    static void create(const FfsGuiConfig& guiCfg, const std::vector<Zstring>& cfgFilePaths,
+                       const GlobalConfig& globalCfg, const Zstring& globalCfgFilePath, //take over ownership => save on exit
                        bool startComparison);
 
 private:
-    MainDialog(const Zstring& globalConfigFilePath,
-               const XmlGuiConfig& guiCfg,
-               const std::vector<Zstring>& referenceFiles,
-               const XmlGlobalSettings& globalSettings); //take over ownership => save on exit
+    MainDialog(const FfsGuiConfig& guiCfg, const std::vector<Zstring>& cfgFilePaths,
+               const GlobalConfig& globalCfg, const Zstring& globalCfgFilePath); //take over ownership => save on exit
     ~MainDialog();
 
     void onBeforeSystemShutdown(); //last chance to do something useful before killing the application!
@@ -69,13 +61,13 @@ private:
     class UiInputDisabler;
 
     //configuration load/save
-    void setLastUsedConfig(const XmlGuiConfig& guiConfig, const std::vector<Zstring>& cfgFilePaths);
+    void setLastUsedConfig(const FfsGuiConfig& guiConfig, const std::vector<Zstring>& cfgFilePaths);
 
-    XmlGuiConfig getConfig() const;
-    void setConfig(const XmlGuiConfig& newGuiCfg, const std::vector<Zstring>& referenceFiles);
+    FfsGuiConfig getConfig() const;
+    void setConfig(const FfsGuiConfig& newGuiCfg, const std::vector<Zstring>& cfgFilePaths);
 
-    void setGlobalCfgOnInit(const XmlGlobalSettings& globalSettings); //messes with Maximize(), window sizes, so call just once!
-    XmlGlobalSettings getGlobalCfgBeforeExit(); //destructive "get" thanks to "Iconize(false), Maximize(false)"
+    void setGlobalCfgOnInit(const GlobalConfig& globalCfg); //messes with Maximize(), window sizes, so call just once!
+    GlobalConfig getGlobalCfgBeforeExit(); //destructive "get" thanks to "Iconize(false), Maximize(false)"
 
     bool loadConfiguration(const std::vector<Zstring>& filepaths, bool ignoreBrokenConfig = false); //"false": error/cancel
 
@@ -287,18 +279,18 @@ private:
     //application variables are stored here:
 
     //global settings shared by GUI and batch mode
-    XmlGlobalSettings globalCfg_;
+    GlobalConfig globalCfg_;
 
-    const Zstring globalConfigFilePath_;
+    const Zstring globalCfgFilePath_;
 
     //-------------------------------------
     //program configuration
-    XmlGuiConfig currentCfg_; //caveat: some parts are owned by GUI controls! see setConfig()
+    FfsGuiConfig currentCfg_; //caveat: some parts are owned by GUI controls! see setConfig()
 
     //used when saving configuration
     std::vector<Zstring> activeConfigFiles_; //name of currently loaded config files: NOT owned by m_gridCfgHistory, see onCfgGridSelection()
 
-    XmlGuiConfig lastSavedCfg_; //support for: "Save changed configuration?" dialog
+    FfsGuiConfig lastSavedCfg_; //support for: "Save changed configuration?" dialog
 
     const Zstring lastRunConfigPath_ = getLastRunConfigPath(); //let's not use another global...
     //-------------------------------------

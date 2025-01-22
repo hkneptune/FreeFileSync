@@ -25,6 +25,7 @@ cppFiles+=../base/icon_loader.cpp
 cppFiles+=../ffs_paths.cpp
 cppFiles+=../icon_buffer.cpp
 cppFiles+=../localization.cpp
+cppFiles+=../../../wx+/darkmode.cpp
 cppFiles+=../../../wx+/file_drop.cpp
 cppFiles+=../../../wx+/image_tools.cpp
 cppFiles+=../../../wx+/image_resources.cpp

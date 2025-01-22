@@ -165,7 +165,7 @@ public:
         //-----------------------------------------------------------
         //configure *after* selecting appropriate socket: cfg-failure should not discard otherwise fine connection!
 
-        int noDelay =  1; //disable Nagle algorithm: https://brooker.co.za/blog/2024/05/09/nagle.html
+        int noDelay = 1; //disable Nagle algorithm: https://brooker.co.za/blog/2024/05/09/nagle.html
         //e.g. test case "website sync": 23% shorter comparison time!
         if (::setsockopt(socket_,                                 //_In_       SOCKET s
                          IPPROTO_TCP,                             //_In_       int    level

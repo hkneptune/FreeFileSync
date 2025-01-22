@@ -9,7 +9,6 @@
 
 #include <variant>
 #include <vector>
-//#include <memory>
 #include <chrono>
 #include <zen/zstring.h>
 #include "../afs/abstract.h"
@@ -359,8 +358,6 @@ struct MainConfiguration
 
     std::string emailNotifyAddress; //optional
     ResultsNotification emailNotifyCondition = ResultsNotification::always;
-
-    std::wstring notes;
 
     bool operator==(const MainConfiguration&) const = default;
 };

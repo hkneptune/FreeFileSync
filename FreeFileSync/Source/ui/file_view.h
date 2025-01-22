@@ -27,7 +27,7 @@ public:
     size_t rowsTotal () const { return sortedRef_.size(); } //total rows available
 
     //returns nullptr if object is not found; complexity: constant!
-    const FileSystemObject* getFsObject(size_t row) const { return row < viewRef_.size() ? FileSystemObject::retrieve(viewRef_[row].objId) : nullptr; }
+    const FileSystemObject* getFsObject(size_t row) const { return row < viewRef_.size() ? viewRef_[row].objRef.lock().get() : nullptr; }
     /**/  FileSystemObject* getFsObject(size_t row)       { return const_cast<FileSystemObject*>(static_cast<const FileView&>(*this).getFsObject(row)); } //see Meyers Effective C++
 
     //references to FileSystemObject: no nullptr-check needed! everything is bound
@@ -74,7 +74,6 @@ public:
                                               bool showDifferent,
                                               bool showEqual,
                                               bool showConflict);
-
     struct ActionViewStats
     {
         int excluded = 0;
@@ -117,12 +116,12 @@ public:
     };
     const SortInfo* getSortConfig() const { return zen::get(currentSort_); } //return nullptr if currently not sorted
 
-    ptrdiff_t findRowDirect(FileSystemObject::ObjectIdConst objId) const; //find an object's row position on view list directly, return < 0 if not found
-    ptrdiff_t findRowFirstChild(const ContainerObject* conObj)    const; //find first child of FolderPair or BaseFolderPair *on sorted sub view*
+    ptrdiff_t findRowDirect    (const FileSystemObject* fsObj) const; //find an object's row position on view list directly, return < 0 if not found
+    ptrdiff_t findRowFirstChild(const ContainerObject* conObj) const; //find first child of FolderPair or BaseFolderPair *on sorted sub view*
     //"conObj" may be invalid, it is NOT dereferenced, return < 0 if not found
 
     //count non-empty pairs to distinguish single/multiple folder pair cases
-    size_t getEffectiveFolderPairCount() const;
+    size_t getEffectiveFolderPairCount() const { return folderPairs_.size(); }
 
 private:
     FileView           (const FileView&) = delete;
@@ -131,9 +130,9 @@ private:
     template <class Predicate> void updateView(Predicate pred);
 
 
-    std::unordered_map<FileSystemObject::ObjectIdConst, size_t> rowPositions_; //find row positions on viewRef_ directly
-    std::unordered_map<const void* /*ContainerObject*/, size_t> rowPositionsFirstChild_; //find first child on sortedRef of a hierarchy object
-    //void* instead of ContainerObject*: these are weak pointers and should *never be dereferenced*!
+    std::unordered_map<const void* /*FileSystemObject*/, size_t> rowPositions_; //find row positions on viewRef_ directly
+    std::unordered_map<const void* /*ContainerObject*/,  size_t> rowPositionsFirstChild_; //find first child on sortedRef of a container object
+    //void* instead of ContainerObject*: these pointers should *never be dereferenced*!
 
     struct GroupDetail
     {
@@ -145,17 +144,16 @@ private:
 
     struct ViewRow
     {
-        FileSystemObject::ObjectId objId = nullptr;
+        std::weak_ptr<FileSystemObject> objRef;
         size_t groupIdx = 0; //...into groupDetails_
     };
     std::vector<ViewRow> viewRef_; //partial view on sortedRef_
     /*             /|\
                     | (applyFilterBy...)      */
-    std::vector<FileSystemObject::ObjectId> sortedRef_; //flat view of weak pointers on folderCmp; may be sorted
+    std::vector<std::weak_ptr<FileSystemObject>> sortedRef_; //flat view of weak pointers on folderCmp; may be sorted
     /*             /|\
                     | (constructor)
            FolderComparison folderCmp         */
-
     std::vector<std::tuple<const void* /*BaseFolderPair*/, AbstractPath, AbstractPath>> folderPairs_;
 
     std::optional<SortInfo> currentSort_;

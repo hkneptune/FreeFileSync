@@ -292,7 +292,7 @@ std::string createHash(const std::string_view str, const EVP_MD* type) //throw S
 
     if (::EVP_DigestUpdate(mdctx,            //EVP_MD_CTX* ctx
                            str.data(),       //const void*
-                           str.size()) != 1) //size_t cnt);
+                           str.size()) != 1) //size_t cnt
         throw SysError(formatLastOpenSSLError("EVP_DigestUpdate"));
 
     if (::EVP_DigestFinal_ex(mdctx,                                           //EVP_MD_CTX* ctx

@@ -12,7 +12,6 @@
 #include <optional>
 #include <wx/window.h>
 #include <wx/bitmap.h>
-//#include <wx/dcclient.h>
 
 
 /* manage three contained windows:
@@ -75,8 +74,6 @@ private:
     wxWindow* windowL_ = nullptr;
     wxWindow* windowC_ = nullptr;
     wxWindow* windowR_ = nullptr;
-
-    std::optional<wxBitmap> doubleBuffer_;
 };
 }
 

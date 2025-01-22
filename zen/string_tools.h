@@ -7,8 +7,6 @@
 #ifndef STRING_TOOLS_H_213458973046
 #define STRING_TOOLS_H_213458973046
 
-//#include <cctype>  //isspace
-//#include <cwctype> //iswspace
 #include <cstdio>  //sprintf
 #include <cwchar>  //swprintf
 #include "stl_tools.h"

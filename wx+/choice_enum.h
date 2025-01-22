@@ -7,52 +7,33 @@
 #ifndef CHOICE_ENUM_H_132413545345687
 #define CHOICE_ENUM_H_132413545345687
 
-#include <unordered_map>
-#include <vector>
+//#include <vector>
 #include <wx/choice.h>
 
-//handle mapping of enum values to wxChoice controls
-/*
-Example:
-
-Member variable:
-    zen::EnumDescrList<EnumOnError> enumDescrMap;
-
-Constructor code:
-    enumDescrMap.
-    add(ON_ERROR_POPUP,  "Show pop-up",    "Show pop-up on errors or warnings"). <- add localization
-    add(ON_ERROR_IGNORE, "Ignore errors",  "Hide all error and warning messages").
-    add(ON_ERROR_EXIT,   "Exit instantly", "Abort synchronization immediately");
-
-Set enum value:
-    setEnumVal(enumDescrMap, *m_choiceHandleError, value);
-
-Get enum value:
-    value = getEnumVal(enumDescrMap, *m_choiceHandleError)
-
-Update enum tooltips (after user changed selection):
-    updateTooltipEnumVal(enumDescrMap, *m_choiceHandleError);
-*/
 
 namespace zen
 {
+//handle mapping of enum values to wxChoice controls
 template <class Enum>
-struct EnumDescrList
+class EnumDescrList
 {
-    EnumDescrList& add(Enum value, const wxString& text, const wxString& tooltip = {})
-    {
-        descrList.push_back({value, {text, tooltip}});
-        return *this;
-    }
+public:
+    using DescrItem = std::tuple<Enum, wxString /*label*/, wxString /*tooltip*/>;
 
-    using DescrList = std::vector<std::pair<Enum, std::pair<wxString, wxString>>>;
-    DescrList descrList;
+    EnumDescrList(wxChoice& ctrl, std::vector<DescrItem> list);
+    ~EnumDescrList();
 
-    std::unordered_map<const wxChoice*, std::vector<wxString>> labelsSetLast;
+    void set(Enum value);
+    Enum get() const ;
+    void updateTooltip(); //after user changed selection
+
+    const std::vector<DescrItem>& getConfig() const { return descrList_; }
+
+private:
+    wxChoice& ctrl_;
+    const std::vector<DescrItem> descrList_;
+    std::vector<wxString> labels_;
 };
-template <class Enum> void setEnumVal(const EnumDescrList<Enum>& mapping, wxChoice& ctrl, Enum value);
-template <class Enum> Enum getEnumVal(const EnumDescrList<Enum>& mapping, const wxChoice& ctrl);
-template <class Enum> void updateTooltipEnumVal(const EnumDescrList<Enum>& mapping, wxChoice& ctrl);
 
 
 
@@ -69,61 +50,65 @@ template <class Enum> void updateTooltipEnumVal(const EnumDescrList<Enum>& mappi
 
 //--------------- impelementation -------------------------------------------
 template <class Enum>
-void setEnumVal(EnumDescrList<Enum>& mapping, wxChoice& ctrl, Enum value)
+EnumDescrList<Enum>::EnumDescrList(wxChoice& ctrl, std::vector<DescrItem> list) : ctrl_(ctrl), descrList_(std::move(list))
 {
-    auto& labelsSetLast = mapping.labelsSetLast[&ctrl];
+    for (const auto& [val, label, tooltip] : descrList_)
+        labels_.push_back(label);
 
-    std::vector<wxString> labels;
-    for (const auto& [val, texts] : mapping.descrList)
-        labels.push_back(texts.first);
+    ctrl_.Set(labels_); //expensive as fuck! => only call when needed!
+}
 
-    if (labels != labelsSetLast)
+
+template <class Enum> inline
+EnumDescrList<Enum>::~EnumDescrList()
+{
+}
+
+
+template <class Enum>
+void EnumDescrList<Enum>::set(Enum value)
+{
+    const auto it = std::find_if(descrList_.begin(), descrList_.end(), [&](const auto& mapItem) { return std::get<Enum>(mapItem) == value; });
+    if (it != descrList_.end())
     {
-        ctrl.Set(labels); //expensive as fuck! => only call when absolutely needed!
-        labelsSetLast = std::move(labels);
-    }
-    //-----------------------------------------------------------------
-
-    const auto it = std::find_if(mapping.descrList.begin(), mapping.descrList.end(), [&](const auto& mapItem) { return mapItem.first == value; });
-    if (it != mapping.descrList.end())
-    {
-        if (const wxString& tooltip = it->second.second;
-            !tooltip.empty())
-            ctrl.SetToolTip(tooltip);
+        const auto& [val, label, tooltip] = *it;
+        if (!tooltip.empty())
+            ctrl_.SetToolTip(tooltip);
         else
-            ctrl.UnsetToolTip();
+            ctrl_.UnsetToolTip();
 
-        const int selectedPos = it - mapping.descrList.begin();
-        ctrl.SetSelection(selectedPos);
+        const int selectedPos = it - descrList_.begin();
+        ctrl_.SetSelection(selectedPos);
     }
     else assert(false);
 }
 
-template <class Enum>
-Enum getEnumVal(const EnumDescrList<Enum>& mapping, const wxChoice& ctrl)
-{
-    const int selectedPos = ctrl.GetSelection();
 
-    if (0 <= selectedPos && selectedPos < std::ssize(mapping.descrList))
-        return mapping.descrList[selectedPos].first;
-    else
-    {
-        assert(false);
-        return Enum(0);
-    }
+template <class Enum>
+Enum EnumDescrList<Enum>::get() const
+{
+    const int selectedPos = ctrl_.GetSelection();
+
+    if (0 <= selectedPos && selectedPos < std::ssize(descrList_))
+        return std::get<Enum>(descrList_[selectedPos]);
+
+    assert(false);
+    return Enum(0);
 }
 
-template <class Enum> void updateTooltipEnumVal(const EnumDescrList<Enum>& mapping, wxChoice& ctrl)
-{
-    const int selectedPos = ctrl.GetSelection();
 
-    if (0 <= selectedPos && selectedPos < std::ssize(mapping.descrList))
+template <class Enum>
+void EnumDescrList<Enum>::updateTooltip()
+{
+    const int selectedPos = ctrl_.GetSelection();
+
+    if (0 <= selectedPos && selectedPos < std::ssize(descrList_))
     {
-        if (const auto& [text, tooltip] = mapping.descrList[selectedPos].second;
-            !tooltip.empty())
-            ctrl.SetToolTip(tooltip);
+        const auto& [val, label, tooltip] = descrList_[selectedPos];
+        if (!tooltip.empty())
+            ctrl_.SetToolTip(tooltip);
         else
-            ctrl.UnsetToolTip();
+            ctrl_.UnsetToolTip();
     }
     else assert(false);
 }

@@ -6,7 +6,6 @@
 
 #include "version_check.h"
 #include <numeric>
-#include <zen/build_info.h>
 #include <zen/crc.h>
 #include <zen/file_io.h>
 #include <zen/http.h>
@@ -18,8 +17,10 @@
 #include "../version/version.h"
 #include "small_dlgs.h"
 
+#include <zen/symlink_target.h>
+#include <zen/build_info.h>
+#include <wx/uilocale.h>
     #include <gtk/gtk.h>
-    #include <wx/uilocale.h>
 
 
 using namespace zen;
@@ -58,7 +59,7 @@ std::wstring getIso639Language()
 {
     assert(runningOnMainThread()); //this function is not thread-safe: consider wxWidgets usage
 
-    std::wstring localeName(wxUILocale::GetLanguageCanonicalName(wxUILocale::GetSystemLanguage()));
+    std::wstring localeName(copyStringTo<std::wstring>(wxUILocale::GetLanguageCanonicalName(wxUILocale::GetSystemLanguage())));
     localeName = beforeFirst(localeName, L'@', IfNotFoundReturn::all); //the locale may contain an @, e.g. "sr_RS@latin"; see wxUILocale::InitLanguagesDB()
 
     if (!localeName.empty())
@@ -76,7 +77,7 @@ std::wstring getIso3166Country()
 {
     assert(runningOnMainThread()); //this function is not thread-safe, consider wxWidgets usage
 
-    std::wstring localeName(wxUILocale::GetLanguageCanonicalName(wxUILocale::GetSystemLanguage()));
+    std::wstring localeName(copyStringTo<std::wstring>(wxUILocale::GetLanguageCanonicalName(wxUILocale::GetSystemLanguage())));
     localeName = beforeFirst(localeName, L'@', IfNotFoundReturn::all); //the locale may contain an @, e.g. "sr_RS@latin"; see wxUILocale::InitLanguagesDB()
 
     if (contains(localeName, L'_'))
@@ -215,10 +216,13 @@ void fff::checkForUpdateNow(wxWindow& parent, std::string& lastOnlineVersion)
         if (haveNewerVersionOnline(onlineVersion))
             showUpdateAvailableDialog(&parent, onlineVersion);
         else
+        {
+            std::wstring ffsVersionName = L"FreeFileSync " + utfTo<std::wstring>(ffsVersion);
             showNotificationDialog(&parent, DialogInfoType::info, PopupDialogCfg().
                                    setIcon(loadImage("update_check")).
                                    setTitle(_("Check for Software Updates")).
-                                   setMainInstructions(_("FreeFileSync is up-to-date.")));
+                                   setMainInstructions(replaceCpy(_("FreeFileSync is up-to-date."), L"FreeFileSync", ffsVersionName)));
+        }
     }
     catch (const SysError& e)
     {

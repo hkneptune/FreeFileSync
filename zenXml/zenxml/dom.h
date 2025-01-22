@@ -131,21 +131,18 @@ public:
         return const_cast<XmlElement*>(static_cast<const XmlElement*>(this)->getChild(name));
     }
 
-    using ChildIter      = std::list<XmlElement>::iterator;
-    using ChildIterConst = std::list<XmlElement>::const_iterator;
-
-    ///Access all child elements sequentially via STL iterators.
+    ///Access all child elements sequentially
     /**
     \code
-        auto [it, itEnd] = elem.getChildren();
-        std::for_each(it, itEnd, [](const XmlElement& child) { ... });
+        for (const XmlElement& child : elem.getChildren())
+        { ... }
     \endcode
-    \return A pair of STL begin/end iterators to access all child elements sequentially.   */
-    std::pair<ChildIterConst, ChildIterConst> getChildren() const { return {childElements_.begin(), childElements_.end()}; }
+    \return A range object supporting begin/end functions to access all child elements sequentially.   */
+    Range<std::list<XmlElement>::const_iterator> getChildren() const { return {childElements_.begin(), childElements_.end()}; }
 
     ///\sa getChildren
-    std::pair<ChildIter, ChildIter> getChildren() { return {childElements_.begin(), childElements_.end()}; }
-
+    Range<std::list<XmlElement>::iterator> getChildren() { return {childElements_.begin(), childElements_.end()}; }
+    
     ///Get parent XML element, may be nullptr for root element
     XmlElement* parent() { return parent_; }
     ///Get parent XML element, may be nullptr for root element

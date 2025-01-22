@@ -7,7 +7,6 @@
 #ifndef BATCH_CONFIG_H_3921674832168945
 #define BATCH_CONFIG_H_3921674832168945
 
-//#include <wx/window.h>
 #include <wx+/popup_dlg.h>
 #include "../config.h"
 

@@ -9,29 +9,12 @@
 
 #include <unordered_map>
 #include <optional>
-//#include <zen/basic_math.h>
 #include <wx/dcbuffer.h> //for macro: wxALWAYS_NATIVE_DOUBLE_BUFFER
 #include <wx/dcscreen.h>
-//#include <wx/bmpbndl.h>
-    //    #include <gtk/gtk.h>
 
 
 namespace zen
 {
-/*  1. wxDCClipper does *not* stack: another fix for yet another poor wxWidgets implementation
-
-    class RecursiveDcClipper
-    {
-        RecursiveDcClipper(wxDC& dc, const wxRect& r)
-    };
-
-    2. wxAutoBufferedPaintDC skips one pixel on left side when RTL layout is active: a fix for a poor wxWidgets implementation
-
-    class BufferedPaintDC
-    {
-        BufferedPaintDC(wxWindow& wnd, std::unique_ptr<wxBitmap>& buffer)
-    };                                                                */
-
 inline
 void clearArea(wxDC& dc, const wxRect& rect, const wxColor& col)
 {
@@ -176,44 +159,68 @@ wxRect getIntersection(const wxRect& rect1, const wxRect& rect2)
 
 
 //---------------------- implementation ------------------------
-class RecursiveDcClipper
+class RecursiveDcClipper //wxDCClipper does *not* stack => fix for yet another poor wxWidgets implementation:
 {
 public:
     RecursiveDcClipper(wxDC& dc, const wxRect& r) : dc_(dc)
     {
-        if (auto it = clippingAreas_.find(&dc_);
+        if (auto it = clippingAreas_.find(&dc);
             it != clippingAreas_.end())
         {
             oldRect_ = it->second;
 
             const wxRect tmp = getIntersection(r, *oldRect_); //better safe than sorry
-
             assert(!tmp.IsEmpty()); //"setting an empty clipping region is equivalent to DestroyClippingRegion()"
 
-            dc_.SetClippingRegion(tmp); //new clipping region is intersection of given and previously set regions
-            it->second = tmp;
+            if (tmp != *oldRect_)
+            {
+                dc.SetClippingRegion(tmp); //new clipping region is intersection of given and previously set regions
+                it->second = tmp;
+                clippingDone = true;
+            }
         }
         else
         {
-            //caveat: actual clipping region is smaller when rect is not fully inside the DC
-            //=> ensure consistency for validateClippingBuffer()
-            const wxRect tmp = getIntersection(r, wxRect(dc.GetSize()));
+            const wxRect dcArea(dc.GetSize());
 
-            dc_.SetClippingRegion(tmp);
-            clippingAreas_.emplace(&dc_, tmp);
+            //since wxWidgets 3.3.0 the DC may be pre-clipped to wxDC::GetSize() or smaller (related to double-buffering)
+            //=> consider "no clipping" and "clipped to wxDC::GetSize()" equivalent!
+            wxRect rectClip;
+            if (dc.GetClippingBox(rectClip))
+            {
+                rectClip = getIntersection(rectClip, dcArea);
+                if (rectClip != dcArea)
+                    oldRect_ = rectClip;
+            }
+
+            //caveat: actual clipping region is smaller when rect is partially outside the DC
+            //=> ensure consistency for validateClippingBuffer()
+            const wxRect tmp = getIntersection(r, oldRect_? *oldRect_ : dcArea);
+            assert(!tmp.IsEmpty());
+
+            if (tmp != (oldRect_? *oldRect_ : dcArea))
+            {
+                dc.SetClippingRegion(tmp);
+                clippingAreas_.emplace(&dc, tmp);
+                clippingDone = true;
+                recursionBegin_ = true;
+            }
         }
     }
 
     ~RecursiveDcClipper()
     {
-        dc_.DestroyClippingRegion();
-        if (oldRect_)
+        if (clippingDone)
         {
-            dc_.SetClippingRegion(*oldRect_);
-            clippingAreas_[&dc_] = *oldRect_;
+            dc_.DestroyClippingRegion();
+            if (oldRect_)
+                dc_.SetClippingRegion(*oldRect_);
+
+            if (recursionBegin_)
+                clippingAreas_.erase(&dc_);
+            else
+                clippingAreas_[&dc_] = *oldRect_;
         }
-        else
-            clippingAreas_.erase(&dc_);
     }
 
 private:
@@ -224,25 +231,21 @@ private:
     //associate "active" clipping area with each DC
     inline static std::unordered_map<wxDC*, wxRect> clippingAreas_;
 
+    bool recursionBegin_ = false;
+    bool clippingDone = false;
     std::optional<wxRect> oldRect_;
     wxDC& dc_;
 };
 
 
-#ifndef wxALWAYS_NATIVE_DOUBLE_BUFFER
-    #error we need this one!
-#endif
-
-//CAVEAT: wxPaintDC on wxGTK/wxMAC does not implement SetLayoutDirection()!!! => GetLayoutDirection() == wxLayout_Default
-#if wxALWAYS_NATIVE_DOUBLE_BUFFER
-struct BufferedPaintDC : public wxPaintDC { BufferedPaintDC(wxWindow& wnd, std::optional<wxBitmap>& buffer) : wxPaintDC(&wnd) {} };
-
-#else
+//fix wxBufferedPaintDC: happily fucks up for RTL layout by not drawing the first column (x = 0)!
 class BufferedPaintDC : public wxMemoryDC
 {
 public:
     BufferedPaintDC(wxWindow& wnd, std::optional<wxBitmap>& buffer) : buffer_(buffer), paintDc_(&wnd)
     {
+        assert(!wnd.IsDoubleBuffered());
+
         const wxSize clientSize = wnd.GetClientSize();
         if (clientSize.GetWidth() > 0 && clientSize.GetHeight() > 0) //wxBitmap asserts this!! width can be 0; test case "Grid::CornerWin": compare both sides, then change config
         {
@@ -254,6 +257,7 @@ public:
 
             SelectObject(*buffer); //copies scale factor from wxBitmap
 
+            //note: wxPaintDC on wxGTK/wxMAC does not implement SetLayoutDirection()!!! => GetLayoutDirection() == wxLayout_Default
             if (paintDc_.IsOk() && paintDc_.GetLayoutDirection() == wxLayout_RightToLeft)
                 SetLayoutDirection(wxLayout_RightToLeft);
         }
@@ -283,7 +287,6 @@ private:
     std::optional<wxBitmap>& buffer_;
     wxPaintDC paintDc_;
 };
-#endif
 }
 
 #endif //DC_H_4987123956832143243214

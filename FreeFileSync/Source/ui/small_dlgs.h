@@ -7,7 +7,6 @@
 #ifndef SMALL_DLGS_H_8321790875018750245
 #define SMALL_DLGS_H_8321790875018750245
 
-//#include <span>
 #include <wx+/popup_dlg.h>
 #include "../base/synchronization.h"
 #include "../config.h"
@@ -37,7 +36,7 @@ zen::ConfirmationButton showSyncConfirmationDlg(wxWindow* parent,
                                                 const SyncStatistics& statistics,
                                                 bool& dontShowAgain);
 
-zen::ConfirmationButton showOptionsDlg(wxWindow* parent, XmlGlobalSettings& globalCfg);
+zen::ConfirmationButton showOptionsDlg(wxWindow* parent, GlobalConfig& globalCfg);
 
 zen::ConfirmationButton showSelectTimespanDlg(wxWindow* parent, time_t& timeFrom, time_t& timeTo);
 

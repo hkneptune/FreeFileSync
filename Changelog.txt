@@ -1,3 +1,18 @@
+FreeFileSync 14.0 [2025-01-17]
+------------------------------
+Dark mode support (Windows 10 20H1, macOS 10.14 (Mojave), Linux)
+Fixed dock icon progress percentage divergence (macOS)
+Prevent "App Napp during comparison/synchronization (macOS)
+Enhance EINVAL error message for unsupported characters
+Support running with background priority (Linux)
+Fixed installer access denied when creating shell links (Windows)
+Improved size and date formatting for file listing (macOS)
+Improved context menu customization grid
+Reduced peak memory consumption by 12%
+Automatically set appropriate text color for config panel background
+Revived and updated Italian translation
+
+
 FreeFileSync 13.9 [2024-12-07]
 ------------------------------
 Fixed CURLE_SEND_ERROR: OpenSSL SSL_write: SSL_ERROR_SYSCALL, errno 0

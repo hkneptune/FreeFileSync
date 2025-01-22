@@ -103,4 +103,8 @@ const wchar_t LEFT_ARROW_ANTICLOCK = L'\u2B8F'; //Anticlockwise Triangle-Headed 
 
 const wchar_t* const TAB_SPACE = L"    "; //4: the only sensible space count for tabs
 
+const wchar_t LINE_SEPARATOR      = L'\u2028'; //WTF: visually indistinguishable from new line!
+const wchar_t PARAGRAPH_SEPARATOR = L'\u2029';
+
+
 #endif //ZSTRING_H_73425873425789

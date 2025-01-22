@@ -6,18 +6,13 @@
 
 #include "progress_indicator.h"
 #include <memory>
-//#include <wx/imaglist.h>
 #include <wx/wupdlock.h>
 #include <wx/app.h>
 #include <zen/format_unit.h>
-//#include <zen/scope_guard.h>
-//#include <wx+/toggle_button.h>
 #include <wx+/image_tools.h>
 #include <wx+/graph.h>
 #include <wx+/no_flicker.h>
 #include <wx+/window_layout.h>
-//#include <zen/file_access.h>
-//#include <zen/thread.h>
 #include <zen/perf.h>
 #include <wx+/choice_enum.h>
 #include "wx+/taskbar.h"
@@ -25,7 +20,6 @@
 #include "tray_icon.h"
 #include "log_panel.h"
 #include "app_icon.h"
-//#include "../ffs_paths.h"
 #include "../icon_buffer.h"
 #include "../base/speed_test.h"
 
@@ -44,20 +38,10 @@ constexpr std::chrono::seconds      GRAPH_TOTAL_TIME_UPDATE_INTERVAL(2);
 
 const size_t PROGRESS_GRAPH_SAMPLE_SIZE_MAX = 2'500'000; //sizeof(CurveDataStatistics::Sample) == 16 byte key/value
 
-inline wxColor getColorBytes() { return {111, 255,  99}; } //light green
-inline wxColor getColorItems() { return {127, 147, 255}; } //light blue
-
-inline wxColor getColorBytesRim() { return {20, 200,   0}; } //medium green
-inline wxColor getColorItemsRim() { return {90, 120, 255}; } //medium blue
-
-//inline wxColor getColorBytesFaint() { return {205, 255, 202}; } //faint green
-//inline wxColor getColorItemsFaint() { return {198, 206, 255}; } //faint blue
-
-inline wxColor getColorBytesDark() { return {12, 128,   0}; } //dark green
-inline wxColor getColorItemsDark() { return {53,  25, 255}; } //dark blue
-
-inline wxColor getColorLightGrey() { return {0xf2, 0xf2, 0xf2}; }
-inline wxColor getColorDarkGrey () { return {0x8f, 0x8f, 0x8f}; }
+wxColor getColorBytes   () { return wxSystemSettings::GetAppearance().IsDark() ? wxColor{0x16, 0xd2, 0x02} /*medium green*/ : wxColor{111, 255,  99} /*light green*/; }
+wxColor getColorItems   () { return wxSystemSettings::GetAppearance().IsDark() ? wxColor{0x53, 0x71, 0xfb} /*medium blue*/  : wxColor{127, 147, 255} /*light blue*/;  }
+wxColor getColorEstimate() { return wxSystemSettings::GetAppearance().IsDark() ? 0xc4c4c4                  /*medium grey*/  : 0xf0f0f0               /*light grey*/;  }
+wxColor getColorEstimateText() { return 0x000000UL; }
 
 
 std::wstring getDialogPhaseText(const Statistics& syncStat, bool paused)
@@ -204,13 +188,14 @@ CompareProgressPanel::Impl::Impl(wxFrame& parentWindow) :
     m_panelProgressGraph->setAttributes(Graph2D::MainAttributes().setMinY(0).setMaxY(2).
                                         setLabelX(XLabelPos::none).
                                         setLabelY(YLabelPos::none).
-                                        setBaseColors(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE)).
+                                        setBaseColors(getColorEstimateText(), getColorEstimate()).
                                         setSelectionMode(GraphSelMode::none));
 
-    m_panelProgressGraph->addCurve(curveDataBytes_, Graph2D::CurveAttributes().setLineWidth(dipToWxsize(1)).fillPolygonArea(getColorBytes()).setColor(Graph2D::getBorderColor()));
-    m_panelProgressGraph->addCurve(curveDataItems_, Graph2D::CurveAttributes().setLineWidth(dipToWxsize(1)).fillPolygonArea(getColorItems()).setColor(Graph2D::getBorderColor()));
+    const wxColor gridLineColor = m_panelProgressGraph->getAttributes().getGridLineColor();
+    m_panelProgressGraph->addCurve(curveDataBytes_, Graph2D::CurveAttributes().setLineWidth(dipToWxsize(1)).fillPolygonArea(getColorBytes()).setColor(gridLineColor));
+    m_panelProgressGraph->addCurve(curveDataItems_, Graph2D::CurveAttributes().setLineWidth(dipToWxsize(1)).fillPolygonArea(getColorItems()).setColor(gridLineColor));
 
-    m_panelProgressGraph->addCurve(makeSharedRef<CurveDataProgressSeparatorLine>(), Graph2D::CurveAttributes().setLineWidth(dipToWxsize(1)).setColor(Graph2D::getBorderColor()));
+    m_panelProgressGraph->addCurve(makeSharedRef<CurveDataProgressSeparatorLine>(), Graph2D::CurveAttributes().setLineWidth(dipToWxsize(1)).setColor(gridLineColor));
 
     Layout();
     m_panelItemStats->Layout();
@@ -397,7 +382,7 @@ void CompareProgressPanel::Impl::updateProgressGui(bool allowYield)
     //current time elapsed
     const int64_t timeElapSec = std::chrono::duration_cast<std::chrono::seconds>(timeElapsed).count();
 
-    setText(*m_staticTextTimeElapsed, utfTo<wxString>(formatTimeSpan(timeElapSec, true /*hourOptional*/)), &layoutChanged);
+    setText(*m_staticTextTimeElapsed, utfTo<wxString>(formatTimeSpan(timeElapSec, false /*hourRequired*/)), &layoutChanged);
 
     if (haveTotalStats) //remaining time and speed: only visible during binary comparison
         if (numeric::dist(timeLastSpeedEstimate_, timeElapsed) >= SPEED_ESTIMATE_UPDATE_INTERVAL)
@@ -659,7 +644,7 @@ struct LabelFormatterTimeElapsed : public LabelFormatter
         if (timeElapsedSec < 60)
             return _P("1 sec", "%x sec", timeElapsedSec);
 
-        return utfTo<wxString>(formatTimeSpan(timeElapsedSec, true /*hourOptional*/));
+        return utfTo<wxString>(formatTimeSpan(timeElapsedSec, false /*hourRequired*/));
     }
 };
 }
@@ -697,7 +682,7 @@ public:
 
     bool getOptionIgnoreErrors()                 const override { return ignoreErrors_; }
     void setOptionIgnoreErrors(bool ignoreErrors)      override { ignoreErrors_ = ignoreErrors; updateStaticGui(); }
-    PostSyncAction getOptionPostSyncAction()    const override { return getEnumVal(enumPostSyncAction_, *pnl_.m_choicePostSyncAction); }
+    PostSyncAction getOptionPostSyncAction()    const override { return enumPostSyncAction_.get(); }
     bool getOptionAutoCloseDialog()              const override { return pnl_.m_checkBoxAutoClose->GetValue(); }
 
     void timerSetStatus(bool active) override
@@ -768,12 +753,36 @@ private:
     SharedRef<CurveDataTimeMarker> curveBytesTimeEstim_ = makeSharedRef<CurveDataTimeMarker>();
     SharedRef<CurveDataTimeMarker> curveItemsTimeEstim_ = makeSharedRef<CurveDataTimeMarker>();
 
+    const wxColor colorBytesRim_ = enhanceContrast(getColorBytes(),
+                                                   wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT),
+                                                   wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW), 4.5 /*contrastRatioMin*/); //W3C recommends >= 4.5 for text
+    const wxColor colorItemsRim_ = enhanceContrast(getColorItems(),
+                                                   wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT),
+                                                   wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW), 4.5 /*contrastRatioMin*/); //W3C recommends >= 4.5 for text
+    const wxColor colorEstimRim_ = enhanceContrast(getColorEstimate(),
+                                                   wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT),
+                                                   wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW), 4.5 /*contrastRatioMin*/); //W3C recommends >= 4.5 for text
+    const wxColor colorBytesNow_ = enhanceContrast(getColorBytes(), getColorEstimate(), 4.5 /*contrastRatioMin*/);
+    const wxColor colorItemsNow_ = enhanceContrast(getColorItems(), getColorEstimate(), 4.5 /*contrastRatioMin*/);
+
     wxString parentTitleBackup_;
     std::unique_ptr<FfsTrayIcon> trayIcon_; //optional: if filled all other windows should be hidden and conversely
     std::unique_ptr<Taskbar> taskbar_;
 
     bool ignoreErrors_ = false;
-    EnumDescrList<PostSyncAction> enumPostSyncAction_;
+    EnumDescrList<PostSyncAction> enumPostSyncAction_
+    {
+        *pnl_.m_choicePostSyncAction, [this]
+        {
+            std::vector<EnumDescrList<PostSyncAction>::DescrItem> descr;
+            descr.push_back({PostSyncAction::none,     L"", {}});
+            if (parentFrame_) //enable EXIT option for gui mode sync
+                descr.push_back({PostSyncAction::exit,     wxControl::RemoveMnemonics(_("E&xit")), {}});
+            descr.push_back({PostSyncAction::sleep,    _("System: Sleep"),     {}});
+            descr.push_back({PostSyncAction::shutdown, _("System: Shut down"), {}});
+            return descr;
+        }()
+    };
 };
 
 
@@ -886,22 +895,22 @@ syncStat_(&syncStat)
                                           setBaseColors(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT), wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW)).
                                           setSelectionMode(GraphSelMode::none));
 
-    pnl_.m_panelGraphBytes->addCurve(curveBytes_, Graph2D::CurveAttributes().setLineWidth(dipToWxsize(1)).fillCurveArea(getColorBytes()).setColor(getColorBytesRim()));
-    pnl_.m_panelGraphItems->addCurve(curveItems_, Graph2D::CurveAttributes().setLineWidth(dipToWxsize(1)).fillCurveArea(getColorItems()).setColor(getColorItemsRim()));
+    pnl_.m_panelGraphBytes->addCurve(curveBytes_, Graph2D::CurveAttributes().setLineWidth(dipToWxsize(1)).fillCurveArea(getColorBytes()).setColor(colorBytesRim_));
+    pnl_.m_panelGraphItems->addCurve(curveItems_, Graph2D::CurveAttributes().setLineWidth(dipToWxsize(1)).fillCurveArea(getColorItems()).setColor(colorItemsRim_));
 
-    pnl_.m_panelGraphBytes->addCurve(curveBytesEstim_, Graph2D::CurveAttributes().setLineWidth(dipToWxsize(1)).fillCurveArea(getColorLightGrey()).setColor(getColorDarkGrey()));
-    pnl_.m_panelGraphItems->addCurve(curveItemsEstim_, Graph2D::CurveAttributes().setLineWidth(dipToWxsize(1)).fillCurveArea(getColorLightGrey()).setColor(getColorDarkGrey()));
+    pnl_.m_panelGraphBytes->addCurve(curveBytesEstim_, Graph2D::CurveAttributes().setLineWidth(dipToWxsize(1)).fillCurveArea(getColorEstimate()).setColor(colorEstimRim_));
+    pnl_.m_panelGraphItems->addCurve(curveItemsEstim_, Graph2D::CurveAttributes().setLineWidth(dipToWxsize(1)).fillCurveArea(getColorEstimate()).setColor(colorEstimRim_));
 
-    pnl_.m_panelGraphBytes->addCurve(curveBytesTimeNow_, Graph2D::CurveAttributes().setLineWidth(dipToWxsize(2)).setColor(getColorBytesDark()));
-    pnl_.m_panelGraphItems->addCurve(curveItemsTimeNow_, Graph2D::CurveAttributes().setLineWidth(dipToWxsize(2)).setColor(getColorItemsDark()));
+    pnl_.m_panelGraphBytes->addCurve(curveBytesTimeNow_, Graph2D::CurveAttributes().setLineWidth(dipToWxsize(2)).setColor(colorBytesNow_));
+    pnl_.m_panelGraphItems->addCurve(curveItemsTimeNow_, Graph2D::CurveAttributes().setLineWidth(dipToWxsize(2)).setColor(colorItemsNow_));
 
-    pnl_.m_panelGraphBytes->addCurve(curveBytesTimeEstim_, Graph2D::CurveAttributes().setLineWidth(dipToWxsize(2)).setColor(getColorDarkGrey()));
-    pnl_.m_panelGraphItems->addCurve(curveItemsTimeEstim_, Graph2D::CurveAttributes().setLineWidth(dipToWxsize(2)).setColor(getColorDarkGrey()));
+    pnl_.m_panelGraphBytes->addCurve(curveBytesTimeEstim_, Graph2D::CurveAttributes().setLineWidth(dipToWxsize(2)).setColor(colorEstimRim_));
+    pnl_.m_panelGraphItems->addCurve(curveItemsTimeEstim_, Graph2D::CurveAttributes().setLineWidth(dipToWxsize(2)).setColor(colorEstimRim_));
 
     //graph legend:
     const wxSize squareSize{this->GetCharHeight(), this->GetCharHeight()};
-    setImage(*pnl_.m_bitmapGraphKeyBytes, rectangleImage({wxsizeToScreen(squareSize.x), wxsizeToScreen(squareSize.y)}, getColorBytes(), getColorBytesRim(), dipToScreen(1)));
-    setImage(*pnl_.m_bitmapGraphKeyItems, rectangleImage({wxsizeToScreen(squareSize.x), wxsizeToScreen(squareSize.y)}, getColorItems(), getColorItemsRim(), dipToScreen(1)));
+    setImage(*pnl_.m_bitmapGraphKeyBytes, rectangleImage({wxsizeToScreen(squareSize.x), wxsizeToScreen(squareSize.y)}, getColorBytes(), colorBytesRim_, dipToScreen(1)));
+    setImage(*pnl_.m_bitmapGraphKeyItems, rectangleImage({wxsizeToScreen(squareSize.x), wxsizeToScreen(squareSize.y)}, getColorItems(), colorItemsRim_, dipToScreen(1)));
 
     pnl_.bSizerDynSpace->SetMinSize(yLabelWidth, -1); //ensure item/time stats are nicely centered
 
@@ -911,13 +920,7 @@ syncStat_(&syncStat)
     //allow changing a few options dynamically during sync
     ignoreErrors_ = ignoreErrors;
 
-    enumPostSyncAction_.add(PostSyncAction::none, L"");
-    if (parentFrame_) //enable EXIT option for gui mode sync
-        enumPostSyncAction_.add(PostSyncAction::exit, wxControl::RemoveMnemonics(_("E&xit"))); //reuse label translation
-    enumPostSyncAction_.add(PostSyncAction::sleep,    _("System: Sleep"));
-    enumPostSyncAction_.add(PostSyncAction::shutdown, _("System: Shut down"));
-
-    setEnumVal(enumPostSyncAction_, *pnl_.m_choicePostSyncAction, postSyncAction);
+    enumPostSyncAction_.set(postSyncAction);
 
     pnl_.m_checkBoxAutoClose->SetValue(autoCloseDialog);
 
@@ -1053,7 +1056,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::setExternalStatus(const wxString& s
     if (!jobName_.empty() && !parentFrame_ /*job name already visible in sync config panel, unlike with batch jobs*/)
         title += SPACED_DASH + jobName_;
 
-#if 0 //why again does start time have to be visible in the titel!?
+#if 0 //why again does start time have to be visible in the title!?
     const Zchar* format = [&tc = syncStartTime_]
     {
         if (const TimeComp& tcNow = getLocalTime();
@@ -1211,7 +1214,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
     //current time elapsed
     const int64_t timeElapSec = std::chrono::duration_cast<std::chrono::seconds>(timeElapsed).count();
 
-    setText(*pnl_.m_staticTextTimeElapsed, utfTo<wxString>(formatTimeSpan(timeElapSec, true /*hourOptional*/)), &layoutChanged);
+    setText(*pnl_.m_staticTextTimeElapsed, utfTo<wxString>(formatTimeSpan(timeElapSec, false /*hourRequired*/)), &layoutChanged);
 
     //remaining time and speed
     if (numeric::dist(timeLastSpeedEstimate_, timeElapsed) >= SPEED_ESTIMATE_UPDATE_INTERVAL)

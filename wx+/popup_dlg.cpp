@@ -10,7 +10,6 @@
 #include <wx/app.h>
 #include <wx/display.h>
 #include <wx/sound.h>
-//#include "app_main.h"
 #include "bitmap_button.h"
 #include "no_flicker.h"
 #include "window_layout.h"

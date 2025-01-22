@@ -4,9 +4,9 @@ that affect FreeFileSync. Therefore it is NOT RECOMMENDED TO COMPILE AGAINST OLD
 the ones mentioned below. The remaining issues that are yet to be fixed are listed in the following:
 
 
-----------------
-| libcurl 8.7.0|
-----------------
+-----------------
+| libcurl 8.11.1|
+-----------------
 __________________________________________________________________________________________________________
 /lib/ftp.c
 https://github.com/curl/curl/issues/1455
@@ -46,9 +46,9 @@ https://github.com/curl/curl/issues/4342
 __________________________________________________________________________________________________________
 
 
------------------------------
-| libssh2 master 2022-11-11 |
------------------------------
+------------------
+| libssh2 1.11.1 |
+------------------
 __________________________________________________________________________________________________________
 src/session.c
 memory leak: https://github.com/libssh2/libssh2/issues/28
@@ -65,8 +65,34 @@ ________________________________________________________________________________
 
 
 -------------------
-| wxWidgets 3.2.4 |
+| wxWidgets 3.3.0 |
 -------------------
+__________________________________________________________________________________________________________
+/include/wx/settings.h
+Support changing system colors for proper dark mode support:
+
++ struct wxColorHook
++ {
++     virtual ~wxColorHook() {}
++     virtual wxColor getColor(wxSystemColour index) const = 0;
++ };
++ WXDLLIMPEXP_CORE inline std::unique_ptr<wxColorHook>& refGlobalColorHook()
++ {
++     static std::unique_ptr<wxColorHook> globalColorHook;
++     return globalColorHook;
++ }
+
+class WXDLLIMPEXP_CORE wxSystemSettings : public wxSystemSettingsNative
+{
+public:
++    static wxColour GetColour(wxSystemColour index)
++    {
++        if (refGlobalColorHook())
++			return refGlobalColorHook()->getColor(index);
++
++        return wxSystemSettingsNative::GetColour(index);
++    }
+
 __________________________________________________________________________________________________________
 /include/wx/features.h
 wxWidgets/GTK2 on some Linux systems incorrectly detects high DPI: https://freefilesync.org/forum/viewtopic.php?t=6114
@@ -172,3 +198,25 @@ See: http://soundfile.sapp.org/doc/WaveFormat/ => skip 8 bytes (Subchunk2ID and 
 
 -    m_data->m_data = (&m_data->m_dataWithHeader[data_offset]);
 +    m_data->m_data = (&m_data->m_dataWithHeader[data_offset + 8]);
+
+__________________________________________________________________________________________________________
+/src/gtk/button.cpp
+now this is absurd: if we add wxTranslations for "&OK/&Cancel", wxWidgets will detect "wxIsStockLabel()",
+throw away the label and do gtk_button_set_label(wxGetStockGtkID(wxID_OK/wxID_CANCEL)) instead,
+which will result in *untranslated* confirmation buttons everywhere!
+https://github.com/wxWidgets/wxWidgets/blob/6561ca020048de57ec28fec5b27f80b00d445cdd/src/gtk/button.cpp#L253
+
+#ifndef __WXGTK4__
+    wxGCC_WARNING_SUPPRESS(deprecated-declarations)
+-    if (wxIsStockID(m_windowId) && wxIsStockLabel(m_windowId, label))
+-    {
+-        const char* stock = wxGetStockGtkID(m_windowId);
+-        if (stock)
+-        {
+-            gtk_button_set_label(GTK_BUTTON(m_widget), stock);
+-            gtk_button_set_use_stock(GTK_BUTTON(m_widget), TRUE);
+-            return;
+-        }
+-    }
+    wxGCC_WARNING_RESTORE()
+#endif

@@ -5,9 +5,7 @@
 // *****************************************************************************
 
 #include "file_access.h"
-//#include <map>
 #include <algorithm>
-//#include <chrono>
 #include <variant>
 #include "file_traverser.h"
 #include "scope_guard.h"
@@ -325,10 +323,21 @@ void moveAndRenameFileSub(const Zstring& pathFrom, const Zstring& pathTo, bool r
 
     if (::rename(pathFrom.c_str(), pathTo.c_str()) != 0)
     {
-        if (errno == EXDEV)
-            throw ErrorMoveUnsupported(getErrorMsg(), formatSystemError("rename", errno));
+        const int ec = errno; //copy before making other system calls!
+        std::wstring errorDescr = formatSystemError("rename", ec);
 
-        throw FileError(getErrorMsg(), formatSystemError("rename", errno));
+        if (ec == EXDEV)
+            throw ErrorMoveUnsupported(getErrorMsg(), errorDescr);
+
+        if (ec == EINVAL)
+            for (const Zchar c : getItemName(pathTo))
+                if (contains(fileNameForbiddenChars, c))
+                {
+                    errorDescr += L' ' +  replaceCpy(_("Unsupported character %x"), L"%x", L"'" + utfTo<std::wstring>(c) + L"'");
+                    break;
+                }
+
+        throw FileError(getErrorMsg(), errorDescr);
     }
 }
 
@@ -530,10 +539,21 @@ void zen::createDirectory(const Zstring& dirPath) //throw FileError, ErrorTarget
 
         if (::mkdir(dirPath.c_str(), mode) != 0)
         {
-            const int ec = errno; //copy before directly or indirectly making other system calls!
+            const int ec = errno; //copy before making other system calls!
+            std::wstring errorDescr = formatSystemError("mkdir", ec);
+
             if (ec == EEXIST)
-                throw ErrorTargetExisting(replaceCpy(_("Cannot create directory %x."), L"%x", fmtPath(dirPath)), formatSystemError("mkdir", ec));
-            THROW_LAST_SYS_ERROR("mkdir");
+                throw ErrorTargetExisting(replaceCpy(_("Cannot create directory %x."), L"%x", fmtPath(dirPath)), errorDescr);
+
+            if (ec == EINVAL)
+                for (const Zchar c : getItemName(dirPath))
+                    if (contains(fileNameForbiddenChars, c))
+                    {
+                        errorDescr += L' ' +  replaceCpy(_("Unsupported character %x"), L"%x", L"'" + utfTo<std::wstring>(c) + L"'");
+                        break;
+                    }
+
+            throw SysError(errorDescr);
         }
     }
     catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot create directory %x."), L"%x", fmtPath(dirPath)), e.toString()); }
@@ -666,10 +686,18 @@ FileCopyResult zen::copyNewFile(const Zstring& sourceFile, const Zstring& target
     {
         const int ec = errno; //copy before making other system calls!
         const std::wstring errorMsg = replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(targetFile));
-        const std::wstring errorDescr = formatSystemError("open", ec);
+        std::wstring errorDescr = formatSystemError("open", ec);
 
         if (ec == EEXIST)
             throw ErrorTargetExisting(errorMsg, errorDescr);
+
+        if (ec == EINVAL)
+            for (const Zchar c : getItemName(targetFile))
+                if (contains(fileNameForbiddenChars, c))
+                {
+                    errorDescr += L' ' +  replaceCpy(_("Unsupported character %x"), L"%x", L"'" + utfTo<std::wstring>(c) + L"'");
+                    break;
+                }
 
         throw FileError(errorMsg, errorDescr);
     }

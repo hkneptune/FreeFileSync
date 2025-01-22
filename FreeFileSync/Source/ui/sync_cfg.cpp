@@ -18,7 +18,6 @@
 #include <wx+/popup_dlg.h>
 #include <wx+/image_resources.h>
 #include "gui_generated.h"
-//#include "command_box.h"
 #include "folder_selector.h"
 #include "../base/norm_filter.h"
 #include "../base/file_hierarchy.h"
@@ -277,8 +276,30 @@ private:
 
     void updateFilterGui();
 
-    EnumDescrList<UnitTime> enumTimeDescr_;
-    EnumDescrList<UnitSize> enumSizeDescr_;
+    EnumDescrList<UnitTime> enumTimeDescr_
+    {
+        *m_choiceUnitTimespan,
+        {
+            {UnitTime::none, L'(' + _("None") + L')',  {}}, //meta options should be enclosed in parentheses
+            {UnitTime::today,       _("Today"),        {}},
+          //{UnitTime::THIS_WEEK,   _("This week"),    {}},
+            {UnitTime::thisMonth,   _("This month"),   {}},
+            {UnitTime::thisYear,    _("This year"),    {}},
+            {UnitTime::lastDays,    _("Last x days:"), {}},
+        }
+    };
+    EnumDescrList<UnitSize> enumMinSizeDescr_
+    {
+        *m_choiceUnitMinSize,
+        {
+            {UnitSize::none, L'(' + _("None") + L')', {}}, //meta options should be enclosed in parentheses
+            {UnitSize::byte,        _("Byte"),        {}},
+            {UnitSize::kb,          _("KB"),          {}},
+            {UnitSize::mb,          _("MB"),          {}},
+        }
+    };
+
+    EnumDescrList<UnitSize> enumMaxSizeDescr_{*m_choiceUnitMaxSize, enumMinSizeDescr_.getConfig()};
 
     //------------- synchronization panel -----------------
     void onSyncTwoWay(wxCommandEvent& event) override { directionsCfg_ = getDefaultSyncCfg(SyncVariant::twoWay); updateSyncGui(); }
@@ -288,7 +309,7 @@ private:
 
     void onToggleLocalSyncSettings(wxCommandEvent& event) override { updateSyncGui(); }
     void onToggleUseDatabase      (wxCommandEvent& event) override;
-    void onChanegVersioningStyle  (wxCommandEvent& event) override { updateSyncGui(); }
+    void onChangeVersioningStyle  (wxCommandEvent& event) override { updateSyncGui(); }
     void onToggleVersioningLimit  (wxCommandEvent& event) override { updateSyncGui(); }
 
     void onSyncTwoWayDouble(wxMouseEvent& event) override;
@@ -344,11 +365,27 @@ private:
     const std::function<void  (const Zstring& folderPathPhrase, size_t parallelOps)> setDeviceParallelOps_;
 
     FolderSelector versioningFolder_;
-    EnumDescrList<VersioningStyle> enumVersioningStyle_;
+    EnumDescrList<VersioningStyle> enumVersioningStyle_
+    {
+        *m_choiceVersioningStyle,
+        {
+            {VersioningStyle::replace,         _("Replace"),                                 _("Move files and replace if existing")},
+            {VersioningStyle::timestampFolder, _("Time stamp") + L" [" + _("Folder") + L']', _("Move files into a time-stamped subfolder")},
+            {VersioningStyle::timestampFile,   _("Time stamp") + L" [" + _("File")   + L']', _("Append a time stamp to each file name")},
+        }
+    };
 
     ResultsNotification emailNotifyCondition_ = ResultsNotification::always;
 
-    EnumDescrList<PostSyncCondition> enumPostSyncCondition_;
+    EnumDescrList<PostSyncCondition> enumPostSyncCondition_
+    {
+        *m_choicePostSyncCondition,
+        {
+            {PostSyncCondition::completion, _("On completion:"), {}},
+            {PostSyncCondition::errors,     _("On errors:"),     {}},
+            {PostSyncCondition::success,    _("On success:"),    {}},
+        }
+    };
 
     FolderSelector logFolderSelector_;
     //-----------------------------------------------------
@@ -520,6 +557,7 @@ globalLogFolderPhrase_(globalLogFolderPhrase)
 
     m_notebook->AssignImageList(imgList.release()); //pass ownership
 
+
     m_notebook->SetPageText(static_cast<size_t>(SyncConfigPanel::compare), _("Comparison")      + L" (F6)");
     m_notebook->SetPageText(static_cast<size_t>(SyncConfigPanel::filter ), _("Filter")          + L" (F7)");
     m_notebook->SetPageText(static_cast<size_t>(SyncConfigPanel::sync   ), _("Synchronization") + L" (F8)");
@@ -569,20 +607,6 @@ globalLogFolderPhrase_(globalLogFolderPhrase)
 
     setImage(*m_bpButtonDefaultContext, mirrorIfRtl(loadImage("button_arrow_right")));
 
-    enumTimeDescr_.
-    add(UnitTime::none, L'(' + _("None") + L')'). //meta options should be enclosed in parentheses
-    add(UnitTime::today,       _("Today")).
-    //add(UnitTime::THIS_WEEK,   _("This week")).
-    add(UnitTime::thisMonth,  _("This month")).
-    add(UnitTime::thisYear,   _("This year")).
-    add(UnitTime::lastDays, _("Last x days:"));
-
-    enumSizeDescr_.
-    add(UnitSize::none, L'(' + _("None") + L')'). //meta options should be enclosed in parentheses
-    add(UnitSize::byte, _("Byte")).
-    add(UnitSize::kb,   _("KB")).
-    add(UnitSize::mb,   _("MB"));
-
     //------------- synchronization panel -----------------
     m_buttonTwoWay->SetToolTip(getSyncVariantDescription(SyncVariant::twoWay));
     m_buttonMirror->SetToolTip(getSyncVariantDescription(SyncVariant::mirror));
@@ -622,11 +646,6 @@ globalLogFolderPhrase_(globalLogFolderPhrase)
         {m_buttonVersioning, "delete_versioning" },
     }, true /*alignLeft*/);
 
-    enumVersioningStyle_.
-    add(VersioningStyle::replace,          _("Replace"),    _("Move files and replace if existing")).
-    add(VersioningStyle::timestampFolder, _("Time stamp") + L" [" + _("Folder") + L']', _("Move files into a time-stamped subfolder")).
-    add(VersioningStyle::timestampFile,   _("Time stamp") + L" [" + _("File")   + L']', _("Append a time stamp to each file name"));
-
     setDefaultWidth(*m_spinCtrlVersionMaxDays );
     setDefaultWidth(*m_spinCtrlVersionCountMin);
     setDefaultWidth(*m_spinCtrlVersionCountMax);
@@ -656,11 +675,6 @@ globalLogFolderPhrase_(globalLogFolderPhrase)
     m_bpButtonEmailErrorOnly    ->Enable(enableExtraFeatures_);
 
     //m_staticTextPostSync->SetMinSize({dipToWxsize(180), -1});
-
-    enumPostSyncCondition_.
-    add(PostSyncCondition::completion, _("On completion:")).
-    add(PostSyncCondition::errors,     _("On errors:")).
-    add(PostSyncCondition::success,    _("On success:"));
 
     m_comboBoxPostSyncCommand->SetHint(_("Example:") + L" systemctl poweroff");
 
@@ -735,6 +749,15 @@ void ConfigDialog::onLocalKeyEvent(wxKeyEvent& event) //process key events witho
 
     switch (event.GetKeyCode())
     {
+        case WXK_RETURN:
+        case WXK_NUMPAD_ENTER:
+            if (event.ControlDown()) //Ctrl+Enter or on macOS: Command+Enter
+            {
+                wxCommandEvent dummy(wxEVT_COMMAND_BUTTON_CLICKED);
+                m_buttonOkay->Command(dummy); //simulate click
+                return;
+            }
+            break;
         case WXK_F6:
             changeSelection(SyncConfigPanel::compare);
             return; //handled!
@@ -927,7 +950,7 @@ void ConfigDialog::updateCompGui()
 void ConfigDialog::onFilterDefaultContext(wxEvent& event)
 {
     const FilterConfig activeCfg = getFilterConfig();
-    const FilterConfig defaultFilter = XmlGlobalSettings().defaultFilter;
+    const FilterConfig defaultFilter = GlobalConfig().defaultFilter;
 
     ContextMenu menu;
     menu.addItem(_("&Save"), [&] { defaultFilterOut_ = activeCfg; updateFilterGui(); },
@@ -941,18 +964,22 @@ void ConfigDialog::onFilterDefaultContext(wxEvent& event)
 
 FilterConfig ConfigDialog::getFilterConfig() const
 {
-    const Zstring& includeFilter = utfTo<Zstring>(m_textCtrlInclude->GetValue());
-    const Zstring& exludeFilter  = utfTo<Zstring>(m_textCtrlExclude->GetValue());
+    auto sanitizeFilter = [](wxString str)
+    {
+        //macOS: Ctrl+Enter inserts Unicode LINE_SEPARATOR which is indistinguishable from new line!
+        replace(str,      LINE_SEPARATOR, L'\n');
+        replace(str, PARAGRAPH_SEPARATOR, L'\n');
+
+        return utfTo<Zstring>(str);
+    };
 
     return
     {
-        includeFilter, exludeFilter,
+        sanitizeFilter(m_textCtrlInclude->GetValue()), sanitizeFilter(m_textCtrlExclude->GetValue()),
         makeUnsigned(m_spinCtrlTimespan->GetValue()),
-        getEnumVal(enumTimeDescr_, *m_choiceUnitTimespan),
-        makeUnsigned(m_spinCtrlMinSize->GetValue()),
-        getEnumVal(enumSizeDescr_, *m_choiceUnitMinSize),
-        makeUnsigned(m_spinCtrlMaxSize->GetValue()),
-        getEnumVal(enumSizeDescr_, *m_choiceUnitMaxSize)};
+        enumTimeDescr_.get(),
+        makeUnsigned(m_spinCtrlMinSize->GetValue()), enumMinSizeDescr_.get(),
+        makeUnsigned(m_spinCtrlMaxSize->GetValue()), enumMaxSizeDescr_.get()};
 }
 
 
@@ -961,9 +988,9 @@ void ConfigDialog::setFilterConfig(const FilterConfig& filter)
     m_textCtrlInclude->ChangeValue(utfTo<wxString>(filter.includeFilter));
     m_textCtrlExclude->ChangeValue(utfTo<wxString>(filter.excludeFilter));
 
-    setEnumVal(enumTimeDescr_, *m_choiceUnitTimespan, filter.unitTimeSpan);
-    setEnumVal(enumSizeDescr_, *m_choiceUnitMinSize,  filter.unitSizeMin);
-    setEnumVal(enumSizeDescr_, *m_choiceUnitMaxSize,  filter.unitSizeMax);
+    enumTimeDescr_   .set(filter.unitTimeSpan);
+    enumMinSizeDescr_.set(filter.unitSizeMin);
+    enumMaxSizeDescr_.set(filter.unitSizeMax);
 
     m_spinCtrlTimespan->SetValue(static_cast<int>(filter.timeSpan));
     m_spinCtrlMinSize ->SetValue(static_cast<int>(filter.sizeMin));
@@ -1200,7 +1227,7 @@ std::optional<SyncConfig> ConfigDialog::getSyncConfig() const
     syncCfg.directionCfg           = directionsCfg_;
     syncCfg.deletionVariant        = deletionVariant_;
     syncCfg.versioningFolderPhrase = versioningFolder_.getPath();
-    syncCfg.versioningStyle        = getEnumVal(enumVersioningStyle_, *m_choiceVersioningStyle);
+    syncCfg.versioningStyle        = enumVersioningStyle_.get();
     if (syncCfg.versioningStyle != VersioningStyle::replace)
     {
         syncCfg.versionMaxAgeDays = m_checkBoxVersionMaxDays ->GetValue() ? m_spinCtrlVersionMaxDays->GetValue() : 0;
@@ -1224,10 +1251,10 @@ void ConfigDialog::setSyncConfig(const SyncConfig* syncCfg)
     //when local settings are inactive, display (current) global settings instead:
     const SyncConfig tmpCfg = syncCfg ? *syncCfg : globalPairCfg_.syncCfg;
 
-    directionsCfg_    = tmpCfg.directionCfg; //make working copy; ownership *not* on GUI
+    directionsCfg_   = tmpCfg.directionCfg; //make working copy; ownership *not* on GUI
     deletionVariant_ = tmpCfg.deletionVariant;
     versioningFolder_.setPath(tmpCfg.versioningFolderPhrase);
-    setEnumVal(enumVersioningStyle_, *m_choiceVersioningStyle, tmpCfg.versioningStyle);
+    enumVersioningStyle_.set(tmpCfg.versioningStyle);
 
     const bool useVersionLimits = tmpCfg.versioningStyle != VersioningStyle::replace;
 
@@ -1349,9 +1376,9 @@ void ConfigDialog::updateSyncGui()
 
     if (versioningSelected)
     {
-        updateTooltipEnumVal(enumVersioningStyle_, *m_choiceVersioningStyle);
+        enumVersioningStyle_.updateTooltip();
 
-        const VersioningStyle versioningStyle = getEnumVal(enumVersioningStyle_, *m_choiceVersioningStyle);
+        const VersioningStyle versioningStyle = enumVersioningStyle_.get();
         const std::wstring pathSep = utfTo<std::wstring>(FILE_NAME_SEPARATOR);
 
         switch (versioningStyle)
@@ -1426,7 +1453,7 @@ MiscSyncConfig ConfigDialog::getMiscSyncOptions() const
     miscCfg.autoRetryDelay = std::chrono::seconds(m_spinCtrlAutoRetryDelay->GetValue());
     //----------------------------------------------------------------------------
     miscCfg.postSyncCommand   = m_comboBoxPostSyncCommand->getValue();
-    miscCfg.postSyncCondition = getEnumVal(enumPostSyncCondition_, *m_choicePostSyncCondition);
+    miscCfg.postSyncCondition = enumPostSyncCondition_.get();
     //----------------------------------------------------------------------------
     Zstring altLogFolderPhrase = logFolderSelector_.getPath();
     if (altLogFolderPhrase.empty()) //"empty" already means "unchecked"
@@ -1492,7 +1519,7 @@ void ConfigDialog::setMiscSyncOptions(const MiscSyncConfig& miscCfg)
     m_spinCtrlAutoRetryDelay->SetValue(miscCfg.autoRetryDelay.count());
     //----------------------------------------------------------------------------
     m_comboBoxPostSyncCommand->setValue(miscCfg.postSyncCommand);
-    setEnumVal(enumPostSyncCondition_, *m_choicePostSyncCondition, miscCfg.postSyncCondition);
+    enumPostSyncCondition_.set(miscCfg.postSyncCondition);
     //----------------------------------------------------------------------------
     m_checkBoxOverrideLogPath->SetValue(!miscCfg.altLogFolderPathPhrase.empty()); //only "empty path" means unchecked! everything else (e.g. " "): "checked"
     logFolderSelector_.setPath(m_checkBoxOverrideLogPath->GetValue() ? miscCfg.altLogFolderPathPhrase : globalLogFolderPhrase_);

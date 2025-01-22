@@ -6,25 +6,33 @@
 
 #include "grid.h"
 #include <cassert>
-//#include <set>
 #include <chrono>
 #include <wx/settings.h>
-//#include <wx/listbox.h>
 #include <wx/tooltip.h>
 #include <wx/timer.h>
-//#include <wx/utils.h>
 #include <zen/basic_math.h>
 #include <zen/string_tools.h>
 #include <zen/scope_guard.h>
 #include <zen/utf.h>
 #include <zen/zstring.h>
 #include <zen/format_unit.h>
+#include "color_tools.h"
 #include "dc.h"
 
     #include <gtk/gtk.h>
 
 using namespace zen;
 
+
+/* wxWidgets 3.3 defaults to system-powered double-buffering (WS_EX_COMPOSITED) on Windows:
+    => ~60% higher CPU time (test case: scrolling large file list via keyboard) :((
+    => opt-out!
+
+    "wxMSW now uses double buffering by default, meaning that updating the
+     windows using wxClientDC doesn't work any longer, which is consistent with
+     the behaviour of wxGTK with Wayland backend and of wxOSX, but not with the
+     traditional historic behaviour of wxMSW (or wxGTK/X11). You may call
+     MSWDisableComposited() to restore the previous behaviour [...]"  */
 
 //let's NOT create wxWidgets objects statically:
 wxColor GridData::getColorSelectionGradientFrom() { return {137, 172, 255}; } //blue: HSL: 158, 255, 196   HSV: 222, 0.46, 1
@@ -36,14 +44,28 @@ int GridData::getColumnGapLeft() { return dipToWxsize(4); }
 namespace
 {
 //------------------------------ Grid Parameters --------------------------------
-inline wxColor getColorLabelText(bool enabled) { return wxSystemSettings::GetColour(enabled ? wxSYS_COLOUR_BTNTEXT : wxSYS_COLOUR_GRAYTEXT); }
-inline wxColor getColorGridLine() { return wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW); }
+wxColor getColorLabelText(bool enabled) { return wxSystemSettings::GetColour(enabled ? wxSYS_COLOUR_BTNTEXT : wxSYS_COLOUR_GRAYTEXT); }
+wxColor getColorGridLine() {              return wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW); }
 
-inline wxColor getColorLabelGradientFrom() { return wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW); }
-inline wxColor getColorLabelGradientTo  () { return wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE); }
+wxColor getColorLabelGradientFrom()
+{
+    if (wxSystemSettings::GetAppearance().IsDark()) //upper gradient part must always be lighter than lower part!
+    {
+        const wxColor backCol = wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE);
 
-inline wxColor getColorLabelGradientFocusFrom() { return getColorLabelGradientFrom(); }
-inline wxColor getColorLabelGradientFocusTo  () { return GridData::getColorSelectionGradientFrom(); }
+        auto liftChannel = [](unsigned char c) { return static_cast<unsigned char>(std::clamp(c + 25, 0, 255)); };
+
+        return wxColor(liftChannel(backCol.Red  ()),
+                       liftChannel(backCol.Green()),
+                       liftChannel(backCol.Blue ()));
+    }
+    else
+        return wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW);
+}
+wxColor getColorLabelGradientTo() { return wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE); }
+
+wxColor getColorLabelGradientFocusFrom() { return wxSystemSettings::GetAppearance().IsDark() ? wxSystemSettings::GetColour(wxSYS_COLOUR_BTNHIGHLIGHT) : getColorLabelGradientFrom(); }
+wxColor getColorLabelGradientFocusTo  () { return wxSystemSettings::GetAppearance().IsDark() ? getColorLabelGradientTo() : GridData::getColorSelectionGradientFrom(); }
 
 const double MOUSE_DRAG_ACCELERATION_DIP = 1.5; //unit: [rows / (DIP * sec)] -> same value like Explorer!
 const int DEFAULT_COL_LABEL_BORDER_DIP   =  6; //top + bottom border in addition to label height
@@ -127,7 +149,7 @@ void GridData::renderCell(wxDC& dc, const wxRect& rect, size_t row, ColumnType c
 }
 
 
-int GridData::getBestSize(wxDC& dc, size_t row, ColumnType colType)
+int GridData::getBestSize(const wxReadOnlyDC& dc, size_t row, ColumnType colType)
 {
     return dc.GetTextExtent(getValue(row, colType)).GetWidth() + 2 * getColumnGapLeft() + dipToWxsize(1); //gap on left and right side + border
 }
@@ -264,10 +286,10 @@ public:
         wxWindow(&parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxWANTS_CHARS | wxBORDER_NONE, wxASCII_STR(wxPanelNameStr)),
         parent_(parent)
     {
+        //https://wiki.wxwidgets.org/Flicker-Free_Drawing
+        SetBackgroundStyle(wxBG_STYLE_PAINT); //get's rid of needless wxEVT_ERASE_BACKGROUND
         Bind(wxEVT_PAINT, [this](wxPaintEvent& event) { onPaintEvent(event); });
         Bind(wxEVT_SIZE,  [this](wxSizeEvent&  event) { Refresh(); event.Skip(); });
-        Bind(wxEVT_ERASE_BACKGROUND, [](wxEraseEvent& event) {}); //https://wiki.wxwidgets.org/Flicker-Free_Drawing
-        SetBackgroundStyle(wxBG_STYLE_PAINT);
         //SetDoubleBuffered(true); -> slow as hell!
 
         Bind(wxEVT_CHILD_FOCUS, [](wxChildFocusEvent& event) {}); //wxGTK::wxScrolledWindow automatically scrolls to child window when child gets focus -> prevent!
@@ -376,9 +398,13 @@ private:
 
     void onPaintEvent(wxPaintEvent& event)
     {
-        //wxAutoBufferedPaintDC dc(this); -> this one happily fucks up for RTL layout by not drawing the first column (x = 0)!
-        BufferedPaintDC dc(*this, doubleBuffer_);
 
+#ifdef FFS_CUSTOM_DOUBLE_BUFFERING
+        BufferedPaintDC dc(*this, doubleBuffer_);
+#else
+        wxPaintDC dc(this);
+        static_assert(wxALWAYS_NATIVE_DOUBLE_BUFFER);
+#endif
         assert(GetSize() == GetClientSize());
 
         const wxRegion& updateReg = GetUpdateRegion();
@@ -387,7 +413,9 @@ private:
     }
 
     Grid& parent_;
+#ifdef FFS_CUSTOM_DOUBLE_BUFFERING
     std::optional<wxBitmap> doubleBuffer_;
+#endif
     int mouseRotateRemainder_ = 0;
 };
 
@@ -442,8 +470,7 @@ public:
 
     int getBestWidth(ptrdiff_t rowFrom, ptrdiff_t rowTo)
     {
-        wxClientDC dc(this);
-
+        wxInfoDC dc(this);
         dc.SetFont(GetFont()); //harmonize with RowLabelWin::render()!
 
         int bestWidth = 0;
@@ -676,9 +703,9 @@ private:
                     const int markerWidth = dipToWxsize(COLUMN_MOVE_MARKER_WIDTH_DIP);
 
                     if (col + 1 == activeClickOrMove_->refColumnTo()) //handle pos 1, 2, .. up to "at end" position
-                        dc.GradientFillLinear(wxRect(rect.x + rect.width - markerWidth, rect.y, markerWidth, rect.height), getColorLabelGradientFrom(), *wxBLUE, wxSOUTH);
+                        dc.GradientFillLinear(wxRect(rect.x + rect.width - markerWidth, rect.y, markerWidth, rect.height), getColorLabelGradientFrom(), colDropMarkerColor_, wxSOUTH);
                     else if (col == activeClickOrMove_->refColumnTo() && col == 0) //pos 0
-                        dc.GradientFillLinear(wxRect(rect.GetTopLeft(), wxSize(markerWidth, rect.height)), getColorLabelGradientFrom(), *wxBLUE, wxSOUTH);
+                        dc.GradientFillLinear(wxRect(rect.GetTopLeft(), wxSize(markerWidth, rect.height)), getColorLabelGradientFrom(), colDropMarkerColor_, wxSOUTH);
                 }
         }
     }
@@ -925,13 +952,12 @@ private:
 
     int colLabelHeight_ = 0;
     const wxFont labelFont_;
+
+    const wxColor colDropMarkerColor_ = enhanceContrast(*wxBLUE, //primarily needed for dark mode!
+                                                        wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT),
+                                                        getColorLabelGradientTo(), 5 /*contrastRatioMin*/); //W3C recommends >= 4.5
 };
 
-//----------------------------------------------------------------------------------------------------------------
-namespace
-{
-wxDEFINE_EVENT(EVENT_GRID_HAS_SCROLLED, wxCommandEvent);
-}
 //----------------------------------------------------------------------------------------------------------------
 
 class Grid::MainWin : public SubWindow
@@ -943,8 +969,6 @@ public:
         rowLabelWin_(rowLabelWin),
         colLabelWin_(colLabelWin)
     {
-        Bind(EVENT_GRID_HAS_SCROLLED, [this](wxCommandEvent& event) { onRequestWindowUpdate(event); });
-
         Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event)
         {
             if (event.GetKeyCode() == WXK_ESCAPE && activeSelection_) //allow Escape key to cancel active selection!
@@ -1082,7 +1106,7 @@ private:
             {
                 if (0 <= row && row < rowCount && cpi.colType != ColumnType::none)
                 {
-                    wxClientDC dc(this);
+                    wxInfoDC dc(this);
                     dc.SetFont(GetFont());
                     return prov->getMouseHover(dc, row, cpi.colType, cpi.cellRelativePosX, cpi.colWidth);
                 }
@@ -1116,7 +1140,7 @@ private:
             {
                 if (0 <= row && row < rowCount && cpi.colType != ColumnType::none)
                 {
-                    wxClientDC dc(this);
+                    wxInfoDC dc(this);
                     dc.SetFont(GetFont());
                     return prov->getMouseHover(dc, row, cpi.colType, cpi.cellRelativePosX, cpi.colWidth);
                 }
@@ -1213,7 +1237,7 @@ private:
                 {
                     if (0 <= row && row < rowCount && cpi.colType != ColumnType::none)
                     {
-                        wxClientDC dc(this);
+                        wxInfoDC dc(this);
                         dc.SetFont(GetFont());
                         return prov->getMouseHover(dc, row, cpi.colType, cpi.cellRelativePosX, cpi.colWidth);
                     }
@@ -1247,7 +1271,7 @@ private:
             {
                 if (0 <= row && row < rowCount && cpi.colType != ColumnType::none)
                 {
-                    wxClientDC dc(this);
+                    wxInfoDC dc(this);
                     dc.SetFont(GetFont());
                     return prov->getMouseHover(dc, row, cpi.colType, cpi.cellRelativePosX, cpi.colWidth);
                 }
@@ -1403,17 +1427,16 @@ private:
         if (!gridUpdatePending_) //without guarding, the number of outstanding async events can become very high during scrolling!! test case: Ubuntu: 170; Windows: 20
         {
             gridUpdatePending_ = true;
-            GetEventHandler()->AddPendingEvent(wxCommandEvent(EVENT_GRID_HAS_SCROLLED)); //asynchronously call updateAfterScroll()
+
+            GetEventHandler()->CallAfter([this]
+            {
+                refParent().updateWindowSizes(false); //row label width has changed -> do *not* update scrollbars: recursion on wxGTK! -> still a problem, now that this function is called async??
+                rowLabelWin_.Update(); //update while dragging scroll thumb
+
+                assert(gridUpdatePending_);
+                gridUpdatePending_ = false;
+            });
         }
-    }
-
-    void onRequestWindowUpdate(wxEvent& event)
-    {
-        assert(gridUpdatePending_);
-        ZEN_ON_SCOPE_EXIT(gridUpdatePending_ = false);
-
-        refParent().updateWindowSizes(false); //row label width has changed -> do *not* update scrollbars: recursion on wxGTK! -> still a problem, now that this function is called async??
-        rowLabelWin_.Update(); //update while dragging scroll thumb
     }
 
     void refreshRow(size_t row)
@@ -1474,6 +1497,13 @@ Grid::Grid(wxWindow* parent,
     colLabelWin_ = new ColLabelWin(*this); //
     mainWin_     = new MainWin    (*this, *rowLabelWin_, *colLabelWin_); //
 
+#ifdef FFS_CUSTOM_DOUBLE_BUFFERING
+    cornerWin_  ->MSWDisableComposited();
+    rowLabelWin_->MSWDisableComposited();
+    colLabelWin_->MSWDisableComposited();
+    mainWin_    ->MSWDisableComposited();
+#endif
+
     SetTargetWindow(mainWin_);
 
     SetInitialSize(size); //"Most controls will use this to set their initial size" -> why not
@@ -1481,11 +1511,12 @@ Grid::Grid(wxWindow* parent,
     assert(GetClientSize() == GetSize() && GetWindowBorderSize() == wxSize()); //borders are NOT allowed for Grid
     //reason: updateWindowSizes() wants to use "GetSize()" as a "GetClientSize()" including scrollbars
 
-    Bind(wxEVT_PAINT, [this](wxPaintEvent& event) { wxPaintDC dc(this); });
-    Bind(wxEVT_SIZE,  [this](wxSizeEvent&  event) { updateWindowSizes(); event.Skip(); });
-    Bind(wxEVT_ERASE_BACKGROUND, [](wxEraseEvent& event) {}); //https://wiki.wxwidgets.org/Flicker-Free_Drawing
-
-    Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& event) { onKeyDown(event); });
+    //https://wiki.wxwidgets.org/Flicker-Free_Drawing
+    SetBackgroundStyle(wxBG_STYLE_PAINT); //get's rid of needless wxEVT_ERASE_BACKGROUND
+    //wxEVT_PAINT: "If you have an EVT_PAINT() handler, you must create a wxPaintDC object within it even if you don't actually use it."
+    //=> and if not, wxScrollHelperEvtHandler::ProcessEvent() helps out and creates wxPaintDC (without rendering anything)
+    Bind(wxEVT_SIZE,     [this](wxSizeEvent& event) { updateWindowSizes(); event.Skip(); });
+    Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent&  event) { onKeyDown(event); });
 }
 
 
@@ -2260,7 +2291,7 @@ int Grid::getBestColumnSize(size_t col) const
     {
         const ColumnType type = visibleCols_[col].type;
 
-        wxClientDC dc(mainWin_);
+        wxInfoDC dc(mainWin_);
         dc.SetFont(mainWin_->GetFont()); //harmonize with MainWin::render()
 
         const auto& [rowFirst, rowLast] = getVisibleRows(mainWin_->GetClientRect());

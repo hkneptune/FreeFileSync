@@ -5,7 +5,6 @@
 // *****************************************************************************
 
 #include "icon_loader.h"
-//#include <zen/scope_guard.h>
 #include <zen/thread.h> //includes <std/thread.hpp>
 
     #include <gtk/gtk.h>

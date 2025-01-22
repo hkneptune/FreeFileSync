@@ -7,7 +7,6 @@
 #include "search_grid.h"
 #include <zen/zstring.h>
 #include <zen/utf.h>
-//#include <zen/perf.h>
 
 using namespace zen;
 using namespace fff;

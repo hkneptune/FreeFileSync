@@ -6,7 +6,6 @@
 
 #include "ffs_paths.h"
 #include <zen/file_access.h>
-//#include <zen/thread.h>
 #include <zen/sys_info.h>
 
     #include <iostream> //std::cerr

@@ -5,16 +5,13 @@
 // *****************************************************************************
 
 #include "file_grid.h"
-//#include <set>
 #include <wx/dc.h>
 #include <wx/settings.h>
 #include <wx/timer.h>
 #include <zen/i18n.h>
-//#include <zen/file_error.h>
-//#include <zen/format_unit.h>
-#include <zen/scope_guard.h>
 #include <wx+/tooltip.h>
 #include <wx+/rtl.h>
+#include <wx+/color_tools.h>
 #include <wx+/dc.h>
 #include <wx+/image_tools.h>
 #include <wx+/image_resources.h>
@@ -35,70 +32,60 @@ wxDEFINE_EVENT(EVENT_GRID_SYNC_DIRECTION, SyncDirectionEvent);
 namespace
 {
 //let's NOT create wxWidgets objects statically:
-inline wxColor getColorSyncBlue (bool faint) { if (faint) return {0xed, 0xee, 0xff}; return {185, 188, 255}; }
-inline wxColor getColorSyncGreen(bool faint) { if (faint) return {0xf1, 0xff, 0xed}; return {196, 255, 185}; }
+wxColor getColorSyncBlue(bool faint)
+{
+    if (faint) return {0xed, 0xee, 0xff}; //faint blue
 
-inline wxColor getColorConflictBackground (bool faint) { if (faint) return {0xfe, 0xfe, 0xda}; return {247, 252,  62}; } //yellow
-inline wxColor getColorDifferentBackground(bool faint) { if (faint) return {0xff, 0xed, 0xee}; return {255, 185, 187}; } //red
+    return wxSystemSettings::GetAppearance().IsDark() ? wxColor{0x80, 0x94, 0xfe} /*medium blue*/ :
+           wxColor{0xb9, 0xbc, 0xff} /*light blue*/;
+}
 
-inline wxColor getColorSymlinkBackground() { return {238, 201, 0}; } //orange
-//inline wxColor getColorItemMissing() { return {212, 208, 200}; } //medium grey
+wxColor getColorSyncGreen(bool faint)
+{
+    if (faint)
+        return {0xf1, 0xff, 0xed}; //faint green
 
-inline wxColor getColorInactiveBack(bool faint) { if (faint) return {0xf6, 0xf6, 0xf6}; return {0xe4, 0xe4, 0xe4}; } //light grey
-inline wxColor getColorInactiveText() { return {0x40, 0x40, 0x40}; } //dark grey
+    return wxSystemSettings::GetAppearance().IsDark() ? wxColor{0x6c, 0xfb, 0x53} /*medium green*/ :
+           wxColor{0xc4, 0xff, 0xb9} /*light green*/;
+}
 
-inline wxColor getColorGridLine() { return wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW); }
+wxColor getColorConflictBackground (bool faint) { if (faint) return {0xfe, 0xfe, 0xda}; return {247, 252,  62}; } //yellow
+wxColor getColorDifferentBackground(bool faint) { if (faint) return {0xff, 0xed, 0xee}; return {255, 185, 187}; } //red
+
+wxColor getColorSymlinkBackground() { return {238, 201, 0}; } //orange
+
+wxColor getColorInactiveBack() { return wxSystemSettings::GetAppearance().IsDark() ? 0x6c6c6c /*medium grey*/ : 0xe4e4e4 /*light grey*/; }
+wxColor getColorInactiveText() { return wxSystemSettings::GetAppearance().IsDark() ? 0xffffff /*white*/       : 0x404040 /*dark grey*/; }
+
+wxColor getColorGridLine() { return wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW); }
 
 const int FILE_GRID_GAP_SIZE_DIP = 2;
 const int FILE_GRID_GAP_SIZE_WIDE_DIP = 6;
 
-/* class hierarchy:            GridDataBase
-                                    /|\
-                     ________________|________________
-                    |                                |
-               GridDataRim                           |
-                   /|\                               |
-          __________|_________                       |
-         |                    |                      |
-   GridDataLeft         GridDataRight          GridDataCenter               */
+/* class hierarchy:       GridDataBase
+                              /|\
+                    ___________|____________
+                   |                        |
+              GridDataRim                   |
+                  /|\                       |
+             ______|_______                 |
+            |              |                |
+      GridDataLeft   GridDataRight    GridDataCenter               */
 
 
 //accessibility, support high-contrast schemes => work with user-defined background color!
-wxColor getAlternateBackgroundColor()
+wxColor getGridAlternateBackgroundColor()
 {
-    const auto backCol = wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW);
+    const wxColor backCol = wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW);
 
-    auto incChannel = [](unsigned char c, int diff) { return static_cast<unsigned char>(std::max(0, std::min(255, c + diff))); };
+    const bool isColorLight = relativeLuminance(backCol) > 0.5;
 
-    auto getAdjustedColor = [&](int diff)
-    {
-        return wxColor(incChannel(backCol.Red  (), diff),
-                       incChannel(backCol.Green(), diff),
-                       incChannel(backCol.Blue (), diff));
-    };
+    //darken or brighten: only a faint gradient to avoid visual distraction
+    auto liftChannel = [diff = isColorLight ? -15 : 15](unsigned char c) { return static_cast<unsigned char>(std::clamp(c + diff, 0, 255)); };
 
-    auto colorDist = [](const wxColor& lhs, const wxColor& rhs) //just some metric
-    {
-        return numeric::power<2>(static_cast<int>(lhs.Red  ()) - static_cast<int>(rhs.Red  ())) +
-               numeric::power<2>(static_cast<int>(lhs.Green()) - static_cast<int>(rhs.Green())) +
-               numeric::power<2>(static_cast<int>(lhs.Blue ()) - static_cast<int>(rhs.Blue ()));
-    };
-
-    const int signLevel = colorDist(backCol, *wxBLACK) < colorDist(backCol, *wxWHITE) ? 1 : -1; //brighten or darken
-
-    //just some very faint gradient to avoid visual distraction
-    const wxColor altCol = getAdjustedColor(signLevel * 10);
-    return altCol;
-}
-
-
-//improve readability (while lacking cell borders)
-wxColor getDefaultBackgroundColorAlternating(bool wantStandardColor)
-{
-    if (wantStandardColor)
-        return wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW);
-    else
-        return getAlternateBackgroundColor();
+    return wxColor(liftChannel(backCol.Red  ()),
+                   liftChannel(backCol.Green()),
+                   liftChannel(backCol.Blue ()));
 }
 
 
@@ -156,7 +143,7 @@ wxColor getBackGroundColorSyncAction(SyncOperation so)
             return getColorSyncGreen(false /*faint*/);
 
         case SO_DO_NOTHING:
-            return getColorInactiveBack(false /*faint*/);
+            return getColorInactiveBack();
         case SO_EQUAL:
             break; //usually white
         case SO_UNRESOLVED_CONFLICT:
@@ -173,11 +160,11 @@ wxColor getBackGroundColorCmpDifference(CompareFileResult cmpResult)
         //*INDENT-OFF*
         case FILE_EQUAL:
             break; //usually white
-        case FILE_LEFT_ONLY: return getColorSyncBlue(false /*faint*/);
-        case FILE_LEFT_NEWER:     return getColorSyncBlue(true  /*faint*/);
+        case FILE_LEFT_ONLY:  return getColorSyncBlue(false /*faint*/);
+        case FILE_LEFT_NEWER: return getColorSyncBlue(true  /*faint*/);
 
-        case FILE_RIGHT_ONLY: return getColorSyncGreen(false /*faint*/);
-        case FILE_RIGHT_NEWER:     return getColorSyncGreen(true  /*faint*/);
+        case FILE_RIGHT_ONLY:  return getColorSyncGreen(false /*faint*/);
+        case FILE_RIGHT_NEWER: return getColorSyncGreen(true  /*faint*/);
 
         case FILE_DIFFERENT_CONTENT:
             return getColorDifferentBackground(false /*faint*/);
@@ -352,7 +339,7 @@ public:
 
     const FileSystemObject* getFsObject(size_t row) const { return getDataView().getFsObject(row); }
 
-    const wxSize& getTextExtentBuffered(wxDC& dc, const std::wstring_view& text)
+    const wxSize& getTextExtentBuffered(const wxReadOnlyDC& dc, const std::wstring_view& text)
     {
         auto& compExtentsBuf = sharedComp_.ref().compExtentsBuf_;
         //- only used for parent path names and file names on view => should not grow "too big"
@@ -368,7 +355,7 @@ public:
 
     //- trim while leaving path components intact
     //- *always* returns at least one component, even if > maxWidth
-    size_t getPathTrimmedSize(wxDC& dc, const std::wstring_view& itemPath, int maxWidth)
+    size_t getPathTrimmedSize(const wxReadOnlyDC& dc, const std::wstring_view& itemPath, int maxWidth)
     {
         if (itemPath.size() <= 1)
             return itemPath.size();
@@ -403,8 +390,17 @@ public:
         }
     }
 
+    //improve readability (while lacking cell borders)
+    const wxColor& getDefaultBackgroundColorAlternating(bool wantStandardColor)
+    {
+        return wantStandardColor ? gridBackgroundColor_ : gridBackgroundColorAlt_;
+    }
+
 private:
     size_t getRowCount() const override { return getDataView().rowsOnView(); }
+
+    const wxColor gridBackgroundColor_    = wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW);
+    const wxColor gridBackgroundColorAlt_ = getGridAlternateBackgroundColor();
 
     Grid& grid_;
     SharedRef<SharedComponents> sharedComp_;
@@ -577,7 +573,7 @@ private:
                         //*INDENT-OFF*
                         case DisplayType::normal: break;
                         case DisplayType::symlink:  return getColorSymlinkBackground();
-                        case DisplayType::inactive: return getColorInactiveBack(false /*faint*/);
+                        case DisplayType::inactive: return getColorInactiveBack();
                         //*INDENT-ON*
                     }
                 return getDefaultBackgroundColorAlternating(pdi.groupIdx % 2 == 0);
@@ -597,7 +593,7 @@ private:
     }
 
 
-    int getGroupItemNamesWidth(wxDC& dc, const FileView::PathDrawInfo& pdi)
+    int getGroupItemNamesWidth(const wxReadOnlyDC& dc, const FileView::PathDrawInfo& pdi)
     {
         //FileView::updateView() called? => invalidates group item render buffer
         if (pdi.viewUpdateId != viewUpdateIdLast_)
@@ -651,7 +647,7 @@ private:
         int groupParentWidth;
         int groupNameWidth;
     };
-    GroupRowLayout getGroupRowLayout(wxDC& dc, size_t row, const FileView::PathDrawInfo& pdi, int maxWidth)
+    GroupRowLayout getGroupRowLayout(const wxReadOnlyDC& dc, size_t row, const FileView::PathDrawInfo& pdi, int maxWidth)
     {
         assert(pdi.fsObj);
 
@@ -1031,7 +1027,7 @@ break2:
                                 if (!pdi.folderGroupObj->isEmpty<side>() &&
                                     !pdi.folderGroupObj->isActive())
                                 {
-                                    clearArea(dc, rectGroupNameBack, getColorInactiveBack(false /*faint*/));
+                                    clearArea(dc, rectGroupNameBack, getColorInactiveBack());
                                     textColorGroupName.Set(getColorInactiveText());
                                 }
                             drawCudHighlight(rectGroupNameBack, pdi.folderGroupObj->getSyncOperation());
@@ -1051,7 +1047,7 @@ break2:
                             //mouse highlight: group name
                             if (static_cast<HoverAreaGroup>(rowHover) == HoverAreaGroup::groupName ||
                                 (static_cast<HoverAreaGroup>(rowHover) == HoverAreaGroup::item && pdi.fsObj == pdi.folderGroupObj /*exception: extend highlight*/))
-                                drawRectangleBorder(dc, rectGroupNameBack, *wxBLUE, dipToWxsize(1));
+                                drawRectangleBorder(dc, rectGroupNameBack, mouseHighlightColor_, dipToWxsize(1));
 
                             if (!pdi.folderGroupObj->isEmpty<side>())
                                 drawCellText(dc, rectGroupName, groupName, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, &getTextExtentBuffered(dc, groupName));
@@ -1123,7 +1119,7 @@ break2:
 
                         //mouse highlight: item name
                         if (static_cast<HoverAreaGroup>(rowHover) == HoverAreaGroup::item)
-                            drawRectangleBorder(dc, rectItemsBack, *wxBLUE, dipToWxsize(1));
+                            drawRectangleBorder(dc, rectItemsBack, mouseHighlightColor_, dipToWxsize(1));
 
                         if (!pdi.fsObj->isEmpty<side>())
                             drawCellText(dc, rectGroupItems, itemName, wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL, &getTextExtentBuffered(dc, itemName));
@@ -1135,31 +1131,30 @@ break2:
                 break;
 
                 case ColumnTypeRim::size:
-                    if (refGrid().GetLayoutDirection() != wxLayout_RightToLeft)
-                    {
-                        rectTmp.width -= gapSize_; //have file size right-justified (but don't change for RTL languages)
-                        drawCellText(dc, rectTmp, getValue(row, colType), wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL);
-                    }
-                    else
+                case ColumnTypeRim::date:
+                case ColumnTypeRim::extension:
+                {
+                    if (refGrid().GetLayoutDirection() == wxLayout_RightToLeft || //remain left-justified for RTL languages
+                        static_cast<ColumnTypeRim>(colType) == ColumnTypeRim::extension)
                     {
                         rectTmp.x     += gapSize_;
                         rectTmp.width -= gapSize_;
                         drawCellText(dc, rectTmp, getValue(row, colType), wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
                     }
-                    break;
-
-                case ColumnTypeRim::date:
-                case ColumnTypeRim::extension:
-                    rectTmp.x     += gapSize_;
-                    rectTmp.width -= gapSize_;
-                    drawCellText(dc, rectTmp, getValue(row, colType), wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL);
-                    break;
+                    else
+                    {
+                        rectTmp.width -= gapSize_;
+                        drawCellText(dc, rectTmp, getValue(row, colType), wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL);
+                        //macOS: wxALIGN_RIGHT also helps mitigate NSDateFormatter not zero-padding dates!
+                    }
+                }
+                break;
             }
         }
     }
 
 
-    HoverArea getMouseHover(wxDC& dc, size_t row, ColumnType colType, int cellRelativePosX, int cellWidth) override
+    HoverArea getMouseHover(const wxReadOnlyDC& dc, size_t row, ColumnType colType, int cellRelativePosX, int cellWidth) override
     {
         if (static_cast<ColumnTypeRim>(colType) == ColumnTypeRim::path)
             if (const FileView::PathDrawInfo pdi = getDataView().getDrawInfo(row);
@@ -1183,7 +1178,7 @@ break2:
     }
 
 
-    int getBestSize(wxDC& dc, size_t row, ColumnType colType) override
+    int getBestSize(const wxReadOnlyDC& dc, size_t row, ColumnType colType) override
     {
         if (static_cast<ColumnTypeRim>(colType) == ColumnTypeRim::path)
         {
@@ -1215,8 +1210,9 @@ break2:
         }
         else
         {
+            const wxReadOnlyDC& infoDc = dc;
             const std::wstring cellValue = getValue(row, colType);
-            return gapSize_ + dc.GetTextExtent(cellValue).GetWidth() + gapSize_;
+            return gapSize_ + infoDc.GetTextExtent(cellValue).GetWidth() + gapSize_;
         }
     }
 
@@ -1225,24 +1221,20 @@ break2:
     {
         switch (static_cast<ColumnTypeRim>(colType))
         {
+            //*INDENT-OFF*
             case ColumnTypeRim::path:
                 switch (itemPathFormat_)
                 {
-                    case ItemPathFormat::name:
-                        return _("Item name");
-                    case ItemPathFormat::relative:
-                        return _("Relative path");
-                    case ItemPathFormat::full:
-                        return _("Full path");
+                    case ItemPathFormat::name:     return _("Item name");
+                    case ItemPathFormat::relative: return _("Relative path");
+                    case ItemPathFormat::full:     return _("Full path");
                 }
                 assert(false);
                 break;
-            case ColumnTypeRim::size:
-                return _("Size");
-            case ColumnTypeRim::date:
-                return _("Date");
-            case ColumnTypeRim::extension:
-                return _("Extension");
+            case ColumnTypeRim::size:      return _("Size");
+            case ColumnTypeRim::date:      return _("Date");
+            case ColumnTypeRim::extension: return _("Extension");
+            //*INDENT-ON*
         }
         //assert(false); may be ColumnType::none
         return std::wstring();
@@ -1348,7 +1340,12 @@ break2:
     const int gapSize_     = dipToWxsize(FILE_GRID_GAP_SIZE_DIP);
     const int gapSizeWide_ = dipToWxsize(FILE_GRID_GAP_SIZE_WIDE_DIP);
 
+    const wxColor mouseHighlightColor_ = enhanceContrast(*wxBLUE, //primarily needed for dark mode!
+                                                         wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT),
+                                                         wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW), 5 /*contrastRatioMin*/); //W3C recommends >= 4.5
+
     const int charHeight_ = refGrid().getMainWin().GetCharHeight();
+
 
     ItemPathFormat itemPathFormat_ = ItemPathFormat::full;
 
@@ -1487,7 +1484,7 @@ private:
                     return wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW);
 
                 if (!pdi.fsObj->isActive())
-                    return getColorInactiveBack(false /*faint*/);
+                    return getColorInactiveBack();
 
                 return getDefaultBackgroundColorAlternating(pdi.groupIdx % 2 == 0);
             }();
@@ -1616,7 +1613,7 @@ private:
         }
     }
 
-    HoverArea getMouseHover(wxDC& dc, size_t row, ColumnType colType, int cellRelativePosX, int cellWidth) override
+    HoverArea getMouseHover(const wxReadOnlyDC& dc, size_t row, ColumnType colType, int cellRelativePosX, int cellWidth) override
     {
         if (const FileSystemObject* const fsObj = getFsObject(row))
             switch (static_cast<ColumnTypeCenter>(colType))
@@ -1778,9 +1775,6 @@ private:
 
 //########################################################################################################
 
-wxDEFINE_EVENT(EVENT_ALIGN_SCROLLBARS, wxCommandEvent);
-
-
 class GridEventManager : private wxEvtHandler
 {
 public:
@@ -1847,19 +1841,34 @@ public:
             grid.getMainWin().Bind(wxEVT_RIGHT_DOWN,  handler);
             grid.getMainWin().Bind(wxEVT_MOUSEWHEEL,  handler);
         };
-        connectGridAccess(gridL_, [this](wxEvent& event) { scrollMaster_ = &gridL_; event.Skip(); }); //
-        connectGridAccess(gridC_, [this](wxEvent& event) { scrollMaster_ = &gridC_; event.Skip(); }); //connect *after* onKeyDown() in order to receive callback *before*!!!
-        connectGridAccess(gridR_, [this](wxEvent& event) { scrollMaster_ = &gridR_; event.Skip(); }); //
-
-        Bind(EVENT_ALIGN_SCROLLBARS, [this](wxCommandEvent& event) { onAlignScrollBars(event); });
+        connectGridAccess(gridL_, [this](wxEvent& event) { setScrollMaster(gridL_); event.Skip(); }); //
+        connectGridAccess(gridC_, [this](wxEvent& event) { setScrollMaster(gridC_); event.Skip(); }); //connect *after* onKeyDown() in order to receive callback *before*!!!
+        connectGridAccess(gridR_, [this](wxEvent& event) { setScrollMaster(gridR_); event.Skip(); }); //
     }
 
     ~GridEventManager()
     {
-        //assert(!scrollbarUpdatePending_); => false-positives: e.g. start ffs, right-click on grid, close dialog by clicking X
+        //assert(!scrollbarAlignPending_); => false-positives: e.g. start ffs, right-click on grid, close dialog by clicking X
     }
 
-    void setScrollMaster(const Grid& grid) { scrollMaster_ = &grid; }
+    void setScrollMaster(const Grid& grid)
+    {
+        if (&grid != &gridC_ &&
+            &grid != &gridL_ &&
+            &grid != &gridR_)
+        {
+            assert(false); //does this ever happen?
+            return ;
+        }
+
+#if 0
+        if (const std::string& logtext = "new scroll master: " + printNumber<std::string>("%llx", reinterpret_cast<unsigned long long>(&grid)) + "\n";
+            scrollMaster_ != &grid)
+
+            std::cerr << logtext;
+#endif
+        scrollMaster_ = &grid;
+    }
 
 private:
     void onCenterSelectBegin(GridClickEvent& event)
@@ -1966,14 +1975,14 @@ private:
                     gridL_.setGridCursor(row, GridEventPolicy::allow);
                     gridL_.SetFocus();
                     //since key event is likely originating from right grid, we need to set scrollMaster manually!
-                    scrollMaster_ = &gridL_; //onKeyDown is called *after* onGridAccessL()!
+                    setScrollMaster(gridL_); //onKeyDown is called *after* onGridAccessL()!
                     return; //swallow event
 
                 case WXK_RIGHT:
                 case WXK_NUMPAD_RIGHT:
                     gridR_.setGridCursor(row, GridEventPolicy::allow);
                     gridR_.SetFocus();
-                    scrollMaster_ = &gridR_;
+                    setScrollMaster(gridR_);
                     return; //swallow event
             }
 
@@ -2003,85 +2012,103 @@ private:
 
     void onPaintGrid(const Grid& grid)
     {
-        //align scroll positions of all three grids *synchronously* during paint event! (wxGTK has visible delay when this is done asynchronously, no delay on Windows)
+#if 0
+        const std::string& logtext = "wxEVT_PAINT: " + printNumber<std::string>("%llx", reinterpret_cast<unsigned long long>(&grid)) + "\n";
+        std::cerr << logtext;
+#endif
+        /* keep scroll positions of all three grids in sync
 
-        //determine lead grid
-        const Grid* lead = nullptr;
-        Grid* follow1    = nullptr;
-        Grid* follow2    = nullptr;
-        auto setGrids = [&](const Grid& l, Grid& f1, Grid& f2) { lead = &l; follow1 = &f1; follow2 = &f2; };
+           wxGrid::Scroll() *during* vs *after* paint event:
+           ------------------------------------------------
+           macOS: doesn't matter; 3 paint events per mouse scroll
 
-        if (&gridC_ == scrollMaster_)
-            setGrids(gridC_, gridL_, gridR_);
-        else if (&gridR_ == scrollMaster_)
-            setGrids(gridR_, gridL_, gridC_);
-        else //default: left panel
-            setGrids(gridL_, gridC_, gridR_);
+           Linux: no visible perf issue, but
+                    a) *during* paint event: 6 paint events
+                    b) *after* paint event: 4 paint events
 
-        //align other grids only while repainting the lead grid to avoid scrolling and updating a grid at the same time!
-        if (lead == &grid)
+           Windows: a) *during* paint event:
+                        1. double-buffering(WS_EX_COMPOSITED) => excessive amount of additional paint events and accidental RECURSION!!!
+                           Apparently multiple paint events sent (with clipped DC), then during wxGrid::Scroll() -> wxWindow::Update() -> onPaintGrid() for *SAME* grid!
+                        2. no double buffering                => 4 paint events per mouse scroll
+                    b) *after* paint event:
+                        1. double-buffering(WS_EX_COMPOSITED) => 6 paint events per mouse scroll
+                            => no visible perf-difference compared to 2. but 60% higher CPU time during excessive scrolling
+                        2. no double buffering                => 4 paint events per mouse scroll             */
+        if (&grid == scrollMaster_ && !scrollPosAlignPending_)
         {
-            auto scroll = [](Grid& target, int y) //support polling
+            scrollPosAlignPending_ = true;
+
+            CallAfter([this]
             {
-                //scroll vertically only - scrolling horizontally becomes annoying if left and right sides have different widths;
-                //e.g. h-scroll on left would be undone when scrolling vertically on right which doesn't have a h-scrollbar
-                int yOld = 0;
-                target.GetViewStart(nullptr, &yOld);
-                if (yOld != y)
-                    target.Scroll(-1, y); //empirical test Windows/Ubuntu: this call does NOT trigger a wxEVT_SCROLLWIN event, which would incorrectly set "scrollMaster" to "&target"!
-                //CAVEAT: wxScrolledWindow::Scroll() internally calls wxWindow::Update(), leading to immediate WM_PAINT handling in the target grid!
-                //        an this while we're still in our WM_PAINT handler! => no recursion, fine (hopefully)
-            };
-            int y = 0;
-            lead->GetViewStart(nullptr, &y);
-            scroll(*follow1, y);
-            scroll(*follow2, y);
+                auto scroll = [this](Grid& target, int y) //support polling
+                {
+                    if (&target != scrollMaster_)
+                    {
+                        //scroll vertically only - scrolling horizontally becomes annoying if left and right sides have different widths;
+                        //e.g. h-scroll on left would be undone when scrolling vertically on right which doesn't have a h-scrollbar
+                        int yOld = 0;
+                        target.GetViewStart(nullptr, &yOld);
+                        if (yOld != y)
+                            target.Scroll(-1, y); //empirical test Windows/Ubuntu: this call does NOT trigger a wxEVT_SCROLLWIN event,
+                        //                          which would incorrectly set "scrollMaster" to "&target"!
+                        //CAVEAT: wxScrolledWindow::Scroll() internally calls wxWindow::Update(), leading to immediate WM_PAINT handling in the target grid!
+                        //        and this while we're still in our WM_PAINT handler! => no recursion, thanks to scrollMaster_ (hopefully)
+                    }
+                };
+                int y = 0;
+                scrollMaster_->GetViewStart(nullptr, &y);
+                scroll(gridC_, y);
+                scroll(gridL_, y);
+                scroll(gridR_, y);
+
+                assert(scrollPosAlignPending_);
+                scrollPosAlignPending_ = false;
+            });
         }
 
         //harmonize placement of horizontal scrollbar to avoid grids getting out of sync!
-        //since this affects the grid that is currently repainted as well, we do work asynchronously!
-        if (!scrollbarUpdatePending_) //send one async event at most, else they may accumulate and create perf issues, see grid.cpp
+        //since this affects the grid that is currently repainted, run asynchronously!
+        if (!scrollbarAlignPending_) //send one async event at most, else they may accumulate and create perf issues, see grid.cpp
         {
-            scrollbarUpdatePending_ = true;
-            wxCommandEvent alignEvent(EVENT_ALIGN_SCROLLBARS);
-            AddPendingEvent(alignEvent); //waits until next idle event - may take up to a second if the app is busy on wxGTK!
+            scrollbarAlignPending_ = true;
+
+            CallAfter([this] //update *outside* of wxPaint event
+            {
+                auto needsHorizontalScrollbars = [](const Grid& target)
+                {
+                    const wxWindow& mainWin = target.getMainWin();
+                    return mainWin.GetVirtualSize().GetWidth() > mainWin.GetClientSize().GetWidth();
+                    //assuming Grid::updateWindowSizes() does its job well, this should suffice!
+                    //CAVEAT: if horizontal and vertical scrollbar are circular dependent from each other
+                    //(h-scrollbar is shown due to v-scrollbar consuming horizontal width, etc...)
+                    //while in fact both are NOT needed, this special case results in a bogus need for scrollbars!
+                    //see https://sourceforge.net/tracker/?func=detail&aid=3514183&group_id=234430&atid=1093083
+                    // => since we're outside the Grid abstraction, we should not duplicate code to handle this special case as it seems to be insignificant
+                };
+
+                Grid::ScrollBarStatus sbStatusX = needsHorizontalScrollbars(gridL_) ||
+                                                  needsHorizontalScrollbars(gridR_) ?
+                                                  Grid::SB_SHOW_ALWAYS : Grid::SB_SHOW_NEVER;
+                gridL_.showScrollBars(sbStatusX, Grid::SB_SHOW_NEVER);
+                gridC_.showScrollBars(sbStatusX, Grid::SB_SHOW_NEVER);
+                gridR_.showScrollBars(sbStatusX, Grid::SB_SHOW_AUTOMATIC);
+
+                assert(scrollbarAlignPending_);
+                scrollbarAlignPending_ = false;
+            });
         }
-    }
-
-    void onAlignScrollBars(wxEvent& event)
-    {
-        assert(scrollbarUpdatePending_);
-        ZEN_ON_SCOPE_EXIT(scrollbarUpdatePending_ = false);
-
-        auto needsHorizontalScrollbars = [](const Grid& grid) -> bool
-        {
-            const wxWindow& mainWin = grid.getMainWin();
-            return mainWin.GetVirtualSize().GetWidth() > mainWin.GetClientSize().GetWidth();
-            //assuming Grid::updateWindowSizes() does its job well, this should suffice!
-            //CAVEAT: if horizontal and vertical scrollbar are circular dependent from each other
-            //(h-scrollbar is shown due to v-scrollbar consuming horizontal width, etc...)
-            //while in fact both are NOT needed, this special case results in a bogus need for scrollbars!
-            //see https://sourceforge.net/tracker/?func=detail&aid=3514183&group_id=234430&atid=1093083
-            // => since we're outside the Grid abstraction, we should not duplicate code to handle this special case as it seems to be insignificant
-        };
-
-        Grid::ScrollBarStatus sbStatusX = needsHorizontalScrollbars(gridL_) ||
-                                          needsHorizontalScrollbars(gridR_) ?
-                                          Grid::SB_SHOW_ALWAYS : Grid::SB_SHOW_NEVER;
-        gridL_.showScrollBars(sbStatusX, Grid::SB_SHOW_NEVER);
-        gridC_.showScrollBars(sbStatusX, Grid::SB_SHOW_NEVER);
-        gridR_.showScrollBars(sbStatusX, Grid::SB_SHOW_AUTOMATIC);
     }
 
     Grid& gridL_;
     Grid& gridC_;
     Grid& gridR_;
 
-    const Grid* scrollMaster_ = nullptr; //for address check only; this needn't be the grid having focus!
+    const Grid* scrollMaster_ = &gridL_; //for address check only; this needn't be the grid having focus!
     //e.g. mouse wheel events should set window under cursor as scrollMaster, but *not* change focus
 
     GridDataCenter& provCenter_;
-    bool scrollbarUpdatePending_ = false;
+    bool scrollbarAlignPending_ = false;
+    bool scrollPosAlignPending_ = false;
 };
 }
 
@@ -2107,7 +2134,7 @@ void filegrid::init(Grid& gridLeft, Grid& gridCenter, Grid& gridRight)
     gridCenter.showRowLabel(false);
     gridRight .showRowLabel(false);
 
-    //gridLeft  .showScrollBars(Grid::SB_SHOW_AUTOMATIC, Grid::SB_SHOW_NEVER); -> redundant: configuration happens in GridEventManager::onAlignScrollBars()
+    //gridLeft  .showScrollBars(Grid::SB_SHOW_AUTOMATIC, Grid::SB_SHOW_NEVER); -> redundant: configuration happens in GridEventManager::onPaintGrid()
     //gridCenter.showScrollBars(Grid::SB_SHOW_NEVER,     Grid::SB_SHOW_NEVER);
 
     const int widthCheckbox   = screenToWxsize(    loadImage("checkbox_true").GetWidth() + dipToScreen(3));

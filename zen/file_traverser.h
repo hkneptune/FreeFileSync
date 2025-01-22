@@ -9,7 +9,6 @@
 
 #include <functional>
 #include "file_error.h"
-//#include "file_path.h"
 
 namespace zen
 {

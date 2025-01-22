@@ -545,7 +545,7 @@ private:
 
     void tidyUp() //remove obsolete entries
     {
-        std::erase_if(locksByGuid_, [](const auto& v) { return !v.second.lock(); });
+        std::erase_if(locksByGuid_, [](const auto& v) { return v.second.expired(); });
         std::erase_if(guidByPath_, [&](const auto& v) { return !locksByGuid_.contains(v.second); });
     }
 

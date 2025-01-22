@@ -12,7 +12,9 @@
 #include <wx/textctrl.h>
 #include <wx/stattext.h>
 #include <wx/richtext/richtextctrl.h>
+#include <wx/settings.h>
 #include <wx/wupdlock.h>
+#include "color_tools.h"
 
 
 namespace zen
@@ -81,7 +83,9 @@ void setTextWithUrls(wxRichTextCtrl& richCtrl, const wxString& newText)
     richCtrl.Clear();
 
     wxRichTextAttr urlStyle;
-    urlStyle.SetTextColour(*wxBLUE);
+    urlStyle.SetTextColour(enhanceContrast(*wxBLUE,
+                                           wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT),
+                                           wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW), 5 /*contrastRatioMin*/)); //W3C recommends >= 4.5
     urlStyle.SetFontUnderlined(true);
 
     for (auto& [type, text] : blocks)

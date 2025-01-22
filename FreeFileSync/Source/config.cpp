@@ -7,14 +7,11 @@
 #include "config.h"
 #include <zenxml/xml.h>
 #include <zen/file_access.h>
-//#include <zen/file_io.h>
 #include <zen/time.h>
 #include <zen/process_exec.h>
 #include <wx/uilocale.h>
 #include "ffs_paths.h"
 #include "base_tools.h"
-//#include "afs/native.h"
-
 
 using namespace zen;
 using namespace fff; //required for correct overload resolution!
@@ -41,7 +38,7 @@ const ExternalApp fff::extCommandOpenDefault
 
 
 
-XmlGlobalSettings::XmlGlobalSettings() :
+GlobalConfig::GlobalConfig() :
     soundFileSyncFinished(appendPath(getResourceDirPath(), Zstr("bell.wav"))),
     soundFileAlertPending(appendPath(getResourceDirPath(), Zstr("remind.wav")))
 {
@@ -100,6 +97,39 @@ bool readText(const std::string& input, wxLanguage& value)
         return true;
     }
     return false;
+}
+
+
+template <> inline
+void writeText(const ColorTheme& value, std::string& output)
+{
+    switch (value)
+    {
+        case ColorTheme::System:
+            output = "Default";
+            break;
+        case ColorTheme::Light:
+            output = "Light";
+            break;
+        case ColorTheme::Dark:
+            output = "Dark";
+            break;
+    }
+}
+
+template <> inline
+bool readText(const std::string& input, ColorTheme& value)
+{
+    const std::string tmp = trimCpy(input);
+    if (tmp == "Default")
+        value = ColorTheme::System;
+    else if (tmp == "Light")
+        value = ColorTheme::Light;
+    else if (tmp == "Dark")
+        value = ColorTheme::Dark;
+    else
+        return false;
+    return true;
 }
 
 
@@ -1075,7 +1105,7 @@ void readConfig(const XmlIn& in, SyncConfig& syncCfg, std::map<AfsDevice, size_t
 }
 
 
-void readConfig(const XmlIn& in, FilterConfig& filter /*int formatVer? but which one; Filter is used by XmlGlobalSettings and XmlGuiConfig! :( */)
+void readConfig(const XmlIn& in, FilterConfig& filter /*int formatVer? but which one; Filter is used by GlobalConfig and FfsGuiConfig! :( */)
 {
     std::vector<Zstring> tmpIn;
     if (in["Include"](tmpIn)) //else: keep default value
@@ -1150,11 +1180,6 @@ void readConfig(const XmlIn& in, LocalPairConfig& lpc, std::map<AfsDevice, size_
 
 void readConfig(const XmlIn& in, MainConfiguration& mainCfg, int formatVer)
 {
-    if (formatVer < 18) //TODO: remove if parameter migration after some time! 2023-05-15
-        ;
-    else
-        in["Notes"](mainCfg.notes);
-
     readConfig(in["Compare"], mainCfg.cmpCfg);
 
     readConfig(in["Synchronize"], mainCfg.syncCfg, mainCfg.deviceParallelOps, formatVer);
@@ -1272,8 +1297,13 @@ void readConfig(const XmlIn& in, MainConfiguration& mainCfg, int formatVer)
 }
 
 
-void readConfig(const XmlIn& in, XmlGuiConfig& cfg, int formatVer)
+void readConfig(const XmlIn& in, FfsGuiConfig& cfg, int formatVer)
 {
+    if (formatVer < 18) //TODO: remove if parameter migration after some time! 2023-05-15
+        ;
+    else
+        in["Notes"](cfg.notes);
+
     readConfig(in, cfg.mainCfg, formatVer);
 
     if (formatVer < 19) //TODO: remove after migration! 2023-06-09
@@ -1301,7 +1331,7 @@ void readConfig(const XmlIn& in, XmlGuiConfig& cfg, int formatVer)
 }
 
 
-void readConfig(const XmlIn& in, XmlBatchConfig& cfg, int formatVer)
+void readConfig(const XmlIn& in, FfsBatchConfig& cfg, int formatVer)
 {
     if (formatVer < 19) //TODO: remove after migration! 2023-06-09
         readConfig(in, cfg.guiCfg.mainCfg, formatVer);
@@ -1316,7 +1346,7 @@ void readConfig(const XmlIn& in, XmlBatchConfig& cfg, int formatVer)
 }
 
 
-void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
+void readConfig(const XmlIn& in, GlobalConfig& cfg, int formatVer)
 {
     assert(cfg.dpiLayouts.empty());
 
@@ -1348,6 +1378,8 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     }
     else
         in2["Language"].attribute("Code", cfg.programLanguage);
+
+    in2["ColorTheme"].attribute("Appearance", cfg.appColorTheme);
 
     in2["FailSafeFileCopy"         ].attribute("Enabled", cfg.failSafeFileCopy);
     in2["CopyLockedFiles"          ].attribute("Enabled", cfg.copyLockedFiles);
@@ -1704,7 +1736,7 @@ void readConfig(const XmlIn& in, XmlGlobalSettings& cfg, int formatVer)
     //TODO: remove if parameter migration after some time! 2020-01-30
     if (formatVer < 15)
         if (cfg.commandHistoryMax <= 8)
-            cfg.commandHistoryMax = XmlGlobalSettings().commandHistoryMax;
+            cfg.commandHistoryMax = GlobalConfig().commandHistoryMax;
 
 
     if (formatVer < 20) //TODO: remove old parameter after migration! 2020-12-03
@@ -1879,43 +1911,36 @@ std::pair<ConfigType, std::wstring /*warningMsg*/> readConfig(const Zstring& fil
 }
 
 
-std::pair<XmlGuiConfig, std::wstring /*warningMsg*/> fff::readGuiConfig(const Zstring& filePath)
+std::pair<FfsGuiConfig, std::wstring /*warningMsg*/> fff::readGuiConfig(const Zstring& filePath)
 {
-    return readConfig<XmlGuiConfig>(filePath, "GUI", XML_FORMAT_SYNC_CFG); //throw FileError
+    return readConfig<FfsGuiConfig>(filePath, "GUI", XML_FORMAT_SYNC_CFG); //throw FileError
 }
 
 
-std::pair<XmlBatchConfig, std::wstring /*warningMsg*/> fff::readBatchConfig(const Zstring& filePath)
+std::pair<FfsBatchConfig, std::wstring /*warningMsg*/> fff::readBatchConfig(const Zstring& filePath)
 {
-    return readConfig<XmlBatchConfig>(filePath, "BATCH", XML_FORMAT_SYNC_CFG); //throw FileError
+    return readConfig<FfsBatchConfig>(filePath, "BATCH", XML_FORMAT_SYNC_CFG); //throw FileError
 }
 
 
-std::pair<XmlGlobalSettings, std::wstring /*warningMsg*/> fff::readGlobalConfig(const Zstring& filePath)
+std::pair<GlobalConfig, std::wstring /*warningMsg*/> fff::readGlobalConfig(const Zstring& filePath)
 {
-    return readConfig<XmlGlobalSettings>(filePath, "GLOBAL", XML_FORMAT_GLOBAL_CFG); //throw FileError
+    return readConfig<GlobalConfig>(filePath, "GLOBAL", XML_FORMAT_GLOBAL_CFG); //throw FileError
 }
 
 
-std::pair<XmlGuiConfig, std::wstring /*warningMsg*/> fff::readAnyConfig(const std::vector<Zstring>& filePaths) //throw FileError
+std::pair<FfsGuiConfig, std::wstring /*warningMsg*/> fff::readAnyConfig(const std::vector<Zstring>& filePaths) //throw FileError
 {
     assert(!filePaths.empty());
 
-    XmlGuiConfig cfg;
     std::wstring warningMsgAll;
-    std::vector<MainConfiguration> mainCfgs;
+    std::vector<FfsGuiConfig> guiCfgs;
 
-    for (auto it = filePaths.begin(); it != filePaths.end(); ++it)
-    {
-        const bool firstItem = it == filePaths.begin(); //init all non-"mainCfg" settings with first config file
-        const Zstring& filePath = *it;
-
+    for (const Zstring& filePath : filePaths)
         if (endsWithAsciiNoCase(filePath, Zstr(".ffs_gui")))
         {
             const auto& [guiCfg, warningMsg] = readGuiConfig(filePath); //throw FileError
-            if (firstItem)
-                cfg = guiCfg;
-            mainCfgs.push_back(guiCfg.mainCfg);
+            guiCfgs.push_back(guiCfg);
 
             if (!warningMsg.empty())
                 warningMsgAll += warningMsg + L"\n\n";
@@ -1923,9 +1948,7 @@ std::pair<XmlGuiConfig, std::wstring /*warningMsg*/> fff::readAnyConfig(const st
         else if (endsWithAsciiNoCase(filePath, Zstr(".ffs_batch")))
         {
             const auto& [batchCfg, warningMsg] = readBatchConfig(filePath); //throw FileError
-            if (firstItem)
-                cfg = batchCfg.guiCfg;
-            mainCfgs.push_back(batchCfg.guiCfg.mainCfg);
+            guiCfgs.push_back(batchCfg.guiCfg);
 
             if (!warningMsg.empty())
                 warningMsgAll += warningMsg + L"\n\n";
@@ -1934,10 +1957,8 @@ std::pair<XmlGuiConfig, std::wstring /*warningMsg*/> fff::readAnyConfig(const st
             throw FileError(replaceCpy(_("Cannot open file %x."), L"%x", fmtPath(filePath)),
                             _("Unexpected file extension:") + L' ' + fmtPath(getFileExtension(filePath)) + L'\n' +
                             _("Expected:") + L" ffs_gui, ffs_batch");
-    }
-    cfg.mainCfg = merge(mainCfgs);
 
-    return {cfg, trimCpy(warningMsgAll)};
+    return {merge(guiCfgs), trimCpy(warningMsgAll)};
 }
 
 //################################################################################################
@@ -2060,8 +2081,6 @@ void writeConfig(const LocalPairConfig& lpc, const std::map<AfsDevice, size_t>& 
 
 void writeConfig(const MainConfiguration& mainCfg, XmlOut& out)
 {
-    out["Notes"](mainCfg.notes);
-
     XmlOut outCmp = out["Compare"];
     writeConfig(mainCfg.cmpCfg, outCmp);
     //###########################################################
@@ -2095,15 +2114,17 @@ void writeConfig(const MainConfiguration& mainCfg, XmlOut& out)
 }
 
 
-void writeConfig(const XmlGuiConfig& cfg, XmlOut& out)
+void writeConfig(const FfsGuiConfig& cfg, XmlOut& out)
 {
+    out["Notes"](cfg.notes);
+
     writeConfig(cfg.mainCfg, out); //write main config
 
     out["GridViewType"](cfg.gridViewType);
 }
 
 
-void writeConfig(const XmlBatchConfig& cfg, XmlOut& out)
+void writeConfig(const FfsBatchConfig& cfg, XmlOut& out)
 {
     writeConfig(cfg.guiCfg, out);
 
@@ -2115,9 +2136,10 @@ void writeConfig(const XmlBatchConfig& cfg, XmlOut& out)
 }
 
 
-void writeConfig(const XmlGlobalSettings& cfg, XmlOut& out)
+void writeConfig(const GlobalConfig& cfg, XmlOut& out)
 {
     out["Language"].attribute("Code", cfg.programLanguage);
+    out["ColorTheme"].attribute("Appearance", cfg.appColorTheme);
 
     out["FailSafeFileCopy"         ].attribute("Enabled", cfg.failSafeFileCopy);
     out["CopyLockedFiles"          ].attribute("Enabled", cfg.copyLockedFiles);
@@ -2303,19 +2325,19 @@ void writeConfig(const ConfigType& cfg, const char* cfgType, int xmlFormatVer, c
 }
 }
 
-void fff::writeConfig(const XmlGuiConfig& cfg, const Zstring& filePath)
+void fff::writeConfig(const FfsGuiConfig& cfg, const Zstring& filePath)
 {
     ::writeConfig(cfg, "GUI", XML_FORMAT_SYNC_CFG, filePath); //throw FileError
 }
 
 
-void fff::writeConfig(const XmlBatchConfig& cfg, const Zstring& filePath)
+void fff::writeConfig(const FfsBatchConfig& cfg, const Zstring& filePath)
 {
     ::writeConfig(cfg, "BATCH", XML_FORMAT_SYNC_CFG, filePath); //throw FileError
 }
 
 
-void fff::writeConfig(const XmlGlobalSettings& cfg, const Zstring& filePath)
+void fff::writeConfig(const GlobalConfig& cfg, const Zstring& filePath)
 {
     ::writeConfig(cfg, "GLOBAL", XML_FORMAT_GLOBAL_CFG, filePath); //throw FileError
 }

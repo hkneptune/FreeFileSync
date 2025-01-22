@@ -7,14 +7,13 @@
 #include "cfg_grid.h"
 #include <zen/time.h>
 #include <zen/process_exec.h>
+#include <wx+/color_tools.h>
 #include <wx+/dc.h>
 #include <wx+/rtl.h>
 #include <wx+/image_resources.h>
 #include <wx+/popup_dlg.h>
-//#include <wx+/image_tools.h>
 #include <wx+/std_button_layout.h>
 #include <wx/settings.h>
-//#include "../icon_buffer.h"
 #include "../ffs_paths.h"
 #include "../afs/native.h"
 
@@ -434,7 +433,8 @@ private:
                         {
                             rectTmp.width = rect.width * 2 / 3;
                             clearArea(dc, rectTmp, backColor); //accessibility: always set both foreground AND background colors!
-                            textColor.Set(*wxBLACK);            //
+                            textColor.Set(relativeContrast(backColor, *wxWHITE) >
+                                          relativeContrast(backColor, *wxBLACK) ? *wxWHITE : *wxBLACK); //
 
                             rectTmp.x += rectTmp.width;
                             rectTmp.width = rect.width - rectTmp.width;
@@ -499,7 +499,7 @@ private:
                     wxDCTextColourChanger textColor2(dc);
                     if (syncOverdueDays_ > 0)
                         if (getDaysPast(item->cfgItem.lastRunStats.startTime) >= syncOverdueDays_)
-                            textColor2.Set(*wxRED);
+                            textColor2.Set(*wxRED); //text barely readable when selected, for 4.5 contrast would need to be white :(
 
                     drawCellText(dc, rect, getValue(row, colType), wxALIGN_CENTER);
                 }
@@ -531,7 +531,7 @@ private:
             }
     }
 
-    int getBestSize(wxDC& dc, size_t row, ColumnType colType) override
+    int getBestSize(const wxReadOnlyDC& dc, size_t row, ColumnType colType) override
     {
         // -> synchronize renderCell() <-> getBestSize()
 
@@ -550,7 +550,7 @@ private:
         return 0;
     }
 
-    HoverArea getMouseHover(wxDC& dc, size_t row, ColumnType colType, int cellRelativePosX, int cellWidth) override
+    HoverArea getMouseHover(const wxReadOnlyDC& dc, size_t row, ColumnType colType, int cellRelativePosX, int cellWidth) override
     {
         if (const ConfigView::Details* item = cfgView_.getItem(row))
         {
@@ -668,7 +668,7 @@ private:
                         tooltip += TAB_SPACE + _("Total time:") + L' ' + utfTo<std::wstring>(formatTimeSpan(totalTimeSec));
 
                         //non-native path won't be clickable => at least show in tooltip:
-                         if (getNativeItemPath(item->cfgItem.lastRunStats.logFilePath).empty())
+                        if (getNativeItemPath(item->cfgItem.lastRunStats.logFilePath).empty())
                             tooltip += L"\n" + AFS::getDisplayPath(item->cfgItem.lastRunStats.logFilePath);
 
                         return tooltip;

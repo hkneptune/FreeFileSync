@@ -7,15 +7,13 @@
 #include "application.h"
 #include "main_dlg.h"
 #include <zen/file_access.h>
-//#include <zen/thread.h>
 #include <zen/shutdown.h>
 #include <zen/resolve_path.h>
 #include <wx/clipbrd.h>
 #include <wx/event.h>
-//#include <wx/log.h>
 #include <wx/tooltip.h>
 #include <wx+/app_main.h>
-//#include <wx+/popup_dlg.h>
+#include <wx+/darkmode.h>
 #include <wx+/image_resources.h>
 #include "config.h"
 #include "../localization.h"
@@ -62,6 +60,17 @@ bool Application::OnInit()
         notifyAppError(msg);
     });
 
+    //tentatively set program language to OS default until GlobalSettings.xml is read later
+    try { fff::localizationInit(appendPath(fff::getResourceDirPath(), Zstr("Languages.zip"))); } //throw FileError
+    catch (const FileError& e) { logExtraError(e.toString()); }
+
+    GlobalConfig globalCfg;
+    try { globalCfg = getGlobalConfig(); } //throw FileError
+    catch (const FileError& e) { logExtraError(e.toString()); }
+
+    try { fff::setLanguage(globalCfg.programLanguage); } //throw FileError
+    catch (const FileError& e) { logExtraError(e.toString()); }
+
     try { imageResourcesInit(appendPath(fff::getResourceDirPath(), Zstr("Icons.zip"))); }
     catch (const FileError& e) { logExtraError(e.toString()); } //not critical in this context
 
@@ -102,7 +111,7 @@ bool Application::OnInit()
         {
             loadCSS("Gtk3Styles.old.css"); //throw SysError
         }
-        catch (const SysError& e3) { logExtraError(_("Error during process initialization.") + L"\n\n" + e3.toString()); }
+        catch (const SysError& e3) { logExtraError(_("Failed to update the color theme.") + L"\n\n" + e3.toString()); }
     }
 #else
 #error unknown GTK version!
@@ -117,19 +126,15 @@ bool Application::OnInit()
     else assert(!oldHandler);
 
 
+    try { colorThemeInit(*this, globalCfg.appColorTheme); } //throw FileError
+    catch (const FileError& e) { logExtraError(e.toString()); } //not critical in this context
+
     //Windows User Experience Interaction Guidelines: tool tips should have 5s timeout, info tips no timeout => compromise:
     wxToolTip::Enable(true); //wxWidgets screw-up: wxToolTip::SetAutoPop is no-op if global tooltip window is not yet constructed: wxToolTip::Enable creates it
     wxToolTip::SetAutoPop(15'000); //https://docs.microsoft.com/en-us/windows/win32/uxguide/ctrl-tooltips-and-infotips
 
     SetAppName(L"RealTimeSync"); //if not set, defaults to executable name
 
-
-    try
-    {
-        fff::localizationInit(appendPath(fff::getResourceDirPath(), Zstr("Languages.zip"))); //throw FileError
-        fff::setLanguage(getProgramLanguage()); //throw FileError
-    }
-    catch (const FileError& e) { logExtraError(e.toString()); }
 
     auto onSystemShutdown = [](int /*unused*/ = 0)
     {
@@ -148,7 +153,7 @@ bool Application::OnInit()
     //Note: app start is deferred:  -> see FreeFileSync
     CallAfter([&] { onEnterEventLoop(); });
 
-    return true; //true: continue processing; false: exit immediately.
+    return true; //true: continue processing; false: exit immediately
 }
 
 

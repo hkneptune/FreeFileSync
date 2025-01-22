@@ -7,7 +7,6 @@
 #ifndef PARSER_H_81248670213764583021432
 #define PARSER_H_81248670213764583021432
 
-//#include <cstdio>
 #include <cstddef> //ptrdiff_t; req. on Linux
 #include <zen/string_tools.h>
 #include "dom.h"
@@ -206,14 +205,14 @@ void serialize(const XmlElement& element, std::string& stream,
     for (auto it = attr.first; it != attr.second; ++it)
         stream += ' ' + normalizeName(it->name) + "=\"" + normalizeAttribValue(it->value) + '"';
 
-    auto [it, itEnd] = element.getChildren();
-    if (it != itEnd) //structured element
+    const auto& children = element.getChildren();
+    if (!children.empty()) //structured element
     {
         //no support for mixed-mode content
         stream += '>' + lineBreak;
 
-        std::for_each(it, itEnd, [&](const XmlElement& el)
-        { serialize(el, stream, lineBreak, indent, indentLevel + 1); });
+        for (const XmlElement& el : children)
+            serialize(el, stream, lineBreak, indent, indentLevel + 1);
 
         for (size_t i = 0; i < indentLevel; ++i)
             stream += indent;
@@ -483,9 +482,9 @@ public:
         XmlElement dummy;
         parseChildElements(dummy);
 
-        auto [it, itEnd] = dummy.getChildren();
-        if (it != itEnd)
-            doc.root().swapSubtree(*it);
+        const auto& children = dummy.getChildren();
+        if (!children.empty())
+            doc.root().swapSubtree(*children.begin());
 
         expectToken(Token::TK_END); //throw XmlParsingError
         return doc;

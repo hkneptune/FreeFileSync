@@ -8,10 +8,8 @@
 #include <wx/dialog.h>
 #include <wx/stattext.h>
 #include <wx/sizer.h>
-//#include <wx/statbmp.h>
 #include <wx/settings.h>
 #include <wx/app.h>
-//#include "image_tools.h"
 #include "bitmap_button.h"
 #include "dc.h"
     #include <gtk/gtk.h>

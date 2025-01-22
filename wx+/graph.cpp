@@ -7,15 +7,14 @@
 #include "graph.h"
 #include <cassert>
 #include <algorithm>
-//#include <numeric>
 #include <zen/basic_math.h>
 #include <zen/scope_guard.h>
-//#include <zen/perf.h>
 
 using namespace zen;
 
 
-//todo: support zoom via mouse wheel?
+
+//TODO: support zoom via mouse wheel?
 
 namespace zen
 {
@@ -139,7 +138,8 @@ int widenRange(double& valMin, double& valMax, //in/out
 }
 
 
-void drawXLabel(wxDC& dc, double xMin, double xMax, int blockCount, const ConvertCoord& cvrtX, const wxRect& graphArea, const wxRect& labelArea, const LabelFormatter& labelFmt)
+void drawXLabel(wxDC& dc, double xMin, double xMax, int blockCount, const ConvertCoord& cvrtX, const wxRect& graphArea,
+                const wxRect& labelArea, const LabelFormatter& labelFmt, const wxColor& colGridLine)
 {
     assert(graphArea.width == labelArea.width && graphArea.x == labelArea.x);
     if (blockCount <= 0)
@@ -153,7 +153,7 @@ void drawXLabel(wxDC& dc, double xMin, double xMax, int blockCount, const Conver
         const int x = graphArea.x + cvrtX.realToScreenRound(valX);
 
         //draw grey vertical lines
-        clearArea(dc, {x - dipToWxsize(1) / 2, graphArea.y, dipToWxsize(1), graphArea.height}, wxColor(192, 192, 192)); //light grey => not accessible! but no big deal...
+        clearArea(dc, {x - dipToWxsize(1) / 2, graphArea.y, dipToWxsize(1), graphArea.height}, colGridLine);
 
         //draw x axis labels
         const wxString label = labelFmt.formatText(valX, valRangePerBlock);
@@ -163,7 +163,8 @@ void drawXLabel(wxDC& dc, double xMin, double xMax, int blockCount, const Conver
 }
 
 
-void drawYLabel(wxDC& dc, double yMin, double yMax, int blockCount, const ConvertCoord& cvrtY, const wxRect& graphArea, const wxRect& labelArea, const LabelFormatter& labelFmt)
+void drawYLabel(wxDC& dc, double yMin, double yMax, int blockCount, const ConvertCoord& cvrtY, const wxRect& graphArea,
+                const wxRect& labelArea, const LabelFormatter& labelFmt, const wxColor& colGridLine)
 {
     assert(graphArea.height == labelArea.height && graphArea.y == labelArea.y);
     if (blockCount <= 0)
@@ -177,7 +178,7 @@ void drawYLabel(wxDC& dc, double yMin, double yMax, int blockCount, const Conver
         const double valY = yMin + i * valRangePerBlock; //step over raw data, not graph area pixels, to not lose precision
         const int y = graphArea.y + cvrtY.realToScreenRound(valY);
 
-        clearArea(dc, {graphArea.x, y - dipToWxsize(1) / 2, graphArea.width, dipToWxsize(1)}, wxColor(192, 192, 192)); //light grey => not accessible! but no big deal...
+        clearArea(dc, {graphArea.x, y - dipToWxsize(1) / 2, graphArea.width, dipToWxsize(1)}, colGridLine);
 
         //draw y axis labels
         const wxString label = labelFmt.formatText(valY, valRangePerBlock);
@@ -436,13 +437,13 @@ Graph2D::Graph2D(wxWindow* parent,
                  long style,
                  const wxString& name) : wxPanel(parent, winid, pos, size, style, name)
 {
+#ifdef FFS_CUSTOM_DOUBLE_BUFFERING
+    MSWDisableComposited();
+#endif
+    //https://wiki.wxwidgets.org/Flicker-Free_Drawing
+    SetBackgroundStyle(wxBG_STYLE_PAINT); //get's rid of needless wxEVT_ERASE_BACKGROUND
     Bind(wxEVT_PAINT, [this](wxPaintEvent& event) { onPaintEvent(event); });
-    Bind(wxEVT_SIZE,  [this](wxSizeEvent& event) { Refresh(); event.Skip(); });
-    Bind(wxEVT_ERASE_BACKGROUND, [](wxEraseEvent& event) {}); //https://wiki.wxwidgets.org/Flicker-Free_Drawing
-
-    //SetDoubleBuffered(true); slow as hell!
-
-    SetBackgroundStyle(wxBG_STYLE_PAINT);
+    Bind(wxEVT_SIZE,  [this](wxSizeEvent&  event) { Refresh(); event.Skip(); });
 
     Bind(wxEVT_LEFT_DOWN,          [this](wxMouseEvent& event) { onMouseLeftDown(event); });
     Bind(wxEVT_MOTION,             [this](wxMouseEvent& event) { onMouseMovement(event); });
@@ -453,8 +454,12 @@ Graph2D::Graph2D(wxWindow* parent,
 
 void Graph2D::onPaintEvent(wxPaintEvent& event)
 {
-    //wxAutoBufferedPaintDC dc(this); -> this one happily fucks up for RTL layout by not drawing the first column (x = 0)!
+#ifdef FFS_CUSTOM_DOUBLE_BUFFERING
     BufferedPaintDC dc(*this, doubleBuffer_);
+#else
+    wxPaintDC dc(this);
+    static_assert(wxALWAYS_NATIVE_DOUBLE_BUFFER);
+#endif
     render(dc);
 }
 
@@ -569,7 +574,7 @@ void Graph2D::render(wxDC& dc) const
     assert(attr_.yLabelpos == YLabelPos::none || attr_.labelFmtY);
 
     //paint graph background (excluding label area)
-    drawFilledRectangle(dc, graphArea, attr_.colorBack, getBorderColor(), dipToWxsize(1));
+    drawFilledRectangle(dc, graphArea, attr_.colorBack, attr_.colorGridLine, dipToWxsize(1));
     graphArea.Deflate(dipToWxsize(1));
 
     //set label areas respecting graph area border!
@@ -759,8 +764,8 @@ void Graph2D::render(wxDC& dc) const
             }
 
             //3. draw labels and background grid
-            if (attr_.labelFmtX) drawXLabel(dc, minX, maxX, blockCountX, cvrtX, graphArea, xLabelArea, *attr_.labelFmtX);
-            if (attr_.labelFmtY) drawYLabel(dc, minY, maxY, blockCountY, cvrtY, graphArea, yLabelArea, *attr_.labelFmtY);
+            if (attr_.labelFmtX) drawXLabel(dc, minX, maxX, blockCountX, cvrtX, graphArea, xLabelArea, *attr_.labelFmtX, attr_.colorGridLine);
+            if (attr_.labelFmtY) drawYLabel(dc, minY, maxY, blockCountY, cvrtY, graphArea, yLabelArea, *attr_.labelFmtY, attr_.colorGridLine);
 
             //4. finally draw curves
             {

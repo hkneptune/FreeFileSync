@@ -38,7 +38,6 @@ wxImage layOver(const wxImage& back, const wxImage& front, int alignment = wxALI
 wxImage greyScale(const wxImage&  img); //greyscale + brightness adaption
 wxImage greyScaleIfDisabled(const wxImage& img, bool enabled);
 
-//void moveImage(wxImage& img, int right, int up);
 void adjustBrightness(wxImage& img, int targetLevel);
 double getAvgBrightness(const wxImage& img); //in [0, 255]
 void brighten(wxImage& img, int level); //level: delta per channel in points
@@ -72,9 +71,9 @@ wxImage rectangleImage(wxSize size, const wxColor& innerCol, const wxColor& bord
 //################################### implementation ###################################
 
 inline
-wxImage greyScale(const wxImage& img)
+wxImage greyScale(const wxImage& img) //TODO support gamma-decoding and perceptual colors!?
 {
-    wxImage output = img.ConvertToGreyscale(1.0 / 3, 1.0 / 3, 1.0 / 3); //treat all channels equally!
+    wxImage output = img.ConvertToGreyscale(1.0 / 3, 1.0 / 3, 1.0 / 3); //treat all channels equally
     adjustBrightness(output, 160);
     return output;
 }
@@ -91,7 +90,7 @@ wxImage greyScaleIfDisabled(const wxImage& img, bool enabled)
 
 
 inline
-double getAvgBrightness(const wxImage& img)
+double getAvgBrightness(const wxImage& img) //TODO: consider gamma-encoded sRGB!?
 {
     const int pixelCount = img.GetWidth() * img.GetHeight();
     auto pixBegin = img.GetData();
@@ -128,9 +127,9 @@ void brighten(wxImage& img, int level)
         const int pixelCount = img.GetWidth() * img.GetHeight();
         auto pixEnd = pixBegin + 3 * pixelCount; //RGB
         if (level > 0)
-            std::for_each(pixBegin, pixEnd, [&](unsigned char& c) { c = static_cast<unsigned char>(std::min(255, c + level)); });
+            std::for_each(pixBegin, pixEnd, [level](unsigned char& c) { c = static_cast<unsigned char>(std::min(c + level, 255)); });
         else
-            std::for_each(pixBegin, pixEnd, [&](unsigned char& c) { c = static_cast<unsigned char>(std::max(0, c + level)); });
+            std::for_each(pixBegin, pixEnd, [level](unsigned char& c) { c = static_cast<unsigned char>(std::max(c + level, 0)); });
     }
 }
 
@@ -140,69 +139,6 @@ void adjustBrightness(wxImage& img, int targetLevel)
 {
     brighten(img, targetLevel - getAvgBrightness(img));
 }
-
-
-/*
-inline
-wxColor gradient(const wxColor& from, const wxColor& to, double fraction)
-{
-    fraction = std::max(0.0, fraction);
-    fraction = std::min(1.0, fraction);
-    return wxColor(from.Red  () + (to.Red  () - from.Red  ()) * fraction,
-                   from.Green() + (to.Green() - from.Green()) * fraction,
-                   from.Blue () + (to.Blue () - from.Blue ()) * fraction,
-                   from.Alpha() + (to.Alpha() - from.Alpha()) * fraction);
-}
-*/
-
-/*
-inline
-wxColor hsvColor(double h, double s, double v) //h within [0, 360), s, v within [0, 1]
-{
-    //https://en.wikipedia.org/wiki/HSL_and_HSV
-
-    //make input values fit into bounds
-    if (h > 360)
-        h -= static_cast<int>(h / 360) * 360;
-    else if (h < 0)
-        h -= static_cast<int>(h / 360) * 360 - 360;
-    numeric::confine<double>(s, 0, 1);
-    numeric::confine<double>(v, 0, 1);
-    //------------------------------------
-    const int h_i = h / 60;
-    const float f = h / 60 - h_i;
-
-    auto polish = [](double val) -> unsigned char
-    {
-        int result = std::round(val * 255);
-        numeric::confine(result, 0, 255);
-        return static_cast<unsigned char>(result);
-    };
-
-    const unsigned char p  = polish(v * (1 - s));
-    const unsigned char q  = polish(v * (1 - s * f));
-    const unsigned char t  = polish(v * (1 - s * (1 - f)));
-    const unsigned char vi = polish(v);
-
-    switch (h_i)
-    {
-        case 0:
-            return wxColor(vi, t, p);
-        case 1:
-            return wxColor(q, vi, p);
-        case 2:
-            return wxColor(p, vi, t);
-        case 3:
-            return wxColor(p, q, vi);
-        case 4:
-            return wxColor(t, p, vi);
-        case 5:
-            return wxColor(vi, p, q);
-    }
-    assert(false);
-    return *wxBLACK;
-}
-*/
 }
 
 #endif //IMAGE_TOOLS_H_45782456427634254

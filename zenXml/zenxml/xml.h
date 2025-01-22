@@ -7,7 +7,6 @@
 #ifndef XML_H_349578228034572457454554
 #define XML_H_349578228034572457454554
 
-//#include <set>
 #include <zen/file_io.h>
 #include <zen/file_access.h>
 #include "cvrt_struc.h"
@@ -258,12 +257,9 @@ public:
             logConversionError(); //have XML value element, not container!
         else
         {
-            auto [it, itEnd] = elem_->getChildren();
             size_t childIdx = 0;
-            std::for_each(it, itEnd, [&](const XmlElement& child)
-            {
+            for (const XmlElement& child : elem_->getChildren())
                 fun(XmlIn(&child, elementNameFmt_ + " <" + child.getName() + ">[" + numberTo<std::string>(++childIdx) + ']', log_));
-            });
         }
     }
 

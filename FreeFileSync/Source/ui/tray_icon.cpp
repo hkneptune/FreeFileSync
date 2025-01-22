@@ -74,14 +74,14 @@ wxIcon FfsTrayIcon::ProgressIconGenerator::get(double fraction)
         return wxIcon();
 
     const int pixelCount = logo_.GetWidth() * logo_.GetHeight();
-    const int startFillPixel = std::clamp<int>(std::round(fraction * pixelCount), 0, pixelCount);
+    const int startFillPixel = std::clamp<int>(std::floor(fraction * pixelCount), 0, pixelCount);
 
     if (startPixBuf_ != startFillPixel)
     {
         wxImage genImage(logo_.Copy()); //workaround wxWidgets' screwed-up design from hell: their copy-construction implements reference-counting WITHOUT copy-on-write!
 
         //gradually make FFS icon brighter while nearing completion
-        zen::brighten(genImage, -200 * (1 - fraction));
+        brighten(genImage, -200 * (1 - fraction));
 
         //fill black border row
         if (startFillPixel <= pixelCount - genImage.GetWidth())

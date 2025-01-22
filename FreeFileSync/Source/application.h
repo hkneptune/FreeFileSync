@@ -25,9 +25,8 @@ private:
     wxLayoutDirection GetLayoutDirection() const override;
     void onEnterEventLoop();
 
-    void runGuiMode  (const Zstring& globalConfigFile);
-    void runGuiMode  (const Zstring& globalConfigFile, const XmlGuiConfig& guiCfg, const std::vector<Zstring>& cfgFilePaths, bool startComparison);
-    void runBatchMode(const Zstring& globalConfigFile, const XmlBatchConfig& batchCfg, const Zstring& cfgFilePath);
+    void runBatchMode(const FfsBatchConfig& batchCfg, const Zstring& cfgFilePath,
+                      GlobalConfig globalCfg, const Zstring& globalCfgFilePath);
 
     FfsExitCode exitCode_ = FfsExitCode::success;
 };

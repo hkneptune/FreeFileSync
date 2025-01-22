@@ -8,10 +8,6 @@
 #define FILE_HIERARCHY_H_257235289645296
 
 #include <string>
-//#include <memory>
-#include <list>
-//#include <functional>
-#include <unordered_set>
 #include <unordered_map>
 #include "structures.h"
 #include "path_filter.h"
@@ -68,7 +64,7 @@ struct FolderContainer
         files.insert_or_assign(itemName, attr); //update entry if already existing (e.g. during folder traverser "retry")
     }
 
-    void addLink(const Zstring& itemName, const LinkAttributes& attr)
+    void addSymlink(const Zstring& itemName, const LinkAttributes& attr)
     {
         symlinks.insert_or_assign(itemName, attr);
     }
@@ -158,15 +154,15 @@ class BaseFolderPair;
 /*------------------------------------------------------------------
     inheritance diagram:
 
-         ObjectMgr        PathInformation
-            /|\                 /|\
-             |________  _________|_________
-                      ||                   |
-               FileSystemObject     ContainerObject
-                     /|\                  /|\
-           ___________|___________   ______|______
-          |           |           | |             |
-     SymlinkPair   FilePair    FolderPair   BaseFolderPair
+std::enable_shared_from_this   PathInformation
+           /|\                      /|\
+            |____________   _________|_________
+                         | |                   |
+                   FileSystemObject     ContainerObject
+                         /|\                  /|\
+               ___________|___________   ______|______
+              |           |           | |             |
+         SymlinkPair   FilePair    FolderPair   BaseFolderPair
 
 ------------------------------------------------------------------*/
 
@@ -198,45 +194,43 @@ class ContainerObject : public virtual PathInformation
     friend class FileSystemObject; //access to updateRelPathsRecursion()
 
 public:
-    using FileList    = std::list<FilePair>;    //MergeSides::execute() requires a structure that doesn't invalidate pointers after push_back()
-    using SymlinkList = std::list<SymlinkPair>; //
-    using FolderList  = std::list<FolderPair>;
+    using FileList    = std::vector<zen::SharedRef<FilePair>>;    //MergeSides::execute() requires a structure that doesn't invalidate pointers after push_back()
+    using SymlinkList = std::vector<zen::SharedRef<SymlinkPair>>; //
+    using FolderList  = std::vector<zen::SharedRef<FolderPair>>;
 
-    FolderPair& addFolder(const Zstring&          itemNameL, //file exists on both sides
-                          const FolderAttributes& left,
-                          const Zstring&          itemNameR,
-                          const FolderAttributes& right);
+    FolderPair& addFolder(const Zstring& itemNameL, const FolderAttributes& attribL,
+                          const Zstring& itemNameR, const FolderAttributes& attribR); //exists on both sides
 
     template <SelectSide side>
-    FolderPair& addFolder(const Zstring& itemName, //dir exists on one side only
-                          const FolderAttributes& attr);
+    FolderPair& addFolder(const Zstring& itemName, const FolderAttributes& attr); //exists on one side only
 
-    FilePair& addFile(const Zstring&        itemNameL, //file exists on both sides
-                      const FileAttributes& left,
-                      const Zstring&        itemNameR,
-                      const FileAttributes& right);
+    FilePair& addFile(const Zstring& itemNameL, const FileAttributes& attribL,
+                      const Zstring& itemNameR, const FileAttributes& attribR); //exists on both sides
 
     template <SelectSide side>
-    FilePair& addFile(const Zstring&        itemName, //file exists on one side only
-                      const FileAttributes& attr);
+    FilePair& addFile(const Zstring& itemName, const FileAttributes& attr); //exists on one side only
 
-    SymlinkPair& addLink(const Zstring&        itemNameL, //link exists on both sides
-                         const LinkAttributes& left,
-                         const Zstring&        itemNameR,
-                         const LinkAttributes& right);
+    SymlinkPair& addSymlink(const Zstring& itemNameL, const LinkAttributes& attribL,
+                            const Zstring& itemNameR, const LinkAttributes& attribR); //exists on both sides
 
     template <SelectSide side>
-    SymlinkPair& addLink(const Zstring&        itemName, //link exists on one side only
-                         const LinkAttributes& attr);
+    SymlinkPair& addSymlink(const Zstring& itemName, const LinkAttributes& attr); //exists on one side only
 
-    const FileList& refSubFiles() const { return subFiles_; }
-    /**/  FileList& refSubFiles()       { return subFiles_; }
+    zen::Range<zen::DerefIter<FileList::const_iterator, const FilePair>> files() const { return {files_.begin(), files_.end()}; }
+    zen::Range<zen::DerefIter<FileList::      iterator,       FilePair>> files()       { return {files_.begin(), files_.end()}; }
 
-    const SymlinkList& refSubLinks() const { return subLinks_; }
-    /**/  SymlinkList& refSubLinks()       { return subLinks_; }
+    zen::Range<zen::DerefIter<SymlinkList::const_iterator, const SymlinkPair>> symlinks() const { return {symlinks_.begin(), symlinks_.end()}; }
+    zen::Range<zen::DerefIter<SymlinkList::      iterator,       SymlinkPair>> symlinks()       { return {symlinks_.begin(), symlinks_.end()}; }
 
-    const FolderList& refSubFolders() const { return subFolders_; }
-    /**/  FolderList& refSubFolders()       { return subFolders_; }
+    zen::Range<zen::DerefIter<FolderList::const_iterator, const FolderPair>> subfolders() const { return {subfolders_.begin(), subfolders_.end()}; }
+    zen::Range<zen::DerefIter<FolderList::      iterator,       FolderPair>> subfolders()       { return {subfolders_.begin(), subfolders_.end()}; }
+
+    void clearFiles     () { files_     .clear(); }
+    void clearSymlinks  () { symlinks_  .clear(); }
+    void clearSubfolders() { subfolders_.clear(); }
+
+    template <class Function>
+    void foldersRemoveIf(Function fun) { zen::eraseIf(subfolders_, [fun](auto& fsObj) { return fun(fsObj.ref()); }); }
 
     const BaseFolderPair& getBase() const { return base_; }
     /**/  BaseFolderPair& getBase()       { return base_; }
@@ -265,9 +259,9 @@ private:
     Zstring getRelativePathL() const override { return relPathL_; }
     Zstring getRelativePathR() const override { return relPathR_; }
 
-    FileList    subFiles_;
-    SymlinkList subLinks_;
-    FolderList  subFolders_;
+    FileList    files_;
+    SymlinkList symlinks_;
+    FolderList  subfolders_;
 
     Zstring relPathL_; //path relative to base sync dir (without leading/trailing FILE_NAME_SEPARATOR)
     Zstring relPathR_; //class invariant: shared Zstring iff equal!
@@ -330,41 +324,11 @@ private:
 };
 
 
-//get rid of SharedRef<> indirection
-template <class IterImpl, //underlying iterator type
-          class T>        //target value type
-class DerefIter
-{
-public:
-    using iterator_category = std::bidirectional_iterator_tag;
-    using value_type = T;
-    using difference_type = ptrdiff_t;
-    using pointer   = T*;
-    using reference = T&;
-
-    DerefIter() {}
-    DerefIter(IterImpl it) : it_(it) {}
-    //DerefIter(const DerefIter& other) : it_(other.it_) {}
-    DerefIter& operator++() { ++it_; return *this; }
-    DerefIter& operator--() { --it_; return *this; }
-    inline friend DerefIter operator++(DerefIter& it, int) { return it++; }
-    inline friend DerefIter operator--(DerefIter& it, int) { return it--; }
-    inline friend ptrdiff_t operator-(const DerefIter& lhs, const DerefIter& rhs) { return lhs.it_ - rhs.it_; }
-    bool operator==(const DerefIter&) const = default;
-    T& operator* () const { return  it_->ref(); }
-    T* operator->() const { return &it_->ref(); }
-private:
-    IterImpl it_{};
-};
-
-
 using FolderComparison = std::vector<zen::SharedRef<BaseFolderPair>>; //make sure pointers to sub-elements remain valid
 //don't change this back to std::vector<BaseFolderPair> inconsiderately: comparison uses push_back to add entries which may result in a full copy!
 
-DerefIter<typename FolderComparison::iterator,             BaseFolderPair> inline begin(      FolderComparison& vect) { return vect.begin(); }
-DerefIter<typename FolderComparison::iterator,             BaseFolderPair> inline end  (      FolderComparison& vect) { return vect.end  (); }
-DerefIter<typename FolderComparison::const_iterator, const BaseFolderPair> inline begin(const FolderComparison& vect) { return vect.begin(); }
-DerefIter<typename FolderComparison::const_iterator, const BaseFolderPair> inline end  (const FolderComparison& vect) { return vect.end  (); }
+zen::Range<zen::DerefIter<FolderComparison::iterator,             BaseFolderPair>> inline asRange(      FolderComparison& vect) { return {vect.begin(), vect.end()}; }
+zen::Range<zen::DerefIter<FolderComparison::const_iterator, const BaseFolderPair>> inline asRange(const FolderComparison& vect) { return {vect.begin(), vect.end()}; }
 
 //------------------------------------------------------------------
 struct FSObjectVisitor
@@ -375,41 +339,9 @@ struct FSObjectVisitor
     virtual void visit(const FolderPair&  folder ) = 0;
 };
 
-
-//inherit from this class to allow safe random access by id instead of unsafe raw pointer
-//allow for similar semantics like std::weak_ptr without having to use std::shared_ptr
-template <class T>
-class ObjectMgr
-{
-public:
-    using ObjectId      =       ObjectMgr*;
-    using ObjectIdConst = const ObjectMgr*;
-
-    ObjectIdConst  getId() const { return this; }
-    /**/  ObjectId getId()       { return this; }
-
-    static const T* retrieve(ObjectIdConst id) //returns nullptr if object is not valid anymore
-    {
-        return static_cast<const T*>(activeObjects_.contains(id) ? id : nullptr);
-    }
-    static T* retrieve(ObjectId id) { return const_cast<T*>(retrieve(static_cast<ObjectIdConst>(id))); }
-
-protected:
-    ObjectMgr () { activeObjects_.insert(this); }
-    ~ObjectMgr() { activeObjects_.erase (this); }
-
-private:
-    ObjectMgr           (const ObjectMgr& rhs) = delete;
-    ObjectMgr& operator=(const ObjectMgr& rhs) = delete; //it's not well-defined what copying an objects means regarding object-identity in this context
-
-    //our global ObjectMgr is not thread-safe (and currently does not need to be!)
-    //assert(runningOnMainThread()); -> still, may be accessed by synchronization worker threads, one thread at a time
-    static inline std::unordered_set<const ObjectMgr*> activeObjects_; //external linkage!
-};
-
 //------------------------------------------------------------------
 
-class FileSystemObject : public ObjectMgr<FileSystemObject>, public virtual PathInformation
+class FileSystemObject : public std::enable_shared_from_this<FileSystemObject>, public virtual PathInformation
 {
 public:
     virtual void accept(FSObjectVisitor& visitor) const = 0;
@@ -493,7 +425,7 @@ private:
     //conserve memory (avoid std::string SSO overhead + allow ref-counting!)
 
     Zstring itemNameL_; //use as indicator: empty means "not existing on this side"
-    Zstring itemNameR_; //class invariant: shared Zstring iff equal!
+    Zstring itemNameR_; //class invariant: same Zstring.c_str() pointer iff equal!
 
     ContainerObject& parent_;
 };
@@ -572,8 +504,9 @@ public:
     template <SelectSide side> AFS::FingerPrint getFilePrint() const;
     template <SelectSide side> void clearFilePrint();
 
-    void setMoveRef(ObjectId refId) { moveFileRef_ = refId; } //reference to corresponding renamed file
-    ObjectId getMoveRef() const { assert(!moveFileRef_ || (isEmpty<SelectSide::left>() != isEmpty<SelectSide::right>())); return moveFileRef_; } //may be nullptr
+
+    void setMovePair(FilePair* ref); //reference to corresponding moved/renamed file
+    FilePair* getMovePair() const; //may be nullptr
 
     SyncOperation testSyncOperation(SyncDirection testSyncDir) const override; //semantics: "what if"! assumes "active, no conflict, no recursion (directory)!
     SyncOperation getSyncOperation() const override;
@@ -607,7 +540,7 @@ private:
     FileAttributes attrL_;
     FileAttributes attrR_;
 
-    ObjectId moveFileRef_ = nullptr; //optional, filled by redetermineSyncDirection()
+    std::weak_ptr<FilePair> moveFileRef_; //optional, filled by DetectMovedFiles::findAndSetMovePair()
 
     FileContentCategory contentCategory_ = FileContentCategory::unknown;
     Zstringc categoryDescr_; //optional: custom category description (e.g. FileContentCategory::conflict or invalidTime)
@@ -615,7 +548,7 @@ private:
 
 //------------------------------------------------------------------
 
-class SymlinkPair : public FileSystemObject //this class models a TRUE symbolic link, i.e. one that is NEVER dereferenced: deref-links should be directly placed in class File/FolderPair
+class SymlinkPair : public FileSystemObject //models an unresolved symbolic link: followed-links should go in FilePair/FolderPair
 {
 public:
     void accept(FSObjectVisitor& visitor) const override;
@@ -726,11 +659,11 @@ public:
 
     void execute(ContainerObject& conObj)
     {
-        for (FilePair& file : conObj.refSubFiles())
+        for (FilePair& file : conObj.files())
             onFile_(file);
-        for (SymlinkPair& symlink : conObj.refSubLinks())
+        for (SymlinkPair& symlink : conObj.symlinks())
             onSymlink_(symlink);
-        for (FolderPair& subFolder : conObj.refSubFolders())
+        for (FolderPair& subFolder : conObj.subfolders())
         {
             onFolder_(subFolder);
             execute(subFolder);
@@ -873,14 +806,16 @@ template <SelectSide side> inline
 void FileSystemObject::removeFsObject()
 {
     if (isEmpty<getOtherSide<side>>())
-        itemNameL_ = itemNameR_ = Zstring(); //ensure (c_str) class invariant!
-    else
-        selectParam<side>(itemNameL_, itemNameR_).clear();
-
-    if (isPairEmpty())
+    {
+        selectParam<side>(itemNameL_, itemNameR_) = selectParam<getOtherSide<side>>(itemNameL_, itemNameR_); //ensure (c_str) class invariant!
         setSyncDir(SyncDirection::none); //calls notifySyncCfgChanged()
-    else //keep current syncDir_
+    }
+    else
+    {
+        selectParam<side>(itemNameL_, itemNameR_).clear();
+        //keep current syncDir_
         notifySyncCfgChanged(); //needed!?
+    }
 
     propagateChangedItemName<side>();
 }
@@ -889,22 +824,12 @@ void FileSystemObject::removeFsObject()
 template <SelectSide side> inline
 void FilePair::removeItem()
 {
+    if (isEmpty<getOtherSide<side>>())
+        setMovePair(nullptr); //cut ties between "move" pairs
+
     selectParam<side>(attrL_, attrR_) = FileAttributes();
     contentCategory_ = FileContentCategory::unknown;
     removeFsObject<side>();
-
-    //cut ties between "move" pairs
-    if (isPairEmpty())
-    {
-        if (moveFileRef_)
-            if (auto refFile = dynamic_cast<FilePair*>(FileSystemObject::retrieve(moveFileRef_)))
-            {
-                if (refFile->moveFileRef_ == getId()) //both ends should agree...
-                    refFile->moveFileRef_ = nullptr;
-                else assert(false); //...and why shouldn't they?
-            }
-        moveFileRef_ = nullptr;
-    }
 }
 
 
@@ -920,11 +845,11 @@ void SymlinkPair::removeItem()
 template <SelectSide side> inline
 void FolderPair::removeItem()
 {
-    for (FilePair& file : refSubFiles())
+    for (FilePair& file : files())
         file.removeItem<side>();
-    for (SymlinkPair& symlink : refSubLinks())
+    for (SymlinkPair& symlink : symlinks())
         symlink.removeItem<side>();
-    for (FolderPair& folder : refSubFolders())
+    for (FolderPair& folder : subfolders())
         folder.removeItem<side>();
 
     selectParam<side>(attrL_, attrR_) = FolderAttributes();
@@ -987,7 +912,7 @@ void ContainerObject::updateRelPathsRecursion(const FileSystemObject& fsAlias)
                                                                                fsAlias.parent().relPathR_), fsAlias.getItemName<side>());
     assert(relPathL_.c_str() == relPathR_.c_str() || relPathL_ != relPathR_);
 
-    for (FolderPair& folder : subFolders_)
+    for (FolderPair& folder : subfolders())
         folder.updateRelPathsRecursion<side>(folder);
 }
 
@@ -1008,83 +933,71 @@ ContainerObject::ContainerObject(const FileSystemObject& fsAlias) :
 
 
 inline
-FolderPair& ContainerObject::addFolder(const Zstring& itemNameL,
-                                       const FolderAttributes& left,
-                                       const Zstring& itemNameR,
-                                       const FolderAttributes& right)
+FolderPair& ContainerObject::addFolder(const Zstring& itemNameL, const FolderAttributes& attribL,
+                                       const Zstring& itemNameR, const FolderAttributes& attribR)
 {
-    subFolders_.emplace_back(itemNameL, left, itemNameR, right, *this);
-    return subFolders_.back();
+    subfolders_.push_back(makeSharedRef<FolderPair>(itemNameL, attribL, itemNameR, attribR, *this));
+    return subfolders_.back().ref();
 }
 
 
 template <> inline
 FolderPair& ContainerObject::addFolder<SelectSide::left>(const Zstring& itemName, const FolderAttributes& attr)
 {
-    subFolders_.emplace_back(itemName, attr, Zstring(), FolderAttributes(), *this);
-    return subFolders_.back();
+    return addFolder(itemName, attr, Zstring(), FolderAttributes());
 }
 
 
 template <> inline
 FolderPair& ContainerObject::addFolder<SelectSide::right>(const Zstring& itemName, const FolderAttributes& attr)
 {
-    subFolders_.emplace_back(Zstring(), FolderAttributes(), itemName, attr, *this);
-    return subFolders_.back();
+    return addFolder(Zstring(), FolderAttributes(), itemName, attr);
 }
 
 
 inline
-FilePair& ContainerObject::addFile(const Zstring&        itemNameL,
-                                   const FileAttributes& left,
-                                   const Zstring&        itemNameR,
-                                   const FileAttributes& right) //file exists on both sides
+FilePair& ContainerObject::addFile(const Zstring& itemNameL, const FileAttributes& attribL,
+                                   const Zstring& itemNameR, const FileAttributes& attribR)
 {
-    subFiles_.emplace_back(itemNameL, left, itemNameR, right, *this);
-    return subFiles_.back();
+    files_.push_back(makeSharedRef<FilePair>(itemNameL, attribL, itemNameR, attribR, *this));
+    return files_.back().ref();
 }
 
 
 template <> inline
 FilePair& ContainerObject::addFile<SelectSide::left>(const Zstring& itemName, const FileAttributes& attr)
 {
-    subFiles_.emplace_back(itemName, attr, Zstring(), FileAttributes(), *this);
-    return subFiles_.back();
+    return addFile(itemName, attr, Zstring(), FileAttributes());
 }
 
 
 template <> inline
 FilePair& ContainerObject::addFile<SelectSide::right>(const Zstring& itemName, const FileAttributes& attr)
 {
-    subFiles_.emplace_back(Zstring(), FileAttributes(), itemName, attr, *this);
-    return subFiles_.back();
+    return addFile(Zstring(), FileAttributes(), itemName, attr);
 }
 
 
 inline
-SymlinkPair& ContainerObject::addLink(const Zstring&        itemNameL,
-                                      const LinkAttributes& left,
-                                      const Zstring&        itemNameR,
-                                      const LinkAttributes& right) //link exists on both sides
+SymlinkPair& ContainerObject::addSymlink(const Zstring& itemNameL, const LinkAttributes& attribL,
+                                         const Zstring& itemNameR, const LinkAttributes& attribR)
 {
-    subLinks_.emplace_back(itemNameL, left, itemNameR, right, *this);
-    return subLinks_.back();
+    symlinks_.push_back(makeSharedRef<SymlinkPair>(itemNameL, attribL, itemNameR, attribR, *this));
+    return symlinks_.back().ref();
 }
 
 
 template <> inline
-SymlinkPair& ContainerObject::addLink<SelectSide::left>(const Zstring& itemName, const LinkAttributes& attr)
+SymlinkPair& ContainerObject::addSymlink<SelectSide::left>(const Zstring& itemName, const LinkAttributes& attr)
 {
-    subLinks_.emplace_back(itemName, attr, Zstring(), LinkAttributes(), *this);
-    return subLinks_.back();
+    return addSymlink(itemName, attr, Zstring(), LinkAttributes());
 }
 
 
 template <> inline
-SymlinkPair& ContainerObject::addLink<SelectSide::right>(const Zstring& itemName, const LinkAttributes& attr)
+SymlinkPair& ContainerObject::addSymlink<SelectSide::right>(const Zstring& itemName, const LinkAttributes& attr)
 {
-    subLinks_.emplace_back(Zstring(), LinkAttributes(), itemName, attr, *this);
-    return subLinks_.back();
+    return addSymlink(Zstring(), LinkAttributes(), itemName, attr);
 }
 
 
@@ -1099,11 +1012,11 @@ void FileSystemObject::flip()
 inline
 void ContainerObject::flip()
 {
-    for (FilePair& file : refSubFiles())
+    for (FilePair& file : files())
         file.flip();
-    for (SymlinkPair& symlink : refSubLinks())
+    for (SymlinkPair& symlink : symlinks())
         symlink.flip();
-    for (FolderPair& folder : refSubFolders())
+    for (FolderPair& folder : subfolders())
         folder.flip();
 
     std::swap(relPathL_, relPathR_);
@@ -1436,6 +1349,46 @@ void FilePair::clearFilePrint()
 }
 
 
+inline
+void FilePair::setMovePair(FilePair* ref)
+{
+    FilePair* refOld = getMovePair();
+    if (ref != refOld)
+    {
+        if (refOld)
+            refOld->moveFileRef_.reset();
+
+        if (ref)
+        {
+            FilePair* refOld2 = ref->getMovePair();
+            assert(!refOld2); //destroying already exising pair!? why?
+            if (refOld2)
+                refOld2 ->moveFileRef_.reset();
+
+            /**/ moveFileRef_ = std::static_pointer_cast<FilePair>(ref->shared_from_this());
+            ref->moveFileRef_ = std::static_pointer_cast<FilePair>(     shared_from_this());
+        }
+        else
+            moveFileRef_.reset();
+    }
+    else
+        assert(!ref); //are we called needlessly!?
+}
+
+
+inline
+FilePair* FilePair::getMovePair() const
+{
+    if (moveFileRef_.expired()) //skip std::shared_ptr construction => premature optimization?
+        return nullptr;
+
+    FilePair* ref = moveFileRef_.lock().get();
+    assert(!ref || (isEmpty<SelectSide::left>() != isEmpty<SelectSide::right>()));
+    assert(!ref || ref->moveFileRef_.lock().get() == this); //both ends should agree
+    return ref;
+}
+
+
 template <SelectSide sideTrg> inline
 void FolderPair::setSyncedTo(bool isSymlinkTrg,
                              bool isSymlinkSrc)
@@ -1459,18 +1412,10 @@ void FilePair::setSyncedTo(uint64_t fileSize,
                            bool isSymlinkTrg,
                            bool isSymlinkSrc)
 {
+    setMovePair(nullptr); //cut ties between "move" pairs
+
     selectParam<             sideTrg >(attrL_, attrR_) = {lastWriteTimeTrg, fileSize, filePrintTrg, isSymlinkTrg};
     selectParam<getOtherSide<sideTrg>>(attrL_, attrR_) = {lastWriteTimeSrc, fileSize, filePrintSrc, isSymlinkSrc};
-
-    //cut ties between "move" pairs
-    if (moveFileRef_)
-        if (auto refFile = dynamic_cast<FilePair*>(FileSystemObject::retrieve(moveFileRef_)))
-        {
-            if (refFile->moveFileRef_ == getId()) //both ends should agree...
-                refFile->moveFileRef_ = nullptr;
-            else assert(false); //...and why shouldn't they?
-        }
-    moveFileRef_ = nullptr;
 
     setItemName<sideTrg>(getItemName<getOtherSide<sideTrg>>());
 

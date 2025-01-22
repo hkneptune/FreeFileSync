@@ -7,15 +7,15 @@
 #ifndef PROCESS_XML_H_28345825704254262435
 #define PROCESS_XML_H_28345825704254262435
 
-#include <wx/gdicmn.h>
 #include <zen/file_access.h>
+#include <wx/gdicmn.h>
+#include <wx+/darkmode.h>
 #include "localization.h"
+#include "log_file.h"
 #include "base/structures.h"
 #include "ui/file_grid_attr.h"
 #include "ui/tree_grid_attr.h" //RTS: avoid tree grid's "file_hierarchy.h" dependency!
 #include "ui/cfg_grid.h"
-#include "log_file.h"
-//#include "version/version.h"
 
 
 namespace fff
@@ -44,12 +44,15 @@ extern const ExternalApp extCommandFileManager;
 extern const ExternalApp extCommandOpenDefault;
 
 //---------------------------------------------------------------------
-struct XmlGuiConfig
+struct FfsGuiConfig
 {
     MainConfiguration mainCfg;
+
+    //"GuiExclusiveConfig":
+    std::wstring notes;
     GridViewType gridViewType = GridViewType::action; //keep "visual" setting out of "MainConfiguration"
 
-    bool operator==(const XmlGuiConfig&) const = default;
+    bool operator==(const FfsGuiConfig&) const = default;
 };
 
 
@@ -62,9 +65,9 @@ struct BatchExclusiveConfig
 };
 
 
-struct XmlBatchConfig
+struct FfsBatchConfig
 {
-    XmlGuiConfig guiCfg; //batch config can be used in GUI (but not the other way round)
+    FfsGuiConfig guiCfg; //batch config can be used in GUI (but not the other way round)
     BatchExclusiveConfig batchExCfg;
 };
 
@@ -139,13 +142,14 @@ struct DpiLayout
 };
 
 
-struct XmlGlobalSettings
+struct GlobalConfig
 {
-    XmlGlobalSettings();
+    GlobalConfig();
 
     //---------------------------------------------------------------------
     //Shared (GUI/BATCH) settings
     wxLanguage programLanguage = getDefaultLanguage();
+    zen::ColorTheme appColorTheme = zen::ColorTheme::System;
     bool failSafeFileCopy = true;
     bool copyLockedFiles  = false; //safer default: avoid copies of partially written files
     bool copyFilePermissions = false;
@@ -254,16 +258,16 @@ struct XmlGlobalSettings
 };
 
 //read/write specific config types
-std::pair<XmlGuiConfig,      std::wstring /*warningMsg*/> readGuiConfig   (const Zstring& filePath); //
-std::pair<XmlBatchConfig,    std::wstring /*warningMsg*/> readBatchConfig (const Zstring& filePath); //throw FileError
-std::pair<XmlGlobalSettings, std::wstring /*warningMsg*/> readGlobalConfig(const Zstring& filePath); //
+std::pair<FfsGuiConfig,      std::wstring /*warningMsg*/> readGuiConfig   (const Zstring& filePath); //
+std::pair<FfsBatchConfig,    std::wstring /*warningMsg*/> readBatchConfig (const Zstring& filePath); //throw FileError
+std::pair<GlobalConfig, std::wstring /*warningMsg*/> readGlobalConfig(const Zstring& filePath); //
 
-void writeConfig(const XmlGuiConfig&      cfg, const Zstring& filePath); //
-void writeConfig(const XmlBatchConfig&    cfg, const Zstring& filePath); //throw FileError
-void writeConfig(const XmlGlobalSettings& cfg, const Zstring& filePath); //
+void writeConfig(const FfsGuiConfig&      cfg, const Zstring& filePath); //
+void writeConfig(const FfsBatchConfig&    cfg, const Zstring& filePath); //throw FileError
+void writeConfig(const GlobalConfig& cfg, const Zstring& filePath); //
 
 //convert (multiple) *.ffs_gui, *.ffs_batch files or combinations of both into target config structure:
-std::pair<XmlGuiConfig, std::wstring /*warningMsg*/> readAnyConfig(const std::vector<Zstring>& filePaths); //throw FileError
+std::pair<FfsGuiConfig, std::wstring /*warningMsg*/> readAnyConfig(const std::vector<Zstring>& filePaths); //throw FileError
 
 
 std::wstring extractJobName(const Zstring& cfgFilePath);

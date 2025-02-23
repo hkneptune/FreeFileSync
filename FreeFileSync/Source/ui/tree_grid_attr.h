@@ -36,9 +36,9 @@ std::vector<ColumnAttribOverview> getOverviewDefaultColAttribs()
     using namespace zen;
     return //harmonize with tree_view.cpp::onGridLabelContext() => expects stretched folder and non-stretched other columns!
     {
-        {ColumnTypeOverview::folder,   -dipToWxsize(140), 1, true},
-        {ColumnTypeOverview::itemCount, dipToWxsize( 70), 0, true},
-        {ColumnTypeOverview::bytes,     dipToWxsize( 70), 0, true},
+        {ColumnTypeOverview::folder,   - 2 * dipToWxsize(70), 1, true},
+        {ColumnTypeOverview::itemCount, dipToWxsize(70), 0, true},
+        {ColumnTypeOverview::bytes,     dipToWxsize(70), 0, true},
     };
 }
 

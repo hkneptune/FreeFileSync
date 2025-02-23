@@ -5,6 +5,7 @@
 // *****************************************************************************
 
 #include "status_handler.h"
+#include <thread>
 #include <zen/basic_math.h>
 
 using namespace zen;

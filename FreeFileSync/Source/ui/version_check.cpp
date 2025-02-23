@@ -17,9 +17,9 @@
 #include "../version/version.h"
 #include "small_dlgs.h"
 
-#include <zen/symlink_target.h>
-#include <zen/build_info.h>
-#include <wx/uilocale.h>
+    #include <zen/symlink_target.h>
+    #include <zen/build_info.h>
+    #include <wx/uilocale.h>
     #include <gtk/gtk.h>
 
 

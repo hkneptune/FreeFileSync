@@ -5,7 +5,7 @@ CXXFLAGS += -std=c++23 -pipe -DWXINTL_NO_GETTEXT_MACRO -I../.. -I../../zenXml -i
            -Wall -Wfatal-errors -Wmissing-include-dirs -Wswitch-enum -Wcast-align -Wnon-virtual-dtor -Wno-unused-function -Wshadow -Wno-maybe-uninitialized \
            -O3 -DNDEBUG `wx-config --cxxflags --debug=no` -pthread
 
-LDFLAGS += -s -no-pie `wx-config --libs std, aui, richtext --debug=no` -pthread
+LDFLAGS += -s `wx-config --libs std, aui, richtext --debug=no` -pthread
 
 
 CXXFLAGS  += `pkg-config --cflags openssl`

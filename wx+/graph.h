@@ -259,10 +259,10 @@ public:
             colorText = text;
             colorBack = back;
             colorGridLine = enhanceContrast(colorBack, //start with back color and deviate only as little as required
-                                            colorText, colorBack, 4 /*contrastRatioMin*/); //W3C recommends >= 4.5 for text
+                                            colorBack, 4 /*contrastRatioMin*/); //W3C recommends >= 4.5 for text
             return *this;
         }
-    
+
         wxColor getGridLineColor() const { return colorGridLine; }
 
         MainAttributes& setSelectionMode(GraphSelMode mode) { mouseSelMode = mode; return *this; }
@@ -333,7 +333,7 @@ private:
         SelectionBlock selBlock;
     };
     std::vector<SelectionBlock>     oldSel_; //applied selections
-    std::shared_ptr<MouseSelection> activeSel_; //set during mouse selection
+    std::unique_ptr<MouseSelection> activeSel_; //set during mouse selection
 
     MainAttributes attr_; //global attributes
 

@@ -7,7 +7,6 @@
 #ifndef STATUS_HANDLER_H_81704805908341534
 #define STATUS_HANDLER_H_81704805908341534
 
-#include <thread>
 #include <functional>
 #include "base/process_callback.h"
 #include "return_codes.h"

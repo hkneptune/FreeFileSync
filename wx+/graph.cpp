@@ -13,7 +13,6 @@
 using namespace zen;
 
 
-
 //TODO: support zoom via mouse wheel?
 
 namespace zen
@@ -437,13 +436,13 @@ Graph2D::Graph2D(wxWindow* parent,
                  long style,
                  const wxString& name) : wxPanel(parent, winid, pos, size, style, name)
 {
-#ifdef FFS_CUSTOM_DOUBLE_BUFFERING
-    MSWDisableComposited();
-#endif
     //https://wiki.wxwidgets.org/Flicker-Free_Drawing
     SetBackgroundStyle(wxBG_STYLE_PAINT); //get's rid of needless wxEVT_ERASE_BACKGROUND
     Bind(wxEVT_PAINT, [this](wxPaintEvent& event) { onPaintEvent(event); });
     Bind(wxEVT_SIZE,  [this](wxSizeEvent&  event) { Refresh(); event.Skip(); });
+
+    //perf: WS_EX_COMPOSITED vs BufferedPaintDC doesn't seem to matter. Even for 200 FPS graph, CPU consumption is barely noticeable!
+    //MSWDisableComposited(); -> see comment in grid.cpp
 
     Bind(wxEVT_LEFT_DOWN,          [this](wxMouseEvent& event) { onMouseLeftDown(event); });
     Bind(wxEVT_MOTION,             [this](wxMouseEvent& event) { onMouseMovement(event); });
@@ -454,12 +453,7 @@ Graph2D::Graph2D(wxWindow* parent,
 
 void Graph2D::onPaintEvent(wxPaintEvent& event)
 {
-#ifdef FFS_CUSTOM_DOUBLE_BUFFERING
-    BufferedPaintDC dc(*this, doubleBuffer_);
-#else
-    wxPaintDC dc(this);
-    static_assert(wxALWAYS_NATIVE_DOUBLE_BUFFER);
-#endif
+    DynBufPaintDC dc(*this, doubleBuffer_);
     render(dc);
 }
 

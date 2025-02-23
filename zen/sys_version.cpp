@@ -68,13 +68,15 @@ OsVersionDetail zen::getOsVersionDetail() //throw SysError
     std::vector<std::wstring_view> verDigits = splitCpy<std::wstring_view>(osVersion, L'.', SplitOnEmpty::allow); //e.g. "7.7.1908"
     verDigits.resize(2);
 
-    return OsVersionDetail
+    return
     {
+        .version
         {
             stringTo<int>(verDigits[0]),
             stringTo<int>(verDigits[1])
         },
-        osVersion, osName
+        .osVersionRaw = osVersion,
+        .osName = osName,
     };
 }
 

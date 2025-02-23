@@ -41,11 +41,9 @@ class PopupDialogGenerated : public wxDialog
 private:
 
 protected:
-    wxPanel* m_panel33;
     wxStaticBitmap* m_bitmapMsgType;
     wxStaticText* m_staticTextMain;
     wxRichTextCtrl* m_richTextDetail;
-    wxStaticLine* m_staticline6;
     wxCheckBox* m_checkBoxCustom;
     wxBoxSizer* bSizerStdButtons;
     wxButton* m_buttonAccept;

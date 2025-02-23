@@ -1,3 +1,17 @@
+FreeFileSync 14.1 [2025-02-19]
+------------------------------
+Further dark mode improvements
+Fixed blurry icons due to image resizing glitch 
+Fixed RealTimeSync process not exiting while in taskbar (Linux)
+Improved file icon loading performance
+Improved extension handling for multi-file renaming
+Mitigate icon size rendering bug for notification emails
+Close popup dialogs using Ctrl+Enter while ignoring keyboard focus
+Resume from system tray via single mouse click
+Avoid white flash when resuming progress dialog from system tray (Windows)
+Increased progress indicator UI update frequency
+
+
 FreeFileSync 14.0 [2025-01-17]
 ------------------------------
 Dark mode support (Windows 10 20H1, macOS 10.14 (Mojave), Linux)

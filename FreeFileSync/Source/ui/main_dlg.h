@@ -13,11 +13,12 @@
 #include <wx+/file_drop.h>
 #include "gui_generated.h"
 #include "file_grid.h"
+#include "progress_indicator.h"
 #include "sync_cfg.h"
 #include "log_panel.h"
 #include "folder_history_box.h"
 #include "../config.h"
-#include "../status_handler.h"
+//#include "../status_handler.h"
 #include "../base/algorithm.h"
 #include "../base/synchronization.h"
 
@@ -26,7 +27,6 @@ namespace fff
 {
 class FolderPairFirst;
 class FolderPairPanel;
-class CompareProgressPanel;
 template <class GuiPanel> class FolderPairCallback;
 
 
@@ -326,7 +326,7 @@ private:
     bool statusTxtHighlightFirst_ = false;
 
     //compare status panel (hidden on start, shown during comparison)
-    std::unique_ptr<CompareProgressPanel> compareStatus_; //always bound
+    std::optional<CompareProgressPanel> compareStatus_; //always bound
 
     LogPanel* logPanel_ = nullptr;
 

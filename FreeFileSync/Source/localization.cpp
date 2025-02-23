@@ -54,7 +54,7 @@ private:
 
     Translation       transMapping_; //map original text |-> translation
     TranslationPlural transMappingPl_;
-    std::unique_ptr<plural::PluralForm> pluralParser_; //bound!
+    std::optional<plural::PluralForm> pluralParser_; //bound!
     const bool haveRtlLayout_;
 };
 
@@ -67,7 +67,7 @@ FFSTranslation::FFSTranslation(const std::string& lngStream, bool haveRtlLayout)
     lng::TranslationPluralMap transPluralUtf;
     lng::parseLng(lngStream, header, transUtf, transPluralUtf); //throw ParsingError
 
-    pluralParser_ = std::make_unique<plural::PluralForm>(header.pluralDefinition); //throw plural::ParsingError
+    pluralParser_.emplace(header.pluralDefinition); //throw plural::ParsingError
 
     for (const auto& [original, translation] : transUtf)
         transMapping_.emplace(utfTo<std::wstring>(original),

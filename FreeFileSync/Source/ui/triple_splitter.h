@@ -15,14 +15,14 @@
 
 
 /* manage three contained windows:
-    1. left and right window are stretched
-    2. middle window is fixed size
-    3. middle window position can be changed via mouse with two sash lines
-    -----------------
-    |      | |      |
-    |      | |      |
-    |      | |      |
-    -----------------                */
+     1. left and right window are stretched
+     2. middle window is fixed size
+     3. middle window position can be changed via mouse with two sash lines
+     -----------------
+     |      | |      |
+     |      | |      |
+     |      | |      |
+     -----------------                */
 namespace fff
 {
 class TripleSplitter : public wxWindow
@@ -74,6 +74,8 @@ private:
     wxWindow* windowL_ = nullptr;
     wxWindow* windowC_ = nullptr;
     wxWindow* windowR_ = nullptr;
+
+    std::optional<wxBitmap> doubleBuffer_;
 };
 }
 

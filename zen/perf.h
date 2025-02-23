@@ -28,11 +28,12 @@ namespace zen
 {
 /* issue with wxStopWatch? https://freefilesync.org/forum/viewtopic.php?t=1426
      - wxStopWatch implementation uses QueryPerformanceCounter: https://github.com/wxWidgets/wxWidgets/blob/17d72a48ffd4d8ff42eed070ac48ee2de50ceabd/src/common/stopwatch.cpp
-     - whatever the problem was, it's almost certainly not caused by QueryPerformanceCounter():
-          MSDN: "How often does QPC roll over? Not less than 100 years from the most recent system boot"
+     - MSDN: "How often does QPC roll over? Not less than 100 years from the most recent system boot"
           https://docs.microsoft.com/en-us/windows/win32/sysinfo/acquiring-high-resolution-time-stamps#general-faq-about-qpc-and-tsc
+     - But QPC can glitch out in VMs: https://web.archive.org/web/20190420142348/https://blogs.msdn.microsoft.com/tvoellm/2008/06/05/negative-ping-times-in-windows-vms-whats-up/
+       ... or for AMD Opteron CPUs: https://web.archive.org/web/20191101122320/https://support.microsoft.com/en-us/help/938448/a-windows-server-2003-based-server-may-experience-time-stamp-counter-d
 
-     - using the system clock is problematic: https://freefilesync.org/forum/viewtopic.php?t=5280
+     - system clock is obviously no alternative: https://freefilesync.org/forum/viewtopic.php?t=5280
 
        std::chrono::system_clock wraps ::GetSystemTimePreciseAsFileTime()
        std::chrono::steady_clock wraps ::QueryPerformanceCounter()                       */

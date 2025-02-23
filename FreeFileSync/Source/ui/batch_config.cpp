@@ -149,6 +149,18 @@ BatchDialogConfig BatchDialog::getConfig() const
 
 void BatchDialog::onLocalKeyEvent(wxKeyEvent& event)
 {
+    switch (event.GetKeyCode())
+    {
+        case WXK_RETURN:
+        case WXK_NUMPAD_ENTER:
+            if (event.ControlDown()) //Ctrl+Enter or on macOS: Command+Enter
+            {
+                wxCommandEvent dummy(wxEVT_COMMAND_BUTTON_CLICKED);
+                m_buttonSaveAs->Command(dummy); //simulate click
+                return;
+            }
+            break;
+    }
     event.Skip();
 }
 

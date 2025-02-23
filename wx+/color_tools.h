@@ -59,38 +59,34 @@ double relativeContrast(const wxColor& c1, const wxColor& c2)
 
 namespace
 {
-//get first color between [col1, colMax] (assuming direct line in decoded sRGB) where minimum contrast is satisfied against col2
-wxColor enhanceContrast(wxColor col1, wxColor colMax, const wxColor& col2, double contrastRatioMin)
+//get first color between [col1, white/black] (assuming direct line in decoded sRGB) where minimum contrast is satisfied against col2
+wxColor enhanceContrast(wxColor col1, const wxColor& col2, double contrastRatioMin)
 {
-    /*  Caveat: macOS uses partially-transparent colors! e.g. #RGBA
+    const wxColor colMax = relativeLuminance(col2) < 0.17912878474779204 /* = sqrt(0.05 * 1.05) - 0.05 */ ? 0xffffff : 0;
+    //equivalent to: relativeContrast(col2, *wxWHITE) > relativeContrast(col2, *wxBLACK) ? *wxWHITE : *wxBLACK
+
+    assert(col2.Alpha() == wxALPHA_OPAQUE);
+    if (col2.Alpha() != wxALPHA_OPAQUE)
+        return *wxRED; //make some noise
+
+    /*  Caveat: macOS uses partially-transparent colors! e.g. in #RGBA:
         wxSYS_COLOUR_GRAYTEXT   #FFFFFF3F
         wxSYS_COLOUR_WINDOWTEXT #FFFFFFD8
-        wxSYS_COLOUR_WINDOW     #171717FF          */
-    auto alphaBlend = [](const wxColor& front, const wxColor& back)
+        wxSYS_COLOUR_WINDOW     #171717FF      */
+    if (col1.Alpha() != wxALPHA_OPAQUE)
     {
-        if (front.Alpha() == wxALPHA_OPAQUE)
-            return front;
-
-        if (back.Alpha() != wxALPHA_OPAQUE)
-        {
-            assert(false);
-            return *wxRED; //make some noise
-        }
-
-        auto calcChannel = [a = front.Alpha()](unsigned char f, unsigned char b)
+        auto calcChannel = [a = col1.Alpha()](unsigned char f, unsigned char b)
         {
             return static_cast<unsigned char>(numeric::intDivRound(f * a + b * (255 - a), 255));
         };
 
-        return wxColor(calcChannel(front.Red  (), back.Red  ()),
-                       calcChannel(front.Green(), back.Green()),
-                       calcChannel(front.Blue (), back.Blue ()));
-    };
-    col1   = alphaBlend(col1,   col2);
-    colMax = alphaBlend(colMax, col2);
+        col1 = wxColor(calcChannel(col1.Red  (), col2.Red  ()),
+                       calcChannel(col1.Green(), col2.Green()),
+                       calcChannel(col1.Blue (), col2.Blue ()));
+    }
 
     //---------------------------------------------------------------
-    assert(contrastRatioMin >= 4); //lower values (especially near 1) probably aren't sensible mathematically, also: W3C recommends >= 4.5 for base AA compliance
+    assert(contrastRatioMin >= 3); //lower values (especially near 1) probably aren't sensible mathematically, also: W3C recommends >= 4.5 for base AA compliance
     auto contrast = [](double lum1, double lum2) //input: relative luminance
     {
         if (lum1 < lum2)
@@ -128,17 +124,6 @@ wxColor enhanceContrast(wxColor col1, wxColor colMax, const wxColor& col2, doubl
                    srgbEncode(t * (b_m - b_1) + b_1));
 }
 }
-
-inline //get first color between [col1, white/black] (assuming direct line in decoded sRGB) where minimum contrast is satisfied against col2
-wxColor enhanceContrast(const wxColor& col1, const wxColor& col2, double contrastRatioMin)
-{
-    return enhanceContrast(col1,
-                           relativeContrast(col2, *wxWHITE) > //equivalent to: relativeLuminance(col2) < 0.1791287847
-                           relativeContrast(col2, *wxBLACK) ? //
-                           *wxWHITE : *wxBLACK,
-                           col2, contrastRatioMin);
-}
-
 
 #if 0
 //toy sample code: gamma-encoded sRGB -> CIEXYZ -> CIELAB and back: input === output RGB color (verified)

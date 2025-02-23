@@ -12,7 +12,6 @@
 #include <wx/clipbrd.h>
 #include <wx/event.h>
 #include <wx/tooltip.h>
-#include <wx+/app_main.h>
 #include <wx+/darkmode.h>
 #include <wx+/image_resources.h>
 #include "config.h"
@@ -161,7 +160,7 @@ void Application::onEnterEventLoop()
 {
     //wxWidgets app exit handling is weird... we want to exit only if the logical main window is closed, not just *any* window!
     wxTheApp->SetExitOnFrameDelete(false); //prevent popup-windows from becoming temporary top windows leading to program exit after closure
-    ZEN_ON_SCOPE_EXIT(if (!globalWindowWasSet()) wxTheApp->ExitMainLoop()); //quit application, if no main window was set (batch silent mode)
+    ZEN_ON_SCOPE_EXIT(if (!wxTheApp->GetExitOnFrameDelete()) wxTheApp->ExitMainLoop()); //quit application, if no main window was set (batch silent mode)
 
     //try to set config/batch- filepath set by %1 parameter
     std::vector<Zstring> commandArgs;

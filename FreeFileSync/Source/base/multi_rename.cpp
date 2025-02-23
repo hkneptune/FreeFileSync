@@ -30,7 +30,7 @@ std::wstring_view findLongestSubstring(const std::vector<std::wstring_view>& str
             const bool isCommon = [&]
             {
                 for (const std::wstring_view str : strings)
-                    if (str.data() != strMin.data()) //sufficient check: an extension of strMin wouldn't prune anyway
+                    if (str.data() != strMin.data()) //sufficient check: an extension of strMin necessarily contains "substr" anyway
                         if (!contains(str, substr))
                             return false;
                 return true;
@@ -46,8 +46,8 @@ std::wstring_view findLongestSubstring(const std::vector<std::wstring_view>& str
 
 struct StringPart
 {
-    std::vector<std::wstring_view> diff; //may be empty, but only at beginning
-    std::wstring_view common;            //may be empty, but only at end
+    std::vector<std::wstring_view> diff; //may be empty, but only at beginning (or between filename/extension parts)
+    std::wstring_view common;            //may be empty, but only at end       (dito)
 };
 
 std::vector<StringPart> getStringParts(std::vector<std::wstring_view>&& strings)
@@ -121,10 +121,24 @@ bool fff::isRenamePlaceholderChar(wchar_t c) { return getPlaceholderIndex(c) < s
 
 struct fff::RenameBuf
 {
-    explicit RenameBuf(const std::vector<std::wstring>& s) : strings(s) {}
+    explicit RenameBuf(const std::vector<std::wstring>& s) : strings(s)
+    {
+        //file extensions deserve special treatment: https://freefilesync.org/forum/viewtopic.php?t=11943#p46453
+        std::vector<std::wstring_view> names;
+        std::vector<std::wstring_view> extensions; //including "."
+        for (const std::wstring& fileName : strings)
+        {
+            auto it = findLast(fileName.begin(), fileName.end(), L'.');
+            names.     push_back(makeStringView(fileName.begin(), it));
+            extensions.push_back(makeStringView(it, fileName.end()));
+        }
+
+        parts       = getStringParts(std::move(names));
+        append(parts, getStringParts(std::move(extensions)));
+    }
 
     std::vector<std::wstring> strings;
-    std::vector<StringPart> parts = getStringParts({strings.begin(), strings.end()});
+    std::vector<StringPart> parts;
 };
 
 
@@ -145,7 +159,7 @@ std::pair<std::wstring /*phrase*/, SharedRef<const RenameBuf>> fff::getPlacehold
             if (placeIdx >= std::size(placeholders))
                 break; //represent "all the rest" with last placeholder
         }
-        phrase += p.common; //TODO: what if common part already contains placeholder character!?
+        phrase += p.common; //TODO: what if common part incidentally contains placeholder character!?
     }
     return {phrase, renameBuf};
 }
@@ -153,11 +167,11 @@ std::pair<std::wstring /*phrase*/, SharedRef<const RenameBuf>> fff::getPlacehold
 
 const std::vector<std::wstring> fff::resolvePlaceholderPhrase(const std::wstring_view phrase, const RenameBuf& buf)
 {
-    std::vector<std::vector<std::wstring_view>> diffByIdx;
+    std::vector<const std::vector<std::wstring_view>*> diffByIdx;
 
     for (const StringPart& p : buf.parts)
         if (!p.diff.empty())
-            diffByIdx.push_back(std::move(p.diff)), assert(diffByIdx.back().size() == buf.strings.size());
+            diffByIdx.push_back(&p.diff), assert(p.diff.size() == buf.strings.size());
 
     std::vector<std::wstring> output;
 
@@ -170,9 +184,9 @@ const std::vector<std::wstring> fff::resolvePlaceholderPhrase(const std::wstring
                 placeIdx < diffByIdx.size())
             {
                 if (placeIdx == std::size(placeholders) - 1) //last placeholder represents "all the rest"
-                    resolved.append(diffByIdx[placeIdx][i].data(), buf.strings[i].data() + buf.strings[i].size());
+                    resolved.append((*diffByIdx[placeIdx])[i].data(), buf.strings[i].data() + buf.strings[i].size());
                 else
-                    resolved += diffByIdx[placeIdx][i];
+                    resolved += (*diffByIdx[placeIdx])[i];
             }
             else
                 resolved += c;

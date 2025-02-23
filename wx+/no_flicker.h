@@ -83,8 +83,7 @@ void setTextWithUrls(wxRichTextCtrl& richCtrl, const wxString& newText)
     richCtrl.Clear();
 
     wxRichTextAttr urlStyle;
-    urlStyle.SetTextColour(enhanceContrast(*wxBLUE,
-                                           wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT),
+    urlStyle.SetTextColour(enhanceContrast(*wxBLUE, //primarily needed for dark mode!
                                            wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW), 5 /*contrastRatioMin*/)); //W3C recommends >= 4.5
     urlStyle.SetFontUnderlined(true);
 

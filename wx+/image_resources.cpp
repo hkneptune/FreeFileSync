@@ -148,7 +148,7 @@ private:
     std::unordered_map<std::string, wxImage> imagesRaw_;
     std::unordered_map<std::string, wxImage> imagesScaled_;
 
-    std::unique_ptr<HqParallelScaler> hqScaler_;
+    std::optional<HqParallelScaler> hqScaler_;
 
     using OutImageKey = std::tuple<std::string /*name*/, int /*height*/>;
 
@@ -213,7 +213,7 @@ ImageBuffer::ImageBuffer(const Zstring& zipPath) //throw FileError
     const int hqScale = std::clamp(static_cast<int>(std::ceil(getScreenDpiScale())), 1, xbrz::SCALE_FACTOR_MAX);
     //even for 125% DPI scaling, "2xBRZ + bilinear downscale" gives a better result than mere "125% bilinear upscale"!
     if (hqScale > 1)
-        hqScaler_ = std::make_unique<HqParallelScaler>(hqScale);
+        hqScaler_.emplace(hqScale);
 
     for (const auto& [fileName, stream] : streams)
         if (endsWith(fileName, Zstr(".png")))
@@ -304,7 +304,7 @@ const wxImage& ImageBuffer::getImage(const std::string& name, int maxWidth /*opt
 }
 
 
-std::unique_ptr<ImageBuffer> globalImageBuffer;
+std::optional<ImageBuffer> globalImageBuffer;
 }
 
 
@@ -312,7 +312,7 @@ void zen::imageResourcesInit(const Zstring& zipPath) //throw FileError
 {
     assert(runningOnMainThread()); //wxWidgets is not thread-safe!
     assert(!globalImageBuffer);
-    globalImageBuffer = std::make_unique<ImageBuffer>(zipPath); //throw FileError
+    globalImageBuffer.emplace(zipPath); //throw FileError
 }
 
 

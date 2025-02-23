@@ -226,7 +226,7 @@ public:
 
         const Zstring& serviceName = numberTo<Zstring>(sessionCfg_.deviceId.port);
 
-        socket_ = std::make_unique<Socket>(sessionCfg_.deviceId.server, serviceName, timeoutSec); //throw SysError
+        socket_.emplace(sessionCfg_.deviceId.server, serviceName, timeoutSec); //throw SysError
 
         sshSession_ = ::libssh2_session_init();
         if (!sshSession_) //does not set ssh last error; source: only memory allocation may fail
@@ -717,7 +717,7 @@ private:
         SftpNonBlockInfo nbInfo;
     };
 
-    std::unique_ptr<Socket> socket_; //*bound* after constructor has run
+    std::optional<Socket> socket_; //*bound* after constructor has run
     LIBSSH2_SESSION* sshSession_ = nullptr;
     std::vector<SftpChannelInfo> sftpChannels_;
     bool possiblyCorrupted_ = false;

@@ -66,7 +66,8 @@ std::string generateLogHeaderTxt(const ProcessSummary& s, const ErrorLog& log, i
     summary.push_back(tabSpace + utfTo<std::string>(_("Total time:")) + ' ' + utfTo<std::string>(formatTimeSpan(totalTimeSec)));
 
     size_t sepLineLen = 0; //calculate max width (considering Unicode!)
-    for (const std::string& str : summary) sepLineLen = std::max(sepLineLen, unicodeLength(str));
+    for (const std::string& str : summary)
+        sepLineLen = std::max(sepLineLen, unicodeLength(str));
 
     std::string output = headerLine + '\n';
     output += std::string(sepLineLen + 1, '_') + '\n';
@@ -168,10 +169,10 @@ std::string formatMessageHtml(const LogEntry& entry)
         case MSG_TYPE_WARNING: typeImage = "msg-warning.png"; break;
         case MSG_TYPE_ERROR:   typeImage = "msg-error.png";   break;
     }
-
+    //*both* width + height are required (or at least Thunderbird image size calculation glitches out)
     return R"(		<tr>
             <td valign="top">)" + htmlTxt(formatTime(formatTimeTag, getLocalTime(entry.time))) + R"(</td>
-            <td valign="top"><img src="https://freefilesync.org/images/log/)" + typeImage + R"(" height="16" alt=")" + typeLabel + R"(:"></td>
+            <td valign="top"><img src="https://freefilesync.org/images/log/)" + typeImage + R"(" width="16" height="16" alt=")" + typeLabel + R"(:"></td>
             <td>)" + htmlTxt(makeStringView(entry.message.begin(), entry.message.end())) + R"(</td>
         </tr>
 )";
@@ -603,9 +604,9 @@ Zstring fff::generateLogFileName(LogFileFormat logFormat, const ProcessSummary& 
         switch (summary.result)
         {
             case TaskResult::success: break;
-            case TaskResult::warning: return _("Warning");
-            case TaskResult::error:   return _("Error");
-            case TaskResult::cancelled:         return _("Stopped");
+            case TaskResult::warning:   return _("Warning");
+            case TaskResult::error:     return _("Error");
+            case TaskResult::cancelled: return _("Stopped");
         }
         return std::wstring();
     }();

@@ -51,8 +51,55 @@ ImageHolder copyToImageHolder(const GdkPixbuf& pixBuf, int maxSize) //throw SysE
     {
         targetWidth  = numeric::intDivRound(targetWidth  * maxSize, maxExtent);
         targetHeight = numeric::intDivRound(targetHeight * maxSize, maxExtent);
+    }
+    ImageHolder imgOut(targetWidth, targetHeight, true /*withAlpha*/);
+    unsigned char* rgbOut   = imgOut.getRgb();
+    unsigned char* alphaOut = imgOut.getAlpha();
 
-#if 0 //alternative to xbrz::bilinearScaleSimple()? does it support alpha-channel?
+    if (srcWidth  != targetWidth ||
+        srcHeight != targetHeight)
+    {
+        const auto pixRead = [srcBytes, srcStride, channels](int x, int y)
+        {
+            const unsigned char* const ptr = srcBytes + y * srcStride + channels * x; //RGB(A) byte order
+
+            const int a = channels == 4 ? ptr[3] : 255;
+
+            return [a, ptr](int channel)
+            {
+                if (channel == 3)
+                    return a;
+
+                return ptr[channel] * a;
+                //Limitation: alpha should be applied in gamma-decoded linear RGB space: https://ssp.impulsetrain.com/gamma-premult.html
+            };
+        };
+
+        const auto pixWrite = [rgbOut, alphaOut](const auto& interpolate) mutable
+        {
+            const double a = interpolate(3);
+            if (a <= 0.0)
+            {
+                *alphaOut++ = 0;
+                rgbOut += 3; //don't care about color
+            }
+            else
+            {
+                *alphaOut++ = xbrz::byteRound(a);
+                *rgbOut++   = xbrz::byteRound(interpolate(0) / a); //r
+                *rgbOut++   = xbrz::byteRound(interpolate(1) / a); //g
+                *rgbOut++   = xbrz::byteRound(interpolate(2) / a); //b
+            }
+        };
+        xbrz::bilinearScale(pixRead,       //PixReader pixRead
+                            srcWidth,      //int srcWidth
+                            srcHeight,     //int srcHeight
+                            pixWrite,      //PixWriter pixWrite
+                            targetWidth,   //int trgWidth
+                            targetHeight,  //int trgHeight
+                            0,             //int yFirst
+                            targetHeight); //int yLast
+#if 0 //alternative: but does it support alpha-channel?
         GdkPixbuf* pixBufShrinked = ::gdk_pixbuf_scale_simple(pixBuf,               //const GdkPixbuf* src
                                                               targetWidth,          //int dest_width
                                                               targetHeight,         //int dest_height
@@ -62,41 +109,18 @@ ImageHolder copyToImageHolder(const GdkPixbuf& pixBuf, int maxSize) //throw SysE
         ZEN_ON_SCOPE_EXIT(::g_object_unref(pixBufShrinked));
 #endif
     }
+    else //perf: going overboard?
+        for (int y = 0; y < srcHeight; ++y)
+            for (int x = 0; x < srcWidth; ++x)
+            {
+                const unsigned char* const ptr = srcBytes + y * srcStride + channels * x; //RGB(A) byte order
 
-    const auto imgReader = [srcBytes, srcStride, channels](int x, int y, xbrz::BytePixel& pix)
-    {
-        const unsigned char* const ptr = srcBytes + y * srcStride + channels * x;
+                *alphaOut++ = channels == 4 ? ptr[3] : 255;
+                *rgbOut++   = ptr[0];
+                *rgbOut++   = ptr[1];
+                *rgbOut++   = ptr[2];
+            }
 
-        const unsigned char a = channels == 4 ? ptr[3] : 255;
-        pix[0] = a;
-        pix[1] = xbrz::premultiply(ptr[0], a); //r
-        pix[2] = xbrz::premultiply(ptr[1], a); //g
-        pix[3] = xbrz::premultiply(ptr[2], a); //b
-    };
-
-    ImageHolder imgOut(targetWidth, targetHeight, true /*withAlpha*/);
-
-    const auto imgWriter = [rgb = imgOut.getRgb(), alpha = imgOut.getAlpha()](const xbrz::BytePixel& pix) mutable
-    {
-        const unsigned char a = pix[0];
-        * alpha++ = a;
-        * rgb++   = xbrz::demultiply(pix[1], a); //r
-        *rgb++   = xbrz::demultiply(pix[2], a); //g
-        *rgb++   = xbrz::demultiply(pix[3], a); //b
-    };
-
-    if (srcWidth  == targetWidth &&
-        srcHeight == targetHeight)
-        xbrz::unscaledCopy(imgReader, imgWriter, srcWidth, srcHeight); //perf: going overboard?
-    else
-        xbrz::bilinearScaleSimple(imgReader,     //PixReader srcReader
-                                  srcWidth,      //int srcWidth
-                                  srcHeight,     //int srcHeight
-                                  imgWriter,     //PixWriter trgWriter
-                                  targetWidth,   //int trgWidth
-                                  targetHeight,  //int trgHeight
-                                  0,             //int yFirst
-                                  targetHeight); //int yLast
     return imgOut;
 }
 
@@ -192,7 +216,7 @@ FileIconHolder fff::getTrashIcon(int maxSize) //throw SysError
 
 FileIconHolder fff::getFileManagerIcon(int maxSize) //throw SysError
 {
-    GIcon* const trashIcon = ::g_themed_icon_new("system-file-manager"); //empty: "user-trash"
+    GIcon* const trashIcon = ::g_themed_icon_new("system-file-manager");
     if (!trashIcon)
         throw SysError(formatSystemError("g_themed_icon_new(system-file-manager)", L"", L"Icon not available."));
 

@@ -68,7 +68,7 @@ void setBitmapTextLabel(wxBitmapButton& btn, const wxImage& img, const wxString&
                  stackImages(img, imgTxt, ImageStackLayout::horizontal, ImageStackAlignment::center, wxsizeToScreen(gap)) :
                  stackImages(imgTxt, img, ImageStackLayout::horizontal, ImageStackAlignment::center, wxsizeToScreen(gap));
 
-    //SetMinSize() instead of SetSize() is needed here for wxWindows layout determination to work correctly
+    //SetMinSize() instead of SetSize() is needed here for wxWidgets layout determination to work correctly
     btn.SetMinSize({screenToWxsize(imgTxt.GetWidth()) + 2 * border,
                     std::max(screenToWxsize(imgTxt.GetHeight()) + 2 * border, getDefaultButtonHeight())});
 

@@ -157,22 +157,7 @@ std::weak_ordering zen::compareNativePath(const Zstring& lhs, const Zstring& rhs
 
 namespace
 {
-std::unordered_map<Zstring, Zstring> getAllEnvVars()
-{
-    assert(runningOnMainThread());
-
-    std::unordered_map<Zstring, Zstring> envVars;
-    if (char** line = environ)
-        for (; *line; ++line)
-        {
-            const std::string_view l(*line);
-            envVars.emplace(beforeFirst(l, '=', IfNotFoundReturn::all),
-                            afterFirst(l, '=', IfNotFoundReturn::none));
-        }
-    return envVars;
-}
-
-constinit Global<std::unordered_map<Zstring, Zstring>> globalEnvVars;
+    constinit Global<std::unordered_map<Zstring, Zstring>> globalEnvVars;
 }
 
 
@@ -184,7 +169,21 @@ std::optional<Zstring> zen::getEnvironmentVar(const ZstringView name)
         getenv_s() to the rescue!? not implemented on GCC, apparently *still* not threadsafe!!!
 
         => *eff* this: make a global copy during start up! */
-    globalEnvVars.setOnce([] { return std::make_unique<std::unordered_map<Zstring, Zstring>>(getAllEnvVars()); });
+    globalEnvVars.setOnce([]
+    {
+        assert(runningOnMainThread());
+
+        auto envVars = std::make_unique<std::unordered_map<Zstring, Zstring>>();
+        if (char** line = environ)
+            for (; *line; ++line)
+            {
+                const std::string_view l(*line);
+                envVars->emplace(beforeFirst(l, '=', IfNotFoundReturn::all),
+                                 afterFirst(l, '=', IfNotFoundReturn::none));
+            }
+
+        return envVars;
+    });
 
     if (std::shared_ptr<std::unordered_map<Zstring, Zstring>> envVars = globalEnvVars.get())
     {
@@ -194,6 +193,7 @@ std::optional<Zstring> zen::getEnvironmentVar(const ZstringView name)
     }
     else
         assert(false); //access during global shutdown => SOL!
+
     return {};
 }
 

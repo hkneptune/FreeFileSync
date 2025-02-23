@@ -151,7 +151,7 @@ public:
         if (postBuf && onPostBytesSent)
         {
             int64_t bytesReported = 0;
-            while (futHeader.wait_for(std::chrono::milliseconds(50)) == std::future_status::timeout)
+            while (futHeader.wait_for(std::chrono::milliseconds(25)) == std::future_status::timeout)
             {
                 const int64_t bytesDelta = *postBytesSent /*atomic shared access!*/- bytesReported;
                 bytesReported += bytesDelta;

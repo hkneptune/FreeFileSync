@@ -16,7 +16,6 @@
 #include <wx+/context_menu.h>
 #include <wx+/bitmap_button.h>
 #include <wx+/choice_enum.h>
-//#include <wx+/darkmode.h>
 #include <wx+/rtl.h>
 #include <wx+/no_flicker.h>
 #include <wx+/image_tools.h>
@@ -176,6 +175,18 @@ AboutDlg::AboutDlg(wxWindow* parent) : AboutDlgGenerated(parent)
 
 void AboutDlg::onLocalKeyEvent(wxKeyEvent& event) //process key events without explicit menu entry :)
 {
+    switch (event.GetKeyCode())
+    {
+        case WXK_RETURN:
+        case WXK_NUMPAD_ENTER:
+            if (event.ControlDown()) //Ctrl+Enter or on macOS: Command+Enter
+            {
+                wxCommandEvent dummy(wxEVT_COMMAND_BUTTON_CLICKED);
+                m_buttonClose->Command(dummy); //simulate click
+                return;
+            }
+            break;
+    }
     event.Skip();
 }
 }
@@ -263,7 +274,7 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, Zstrin
     folderPathPhraseOut_(folderPathPhrase),
     parallelOpsOut_(parallelOps)
 {
-    setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
+    setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOK).setCancel(m_buttonCancel));
 
     setImage(*m_toggleBtnGdrive, loadImage("google_drive"));
 
@@ -410,7 +421,7 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, Zstrin
 
     updateGui(); //*after* SetSizeHints when standard dialog height has been calculated
 
-    m_buttonOkay->SetFocus();
+    m_buttonOK->SetFocus();
 }
 
 
@@ -911,7 +922,7 @@ private:
 
     void onLocalKeyEvent(wxKeyEvent& event);
 
-    std::unique_ptr<FolderSelector> targetFolder; //always bound
+    std::optional<FolderSelector> targetFolder; //always bound
 
     //output-only parameters:
     Zstring& targetFolderPathOut_;
@@ -940,8 +951,8 @@ CopyToDialog::CopyToDialog(wxWindow* parent,
 
     setImage(*m_bitmapCopyTo, loadImage("copy_to"));
 
-    targetFolder = std::make_unique<FolderSelector>(this, *this, *m_buttonSelectTargetFolder, *m_bpButtonSelectAltTargetFolder, *m_targetFolderPath,
-                                                    targetFolderLastSelected, sftpKeyFileLastSelected, nullptr /*staticText*/, nullptr /*wxWindow*/, nullptr /*droppedPathsFilter*/,
+    targetFolder.emplace(this, *this, *m_buttonSelectTargetFolder, *m_bpButtonSelectAltTargetFolder, *m_targetFolderPath,
+                         targetFolderLastSelected, sftpKeyFileLastSelected, nullptr /*staticText*/, nullptr /*wxWindow*/, nullptr /*droppedPathsFilter*/,
     [](const Zstring& folderPathPhrase) { return 1; } /*getDeviceParallelOps*/, nullptr /*setDeviceParallelOps*/);
 
     m_targetFolderPath->setHistory(std::make_shared<HistoryList>(folderHistory, folderHistoryMax));
@@ -981,6 +992,18 @@ CopyToDialog::CopyToDialog(wxWindow* parent,
 
 void CopyToDialog::onLocalKeyEvent(wxKeyEvent& event) //process key events without explicit menu entry :)
 {
+    switch (event.GetKeyCode())
+    {
+        case WXK_RETURN:
+        case WXK_NUMPAD_ENTER:
+            if (event.ControlDown()) //Ctrl+Enter or on macOS: Command+Enter
+            {
+                wxCommandEvent dummy(wxEVT_COMMAND_BUTTON_CLICKED);
+                m_buttonOK->Command(dummy); //simulate click
+                return;
+            }
+            break;
+    }
     event.Skip();
 }
 
@@ -1121,6 +1144,18 @@ void DeleteDialog::updateGui()
 
 void DeleteDialog::onLocalKeyEvent(wxKeyEvent& event)
 {
+    switch (event.GetKeyCode())
+    {
+        case WXK_RETURN:
+        case WXK_NUMPAD_ENTER:
+            if (event.ControlDown()) //Ctrl+Enter or on macOS: Command+Enter
+            {
+                wxCommandEvent dummy(wxEVT_COMMAND_BUTTON_CLICKED);
+                m_buttonOK->Command(dummy); //simulate click
+                return;
+            }
+            break;
+    }
     event.Skip();
 }
 
@@ -1177,7 +1212,7 @@ SyncConfirmationDlg::SyncConfirmationDlg(wxWindow* parent,
     SyncConfirmationDlgGenerated(parent),
     dontShowAgainOut_(dontShowAgain)
 {
-    setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonStartSync).setCancel(m_buttonCancel));
+    setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOK).setCancel(m_buttonCancel));
 
     setMainInstructionFont(*m_staticTextCaption);
     setImage(*m_bitmapSync, loadImage(syncSelection ? "start_sync_selection" : "start_sync"));
@@ -1235,12 +1270,24 @@ SyncConfirmationDlg::SyncConfirmationDlg(wxWindow* parent,
 #endif
     Center(); //needs to be re-applied after a dialog size change!
 
-    m_buttonStartSync->SetFocus();
+    m_buttonOK->SetFocus();
 }
 
 
 void SyncConfirmationDlg::onLocalKeyEvent(wxKeyEvent& event)
 {
+    switch (event.GetKeyCode())
+    {
+        case WXK_RETURN:
+        case WXK_NUMPAD_ENTER:
+            if (event.ControlDown()) //Ctrl+Enter or on macOS: Command+Enter
+            {
+                wxCommandEvent dummy(wxEVT_COMMAND_BUTTON_CLICKED);
+                m_buttonOK->Command(dummy); //simulate click
+                return;
+            }
+            break;
+    }
     event.Skip();
 }
 
@@ -1336,7 +1383,7 @@ private:
         }
     };
 
-    std::optional<ColorTheme> colorThemeIcon_; //perf: don't update icon unless needed
+    std::optional<ColorTheme> colorThemeIcon_;
 
     std::vector<std::tuple<std::function<bool(const GlobalConfig& cfg)> /*get dialog shown status*/,
         std::function<void(GlobalConfig& gs, bool show)> /*set dialog shown status*/,
@@ -1392,7 +1439,7 @@ OptionsDlg::OptionsDlg(wxWindow* parent, GlobalConfig& globalCfg) :
                        [](const Zstring& folderPathPhrase) { return 1; } /*getDeviceParallelOps_*/, nullptr /*setDeviceParallelOps_*/),
                    globalCfgOut_(globalCfg)
 {
-    setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
+    setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOK).setCancel(m_buttonCancel));
 
     //setMainInstructionFont(*m_staticTextHeader);
 
@@ -1600,7 +1647,7 @@ OptionsDlg::OptionsDlg(wxWindow* parent, GlobalConfig& globalCfg) :
     setExtApp(globalCfg.externalApps);
     updateGui();
 
-    m_buttonOkay->SetFocus();
+    m_buttonOK->SetFocus();
 }
 
 
@@ -1613,8 +1660,9 @@ void OptionsDlg::onLocalKeyEvent(wxKeyEvent& event) //process key events without
             if (event.ControlDown()) //Ctrl+Enter or on macOS: Command+Enter
             {
                 m_gridCustomCommand->DisableCellEditControl();
+
                 wxCommandEvent dummy(wxEVT_COMMAND_BUTTON_CLICKED);
-                m_buttonOkay->Command(dummy); //simulate click
+                m_buttonOK->Command(dummy); //simulate click
                 return;
             }
             break;
@@ -1685,7 +1733,7 @@ void OptionsDlg::copySelectionToClipboard() const
 
 void OptionsDlg::updateGui()
 {
-    if (!colorThemeIcon_ || *colorThemeIcon_ != enumColorTheme_.get())
+    if (!colorThemeIcon_ || *colorThemeIcon_ != enumColorTheme_.get()) //perf? don't update icon unless needed
         switch (enumColorTheme_.get())
         {
             case ColorTheme::System:
@@ -1707,13 +1755,13 @@ void OptionsDlg::updateGui()
     m_bpButtonPlayAlertPending->Enable(!trimCpy(m_textCtrlSoundPathAlertPending->GetValue()).empty());
 
     int hiddenDialogs = 0;
-    for (unsigned int itemPos = 0; itemPos < static_cast<unsigned int>(hiddenDialogCfgMapping_.size()); ++itemPos)
+    for (unsigned int itemPos = 0; itemPos < hiddenDialogCfgMapping_.size(); ++itemPos)
         if (!m_checkListHiddenDialogs->IsChecked(itemPos))
             ++hiddenDialogs;
     assert(hiddenDialogCfgMapping_.size() == m_checkListHiddenDialogs->GetCount());
 
-    m_staticTextHiddenDialogsCount->SetLabelText(L'(' + (hiddenDialogs == 0 ? _("No dialogs hidden") :
-                                                         _P("1 dialog hidden", "%x dialogs hidden", hiddenDialogs)) + L')');
+    setText(*m_staticTextHiddenDialogsCount, L'(' + (hiddenDialogs == 0 ? _("No dialogs hidden") :
+                                                     _P("1 dialog hidden", "%x dialogs hidden", hiddenDialogs)) + L')');
     Layout();
 }
 
@@ -1966,19 +2014,19 @@ SelectTimespanDlg::SelectTimespanDlg(wxWindow* parent, time_t& timeFrom, time_t&
     timeFromOut_(timeFrom),
     timeToOut_(timeTo)
 {
-    setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
+    setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOK).setCancel(m_buttonCancel));
 
-    assert(m_calendarFrom->GetWindowStyleFlag() == m_calendarTo->GetWindowStyleFlag());
-    assert(m_calendarFrom->HasFlag(wxCAL_SHOW_HOLIDAYS)); //caveat: for some stupid reason this is not honored when set by SetWindowStyleFlag()
+    assert(m_calendarFrom->GetWindowStyle() == m_calendarTo->GetWindowStyle());
+    assert(m_calendarFrom->HasFlag(wxCAL_SHOW_HOLIDAYS)); //caveat: for some stupid reason this is not honored when set by SetWindowStyle()
     assert(m_calendarFrom->HasFlag(wxCAL_SHOW_SURROUNDING_WEEKS));
     assert(!m_calendarFrom->HasFlag(wxCAL_MONDAY_FIRST) &&
            !m_calendarFrom->HasFlag(wxCAL_SUNDAY_FIRST)); //...because we set it in the following:
-    long style = m_calendarFrom->GetWindowStyleFlag();
+    long style = m_calendarFrom->GetWindowStyle();
 
     style |= getFirstDayOfWeek() == WeekDay::sunday ? wxCAL_SUNDAY_FIRST : wxCAL_MONDAY_FIRST; //seems to be ignored on CentOS
 
-    m_calendarFrom->SetWindowStyleFlag(style);
-    m_calendarTo  ->SetWindowStyleFlag(style);
+    m_calendarFrom->SetWindowStyle(style);
+    m_calendarTo  ->SetWindowStyle(style);
 
     //set default values
     time_t timeFromTmp = timeFrom;
@@ -2002,12 +2050,24 @@ SelectTimespanDlg::SelectTimespanDlg(wxWindow* parent, time_t& timeFrom, time_t&
 #endif
     Center(); //needs to be re-applied after a dialog size change!
 
-    m_buttonOkay->SetFocus();
+    m_buttonOK->SetFocus();
 }
 
 
 void SelectTimespanDlg::onLocalKeyEvent(wxKeyEvent& event) //process key events without explicit menu entry :)
 {
+    switch (event.GetKeyCode())
+    {
+        case WXK_RETURN:
+        case WXK_NUMPAD_ENTER:
+            if (event.ControlDown()) //Ctrl+Enter or on macOS: Command+Enter
+            {
+                wxCommandEvent dummy(wxEVT_COMMAND_BUTTON_CLICKED);
+                m_buttonOK->Command(dummy); //simulate click
+                return;
+            }
+            break;
+    }
     event.Skip();
 }
 
@@ -2066,7 +2126,7 @@ PasswordPromptDlg::PasswordPromptDlg(wxWindow* parent, const std::wstring& msg, 
     PasswordPromptDlgGenerated(parent),
     passwordOut_(password)
 {
-    setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
+    setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOK).setCancel(m_buttonCancel));
 
     wxString titleTmp;
     if (!parent || !parent->IsShownOnScreen())
@@ -2172,7 +2232,7 @@ CfgHighlightDlg::CfgHighlightDlg(wxWindow* parent, int& cfgHistSyncOverdueDays) 
     CfgHighlightDlgGenerated(parent),
     cfgHistSyncOverdueDaysOut_(cfgHistSyncOverdueDays)
 {
-    setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
+    setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOK).setCancel(m_buttonCancel));
 
     m_staticTextHighlight->Wrap(dipToWxsize(300));
 

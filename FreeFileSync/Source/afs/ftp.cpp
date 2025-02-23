@@ -402,11 +402,9 @@ public:
 
         //long-running file uploads require keep-alives for the TCP control connection: https://freefilesync.org/forum/viewtopic.php?t=6928
         setCurlOption({CURLOPT_TCP_KEEPALIVE, 1}); //throw SysError
-        //=> CURLOPT_TCP_KEEPIDLE (=delay) and CURLOPT_TCP_KEEPINTVL both default to 60 sec
-
-        //default is 60 sec (sufficient!?):
-        //setCurlOption({CURLOPT_TCP_KEEPIDLE,  30 /*[sec]*/}); //throw SysError
-        //setCurlOption({CURLOPT_TCP_KEEPINTVL, 30 /*[sec]*/}); //throw SysError
+        //=> CURLOPT_TCP_KEEPIDLE (=delay until sending first keepalive probe) and 
+        // CURLOPT_TCP_KEEPINTVL (interval between probes) both default to 60 sec, 
+        // CURLOPT_TCP_KEEPCNT (number of probes with *no server response* before dropping connection) defaults to 9
 
 
         std::optional<SysError> socketException;
@@ -2121,7 +2119,7 @@ struct OutputStreamFtp : public AFS::OutputStreamImpl
 
         asyncStreamOut_->closeStream();
 
-        while (futUploadDone_.wait_for(std::chrono::milliseconds(50)) == std::future_status::timeout)
+        while (futUploadDone_.wait_for(std::chrono::milliseconds(25)) == std::future_status::timeout)
             reportBytesProcessed(notifyUnbufferedIO); //throw X
         reportBytesProcessed(notifyUnbufferedIO); //[!] once more, now that *all* bytes were written
 

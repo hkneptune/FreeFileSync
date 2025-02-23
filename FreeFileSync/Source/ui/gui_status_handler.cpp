@@ -392,7 +392,7 @@ StatusHandlerFloatingDialog::StatusHandlerFloatingDialog(wxFrame* parentDlg,
 
 StatusHandlerFloatingDialog::~StatusHandlerFloatingDialog()
 {
-    if (progressDlg_) //showResults() was not called!
+    if (progressDlg_) //prepareResult() was not called!
         std::abort();
 }
 

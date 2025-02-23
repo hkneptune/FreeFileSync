@@ -84,7 +84,7 @@ AbstractFolderPickerDlg::AbstractFolderPickerDlg(wxWindow* parent, AbstractPath&
     AbstractFolderPickerGenerated(parent),
     folderPathOut_(folderPath)
 {
-    setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
+    setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOK).setCancel(m_buttonCancel));
 
     m_staticTextStatus->SetLabel(L"");
     m_treeCtrlFileSystem->SetMinSize({dipToWxsize(350), dipToWxsize(400)});
@@ -142,6 +142,19 @@ AbstractFolderPickerDlg::AbstractFolderPickerDlg(wxWindow* parent, AbstractPath&
 
 void AbstractFolderPickerDlg::onLocalKeyEvent(wxKeyEvent& event)
 {
+    switch (event.GetKeyCode())
+    {
+        //wxTreeCtrl seems to eat up ENTER without adding any functionality; we can do better:
+        case WXK_RETURN:
+        case WXK_NUMPAD_ENTER:
+            if (event.ControlDown()) //Ctrl+Enter or on macOS: Command+Enter
+            {
+                wxCommandEvent dummy(wxEVT_COMMAND_BUTTON_CLICKED);
+                m_buttonOK->Command(dummy); //simulate click
+                return;
+            }
+            break;
+    }
     event.Skip();
 }
 

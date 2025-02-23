@@ -6,7 +6,7 @@
 
 #include "rename_dlg.h"
 #include <chrono>
-#include <zen/file_path.h>
+//#include <zen/file_path.h>
 #include <wx/valtext.h>
 #include <wx+/window_layout.h>
 #include <wx+/image_resources.h>
@@ -274,21 +274,20 @@ RenameDialog::RenameDialog(wxWindow* parent,
     if (fileNamesOld.size() > 1) //calculate reasonable default preview grid size
     {
         //quick and dirty: get (likely) maximum string width while avoiding excessive wxDC::GetTextExtent() calls
-        std::vector<std::wstring> names = fileNamesOld;
-        auto itMax10 = names.end() - std::min<size_t>(10, names.size()); //find the 10 longest strings according to std::wstring::size()
-        if (itMax10 != names.begin())
-            std::nth_element(names.begin(), itMax10, names.end(),
-            /**/[](const std::wstring& lhs, const std::wstring& rhs) { return lhs.size() < rhs.size(); }); //complexity: O(n)
+        std::vector<std::wstring> longNames = fileNamesOld;
+        if (longNames.size() > 10) //find the 10 longest strings according to std::wstring::size()
+        {
+            std::nth_element(longNames.begin(), longNames.begin() + 9, longNames.end(),
+            /**/[](const std::wstring& lhs, const std::wstring& rhs) { return lhs.size() > rhs.size(); }); //complexity: O(n)
+            longNames.resize(10);
+        }
 
-        wxMemoryDC dc; //the context used for bitmaps
-        setScaleFactor(dc, getScreenDpiScale());
-        dc.SetFont(m_gridRenamePreview->GetFont()); //the font parameter of GetTextExtent() is not evaluated on OS X, wxWidgets 2.9.5, so apply it to the DC directly!
+        wxInfoDC infoDc(m_gridRenamePreview);
+        infoDc.SetFont(m_gridRenamePreview->GetFont()); //the font parameter of GetTextExtent() is not evaluated on OS X, wxWidgets 2.9.5, so apply it to the DC directly!
 
         int maxStringWidth = 0;
-        std::for_each(itMax10, names.end(), [&](const std::wstring& str)
-        {
-            maxStringWidth = std::max(maxStringWidth, dc.GetTextExtent(str).GetWidth());
-        });
+        for (const std::wstring& str : longNames)
+            maxStringWidth = std::max(maxStringWidth, infoDc.GetTextExtent(str).GetWidth());
 
         const int defaultColWidthOld = maxStringWidth + 2 * GridData::getColumnGapLeft() + dipToWxsize(1) /*border*/ + dipToWxsize(10) /*extra space: less cramped*/;
         const int defaultColWidthNew = maxStringWidth + 2 * GridData::getColumnGapLeft() + dipToWxsize(1) /*border*/ + dipToWxsize(50) /*extra space: for longer new name*/;
@@ -316,11 +315,10 @@ RenameDialog::RenameDialog(wxWindow* parent,
         m_staticlinePreview               ->Hide();
         m_staticTextPlaceholderDescription->Hide();
 
-        wxMemoryDC dc; //the context used for bitmaps
-        setScaleFactor(dc, getScreenDpiScale());
-        dc.SetFont(m_textCtrlNewName->GetFont()); //the font parameter of GetTextExtent() is not evaluated on OS X, wxWidgets 2.9.5, so apply it to the DC directly!
+        wxInfoDC infoDc(m_textCtrlNewName);
+        infoDc.SetFont(m_textCtrlNewName->GetFont()); //the font parameter of GetTextExtent() is not evaluated on OS X, wxWidgets 2.9.5, so apply it to the DC directly!
 
-        const int textCtrlDefaultWidth = std::min(dc.GetTextExtent(renamePhrase).GetWidth() + 20 /*borders (non-DIP!)*/ +
+        const int textCtrlDefaultWidth = std::min(infoDc.GetTextExtent(renamePhrase).GetWidth() + 20 /*borders (non-DIP!)*/ +
                                                   dipToWxsize(50) /*extra space: for longer new name*/,
                                                   dipToWxsize(900));
         m_textCtrlNewName->SetMinSize({textCtrlDefaultWidth, -1});
@@ -397,6 +395,18 @@ RenameDialog::RenameDialog(wxWindow* parent,
 
 void RenameDialog::onLocalKeyEvent(wxKeyEvent& event)
 {
+    switch (event.GetKeyCode())
+    {
+        case WXK_RETURN:
+        case WXK_NUMPAD_ENTER:
+            if (event.ControlDown()) //Ctrl+Enter or on macOS: Command+Enter
+            {
+                wxCommandEvent dummy(wxEVT_COMMAND_BUTTON_CLICKED);
+                m_buttonOK->Command(dummy); //simulate click
+                return;
+            }
+            break;
+    }
     event.Skip();
 }
 

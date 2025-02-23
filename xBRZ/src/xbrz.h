@@ -29,8 +29,7 @@ namespace xbrz
 /*  -------------------------------------------------------------------------
     | xBRZ: "Scale by rules" - high quality image upscaling filter by Zenju |
     -------------------------------------------------------------------------
-    using a modified approach of xBR:
-    http://board.byuu.org/viewtopic.php?f=10&t=2248
+    using a modified approach of xBR: https://forums.libretro.com/t/xbr-algorithm-tutorial/123
     - new rule set preserving small image features
     - highly optimized for performance
     - support alpha channel

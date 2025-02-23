@@ -7,8 +7,10 @@
 #ifndef DC_H_4987123956832143243214
 #define DC_H_4987123956832143243214
 
+#include <variant>
 #include <unordered_map>
 #include <optional>
+//#include <zen/legacy_compiler.h> //macOS: std::get
 #include <wx/dcbuffer.h> //for macro: wxALWAYS_NATIVE_DOUBLE_BUFFER
 #include <wx/dcscreen.h>
 
@@ -262,7 +264,7 @@ public:
                 SetLayoutDirection(wxLayout_RightToLeft);
         }
         else
-            buffer = {};
+            buffer.reset();
     }
 
     ~BufferedPaintDC()
@@ -286,6 +288,28 @@ private:
 
     std::optional<wxBitmap>& buffer_;
     wxPaintDC paintDc_;
+};
+
+
+//BufferedPaintDC if wxWindow::IsDoubleBuffered, wxPaintDC otherwise (= the proper C++ implementation wxAutoBufferedPaintDCFactory wished it had)
+class DynBufPaintDC
+{
+public:
+    DynBufPaintDC(wxWindow& wnd, std::optional<wxBitmap>& buffer)
+    {
+        assert(wnd.IsDoubleBuffered());
+        dc_.emplace<wxPaintDC>(&wnd);
+    }
+
+    operator wxDC& ()
+    {
+        if (wxPaintDC* dc = std::get_if<wxPaintDC>(&dc_))
+            return *dc;
+        return std::get<BufferedPaintDC>(dc_);
+    }
+
+private:
+    std::variant<std::monostate, wxPaintDC, BufferedPaintDC> dc_;
 };
 }
 

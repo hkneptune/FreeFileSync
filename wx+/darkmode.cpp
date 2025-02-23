@@ -39,14 +39,7 @@ public:
         if (index == wxSYS_COLOUR_GRAYTEXT)
             return colGreyTextEnhContrast_;
 #if 0
-        auto colToString = [](wxColor c)
-        {
-            const auto& [rh, rl] = hexify(c.Red  ());
-            const auto& [gh, gl] = hexify(c.Green());
-            const auto& [bh, bl] = hexify(c.Blue ());
-            const auto& [ah, al] = hexify(c.Alpha());
-            return "#" + std::string({rh, rl, gh, gl, bh, bl, ah, al});
-        };
+        auto colToString = [](wxColor c) { return utfTo<std::string>(c.GetAsString(wxC2S_HTML_SYNTAX)); /* #RRGGBB(AA) */ };
         std::cerr << "wxSYS_COLOUR_GRAYTEXT " << colToString(wxSystemSettingsNative::GetColour(wxSYS_COLOUR_GRAYTEXT)) << "\n";
 #endif
         return wxSystemSettingsNative::GetColour(index); //fallback
@@ -55,7 +48,6 @@ public:
 private:
     const wxColor colGreyTextEnhContrast_ =
         enhanceContrast(wxSystemSettingsNative::GetColour(wxSYS_COLOUR_GRAYTEXT),
-                        wxSystemSettingsNative::GetColour(wxSYS_COLOUR_WINDOWTEXT),
                         wxSystemSettingsNative::GetColour(wxSYS_COLOUR_WINDOW), 4.5 /*contrastRatioMin*/); //W3C recommends >= 4.5
 };
 

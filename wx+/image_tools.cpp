@@ -9,7 +9,8 @@
 #include <zen/scope_guard.h>
 #include <wx/app.h>
 #include <wx/dcmemory.h>
-#include <wx/settings.h>
+//#include <wx/settings.h>
+#include <wx+/color_tools.h>
 #include <wx+/dc.h>
 #include <xBRZ/src/xbrz_tools.h>
 
@@ -83,8 +84,6 @@ void copyImageLayover(const wxImage& src,
     assert(0 <= trgPos.x && trgPos.x + srcWidth  <= trgWidth       ); //draw area must be a
     assert(0 <= trgPos.y && trgPos.y + srcHeight <= trg.GetHeight()); //subset of target image!
 
-    //https://en.wikipedia.org/wiki/Alpha_compositing
-    //TODO!? gamma correction: https://en.wikipedia.org/wiki/Alpha_compositing#Gamma_correction
     const unsigned char* srcRgb   = src.GetData();
     const unsigned char* srcAlpha = src.GetAlpha();
 
@@ -95,19 +94,25 @@ void copyImageLayover(const wxImage& src,
 
         for (int x = 0; x < srcWidth; ++x)
         {
-            const int w1 = *srcAlpha; //alpha-composition interpreted as weighted average
-            const int w2 = numeric::intDivRound(*trgAlpha * (255 - w1), 255);
-            const int wSum = w1 + w2;
+            const unsigned char w1 = *srcAlpha; //alpha-composition interpreted as weighted average
+            const unsigned char w2 = numeric::intDivRound(*trgAlpha * (255 - w1), 255);
+            const unsigned char wSum = w1 + w2;
 
             auto calcColor = [w1, w2, wSum](unsigned char colsrc, unsigned char colTrg)
             {
-                return static_cast<unsigned char>(wSum == 0 ? 0 : numeric::intDivRound(colsrc * w1 + colTrg * w2, wSum));
+                if (w1 == 0) return colTrg;
+                if (w2 == 0) return colsrc;
+
+                //https://en.wikipedia.org/wiki/Alpha_compositing
+                //Limitation: alpha should be applied in gamma-decoded linear RGB space: https://ssp.impulsetrain.com/gamma-premult.html
+                // => srgbEncode((srgbDecode(colsrc) * w1 + srgbDecode(colTrg) * w2) / wSum)
+                return static_cast<unsigned char>(numeric::intDivRound(colsrc * w1 + colTrg * w2, int(wSum)));
             };
             trgRgb[0] = calcColor(srcRgb[0], trgRgb[0]);
             trgRgb[1] = calcColor(srcRgb[1], trgRgb[1]);
             trgRgb[2] = calcColor(srcRgb[2], trgRgb[2]);
 
-            *trgAlpha = static_cast<unsigned char>(wSum);
+            *trgAlpha = wSum;
 
             srcRgb += 3;
             trgRgb += 3;
@@ -189,7 +194,9 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
     if (maxWidth == 0 || lineHeight == 0)
         return wxNullImage;
 
-    const bool darkMode = wxSystemSettings::GetAppearance().IsDark(); //small but noticeable difference for "ClearType"
+    const bool darkMode = relativeContrast(col, *wxBLACK) > //wxSystemSettings::GetAppearance().IsDark() ?
+                          relativeContrast(col, *wxWHITE);  //=> no, make it text color-dependent
+    //small but noticeable difference; due to "ClearType"?
 
     wxBitmap newBitmap(wxsizeToScreen(maxWidth),
                        wxsizeToScreen(static_cast<int>(lineHeight * lineInfo.size()))); //seems we don't need to pass 24-bit depth here even for high-contrast color schemes
@@ -227,10 +234,9 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
         }
     }
 
-    //wxDC::DrawLabel() doesn't respect alpha channel => calculate alpha values manually:
-    //gamma correction? does not seem to apply here!
     wxImage output(newBitmap.ConvertToImage());
     output.SetAlpha();
+    //wxDC::DrawLabel() doesn't respect alpha channel => calculate alpha values manually:
 
     unsigned char* rgb   = output.GetData();
     unsigned char* alpha = output.GetAlpha();
@@ -239,20 +245,21 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
     const unsigned char r = col.Red  (); //
     const unsigned char g = col.Green(); //getting RGB involves virtual function calls!
     const unsigned char b = col.Blue (); //
-        
-    if (darkMode)
+
+    //Limitation: alpha should be applied in gamma-decoded linear RGB space: https://ssp.impulsetrain.com/gamma-premult.html
+    //=> however wxDC::DrawText most likely applied alpha in gamma-encoded sRGB => following simple calculations should be fine:
+
+    if (darkMode) //black(0,0,0) becomes wxIMAGE_ALPHA_TRANSPARENT(0), white(255,255,255) becomes wxIMAGE_ALPHA_OPAQUE(255)
         for (int i = 0; i < pixelCount; ++i)
         {
-            //black(0,0,0) becomes wxIMAGE_ALPHA_TRANSPARENT(0), white(255,255,255) becomes wxIMAGE_ALPHA_OPAQUE(255)
             *alpha++ = static_cast<unsigned char>(numeric::intDivRound(rgb[0] + rgb[1] + rgb[2], 3)); //mixed-mode arithmetics!
             *rgb++ = r; //
             *rgb++ = g; //apply actual text color
             *rgb++ = b; //
         }
-    else
+    else //black(0,0,0) becomes wxIMAGE_ALPHA_OPAQUE(255), white(255,255,255) becomes wxIMAGE_ALPHA_TRANSPARENT(0)
         for (int i = 0; i < pixelCount; ++i)
         {
-            //black(0,0,0) becomes wxIMAGE_ALPHA_OPAQUE(255), white(255,255,255) becomes wxIMAGE_ALPHA_TRANSPARENT(0)
             *alpha++ = static_cast<unsigned char>(numeric::intDivRound(3 * 255 - rgb[0] - rgb[1] - rgb[2], 3)); //mixed-mode arithmetics!
             *rgb++ = r; //
             *rgb++ = g; //apply actual text color
@@ -330,39 +337,48 @@ wxImage zen::resizeCanvas(const wxImage& img, wxSize newSize, int alignment)
 wxImage zen::bilinearScale(const wxImage& img, int width, int height)
 {
     assert(img.HasAlpha());
-    const auto imgReader = [rgb = img.GetData(), alpha = img.GetAlpha(), srcWidth = img.GetSize().x](int x, int y, xbrz::BytePixel& pix)
+
+    const auto pixRead = [rgb = img.GetData(), alpha = img.GetAlpha(), srcWidth = img.GetSize().x](int x, int y)
     {
         const int idx = y * srcWidth + x;
-        const unsigned char* const ptr = rgb + idx * 3;
 
-        //TODO!? gamma correction: https://en.wikipedia.org/wiki/Alpha_compositing#Gamma_correction
-        const unsigned char a = alpha[idx];
-        pix[0] = a;
-        pix[1] = xbrz::premultiply(ptr[0], a); //r
-        pix[2] = xbrz::premultiply(ptr[1], a); //g
-        pix[3] = xbrz::premultiply(ptr[2], a); //b
+        return [a = int(alpha[idx]), pix = rgb + idx * 3](int channel)
+        {
+            if (channel == 3)
+                return a;
+            //Limitation: alpha should be applied in gamma-decoded linear RGB space: https://ssp.impulsetrain.com/gamma-premult.html
+            return pix[channel] * a;
+        };
     };
 
     wxImage imgOut(width, height);
     imgOut.SetAlpha();
 
-    const auto imgWriter = [rgb = imgOut.GetData(), alpha = imgOut.GetAlpha()](const xbrz::BytePixel& pix) mutable
+    const auto pixWrite = [rgb = imgOut.GetData(), alpha = imgOut.GetAlpha()](const auto& interpolate) mutable
     {
-        const unsigned char a = pix[0];
-        * alpha++ = a;
-        * rgb++ = xbrz::demultiply(pix[1], a); //r
-        *rgb++ = xbrz::demultiply(pix[2], a); //g
-        *rgb++ = xbrz::demultiply(pix[3], a); //b
+        const double a = interpolate(3);
+        if (a <= 0.0)
+        {
+            *alpha++ = 0;
+            rgb += 3; //don't care about color
+        }
+        else
+        {
+            *alpha++ = xbrz::byteRound(a);
+            *rgb++   = xbrz::byteRound(interpolate(0) / a); //r
+            *rgb++   = xbrz::byteRound(interpolate(1) / a); //g
+            *rgb++   = xbrz::byteRound(interpolate(2) / a); //b
+        }
     };
 
-    xbrz::bilinearScaleSimple(imgReader,       //PixReader srcReader
-                              img.GetSize().x, //int srcWidth
-                              img.GetSize().y, //int srcHeight
-                              imgWriter,       //PixWriter trgWriter
-                              width,           //int trgWidth
-                              height,          //int trgHeight
-                              0,               //int yFirst
-                              height);         //int yLast
+    xbrz::bilinearScale(pixRead,         //PixReader pixRead
+                        img.GetSize().x, //int srcWidth
+                        img.GetSize().y, //int srcHeight
+                        pixWrite,        //PixWriter pixWrite
+                        width,           //int trgWidth
+                        height,          //int trgHeight
+                        0,               //int yFirst
+                        height);         //int yLast
     return imgOut;
     //return img.Scale(width, height, wxIMAGE_QUALITY_BILINEAR);
 }

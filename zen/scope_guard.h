@@ -69,10 +69,10 @@ public:
     explicit ScopeGuard(const F&  fun) : fun_(fun) {}
     explicit ScopeGuard(      F&& fun) : fun_(std::move(fun)) {}
 
-    ScopeGuard(ScopeGuard&& tmp) :
-        fun_(std::move(tmp.fun_)),
-        exeptionCount_(tmp.exeptionCount_),
-        dismissed_(tmp.dismissed_) { tmp.dismissed_ = true; }
+    //ScopeGuard(ScopeGuard&& tmp) :
+    //    fun_(std::move(tmp.fun_)),
+    //    exeptionCount_(tmp.exeptionCount_),
+    //    dismissed_(tmp.dismissed_) { tmp.dismissed_ = true; }
 
     ~ScopeGuard() noexcept(runMode == ScopeGuardRunMode::onFail)
     {

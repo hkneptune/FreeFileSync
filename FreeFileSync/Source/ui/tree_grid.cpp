@@ -1168,9 +1168,8 @@ private:
     const int widthNodeStatus_;
 
     const wxImage rootIcon_;
-    const wxColor mouseHighlightColor_ =  enhanceContrast(*wxBLUE, //primarily needed for dark mode!
-                                                          wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT),
-                                                          wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW), 5 /*contrastRatioMin*/); //W3C recommends >= 4.5
+    const wxColor mouseHighlightColor_ = enhanceContrast(*wxBLUE, //primarily needed for dark mode!
+                                                         wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW), 5 /*contrastRatioMin*/); //W3C recommends >= 4.5
 
     Grid& grid_;
     bool showPercentBar_ = true;

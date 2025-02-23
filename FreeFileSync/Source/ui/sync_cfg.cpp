@@ -81,7 +81,7 @@ void initBitmapRadioButtons(const std::vector<std::pair<ToggleButton*, std::stri
                   resizeCanvas(labelsNotSel[btn], maxExtent,                     wxALIGN_CENTER_VERTICAL | (physicalLeft ? wxALIGN_LEFT : wxALIGN_RIGHT)));
 
         btn->SetMinSize({screenToWxsize(maxExtent.x),
-                         screenToWxsize(maxExtent.y)}); //get rid of selection border on Windows :)
+                         screenToWxsize(maxExtent.y)}); //get rid of selection border on Windows + macOS :)
         //SetMinSize() instead of SetSize() is needed here for wxWindows layout determination to work correctly
     }
 }
@@ -282,7 +282,7 @@ private:
         {
             {UnitTime::none, L'(' + _("None") + L')',  {}}, //meta options should be enclosed in parentheses
             {UnitTime::today,       _("Today"),        {}},
-          //{UnitTime::THIS_WEEK,   _("This week"),    {}},
+            //{UnitTime::THIS_WEEK,   _("This week"),    {}},
             {UnitTime::thisMonth,   _("This month"),   {}},
             {UnitTime::thisYear,    _("This year"),    {}},
             {UnitTime::lastDays,    _("Last x days:"), {}},
@@ -519,7 +519,7 @@ globalLogFolderPhrase_(globalLogFolderPhrase)
 {
     assert(!AFS::isNullPath(createAbstractPath(globalLogFolderPhrase_)));
 
-    setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOkay).setCancel(m_buttonCancel));
+    setStandardButtonLayout(*bSizerStdButtons, StdButtons().setAffirmative(m_buttonOK).setCancel(m_buttonCancel));
 
 
     setBitmapTextLabel(*m_buttonAddNotes, loadImage("notes", dipToScreen(16)), m_buttonAddNotes->GetLabelText());
@@ -734,7 +734,7 @@ globalLogFolderPhrase_(globalLogFolderPhrase)
     //set actual sync config
     selectFolderPairConfig(localPairIndexToShow);
 
-    //more useful and Enter is redirected to m_buttonOkay anyway:
+    //more useful and Enter is redirected to m_buttonOK anyway:
     (m_listBoxFolderPair->IsShown() ? static_cast<wxWindow*>(m_listBoxFolderPair) : m_notebook)->SetFocus();
 }
 
@@ -754,7 +754,7 @@ void ConfigDialog::onLocalKeyEvent(wxKeyEvent& event) //process key events witho
             if (event.ControlDown()) //Ctrl+Enter or on macOS: Command+Enter
             {
                 wxCommandEvent dummy(wxEVT_COMMAND_BUTTON_CLICKED);
-                m_buttonOkay->Command(dummy); //simulate click
+                m_buttonOK->Command(dummy); //simulate click
                 return;
             }
             break;

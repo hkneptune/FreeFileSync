@@ -34,19 +34,6 @@ namespace zen
         strBegin(array); //returns array                                           */
 
 
-//reference a sub-string for consumption by zen string_tools
-//=> std::string_view seems decent, but of course fucks up in one regard: construction
-template <class Iterator> auto makeStringView(Iterator first, Iterator last); //this constructor is not available (at least on clang)
-template <class Iterator> auto makeStringView(Iterator first, size_t len);    //std::string_view(char*, int) fails to compile! expected size_t as second parameter
-
-
-
-
-
-
-
-
-
 
 //---------------------- implementation ----------------------
 namespace impl
@@ -134,8 +121,7 @@ namespace impl
 inline size_t cStringLength(const char*    str) { return std::strlen(str); }
 inline size_t cStringLength(const wchar_t* str) { return std::wcslen(str); }
 
-//no significant perf difference for "comparison" test case between cStringLength/wcslen:
-#if 0
+#if 0 //no significant perf difference for "comparison" test case between cStringLength/wcslen:
 template <class C> inline
 size_t cStringLength(const C* str)
 {
@@ -195,20 +181,6 @@ size_t strLength(S&& str)
     static_assert(isStringLike<S>);
     return impl::strLength(std::forward<S>(str));
 }
-
-
-template <class Iterator> inline
-auto makeStringView(Iterator first, Iterator last)
-{
-    using CharType = GetCharTypeT<decltype(&*first)>;
-
-    return std::basic_string_view<CharType>(first != last ? &*first :
-                                            reinterpret_cast<CharType*>(0x1000), /*Win32 APIs like CompareStringOrdinal() choke on nullptr!*/
-                                            last - first);
-}
-
-template <class Iterator> inline
-auto makeStringView(Iterator first, size_t len) { return makeStringView(first, first + len); }
 }
 
 #endif //STRING_TRAITS_H_813274321443234

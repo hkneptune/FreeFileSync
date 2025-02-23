@@ -17,7 +17,6 @@ namespace
 //------------ Grid Constants -------------------------------
 const int SASH_HIT_TOLERANCE_DIP = 5; //currently only a placebo!
 const int SASH_SIZE_DIP          = 10;
-//const int SASH_GRADIENT_SIZE_DIP = 3;
 
 const double SASH_GRAVITY = 0.5; //value within [0, 1]; 1 := resize left only, 0 := resize right only
 const int CHILD_WINDOW_MIN_SIZE_DIP = 50; //min. size of managed windows
@@ -127,10 +126,8 @@ int TripleSplitter::getCenterPosX() const
 
 void TripleSplitter::onPaintEvent(wxPaintEvent& event)
 {
-    wxPaintDC dc(this);
-    static_assert(wxALWAYS_NATIVE_DOUBLE_BUFFER);
-
-    //GetUpdateRegion()? nah, just redraw everything
+    DynBufPaintDC dc(*this, doubleBuffer_);
+    //GetUpdateRegion()? nah, just redraw everything => we mostly land here due to wxEVT_SIZE anyway (see Refresh() in updateWindowSizes())
 
     assert(GetSize() == GetClientSize());
 
@@ -139,13 +136,11 @@ void TripleSplitter::onPaintEvent(wxPaintEvent& event)
 
     auto draw = [&](wxRect rect)
     {
-        clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE));
+        //clear everything in border color:
+        clearArea(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW));
 
-        //left border
-        clearArea(dc, wxRect(rect.GetTopLeft(), wxSize(dipToWxsize(1), rect.height)), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW));
-
-        //right border
-        clearArea(dc, wxRect(rect.x + rect.width - dipToWxsize(1), rect.y, dipToWxsize(1), rect.height), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW));
+        //clear inner area except for left/right borders
+        clearArea(dc, wxRect(rect.x + dipToWxsize(1), rect.y, rect.width - 2 * dipToWxsize(1), rect.height), wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE));
     };
 
     const wxRect rectSashL(centerPosX,                           0, sashSize_, GetClientRect().height);

@@ -62,7 +62,7 @@ SymlinkRawContent getSymlinkRawContent_impl(const Zstring& linkPath) //throw Sys
 
 Zstring getSymlinkResolvedPath_impl(const Zstring& linkPath) //throw SysError
 {
-    char* targetPath = ::realpath(linkPath.c_str(), nullptr);
+    char* targetPath = ::realpath(linkPath.c_str(), nullptr /*resolved_path*/);
     if (!targetPath)
         THROW_LAST_SYS_ERROR("realpath");
     ZEN_ON_SCOPE_EXIT(::free(targetPath));

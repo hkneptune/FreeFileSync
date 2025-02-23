@@ -74,7 +74,7 @@ void drawBitmapRtlMirror(wxDC& dc, const wxImage& img, const wxRect& rect, int a
                     buffer->SetScaleFactor(dc.GetContentScaleFactor());     //
 
                 wxMemoryDC memDc(*buffer); //copies scale factor from wxBitmap
-                memDc.Blit(wxPoint(0, 0), rect.GetSize(), &dc, rect.GetTopLeft()); //blit in: background is mirrored due to memDc, dc having different layout direction!
+                memDc.Blit(wxPoint(0, 0), rect.GetSize(), &dc, rect.GetTopLeft()); //blit in: background is mirrored due to memDc/dc having different layout direction!
 
                 impl::drawBitmapAligned(memDc, img, wxRect(0, 0, rect.width, rect.height), alignment);
                 //note: we cannot simply use memDc.SetLayoutDirection(wxLayout_RightToLeft) due to some strange 1 pixel bug! 2022-04-04: maybe fixed in wxWidgets 3.1.6?

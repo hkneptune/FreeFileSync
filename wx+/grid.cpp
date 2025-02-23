@@ -23,16 +23,28 @@
 
 using namespace zen;
 
-
 /* wxWidgets 3.3 defaults to system-powered double-buffering (WS_EX_COMPOSITED) on Windows:
-    => ~60% higher CPU time (test case: scrolling large file list via keyboard) :((
-    => opt-out!
+    => ~60% higher CPU time (test case: scrolling large file list via keyboard) see comment in file_grid.cpp :((
 
-    "wxMSW now uses double buffering by default, meaning that updating the
-     windows using wxClientDC doesn't work any longer, which is consistent with
-     the behaviour of wxGTK with Wayland backend and of wxOSX, but not with the
-     traditional historic behaviour of wxMSW (or wxGTK/X11). You may call
-     MSWDisableComposited() to restore the previous behaviour [...]"  */
+        "wxMSW now uses double buffering by default, meaning that updating the
+         windows using wxClientDC doesn't work any longer, which is consistent with
+         the behaviour of wxGTK with Wayland backend and of wxOSX, but not with the
+         traditional historic behaviour of wxMSW (or wxGTK/X11).
+         You may call MSWDisableComposited() to restore the previous behaviour [...]"
+
+    WS_EX_COMPOSITED    "Paints all *descendants* of a window in bottom-to-top painting order using double-buffering."
+
+    => can only be set for *top* window below the wxFrame/wxDialog otherwise SetWindowLongPtr(WS_EX_COMPOSITED) fails!!!
+
+    => use MSWDisableComposited() to remove WS_EX_COMPOSITED from top window under wxFrame/wxDialog if perf issue.
+       SetDoubleBuffered(false) OTOH is useless as it doesn't affect parent windows and silently fails!
+       IsDoubleBuffered() however correctly checks parents: CONSISTENCY, people, for fucks sake!
+     
+    CAVEAT: MSWDisableComposited() leads to severe flickering for other child windows (e.g. wxStaticBitmap, wxBitmapButton)
+        that lack custom double-buffering. It's even worse since wxWidgets in its wisdom sets WS_EX_COMPOSITED
+        together with CS_HREDRAW/CS_VREDRAW, https://github.com/vadz/wxWidgets/blob/8de0694a5e9c9d7c24e0af2ccf71454df5e6b9d0/src/msw/window.cpp#L507
+        and MSWDisableComposited() only removes former attribute.      */
+
 
 //let's NOT create wxWidgets objects statically:
 wxColor GridData::getColorSelectionGradientFrom() { return {137, 172, 255}; } //blue: HSL: 158, 255, 196   HSV: 222, 0.46, 1
@@ -45,7 +57,7 @@ namespace
 {
 //------------------------------ Grid Parameters --------------------------------
 wxColor getColorLabelText(bool enabled) { return wxSystemSettings::GetColour(enabled ? wxSYS_COLOUR_BTNTEXT : wxSYS_COLOUR_GRAYTEXT); }
-wxColor getColorGridLine() {              return wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW); }
+wxColor getColorGridLine()              { return wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW); }
 
 wxColor getColorLabelGradientFrom()
 {
@@ -227,9 +239,9 @@ void GridData::drawCellText(wxDC& dc, const wxRect& rect, const std::wstring_vie
     else if (alignment & wxALIGN_CENTER_VERTICAL)
         pt.y += numeric::intDivFloor(rect.height - extentTrunc.GetHeight(), 2); //round down negative values, too!
 
-    //std::unique_ptr<RecursiveDcClipper> clip; -> redundant!? RecursiveDcClipper already used during grid cell rendering
+    //std::optional<RecursiveDcClipper> clip; -> redundant!? RecursiveDcClipper already used during grid cell rendering
     //if (extentTrunc.GetWidth() > rect.width)
-    //    clip = std::make_unique<RecursiveDcClipper>(dc, rect);
+    //    clip.emplace(dc, rect);
 
     dc.DrawText(textTrunc, pt);
 }
@@ -290,7 +302,6 @@ public:
         SetBackgroundStyle(wxBG_STYLE_PAINT); //get's rid of needless wxEVT_ERASE_BACKGROUND
         Bind(wxEVT_PAINT, [this](wxPaintEvent& event) { onPaintEvent(event); });
         Bind(wxEVT_SIZE,  [this](wxSizeEvent&  event) { Refresh(); event.Skip(); });
-        //SetDoubleBuffered(true); -> slow as hell!
 
         Bind(wxEVT_CHILD_FOCUS, [](wxChildFocusEvent& event) {}); //wxGTK::wxScrolledWindow automatically scrolls to child window when child gets focus -> prevent!
 
@@ -399,12 +410,7 @@ private:
     void onPaintEvent(wxPaintEvent& event)
     {
 
-#ifdef FFS_CUSTOM_DOUBLE_BUFFERING
-        BufferedPaintDC dc(*this, doubleBuffer_);
-#else
-        wxPaintDC dc(this);
-        static_assert(wxALWAYS_NATIVE_DOUBLE_BUFFER);
-#endif
+        DynBufPaintDC dc(*this, doubleBuffer_);
         assert(GetSize() == GetClientSize());
 
         const wxRegion& updateReg = GetUpdateRegion();
@@ -413,9 +419,7 @@ private:
     }
 
     Grid& parent_;
-#ifdef FFS_CUSTOM_DOUBLE_BUFFERING
     std::optional<wxBitmap> doubleBuffer_;
-#endif
     int mouseRotateRemainder_ = 0;
 };
 
@@ -773,10 +777,10 @@ private:
             {
                 if (!event.LeftDClick()) //double-clicks never seem to arrive here; why is this checked at all???
                     if (std::optional<int> colWidth = refParent().getColWidth(action->col))
-                        activeResizing_ = std::make_unique<ColumnResizing>(*this, action->col, *colWidth, event.GetPosition().x);
+                        activeResizing_.emplace(*this, action->col, *colWidth, event.GetPosition().x);
             }
             else //a move or single click
-                activeClickOrMove_ = std::make_unique<ColumnMove>(*this, action->col, event.GetPosition().x);
+                activeClickOrMove_.emplace(*this, action->col, event.GetPosition().x);
         }
         event.Skip();
     }
@@ -946,16 +950,15 @@ private:
         }
     }
 
-    std::unique_ptr<ColumnResizing> activeResizing_;
-    std::unique_ptr<ColumnMove>     activeClickOrMove_;
-    std::optional<size_t>           highlightCol_;
+    std::optional<ColumnResizing> activeResizing_;
+    std::optional<ColumnMove>     activeClickOrMove_;
+    std::optional<size_t>         highlightCol_;
 
     int colLabelHeight_ = 0;
     const wxFont labelFont_;
 
     const wxColor colDropMarkerColor_ = enhanceContrast(*wxBLUE, //primarily needed for dark mode!
-                                                        wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT),
-                                                        getColorLabelGradientTo(), 5 /*contrastRatioMin*/); //W3C recommends >= 4.5
+                                                        getColorLabelGradientTo(), 5 /*contrastRatioMin*/); //W3C recommends >= 4.5 for text
 };
 
 //----------------------------------------------------------------------------------------------------------------
@@ -1164,16 +1167,16 @@ private:
                 else if (row >= 0)
                 {
                     if (event.ControlDown())
-                        activeSelection_ = std::make_unique<MouseSelection>(*this, row, !refParent().isSelected(row) /*positive*/, false /*gridWasCleared*/, mouseEvent);
+                        activeSelection_.emplace(*this, row, !refParent().isSelected(row) /*positive*/, false /*gridWasCleared*/, mouseEvent);
                     else if (event.ShiftDown())
                     {
                         refParent().clearSelection(GridEventPolicy::deny);
-                        activeSelection_ = std::make_unique<MouseSelection>(*this, selectionAnchor_, true /*positive*/, true /*gridWasCleared*/, mouseEvent);
+                        activeSelection_.emplace(*this, selectionAnchor_, true /*positive*/, true /*gridWasCleared*/, mouseEvent);
                     }
                     else
                     {
                         refParent().clearSelection(GridEventPolicy::deny);
-                        activeSelection_ = std::make_unique<MouseSelection>(*this, row, true /*positive*/, true /*gridWasCleared*/, mouseEvent);
+                        activeSelection_.emplace(*this, row, true /*positive*/, true /*gridWasCleared*/, mouseEvent);
                         //DO NOT emit range event for clearing selection! would be inconsistent with keyboard handling (moving cursor neither emits range event)
                         //and is also harmful when range event is considered a final action
                         //e.g. cfg grid would prematurely show a modal dialog after changed config
@@ -1474,7 +1477,7 @@ private:
     RowLabelWin& rowLabelWin_;
     ColLabelWin& colLabelWin_;
 
-    std::unique_ptr<MouseSelection> activeSelection_; //bound while user is selecting with mouse
+    std::optional<MouseSelection> activeSelection_; //bound while user is selecting with mouse
     std::optional<MouseHighlight> highlight_;
 
     size_t cursorRow_ = 0;
@@ -1496,13 +1499,6 @@ Grid::Grid(wxWindow* parent,
     rowLabelWin_ = new RowLabelWin(*this); //owership handled by "this"
     colLabelWin_ = new ColLabelWin(*this); //
     mainWin_     = new MainWin    (*this, *rowLabelWin_, *colLabelWin_); //
-
-#ifdef FFS_CUSTOM_DOUBLE_BUFFERING
-    cornerWin_  ->MSWDisableComposited();
-    rowLabelWin_->MSWDisableComposited();
-    colLabelWin_->MSWDisableComposited();
-    mainWin_    ->MSWDisableComposited();
-#endif
 
     SetTargetWindow(mainWin_);
 

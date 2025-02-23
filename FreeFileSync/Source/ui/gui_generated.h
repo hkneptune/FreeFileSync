@@ -112,13 +112,19 @@ class MainDialogGenerated : public wxFrame
 		wxBitmapButton* m_bpButtonSyncContext;
 		zen::BitmapTextButton* m_buttonSync;
 		wxPanel* m_panelDirectoryPairs;
+		wxPanel* m_panelTopLeft;
 		wxStaticText* m_staticTextResolvedPathL;
 		wxBitmapButton* m_bpButtonAddPair;
+		fff::FolderHistoryBox* m_folderPathLeft;
 		wxButton* m_buttonSelectFolderLeft;
+		wxBitmapButton* m_bpButtonSelectAltFolderLeft;
 		wxPanel* m_panelTopCenter;
 		wxBitmapButton* m_bpButtonSwapSides;
+		wxPanel* m_panelTopRight;
 		wxStaticText* m_staticTextResolvedPathR;
+		fff::FolderHistoryBox* m_folderPathRight;
 		wxButton* m_buttonSelectFolderRight;
+		wxBitmapButton* m_bpButtonSelectAltFolderRight;
 		wxScrolledWindow* m_scrolledWindowFolderPairs;
 		wxBoxSizer* bSizerAddFolderPairs;
 		zen::Grid* m_gridOverview;
@@ -135,9 +141,7 @@ class MainDialogGenerated : public wxFrame
 		wxStaticBitmap* m_bitmapSmallFileLeft;
 		wxStaticText* m_staticTextStatusLeftFiles;
 		wxStaticText* m_staticTextStatusLeftBytes;
-		wxStaticLine* m_staticline9;
 		wxStaticText* m_staticTextStatusCenter;
-		wxStaticLine* m_staticline10;
 		wxBoxSizer* bSizerStatusRightDirectories;
 		wxStaticBitmap* m_bitmapSmallDirectoryRight;
 		wxStaticText* m_staticTextStatusRightDirs;
@@ -147,30 +151,32 @@ class MainDialogGenerated : public wxFrame
 		wxStaticText* m_staticTextStatusRightBytes;
 		wxPanel* m_panelSearch;
 		wxBitmapButton* m_bpButtonHideSearch;
-		wxStaticText* m_staticText101;
 		wxTextCtrl* m_textCtrlSearchTxt;
 		wxCheckBox* m_checkBoxMatchCase;
 		wxPanel* m_panelLog;
 		wxBoxSizer* bSizerLog;
-		wxBoxSizer* bSizer42;
-		wxFlexGridSizer* ffgSizer11;
-		wxFlexGridSizer* ffgSizer111;
-		wxFlexGridSizer* ffgSizer112;
-		wxStaticLine* m_staticline70;
+		wxStaticBitmap* m_bitmapSyncResult;
+		wxStaticText* m_staticTextSyncResult;
+		wxStaticText* m_staticTextProcessed;
+		wxStaticText* m_staticTextRemaining;
+		wxPanel* m_panelItemStats;
+		wxStaticBitmap* m_bitmapItemStat;
+		wxStaticText* m_staticTextItemsProcessed;
+		wxStaticText* m_staticTextBytesProcessed;
+		wxStaticText* m_staticTextItemsRemaining;
+		wxStaticText* m_staticTextBytesRemaining;
+		wxPanel* m_panelTimeStats;
+		wxStaticBitmap* m_bitmapTimeStat;
+		wxStaticText* m_staticTextTimeElapsed;
 		wxPanel* m_panelConfig;
 		wxBoxSizer* bSizerConfig;
 		wxBoxSizer* bSizerCfgHistoryButtons;
 		wxBitmapButton* m_bpButtonNew;
-		wxStaticText* m_staticText951;
 		wxBitmapButton* m_bpButtonOpen;
-		wxStaticText* m_staticText95;
 		wxBitmapButton* m_bpButtonSave;
-		wxStaticText* m_staticText961;
 		wxBoxSizer* bSizerSaveAs;
 		wxBitmapButton* m_bpButtonSaveAs;
 		wxBitmapButton* m_bpButtonSaveAsBatch;
-		wxStaticText* m_staticText97;
-		wxStaticLine* m_staticline81;
 		zen::Grid* m_gridCfgHistory;
 		wxPanel* m_panelViewFilter;
 		wxBoxSizer* bSizerViewFilter;
@@ -193,9 +199,8 @@ class MainDialogGenerated : public wxFrame
 		zen::ToggleButton* m_bpButtonShowDeleteRight;
 		zen::ToggleButton* m_bpButtonShowConflict;
 		wxBitmapButton* m_bpButtonViewFilterContext;
-		wxStaticText* m_staticText96;
 		wxPanel* m_panelStatistics;
-		wxBoxSizer* bSizer1801;
+		wxBoxSizer* bSizerStatistics;
 		wxStaticBitmap* m_bitmapDeleteLeft;
 		wxStaticText* m_staticTextDeleteLeft;
 		wxStaticBitmap* m_bitmapUpdateLeft;
@@ -254,31 +259,10 @@ class MainDialogGenerated : public wxFrame
 
 
 	public:
-		wxPanel* m_panelTopLeft;
 		wxBitmapButton* m_bpButtonRemovePair;
-		fff::FolderHistoryBox* m_folderPathLeft;
-		wxBitmapButton* m_bpButtonSelectAltFolderLeft;
 		wxBitmapButton* m_bpButtonLocalCompCfg;
 		wxBitmapButton* m_bpButtonLocalFilter;
 		wxBitmapButton* m_bpButtonLocalSyncCfg;
-		wxPanel* m_panelTopRight;
-		fff::FolderHistoryBox* m_folderPathRight;
-		wxBitmapButton* m_bpButtonSelectAltFolderRight;
-		wxStaticBitmap* m_bitmapSyncResult;
-		wxStaticText* m_staticTextSyncResult;
-		wxStaticText* m_staticTextProcessed;
-		wxStaticText* m_staticTextRemaining;
-		wxPanel* m_panelItemStats;
-		wxStaticBitmap* m_bitmapItemStat;
-		wxStaticText* m_staticTextItemsProcessed;
-		wxStaticText* m_staticTextBytesProcessed;
-		wxStaticText* m_staticTextItemsRemaining;
-		wxStaticText* m_staticTextBytesRemaining;
-		wxPanel* m_panelTimeStats;
-		wxStaticBitmap* m_bitmapTimeStat;
-		wxStaticText* m_staticTextTimeElapsed;
-		wxBoxSizer* bSizerStatistics;
-		wxBoxSizer* bSizerData;
 
 		MainDialogGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("dummy"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1,-1 ), long style = wxDEFAULT_FRAME_STYLE|wxTAB_TRAVERSAL );
 
@@ -295,21 +279,20 @@ class FolderPairPanelGenerated : public wxPanel
 
 	protected:
 		wxButton* m_buttonSelectFolderLeft;
+		wxBitmapButton* m_bpButtonSelectAltFolderLeft;
+		wxPanel* m_panelRight;
 		wxButton* m_buttonSelectFolderRight;
+		wxBitmapButton* m_bpButtonSelectAltFolderRight;
 
 	public:
 		wxPanel* m_panelLeft;
 		wxBitmapButton* m_bpButtonFolderPairOptions;
 		wxBitmapButton* m_bpButtonRemovePair;
 		fff::FolderHistoryBox* m_folderPathLeft;
-		wxBitmapButton* m_bpButtonSelectAltFolderLeft;
-		wxPanel* m_panel20;
 		wxBitmapButton* m_bpButtonLocalCompCfg;
 		wxBitmapButton* m_bpButtonLocalFilter;
 		wxBitmapButton* m_bpButtonLocalSyncCfg;
-		wxPanel* m_panelRight;
 		fff::FolderHistoryBox* m_folderPathRight;
-		wxBitmapButton* m_bpButtonSelectAltFolderRight;
 
 		FolderPairPanelGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( 698,67 ), long style = 0, const wxString& name = wxEmptyString );
 
@@ -334,73 +317,50 @@ class ConfigDlgGenerated : public wxDialog
 		wxCheckBox* m_checkBoxUseLocalCmpOptions;
 		wxStaticLine* m_staticlineCompHeader;
 		wxPanel* m_panelComparisonSettings;
-		wxStaticText* m_staticText91;
 		zen::ToggleButton* m_buttonByTimeSize;
 		zen::ToggleButton* m_buttonByContent;
 		zen::ToggleButton* m_buttonBySize;
 		wxStaticBitmap* m_bitmapCompVariant;
 		wxStaticText* m_staticTextCompVarDescription;
-		wxStaticLine* m_staticline33;
 		wxCheckBox* m_checkBoxSymlinksInclude;
 		wxRadioButton* m_radioBtnSymlinksFollow;
 		wxRadioButton* m_radioBtnSymlinksDirect;
-		wxHyperlinkCtrl* m_hyperlink24;
-		wxStaticLine* m_staticline44;
-		wxStaticText* m_staticText112;
 		wxTextCtrl* m_textCtrlTimeShift;
-		wxStaticText* m_staticText1381;
-		wxStaticText* m_staticText13811;
-		wxHyperlinkCtrl* m_hyperlink241;
-		wxStaticLine* m_staticline331;
 		wxBoxSizer* bSizerCompMisc;
-		wxStaticLine* m_staticline3311;
 		wxStaticBitmap* m_bitmapIgnoreErrors;
 		wxCheckBox* m_checkBoxIgnoreErrors;
+		wxStaticBitmap* m_bitmapRetryErrors;
 		wxCheckBox* m_checkBoxAutoRetry;
 		wxFlexGridSizer* fgSizerAutoRetry;
-		wxStaticText* m_staticText96;
 		wxStaticText* m_staticTextAutoRetryDelay;
 		wxSpinCtrl* m_spinCtrlAutoRetryCount;
 		wxSpinCtrl* m_spinCtrlAutoRetryDelay;
-		wxStaticLine* m_staticline751;
 		wxBoxSizer* bSizerPerformance;
 		wxPanel* m_panel57;
 		wxStaticBitmap* m_bitmapPerf;
-		wxStaticText* m_staticText13611;
 		wxHyperlinkCtrl* m_hyperlinkPerfDeRequired;
 		wxBoxSizer* bSizer260;
 		wxStaticText* m_staticTextPerfParallelOps;
 		wxScrolledWindow* m_scrolledWindowPerf;
 		wxFlexGridSizer* fgSizerPerf;
-		wxHyperlinkCtrl* m_hyperlink1711;
 		wxPanel* m_panelFilterSettingsTab;
 		wxBoxSizer* bSizerHeaderFilterSettings;
 		wxStaticText* m_staticTextMainFilterSettings;
 		wxStaticText* m_staticTextLocalFilterSettings;
 		wxStaticLine* m_staticlineFilterHeader;
-		wxPanel* m_panel571;
 		wxStaticBitmap* m_bitmapInclude;
-		wxStaticText* m_staticText78;
 		wxTextCtrl* m_textCtrlInclude;
 		wxStaticBitmap* m_bitmapExclude;
-		wxStaticText* m_staticText77;
-		wxHyperlinkCtrl* m_hyperlink171;
 		wxTextCtrl* m_textCtrlExclude;
-		wxStaticLine* m_staticline24;
 		wxStaticBitmap* m_bitmapFilterSize;
-		wxStaticText* m_staticText80;
-		wxStaticText* m_staticText101;
 		wxSpinCtrl* m_spinCtrlMinSize;
 		wxChoice* m_choiceUnitMinSize;
-		wxStaticText* m_staticText102;
 		wxSpinCtrl* m_spinCtrlMaxSize;
 		wxChoice* m_choiceUnitMaxSize;
-		wxStaticLine* m_staticline23;
 		wxStaticBitmap* m_bitmapFilterDate;
-		wxStaticText* m_staticText79;
 		wxChoice* m_choiceUnitTimespan;
 		wxSpinCtrl* m_spinCtrlTimespan;
-		wxStaticLine* m_staticline231;
+		wxStaticText* m_staticTextFilterDescr;
 		wxButton* m_buttonDefault;
 		wxBitmapButton* m_bpButtonDefaultContext;
 		wxButton* m_buttonClear;
@@ -410,7 +370,6 @@ class ConfigDlgGenerated : public wxDialog
 		wxCheckBox* m_checkBoxUseLocalSyncOptions;
 		wxStaticLine* m_staticlineSyncHeader;
 		wxPanel* m_panelSyncSettings;
-		wxStaticText* m_staticText86;
 		zen::ToggleButton* m_buttonTwoWay;
 		zen::ToggleButton* m_buttonMirror;
 		zen::ToggleButton* m_buttonUpdate;
@@ -418,17 +377,11 @@ class ConfigDlgGenerated : public wxDialog
 		wxStaticBitmap* m_bitmapDatabase;
 		wxCheckBox* m_checkBoxUseDatabase;
 		wxStaticText* m_staticTextSyncVarDescription;
-		wxStaticLine* m_staticline431;
-		wxStaticLine* m_staticline72;
 		wxStaticBitmap* m_bitmapMoveLeft;
 		wxStaticBitmap* m_bitmapMoveRight;
 		wxStaticText* m_staticTextDetectMove;
-		wxHyperlinkCtrl* m_hyperlink242;
-		wxStaticLine* m_staticline721;
 		wxBoxSizer* bSizerSyncDirHolder;
 		wxBoxSizer* bSizerSyncDirsDiff;
-		wxStaticText* m_staticText184;
-		wxFlexGridSizer* ffgSizer11;
 		wxStaticBitmap* m_bitmapLeftOnly;
 		wxStaticBitmap* m_bitmapLeftNewer;
 		wxStaticBitmap* m_bitmapDifferent;
@@ -439,22 +392,13 @@ class ConfigDlgGenerated : public wxDialog
 		wxBitmapButton* m_bpButtonDifferent;
 		wxBitmapButton* m_bpButtonRightNewer;
 		wxBitmapButton* m_bpButtonRightOnly;
-		wxStaticText* m_staticText120;
-		wxFlexGridSizer* ffgSizer111;
-		wxStaticText* m_staticText12011;
+		wxBoxSizer* bSizerSyncDirsChanges;
 		wxBitmapButton* m_bpButtonLeftCreate;
 		wxBitmapButton* m_bpButtonRightCreate;
-		wxStaticText* m_staticText12012;
 		wxBitmapButton* m_bpButtonLeftUpdate;
 		wxBitmapButton* m_bpButtonRightUpdate;
-		wxStaticText* m_staticText12013;
 		wxBitmapButton* m_bpButtonLeftDelete;
 		wxBitmapButton* m_bpButtonRightDelete;
-		wxStaticText* m_staticText1201;
-		wxStaticText* m_staticText1202;
-		wxStaticLine* m_staticline54;
-		wxBoxSizer* bSizer2361;
-		wxStaticText* m_staticText87;
 		zen::ToggleButton* m_buttonRecycler;
 		zen::ToggleButton* m_buttonPermanent;
 		zen::ToggleButton* m_buttonVersioning;
@@ -463,25 +407,20 @@ class ConfigDlgGenerated : public wxDialog
 		wxStaticText* m_staticTextDeletionTypeDescription;
 		wxPanel* m_panelVersioning;
 		wxStaticBitmap* m_bitmapVersioning;
-		wxStaticText* m_staticText155;
-		wxHyperlinkCtrl* m_hyperlink243;
 		fff::FolderHistoryBox* m_versioningFolderPath;
 		wxButton* m_buttonSelectVersioningFolder;
-		wxStaticText* m_staticText93;
+		wxBitmapButton* m_bpButtonSelectVersioningAltFolder;
 		wxChoice* m_choiceVersioningStyle;
 		wxStaticText* m_staticTextNamingCvtPart1;
 		wxStaticText* m_staticTextNamingCvtPart2Bold;
 		wxStaticText* m_staticTextNamingCvtPart3;
-		wxStaticLine* m_staticline69;
 		wxStaticText* m_staticTextLimitVersions;
-		wxFlexGridSizer* fgSizer15;
 		wxCheckBox* m_checkBoxVersionMaxDays;
 		wxCheckBox* m_checkBoxVersionCountMin;
 		wxCheckBox* m_checkBoxVersionCountMax;
 		wxSpinCtrl* m_spinCtrlVersionMaxDays;
 		wxSpinCtrl* m_spinCtrlVersionCountMin;
 		wxSpinCtrl* m_spinCtrlVersionCountMax;
-		wxStaticLine* m_staticline582;
 		wxBoxSizer* bSizerSyncMisc;
 		wxStaticBitmap* m_bitmapEmail;
 		wxCheckBox* m_checkBoxSendEmail;
@@ -490,22 +429,22 @@ class ConfigDlgGenerated : public wxDialog
 		wxBitmapButton* m_bpButtonEmailErrorWarning;
 		wxBitmapButton* m_bpButtonEmailErrorOnly;
 		wxHyperlinkCtrl* m_hyperlinkPerfDeRequired2;
-		wxStaticLine* m_staticline57;
 		wxPanel* m_panelLogfile;
 		wxStaticBitmap* m_bitmapLogFile;
 		wxCheckBox* m_checkBoxOverrideLogPath;
+		wxBitmapButton* m_bpButtonShowLogFolder;
+		fff::FolderHistoryBox* m_logFolderPath;
 		wxButton* m_buttonSelectLogFolder;
-		wxStaticLine* m_staticline80;
+		wxBitmapButton* m_bpButtonSelectAltLogFolder;
 		wxStaticText* m_staticTextPostSync;
+		wxChoice* m_choicePostSyncCondition;
 		fff::CommandBox* m_comboBoxPostSyncCommand;
 		wxPanel* m_panelNotes;
 		wxStaticBitmap* m_bitmapNotes;
-		wxStaticText* m_staticText781;
 		wxTextCtrl* m_textCtrNotes;
-		wxStaticLine* m_staticline83;
 		wxBoxSizer* bSizerStdButtons;
 		zen::BitmapTextButton* m_buttonAddNotes;
-		wxButton* m_buttonOkay;
+		wxButton* m_buttonOK;
 		wxButton* m_buttonCancel;
 
 		// Virtual event handlers, override them in your derived class
@@ -565,14 +504,6 @@ class ConfigDlgGenerated : public wxDialog
 
 
 	public:
-		wxStaticBitmap* m_bitmapRetryErrors;
-		wxStaticText* m_staticTextFilterDescr;
-		wxBoxSizer* bSizerSyncDirsChanges;
-		wxBitmapButton* m_bpButtonSelectVersioningAltFolder;
-		wxBitmapButton* m_bpButtonShowLogFolder;
-		fff::FolderHistoryBox* m_logFolderPath;
-		wxBitmapButton* m_bpButtonSelectAltLogFolder;
-		wxChoice* m_choicePostSyncCondition;
 
 		ConfigDlgGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Synchronization Settings"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1,-1 ), long style = wxDEFAULT_DIALOG_STYLE|wxMAXIMIZE_BOX|wxRESIZE_BORDER );
 
@@ -589,45 +520,30 @@ class CloudSetupDlgGenerated : public wxDialog
 
 	protected:
 		wxStaticBitmap* m_bitmapCloud;
-		wxStaticText* m_staticText136;
 		wxToggleButton* m_toggleBtnGdrive;
 		wxToggleButton* m_toggleBtnSftp;
 		wxToggleButton* m_toggleBtnFtp;
-		wxStaticLine* m_staticline371;
-		wxPanel* m_panel41;
 		wxBoxSizer* bSizerGdrive;
 		wxStaticBitmap* m_bitmapGdriveUser;
-		wxStaticText* m_staticText166;
 		wxListBox* m_listBoxGdriveUsers;
 		zen::BitmapTextButton* m_buttonGdriveAddUser;
 		zen::BitmapTextButton* m_buttonGdriveRemoveUser;
-		wxStaticLine* m_staticline841;
 		wxStaticBitmap* m_bitmapGdriveDrive;
-		wxStaticText* m_staticText186;
 		wxListBox* m_listBoxGdriveDrives;
-		wxStaticLine* m_staticline73;
 		wxBoxSizer* bSizerServer;
 		wxStaticBitmap* m_bitmapServer;
-		wxStaticText* m_staticText12311;
 		wxTextCtrl* m_textCtrlServer;
-		wxStaticText* m_staticText1233;
 		wxTextCtrl* m_textCtrlPort;
-		wxStaticLine* m_staticline58;
 		wxBoxSizer* bSizerAuth;
 		wxBoxSizer* bSizerAuthInner;
 		wxBoxSizer* bSizerFtpEncrypt;
-		wxStaticText* m_staticText1251;
 		wxRadioButton* m_radioBtnEncryptNone;
 		wxRadioButton* m_radioBtnEncryptSsl;
-		wxStaticLine* m_staticline5721;
 		wxBoxSizer* bSizerSftpAuth;
-		wxStaticText* m_staticText125;
 		wxRadioButton* m_radioBtnPassword;
 		wxRadioButton* m_radioBtnKeyfile;
 		wxRadioButton* m_radioBtnAgent;
-		wxStaticLine* m_staticline572;
 		wxPanel* m_panelAuth;
-		wxStaticText* m_staticText123;
 		wxTextCtrl* m_textCtrlUserName;
 		wxStaticText* m_staticTextKeyfile;
 		wxBoxSizer* bSizerKeyFile;
@@ -639,21 +555,12 @@ class CloudSetupDlgGenerated : public wxDialog
 		wxTextCtrl* m_textCtrlPasswordHidden;
 		wxCheckBox* m_checkBoxShowPassword;
 		wxCheckBox* m_checkBoxPasswordPrompt;
-		wxStaticLine* m_staticline581;
 		wxStaticBitmap* m_bitmapServerDir;
-		wxStaticText* m_staticText1232;
-		wxStaticLine* m_staticline83;
 		wxStaticText* m_staticTextTimeout;
 		wxSpinCtrl* m_spinCtrlTimeout;
-		wxStaticLine* m_staticline82;
 		wxTextCtrl* m_textCtrlServerPath;
 		wxButton* m_buttonSelectFolder;
-		wxStaticLine* m_staticline571;
 		wxStaticBitmap* m_bitmapPerf;
-		wxStaticText* m_staticText1361;
-		wxHyperlinkCtrl* m_hyperlink171;
-		wxStaticLine* m_staticline57;
-		wxPanel* m_panel411;
 		wxBoxSizer* bSizerConnectionsLabel;
 		wxStaticText* m_staticTextConnectionsLabel;
 		wxStaticText* m_staticTextConnectionsLabelSub;
@@ -665,9 +572,8 @@ class CloudSetupDlgGenerated : public wxDialog
 		wxButton* m_buttonChannelCountSftp;
 		wxCheckBox* m_checkBoxAllowZlib;
 		wxStaticText* m_staticTextZlibDescr;
-		wxStaticLine* m_staticline12;
 		wxBoxSizer* bSizerStdButtons;
-		wxButton* m_buttonOkay;
+		wxButton* m_buttonOK;
 		wxButton* m_buttonCancel;
 
 		// Virtual event handlers, override them in your derived class
@@ -707,12 +613,10 @@ class AbstractFolderPickerGenerated : public wxDialog
 	private:
 
 	protected:
-		wxPanel* m_panel41;
 		wxStaticText* m_staticTextStatus;
 		wxTreeCtrl* m_treeCtrlFileSystem;
-		wxStaticLine* m_staticline12;
 		wxBoxSizer* bSizerStdButtons;
-		wxButton* m_buttonOkay;
+		wxButton* m_buttonOK;
 		wxButton* m_buttonCancel;
 
 		// Virtual event handlers, override them in your derived class
@@ -740,14 +644,9 @@ class SyncConfirmationDlgGenerated : public wxDialog
 	protected:
 		wxStaticBitmap* m_bitmapSync;
 		wxStaticText* m_staticTextCaption;
-		wxStaticLine* m_staticline371;
 		wxPanel* m_panelStatistics;
-		wxStaticLine* m_staticline38;
-		wxStaticText* m_staticText84;
 		wxStaticText* m_staticTextSyncVar;
 		wxStaticBitmap* m_bitmapSyncVar;
-		wxStaticLine* m_staticline14;
-		wxStaticText* m_staticText83;
 		wxStaticBitmap* m_bitmapDeleteLeft;
 		wxStaticBitmap* m_bitmapUpdateLeft;
 		wxStaticBitmap* m_bitmapCreateLeft;
@@ -762,11 +661,9 @@ class SyncConfirmationDlgGenerated : public wxDialog
 		wxStaticText* m_staticTextCreateRight;
 		wxStaticText* m_staticTextUpdateRight;
 		wxStaticText* m_staticTextDeleteRight;
-		wxStaticLine* m_staticline381;
-		wxStaticLine* m_staticline12;
 		wxCheckBox* m_checkBoxDontShowAgain;
 		wxBoxSizer* bSizerStdButtons;
-		wxButton* m_buttonStartSync;
+		wxButton* m_buttonOK;
 		wxButton* m_buttonCancel;
 
 		// Virtual event handlers, override them in your derived class
@@ -792,20 +689,6 @@ class CompareProgressDlgGenerated : public wxPanel
 
 	protected:
 		wxStaticText* m_staticTextStatus;
-		wxFlexGridSizer* ffgSizer11;
-		wxFlexGridSizer* ffgSizer111;
-		wxFlexGridSizer* ffgSizer112;
-		wxFlexGridSizer* ffgSizer114;
-		wxFlexGridSizer* ffgSizer1121;
-		wxFlexGridSizer* ffgSizer1141;
-		wxStaticText* m_staticText1461;
-		wxStaticText* m_staticTextRetryCount;
-		wxStaticText* m_staticText146;
-		wxBoxSizer* bSizerProgressGraph;
-		wxFlexGridSizer* ffgSizer113;
-		zen::Graph2D* m_panelProgressGraph;
-
-	public:
 		wxStaticText* m_staticTextProcessed;
 		wxStaticText* m_staticTextRemaining;
 		wxPanel* m_panelItemStats;
@@ -827,8 +710,13 @@ class CompareProgressDlgGenerated : public wxPanel
 		wxStaticText* m_staticTextWarningCount;
 		wxBoxSizer* bSizerErrorsRetry;
 		wxStaticBitmap* m_bitmapRetryErrors;
+		wxStaticText* m_staticTextRetryCount;
 		wxBoxSizer* bSizerErrorsIgnore;
 		wxStaticBitmap* m_bitmapIgnoreErrors;
+		wxBoxSizer* bSizerProgressGraph;
+		zen::Graph2D* m_panelProgressGraph;
+
+	public:
 
 		CompareProgressDlgGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1,-1 ), long style = wxBORDER_RAISED, const wxString& name = wxEmptyString );
 
@@ -844,16 +732,6 @@ class SyncProgressPanelGenerated : public wxPanel
 	private:
 
 	protected:
-		wxPanel* m_panel53;
-		wxBoxSizer* bSizer42;
-		wxFlexGridSizer* ffgSizer11;
-		wxFlexGridSizer* ffgSizer111;
-		wxFlexGridSizer* ffgSizer112;
-		wxFlexGridSizer* ffgSizer114;
-		wxFlexGridSizer* ffgSizer1121;
-		wxStaticText* m_staticText1461;
-		wxStaticText* m_staticText146;
-		wxStaticText* m_staticText137;
 
 	public:
 		wxBoxSizer* bSizerRoot;
@@ -920,7 +798,7 @@ class LogPanelGenerated : public wxPanel
 		zen::ToggleButton* m_bpButtonErrors;
 		zen::ToggleButton* m_bpButtonWarnings;
 		zen::ToggleButton* m_bpButtonInfo;
-		wxStaticLine* m_staticline13;
+		zen::Grid* m_gridMessages;
 
 		// Virtual event handlers, override them in your derived class
 		virtual void onErrors( wxCommandEvent& event ) { event.Skip(); }
@@ -929,7 +807,6 @@ class LogPanelGenerated : public wxPanel
 
 
 	public:
-		zen::Grid* m_gridMessages;
 
 		LogPanelGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxTAB_TRAVERSAL, const wxString& name = wxEmptyString );
 
@@ -947,23 +824,14 @@ class BatchDlgGenerated : public wxDialog
 	protected:
 		wxStaticBitmap* m_bitmapBatchJob;
 		wxStaticText* m_staticTextHeader;
-		wxStaticLine* m_staticline18;
-		wxPanel* m_panel35;
-		wxStaticText* m_staticText146;
-		wxFlexGridSizer* ffgSizer11;
 		wxStaticBitmap* m_bitmapMinimizeToTray;
 		wxCheckBox* m_checkBoxRunMinimized;
-		wxStaticLine* m_staticline26;
+		wxCheckBox* m_checkBoxAutoClose;
 		wxStaticBitmap* m_bitmapIgnoreErrors;
 		wxCheckBox* m_checkBoxIgnoreErrors;
 		wxRadioButton* m_radioBtnErrorDialogShow;
 		wxRadioButton* m_radioBtnErrorDialogCancel;
-		wxStaticLine* m_staticline261;
-		wxStaticText* m_staticText137;
-		wxStaticLine* m_staticline262;
-		wxStaticLine* m_staticline25;
-		wxHyperlinkCtrl* m_hyperlink17;
-		wxStaticLine* m_staticline13;
+		wxChoice* m_choicePostSyncAction;
 		wxBoxSizer* bSizerStdButtons;
 		wxButton* m_buttonSaveAs;
 		wxButton* m_buttonCancel;
@@ -977,8 +845,6 @@ class BatchDlgGenerated : public wxDialog
 
 
 	public:
-		wxCheckBox* m_checkBoxAutoClose;
-		wxChoice* m_choicePostSyncAction;
 
 		BatchDlgGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Save as a Batch Job"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER );
 
@@ -996,11 +862,7 @@ class DeleteDlgGenerated : public wxDialog
 	protected:
 		wxStaticBitmap* m_bitmapDeleteType;
 		wxStaticText* m_staticTextHeader;
-		wxStaticLine* m_staticline91;
-		wxPanel* m_panel31;
-		wxStaticLine* m_staticline42;
 		wxTextCtrl* m_textCtrlFileList;
-		wxStaticLine* m_staticline9;
 		wxBoxSizer* bSizerStdButtons;
 		wxCheckBox* m_checkBoxUseRecycler;
 		wxButton* m_buttonOK;
@@ -1031,12 +893,10 @@ class CopyToDlgGenerated : public wxDialog
 	protected:
 		wxStaticBitmap* m_bitmapCopyTo;
 		wxStaticText* m_staticTextHeader;
-		wxStaticLine* m_staticline91;
-		wxPanel* m_panel31;
-		wxStaticLine* m_staticline42;
 		wxTextCtrl* m_textCtrlFileList;
+		fff::FolderHistoryBox* m_targetFolderPath;
 		wxButton* m_buttonSelectTargetFolder;
-		wxStaticLine* m_staticline9;
+		wxBitmapButton* m_bpButtonSelectAltTargetFolder;
 		wxBoxSizer* bSizerStdButtons;
 		wxCheckBox* m_checkBoxKeepRelPath;
 		wxCheckBox* m_checkBoxOverwriteIfExists;
@@ -1050,8 +910,6 @@ class CopyToDlgGenerated : public wxDialog
 
 
 	public:
-		fff::FolderHistoryBox* m_targetFolderPath;
-		wxBitmapButton* m_bpButtonSelectAltTargetFolder;
 
 		CopyToDlgGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Copy Items"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize( -1,-1 ), long style = wxDEFAULT_DIALOG_STYLE|wxMAXIMIZE_BOX|wxRESIZE_BORDER );
 
@@ -1069,13 +927,10 @@ class RenameDlgGenerated : public wxDialog
 	protected:
 		wxStaticBitmap* m_bitmapRename;
 		wxStaticText* m_staticTextHeader;
-		wxStaticLine* m_staticline91;
-		wxPanel* m_panel31;
 		zen::Grid* m_gridRenamePreview;
 		wxStaticLine* m_staticlinePreview;
 		wxStaticText* m_staticTextPlaceholderDescription;
 		wxTextCtrl* m_textCtrlNewName;
-		wxStaticLine* m_staticline9;
 		wxBoxSizer* bSizerStdButtons;
 		wxButton* m_buttonOK;
 		wxButton* m_buttonCancel;
@@ -1103,83 +958,49 @@ class OptionsDlgGenerated : public wxDialog
 
 	protected:
 		wxStaticBitmap* m_bitmapSettings;
-		wxStaticText* m_staticText44;
-		wxStaticLine* m_staticline20;
-		wxPanel* m_panel39;
 		wxCheckBox* m_checkBoxFailSafe;
-		wxStaticText* m_staticText911;
-		wxStaticText* m_staticText91;
-		wxStaticText* m_staticText9111;
 		wxBoxSizer* bSizerLockedFiles;
 		wxCheckBox* m_checkBoxCopyLocked;
-		wxStaticText* m_staticText921;
-		wxStaticText* m_staticText92;
-		wxStaticText* m_staticText922;
 		wxCheckBox* m_checkBoxCopyPermissions;
-		wxStaticText* m_staticText931;
-		wxStaticText* m_staticText93;
-		wxStaticText* m_staticText932;
-		wxStaticLine* m_staticline39;
-		wxStaticBitmap* m_bitmapColorTheme;
 		wxBoxSizer* bSizerColorTheme;
-		wxStaticText* m_staticText198;
-		wxStaticLine* m_staticline191;
+		wxStaticBitmap* m_bitmapColorTheme;
+		wxChoice* m_choiceColorTheme;
 		wxStaticBitmap* m_bitmapWarnings;
-		wxStaticText* m_staticText182;
 		wxStaticText* m_staticTextHiddenDialogsCount;
 		wxButton* m_buttonShowHiddenDialogs;
 		wxCheckListBox* m_checkListHiddenDialogs;
-		wxStaticLine* m_staticline1911;
 		wxStaticBitmap* m_bitmapLogFile;
-		wxStaticText* m_staticText163;
+		wxBitmapButton* m_bpButtonShowLogFolder;
 		wxPanel* m_panelLogfile;
+		fff::FolderHistoryBox* m_logFolderPath;
 		wxButton* m_buttonSelectLogFolder;
+		wxBitmapButton* m_bpButtonSelectAltLogFolder;
 		wxCheckBox* m_checkBoxLogFilesMaxAge;
 		wxSpinCtrl* m_spinCtrlLogFilesMaxAge;
-		wxStaticLine* m_staticline81;
-		wxStaticText* m_staticText184;
 		wxRadioButton* m_radioBtnLogHtml;
 		wxRadioButton* m_radioBtnLogText;
-		wxStaticLine* m_staticline361;
 		wxStaticBitmap* m_bitmapNotificationSounds;
-		wxStaticText* m_staticText851;
-		wxFlexGridSizer* ffgSizer11;
-		wxStaticText* m_staticText171;
 		wxStaticBitmap* m_bitmapCompareDone;
 		wxBitmapButton* m_bpButtonPlayCompareDone;
 		wxTextCtrl* m_textCtrlSoundPathCompareDone;
 		wxButton* m_buttonSelectSoundCompareDone;
-		wxStaticText* m_staticText1711;
 		wxStaticBitmap* m_bitmapSyncDone;
 		wxBitmapButton* m_bpButtonPlaySyncDone;
 		wxTextCtrl* m_textCtrlSoundPathSyncDone;
 		wxButton* m_buttonSelectSoundSyncDone;
-		wxStaticText* m_staticText17111;
 		wxStaticBitmap* m_bitmapAlertPending;
 		wxBitmapButton* m_bpButtonPlayAlertPending;
 		wxTextCtrl* m_textCtrlSoundPathAlertPending;
 		wxButton* m_buttonSelectSoundAlertPending;
-		wxStaticLine* m_staticline3611;
 		wxStaticBitmap* m_bitmapConsole;
-		wxStaticText* m_staticText85;
 		wxButton* m_buttonShowCtxCustomize;
 		wxBoxSizer* bSizerContextCustomize;
 		wxBitmapButton* m_bpButtonAddRow;
 		wxBitmapButton* m_bpButtonRemoveRow;
-		wxStaticText* m_staticText174;
-		wxStaticText* m_staticText175;
-		wxStaticText* m_staticText178;
-		wxStaticText* m_staticText179;
-		wxStaticText* m_staticText189;
-		wxStaticText* m_staticText190;
-		wxStaticText* m_staticText176;
-		wxStaticText* m_staticText177;
-		wxHyperlinkCtrl* m_hyperlink17;
 		wxGrid* m_gridCustomCommand;
-		wxStaticLine* m_staticline36;
 		wxBoxSizer* bSizerStdButtons;
 		wxButton* m_buttonDefault;
-		wxButton* m_buttonOkay;
+		wxButton* m_buttonOK;
 		wxButton* m_buttonCancel;
 
 		// Virtual event handlers, override them in your derived class
@@ -1205,10 +1026,6 @@ class OptionsDlgGenerated : public wxDialog
 
 
 	public:
-		wxChoice* m_choiceColorTheme;
-		wxBitmapButton* m_bpButtonShowLogFolder;
-		fff::FolderHistoryBox* m_logFolderPath;
-		wxBitmapButton* m_bpButtonSelectAltLogFolder;
 
 		OptionsDlgGenerated( wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("Options"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER );
 
@@ -1224,12 +1041,10 @@ class SelectTimespanDlgGenerated : public wxDialog
 	private:
 
 	protected:
-		wxPanel* m_panel35;
 		wxCalendarCtrl* m_calendarFrom;
 		wxCalendarCtrl* m_calendarTo;
-		wxStaticLine* m_staticline21;
 		wxBoxSizer* bSizerStdButtons;
-		wxButton* m_buttonOkay;
+		wxButton* m_buttonOK;
 		wxButton* m_buttonCancel;
 
 		// Virtual event handlers, override them in your derived class
@@ -1256,32 +1071,22 @@ class AboutDlgGenerated : public wxDialog
 	private:
 
 	protected:
-		wxPanel* m_panel41;
 		wxStaticBitmap* m_bitmapLogoLeft;
-		wxStaticLine* m_staticline81;
 		wxBoxSizer* bSizerMainSection;
-		wxStaticLine* m_staticline82;
 		wxStaticBitmap* m_bitmapLogo;
-		wxStaticLine* m_staticline341;
 		wxStaticText* m_staticFfsTextVersion;
 		wxStaticText* m_staticTextFfsVariant;
-		wxStaticLine* m_staticline3411;
 		wxBoxSizer* bSizerDonate;
 		wxPanel* m_panelDonate;
 		wxStaticBitmap* m_bitmapAnimalSmall;
-		wxPanel* m_panel39;
 		wxStaticText* m_staticTextDonate;
 		zen::BitmapTextButton* m_buttonDonate1;
 		wxStaticBitmap* m_bitmapAnimalBig;
-		wxStaticLine* m_staticline3412;
-		wxStaticText* m_staticText94;
 		wxBitmapButton* m_bpButtonForum;
 		wxBitmapButton* m_bpButtonEmail;
-		wxStaticLine* m_staticline37;
 		wxStaticText* m_staticTextThanksForLoc;
 		wxScrolledWindow* m_scrolledWindowTranslators;
 		wxFlexGridSizer* fgSizerTranslators;
-		wxStaticLine* m_staticline36;
 		wxBoxSizer* bSizerStdButtons;
 		wxButton* m_buttonShowSupporterDetails;
 		zen::BitmapTextButton* m_buttonDonate2;
@@ -1316,7 +1121,6 @@ class DownloadProgressDlgGenerated : public wxDialog
 		wxStaticText* m_staticTextHeader;
 		wxGauge* m_gaugeProgress;
 		wxStaticText* m_staticTextDetails;
-		wxStaticLine* m_staticline9;
 		wxBoxSizer* bSizerStdButtons;
 		wxButton* m_buttonCancel;
 
@@ -1340,12 +1144,10 @@ class CfgHighlightDlgGenerated : public wxDialog
 	private:
 
 	protected:
-		wxPanel* m_panel35;
 		wxStaticText* m_staticTextHighlight;
 		wxSpinCtrl* m_spinCtrlOverdueDays;
-		wxStaticLine* m_staticline21;
 		wxBoxSizer* bSizerStdButtons;
-		wxButton* m_buttonOkay;
+		wxButton* m_buttonOK;
 		wxButton* m_buttonCancel;
 
 		// Virtual event handlers, override them in your derived class
@@ -1370,7 +1172,6 @@ class PasswordPromptDlgGenerated : public wxDialog
 	private:
 
 	protected:
-		wxPanel* m_panel35;
 		wxStaticText* m_staticTextMain;
 		wxStaticText* m_staticTextPassword;
 		wxTextCtrl* m_textCtrlPasswordVisible;
@@ -1379,9 +1180,8 @@ class PasswordPromptDlgGenerated : public wxDialog
 		wxBoxSizer* bSizerError;
 		wxStaticBitmap* m_bitmapError;
 		wxStaticText* m_staticTextError;
-		wxStaticLine* m_staticline21;
 		wxBoxSizer* bSizerStdButtons;
-		wxButton* m_buttonOkay;
+		wxButton* m_buttonOK;
 		wxButton* m_buttonCancel;
 
 		// Virtual event handlers, override them in your derived class
@@ -1408,28 +1208,15 @@ class ActivationDlgGenerated : public wxDialog
 	private:
 
 	protected:
-		wxPanel* m_panel35;
 		wxStaticBitmap* m_bitmapActivation;
 		wxRichTextCtrl* m_richTextLastError;
-		wxStaticLine* m_staticline82;
 		wxStaticText* m_staticTextMain;
-		wxStaticLine* m_staticline181;
-		wxStaticLine* m_staticline18111;
-		wxPanel* m_panel3511;
 		wxStaticText* m_staticTextMain1;
-		wxStaticText* m_staticText136;
 		wxButton* m_buttonActivateOnline;
-		wxStaticLine* m_staticline181111;
-		wxStaticLine* m_staticline181112;
-		wxPanel* m_panel351;
-		wxStaticText* m_staticText175;
-		wxStaticText* m_staticText1361;
 		wxButton* m_buttonCopyUrl;
 		wxRichTextCtrl* m_richTextManualActivationUrl;
-		wxStaticText* m_staticText13611;
 		wxTextCtrl* m_textCtrlOfflineActivationKey;
 		wxButton* m_buttonActivateOffline;
-		wxStaticLine* m_staticline13;
 		wxBoxSizer* bSizerStdButtons;
 		wxButton* m_buttonCancel;
 
@@ -1460,16 +1247,12 @@ class WarnAccessRightsMissingDlgGenerated : public wxDialog
 	protected:
 		wxStaticBitmap* m_bitmapGrantAccess;
 		wxStaticText* m_staticTextDescr;
-		wxStaticLine* m_staticline20;
-		wxPanel* m_panel39;
-		wxFlexGridSizer* ffgSizer11;
 		wxStaticText* m_staticTextStep1;
 		wxButton* m_buttonLocateBundle;
 		wxStaticText* m_staticTextStep2;
 		wxButton* m_buttonOpenSecurity;
 		wxStaticText* m_staticTextStep3;
 		wxStaticText* m_staticTextGrantAccess;
-		wxStaticLine* m_staticline36;
 		wxCheckBox* m_checkBoxDontShowAgain;
 		wxBoxSizer* bSizerStdButtons;
 		wxButton* m_buttonClose;

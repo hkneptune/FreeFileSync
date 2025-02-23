@@ -37,7 +37,6 @@
 #include "gui_status_handler.h"
 #include "small_dlgs.h"
 #include "rename_dlg.h"
-#include "progress_indicator.h"
 #include "folder_pair.h"
 #include "search_grid.h"
 #include "batch_config.h"
@@ -93,35 +92,21 @@ bool containsFileItemMacro(const Zstring& commandLinePhrase)
            contains(commandLinePhrase, macroNameItemNames  ) ||
            contains(commandLinePhrase, macroNameParentPath ) ||
            contains(commandLinePhrase, macroNameParentPath2) ||
-           contains(commandLinePhrase, macroNameParentPaths) ;
+           contains(commandLinePhrase, macroNameParentPaths);
 }
 
 //let's NOT create wxWidgets objects statically:
-wxColor getColorCompareButtonHighlight() { return {236, 236, 255}; }
-wxColor getColorSyncButtonHighlight   () { return {230, 255, 215}; }
+wxColor getColorHighlightCompareButton() { return wxSystemSettings::GetAppearance().IsDark() ? wxColor{0, 0, 0x80} : wxColor{236, 236, 255}; } //dark + light blue
+wxColor getColorHighlightSyncButton   () { return wxSystemSettings::GetAppearance().IsDark() ? wxColor{0, 0x40, 0} : wxColor{230, 255, 215}; } //dark + light green
 
-wxColor getColorAuiPanelCaptionText() { return wxSystemSettings::GetAppearance().IsDark() ? 0xdadada : 0xffffff; }
-wxColor getColorAuiPanelCaptionBack()
-{
-    if (wxSystemSettings::GetAppearance().IsDark())
-        return {0, 0x4f, 0x8e}; //dark blue
-    else
-        return {51, 147, 223}; //medium blue
-}
-
-wxColor getColorAuiPanelCaptionBackGradient()
-{
-    if (wxSystemSettings::GetAppearance().IsDark())
-        return {0, 0x3d, 0x6e}; //dark blue
-    else
-        return {0, 120, 215}; //medium blue
-}
+wxColor getColorAuiPanelCaptionText()         { return wxSystemSettings::GetAppearance().IsDark() ? 0xdadada : 0xffffff; }
+wxColor getColorAuiPanelCaptionBack()         { return wxSystemSettings::GetAppearance().IsDark() ? wxColor{0, 0x4f, 0x8e} : wxColor{51, 147, 223}; } //dark + medium blue
+wxColor getColorAuiPanelCaptionBackGradient() { return wxSystemSettings::GetAppearance().IsDark() ? wxColor{0, 0x3d, 0x6e} : wxColor{ 0, 120, 215}; } //dark + medium blue
 
 wxColor getColorFlashStatusInfo()
 {
-    return enhanceContrast({31, 57, 226} /*blue*/,
-                           wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT),
-                           wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW), 5 /*contrastRatioMin*/); //W3C recommends >= 4.5
+    return enhanceContrast({31, 57, 226} /*blue*/, wxWindow::GetClassDefaultAttributes(wxWindowVariant::wxWINDOW_VARIANT_NORMAL).colBg,
+                           5 /*contrastRatioMin*/); //W3C recommends >= 4.5
 }
 
 IconBuffer::IconSize convert(GridIconSize isize)
@@ -454,21 +439,18 @@ void updateTopButton(wxBitmapButton& btn,
                      const char* extraIconName /*optional*/,
                      const wxColor& highlightCol /*optional*/)
 {
+    const wxColor backCol = highlightCol.IsOk() ? highlightCol : btn.GetBackgroundColour();
     wxImage iconImg = highlightCol.IsOk() ? img : greyScale(img);
 
-    wxImage btnLabelImg = createImageFromText(btn.GetLabelText(), btn.GetFont(), highlightCol.IsOk() ? *wxBLACK : wxSystemSettings::GetColour(wxSYS_COLOUR_BTNTEXT));
+    wxImage btnLabelImg = createImageFromText(btn.GetLabelText(), btn.GetFont(),
+                                              enhanceContrast(wxSystemSettings::GetColour(wxSYS_COLOUR_BTNTEXT), backCol, 4.5 /*contrastRatioMin*/));
 
-    wxImage varLabelImg = createImageFromText(varName,
-                                              wxFont(wxNORMAL_FONT->GetPointSize(), wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD),
-                                              wxSystemSettings::GetColour(wxSYS_COLOUR_GRAYTEXT));
-
+    wxImage varLabelImg = createImageFromText(varName, wxNORMAL_FONT->Bold(),
+                                              enhanceContrast(wxSystemSettings::GetColour(wxSYS_COLOUR_GRAYTEXT), backCol, 4.5 /*contrastRatioMin*/));
     wxImage varImg = varLabelImg;
     if (varIconName)
     {
         wxImage varIcon = mirrorIfRtl(loadImage(varIconName, -1 /*maxWidth*/, dipToScreen(getMenuIconDipSize())));
-
-        //if (!highlightCol.IsOk())
-        //    varIcon = greyScale(varIcon);
 
         varImg = btn.GetLayoutDirection() != wxLayout_RightToLeft ?
                  stackImages(varLabelImg, varIcon, ImageStackLayout::horizontal, ImageStackAlignment::center, dipToScreen(5)) :
@@ -497,6 +479,7 @@ void updateTopButton(wxBitmapButton& btn,
 
     if (highlightCol.IsOk())
         btnImg = layOver(rectangleImage(btnImg.GetSize(), highlightCol), btnImg, wxALIGN_CENTER);
+
     setImage(btn, btnImg);
 }
 }
@@ -673,6 +656,7 @@ imgFileManagerSmall_([]
     m_splitterMain->SetSizer(nullptr); //alas wxFormbuilder doesn't allow us to have child windows without a sizer, so we have to remove it here
     m_splitterMain->setupWindows(m_gridMainL, m_gridMainC, m_gridMainR);
 
+
     setRelativeFontSize(*m_buttonCompare, 1.4);
     setRelativeFontSize(*m_buttonSync,    1.4);
     setRelativeFontSize(*m_buttonCancel,  1.4);
@@ -813,7 +797,7 @@ imgFileManagerSmall_([]
         }
     });
 
-    compareStatus_ = std::make_unique<CompareProgressPanel>(*this); //integrate the compare status panel (in hidden state)
+    compareStatus_.emplace(*this); //integrate the compare status panel (in hidden state)
 
     //caption required for all panes that can be manipulated by the users => used by context menu
     auiMgr_.AddPane(m_panelCenter,
@@ -1025,7 +1009,8 @@ imgFileManagerSmall_([]
     m_menuTools->Bind(wxEVT_MENU_OPEN, [this](wxMenuEvent& event) { onOpenMenuTools(event); });
 
     //notify about (logical) application main window => program won't quit, but stay on this dialog
-    setGlobalWindow(this);
+    wxTheApp->SetTopWindow(this);
+    wxTheApp->SetExitOnFrameDelete(true);
 
     //init handling of first folder pair
     firstFolderPair_ = std::make_unique<FolderPairFirst>(*this,
@@ -1037,6 +1022,7 @@ imgFileManagerSmall_([]
     filegrid::init(*m_gridMainL, *m_gridMainC, *m_gridMainR);
     treegrid::init(*m_gridOverview);
     cfggrid ::init(*m_gridCfgHistory);
+
 
     //initialize and load configuration
     setGlobalCfgOnInit(globalCfg); //calls auiMgr_.Update()
@@ -3929,8 +3915,8 @@ void MainDialog::onCfgGridContext(GridContextMenuEvent& event)
     auto addColorOption = [&](const wxColor& col, const wxString& name)
     {
         submenu.addItem(name, [&, col] { applyBackColor(col); },
-                        rectangleImage({wxsizeToScreen(this->GetCharHeight()),
-                                        wxsizeToScreen(this->GetCharHeight())},
+                        rectangleImage({wxsizeToScreen(colSize.x),
+                                        wxsizeToScreen(colSize.y)},
                                        col.Ok() ? col : wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW),
         {0xdd, 0xdd, 0xdd} /*light grey*/, dipToScreen(1)),
         !selectedRows.empty());
@@ -3986,6 +3972,7 @@ void MainDialog::onCfgGridContext(GridContextMenuEvent& event)
         drawFilledRectangle(dc, wxRect(colSize), wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW), borderCol, dipToWxsize(1));
 
         dc.SetFont(dc.GetFont().Bold());
+        dc.SetTextForeground(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
         dc.DrawText(L"?", wxPoint() + (colSize - dc.GetTextExtent(L"?")) / 2);
     }
 
@@ -4707,12 +4694,12 @@ void MainDialog::updateGui()
     updateTopButton(*m_buttonCompare, loadImage("compare"),
                     getVariantName(cmpVar), cmpVarIconName,
                     nullptr /*extraIconName*/,
-                    folderCmp_.empty() ? getColorCompareButtonHighlight() : wxNullColour);
+                    folderCmp_.empty() ? getColorHighlightCompareButton() : wxNullColour);
 
     updateTopButton(*m_buttonSync, loadImage("start_sync"),
                     getVariantName(syncVar), syncVarIconName,
                     useDbFile ? "database" : nullptr,
-                    getCUD(st) != 0 ? getColorSyncButtonHighlight() : wxNullColour);
+                    getCUD(st) != 0 ? getColorHighlightSyncButton() : wxNullColour);
 
     m_panelTopButtons->Layout();
 
@@ -5303,7 +5290,7 @@ void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::s
     //m_panelTimeStats->Dimensions(); //
 
     const wxImage& logBtnImg = layOver(loadImage("log_file"), logOverlayImage, wxALIGN_BOTTOM | wxALIGN_RIGHT);
-   m_bpButtonToggleLog->init(layOver(generatePressedButtonBack(logBtnImg.GetSize() + wxSize(dipToScreen(10), dipToScreen(10))), logBtnImg), logBtnImg);
+    m_bpButtonToggleLog->init(layOver(generatePressedButtonBack(logBtnImg.GetSize() + wxSize(dipToScreen(10), dipToScreen(10))), logBtnImg), logBtnImg);
 
     const int logBtnSize = m_bpButtonViewType->GetSize().GetHeight();
     m_bpButtonToggleLog->SetMinSize({logBtnSize, logBtnSize});
@@ -6227,10 +6214,7 @@ void MainDialog::onMenuOptions(wxCommandEvent& event)
         }
         catch (FileError&) //changing color scheme failed => restart app
         {
-            //LastRun.ffs_gui + GlobalSettings.xml
-            writeConfig(getConfig(),              lastRunConfigPath_); //throw FileError
-            writeConfig(getGlobalCfgBeforeExit(), globalCfgFilePath_); //
-
+            onSystemShutdownRunTasks(); //LastRun.ffs_gui + GlobalSettings.xml +...
             try
             {
                 const Zstring ffsLaunchPath = getProcessPath(); //throw FileError
@@ -6243,11 +6227,12 @@ void MainDialog::onMenuOptions(wxCommandEvent& event)
                 }
                 catch (SysErrorTimeOut&) {}
                 catch (const SysError& e) { throw FileError(replaceCpy(_("Command %x failed."), L"%x", fmtPath(ffsLaunchPath)), e.toString()); }
-
-                //don't Close() which prompts to save current config in onClose()
-                Destroy(); //for top-level windows this employs delayed destruction (wxPendingDelete)
             }
             catch (const FileError& e) { showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString())); }
+
+            //don't continue after having called onSystemShutdownRunTasks()
+            // => also avoid ~MainDialog() calling getGlobalCfgBeforeExit() a second time and saving cfg needlessly
+            terminateProcess(static_cast<int>(FfsExitCode::success));
         }
     }
 }

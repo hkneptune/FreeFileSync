@@ -1071,10 +1071,10 @@ FolderComparison fff::compare(WarningDialogs& warnings,
     //-------------------------------------------------------------------------------
 
     //prevent operating system going into sleep state
-    std::unique_ptr<SetProcessPriority> noStandby;
+    std::optional<SetProcessPriority> noStandby;
     try
     {
-        noStandby = std::make_unique<SetProcessPriority>(runWithBackgroundPriority ? ProcessPriority::background : ProcessPriority::normal); //throw FileError
+        noStandby.emplace(runWithBackgroundPriority ? ProcessPriority::background : ProcessPriority::normal); //throw FileError
     }
     catch (const FileError& e) //failure is not critical => log only
     {

@@ -441,10 +441,8 @@ public:
     CompareFileResult getCategory() const override;
     CompareDirResult getDirCategory() const { return static_cast<CompareDirResult>(getCategory()); }
 
-    FolderPair(const Zstring& itemNameL, //use empty itemName if "not existing"
-               const FolderAttributes& attrL,
-               const Zstring& itemNameR,
-               const FolderAttributes& attrR,
+    FolderPair(const Zstring& itemNameL, const FolderAttributes& attrL, //use empty itemName if "not existing"
+               const Zstring& itemNameR, const FolderAttributes& attrR,
                ContainerObject& parentObj) :
         FileSystemObject(itemNameL, itemNameR, parentObj),
         ContainerObject(static_cast<FileSystemObject&>(*this)), //FileSystemObject fully constructed at this point!

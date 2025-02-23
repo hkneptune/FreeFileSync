@@ -26,8 +26,9 @@
 
 namespace xbrz
 {
-template <uint32_t N> inline
-unsigned char getByte(uint32_t val) { return static_cast<unsigned char>((val >> (8 * N)) & 0xff); }
+template <uint32_t N>
+inline unsigned char getByte(uint32_t val)        { return static_cast<unsigned char>((val >> (8 * N)) & 0xff); }
+inline unsigned char getByte(uint32_t val, int n) { return static_cast<unsigned char>((val >> (8 * n)) & 0xff); }
 
 inline unsigned char getAlpha(uint32_t pix) { return getByte<3>(pix); }
 inline unsigned char getRed  (uint32_t pix) { return getByte<2>(pix); }
@@ -44,28 +45,20 @@ inline uint16_t rgb888to555(uint32_t pix) { return static_cast<uint16_t>(((pix &
 inline uint16_t rgb888to565(uint32_t pix) { return static_cast<uint16_t>(((pix & 0xF80000) >> 8) | ((pix & 0x00FC00) >> 5) | ((pix & 0x0000F8) >> 3)); }
 
 
-using BytePixel = unsigned char[4]; //unspecified byte order
-static_assert(std::alignment_of_v<BytePixel> == 1); // :)
-
-
 template <class PixReader, class PixWriter> inline
-void unscaledCopy(PixReader srcReader /* (int x, int y, BytePixel& pix) */,
-                  PixWriter trgWriter /* (const BytePixel& pix)         */, int width, int height)
+void unscaledCopy(PixReader pixRead /* (int x, int y) -> uint32_t */,
+                  PixWriter pixWrite /* (uint32_t pix) */, int width, int height)
 {
     for (int y = 0; y < height; ++y)
         for (int x = 0; x < width; ++x)
-        {
-            BytePixel pix; //uninitialized
-            srcReader(x, y, pix);
-            trgWriter(pix);
-        }
+            pixWrite(pixRead(x, y));
 }
 
 
 //nearest-neighbor (going over target image - slow for upscaling, since source is read multiple times missing out on cache! Fast for similar image sizes!)
 template <class PixReader, class PixWriter>
-void nearestNeighborScale(PixReader srcReader /* (int x, int y, BytePixel& pix) */, int srcWidth, int srcHeight,
-                          PixWriter trgWriter /* (const BytePixel& pix)         */, int trgWidth, int trgHeight,
+void nearestNeighborScale(PixReader pixRead /* (int x, int y) -> uint32_t */, int srcWidth, int srcHeight,
+                          PixWriter pixWrite /* (uint32_t pix)            */, int trgWidth, int trgHeight,
                           int yFirst, int yLast)
 {
     yFirst = std::max(yFirst, 0);
@@ -79,13 +72,30 @@ void nearestNeighborScale(PixReader srcReader /* (int x, int y, BytePixel& pix) 
         for (int x = 0; x < trgWidth; ++x)
         {
             const int xSrc = srcWidth * x / trgWidth;
-
-            BytePixel pix; //uninitialized
-            srcReader(xSrc, ySrc, pix);
-            trgWriter(pix);
+            pixWrite(pixRead(xSrc, ySrc));
         }
     }
 }
+
+
+inline
+unsigned char byteRound(double v) //std::round is prohibitively expensive!
+{
+    //assert(v >= 0);
+    return static_cast<unsigned char>(std::min(v + 0.5, 255.0));
+}
+
+
+#if 0
+inline
+unsigned char byteCeil(double v)
+{
+    //assert(v >= 0);
+    if (v >= 255.0) return 255;
+    unsigned char i = static_cast<unsigned char>(v);
+    return v == i ? i : i + 1;
+}
+#endif
 
 
 inline
@@ -96,27 +106,11 @@ unsigned int uintDivRound(unsigned int num, unsigned int den)
 }
 
 
-inline
-unsigned char premultiply(unsigned char c, unsigned char alpha)
-{
-    return static_cast<unsigned char>(uintDivRound(static_cast<unsigned int>(c) * alpha, 255));
-    //premultiply/demultiply using int div round is more accurate than int div floor/ceil pair
-}
-
-
-inline
-unsigned char demultiply(unsigned char c, unsigned char alpha)
-{
-    return static_cast<unsigned char>(alpha == 0 ? 0 :
-                                      std::min(uintDivRound(static_cast<unsigned int>(c) * 255, alpha), 255U));
-}
-
-
 //caveat: treats alpha channel like regular color! => caller needs to pre/de-multiply alpha!
 template <class PixReader, class PixWriter>
-void bilinearScaleSimple(PixReader srcReader /* (int x, int y, BytePixel& pix) */, int srcWidth, int srcHeight,
-                         PixWriter trgWriter /* (const BytePixel& pix)         */, int trgWidth, int trgHeight,
-                         int yFirst, int yLast)
+void bilinearScale(PixReader pixRead /* (int x, int y) -> Function<value(int channel)>       */, int srcWidth, int srcHeight,
+                   PixWriter pixWrite /* ( const Function<value(int channel)>& interpolate ) */, int trgWidth, int trgHeight,
+                   int yFirst, int yLast)
 {
     yFirst = std::max(yFirst, 0);
     yLast  = std::min(yLast, trgHeight);
@@ -174,28 +168,20 @@ void bilinearScaleSimple(PixReader srcReader /* (int x, int y, BytePixel& pix) *
             const double x2xyy1 = x2x * yy1;
             const double xx1yy1 = xx1 * yy1;
 
-            BytePixel pix11; //
-            BytePixel pix21; //uninitialized
-            BytePixel pix12; //
-            BytePixel pix22; //
+            auto pix11 = pixRead(x1, y1);
+            auto pix21 = pixRead(x2, y1);
+            auto pix12 = pixRead(x1, y2);
+            auto pix22 = pixRead(x2, y2);
 
-            srcReader(x1, y1, pix11); //
-            srcReader(x2, y1, pix21); //perf: srcReader has to (re-)calculate row using y
-            srcReader(x1, y2, pix12); //      => ~7% additional runtime
-            srcReader(x2, y2, pix22); //
-
-            const auto interpolate = [&](int offset)
+            auto interpolate = [&](int channel)
             {
                 /* https://en.wikipedia.org/wiki/Bilinear_interpolation
                      (c11(x2 - x) + c21(x - x1)) * (y2 - y ) +
                      (c12(x2 - x) + c22(x - x1)) * (y  - y1)      */
-                return static_cast<unsigned char>(pix11[offset] * x2xy2y + pix21[offset] * xx1y2y +
-                                                  pix12[offset] * x2xyy1 + pix22[offset] * xx1yy1 + 0.5);
+                return pix11(channel) * x2xy2y + pix21(channel) * xx1y2y +
+                       pix12(channel) * x2xyy1 + pix22(channel) * xx1yy1;
             };
-            trgWriter(BytePixel{interpolate(0),
-                                interpolate(1),
-                                interpolate(2),
-                                interpolate(3)});
+            pixWrite(std::move(interpolate));
         }
     }
 }

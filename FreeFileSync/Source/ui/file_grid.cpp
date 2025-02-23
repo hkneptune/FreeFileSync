@@ -218,14 +218,14 @@ struct IconManager
     {
         if (showFileIcons)
         {
-            iconBuffer_  = std::make_unique<IconBuffer>(sz);
-            iconUpdater_ = std::make_unique<IconUpdater>(provLeft, provRight, *iconBuffer_);
+            iconBuffer_ .emplace(sz);
+            iconUpdater_.emplace(provLeft, provRight, *iconBuffer_);
         }
     }
 
     int getIconWxsize() const { return screenToWxsize(iconBuffer_ ? iconBuffer_->getPixSize() : IconBuffer::getPixSize(IconBuffer::IconSize::small)); }
 
-    IconBuffer* getIconBuffer() { return iconBuffer_.get(); }
+    IconBuffer* getIconBuffer() { return get(iconBuffer_); }
     void startIconUpdater() { assert(iconUpdater_); if (iconUpdater_) iconUpdater_->start(); }
 
     const wxImage& getGenericFileIcon () const { return fileIcon_;         }
@@ -241,8 +241,8 @@ private:
     const wxImage plusOverlayIcon_;
     const wxImage minusOverlayIcon_;
 
-    std::unique_ptr<IconBuffer> iconBuffer_;
-    std::unique_ptr<IconUpdater> iconUpdater_; //bind ownership to GridDataRim<>!
+    std::optional<IconBuffer> iconBuffer_;
+    std::optional<IconUpdater> iconUpdater_; //bind ownership to GridDataRim<>!
 };
 
 
@@ -1341,7 +1341,6 @@ break2:
     const int gapSizeWide_ = dipToWxsize(FILE_GRID_GAP_SIZE_WIDE_DIP);
 
     const wxColor mouseHighlightColor_ = enhanceContrast(*wxBLUE, //primarily needed for dark mode!
-                                                         wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT),
                                                          wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW), 5 /*contrastRatioMin*/); //W3C recommends >= 4.5
 
     const int charHeight_ = refGrid().getMainWin().GetCharHeight();
@@ -1815,6 +1814,7 @@ public:
         gridC_.getMainWin().Bind(wxEVT_PAINT, [this](wxPaintEvent& event) { onPaintGrid(gridC_); event.Skip(); });
         gridR_.getMainWin().Bind(wxEVT_PAINT, [this](wxPaintEvent& event) { onPaintGrid(gridR_); event.Skip(); });
 
+
         //-----------------------------------------------------------------------------------------------------
         //scroll master event handling: connect LAST, so that scrollMaster_ is set BEFORE other event handling!
         //-----------------------------------------------------------------------------------------------------
@@ -1860,7 +1860,6 @@ public:
             assert(false); //does this ever happen?
             return ;
         }
-
 #if 0
         if (const std::string& logtext = "new scroll master: " + printNumber<std::string>("%llx", reinterpret_cast<unsigned long long>(&grid)) + "\n";
             scrollMaster_ != &grid)

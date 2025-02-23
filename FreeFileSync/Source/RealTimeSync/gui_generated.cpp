@@ -59,12 +59,14 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
     wxBoxSizer* bSizer152;
     bSizer152 = new wxBoxSizer( wxHORIZONTAL );
 
+    wxStaticText* m_staticText811;
     m_staticText811 = new wxStaticText( this, wxID_ANY, _("To get started, just import a \"ffs_batch\" file."), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticText811->Wrap( -1 );
     m_staticText811->SetForegroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_GRAYTEXT ) );
 
     bSizer152->Add( m_staticText811, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT, 5 );
 
+    wxStaticText* m_staticText10;
     m_staticText10 = new wxStaticText( this, wxID_ANY, _("("), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticText10->Wrap( -1 );
     m_staticText10->SetForegroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_GRAYTEXT ) );
@@ -74,12 +76,14 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
     m_bitmapBatch = new wxStaticBitmap( this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
     bSizer152->Add( m_bitmapBatch, 0, wxALIGN_CENTER_VERTICAL, 5 );
 
+    wxStaticText* m_staticText11;
     m_staticText11 = new wxStaticText( this, wxID_ANY, _(")"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticText11->Wrap( -1 );
     m_staticText11->SetForegroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_GRAYTEXT ) );
 
     bSizer152->Add( m_staticText11, 0, wxALIGN_CENTER_VERTICAL|wxRIGHT|wxLEFT, 2 );
 
+    wxHyperlinkCtrl* m_hyperlink243;
     m_hyperlink243 = new wxHyperlinkCtrl( this, wxID_ANY, _("Show examples"), wxT("https://freefilesync.org/manual.php?topic=realtimesync"), wxDefaultPosition, wxDefaultSize, wxHL_DEFAULT_STYLE );
     m_hyperlink243->SetToolTip( _("https://freefilesync.org/manual.php?topic=realtimesync") );
 
@@ -91,6 +95,7 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
 
     bSizerMain->Add( bSizer161, 0, wxALL|wxEXPAND, 5 );
 
+    wxStaticLine* m_staticline2;
     m_staticline2 = new wxStaticLine( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
     bSizerMain->Add( m_staticline2, 0, wxEXPAND, 5 );
 
@@ -109,6 +114,7 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
     m_bitmapFolders = new wxStaticBitmap( m_panelMain, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
     bSizer142->Add( m_bitmapFolders, 0, wxTOP|wxBOTTOM|wxLEFT, 5 );
 
+    wxStaticText* m_staticText7;
     m_staticText7 = new wxStaticText( m_panelMain, wxID_ANY, _("Folders to watch for changes:"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticText7->Wrap( -1 );
     bSizer142->Add( m_staticText7, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5 );
@@ -161,6 +167,7 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
 
     bSizer1->Add( bSizer151, 1, wxALL|wxEXPAND, 10 );
 
+    wxStaticLine* m_staticline212;
     m_staticline212 = new wxStaticLine( m_panelMain, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
     bSizer1->Add( m_staticline212, 0, wxEXPAND, 5 );
 
@@ -170,6 +177,7 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
     wxBoxSizer* bSizer14;
     bSizer14 = new wxBoxSizer( wxHORIZONTAL );
 
+    wxStaticText* m_staticText8;
     m_staticText8 = new wxStaticText( m_panelMain, wxID_ANY, _("Idle time (in seconds):"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticText8->Wrap( -1 );
     bSizer14->Add( m_staticText8, 0, wxALIGN_CENTER_VERTICAL|wxTOP|wxBOTTOM|wxLEFT, 5 );
@@ -182,6 +190,7 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
 
     bSizer131->Add( bSizer14, 0, 0, 5 );
 
+    wxStaticText* m_staticText71;
     m_staticText71 = new wxStaticText( m_panelMain, wxID_ANY, _("Ensures folders are not in heavy use when running the command."), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticText71->Wrap( -1 );
     m_staticText71->SetForegroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_GRAYTEXT ) );
@@ -191,6 +200,7 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
 
     bSizer1->Add( bSizer131, 0, wxALL, 10 );
 
+    wxStaticLine* m_staticline211;
     m_staticline211 = new wxStaticLine( m_panelMain, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
     bSizer1->Add( m_staticline211, 0, wxEXPAND, 5 );
 
@@ -203,6 +213,7 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
     m_bitmapConsole = new wxStaticBitmap( m_panelMain, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, 0 );
     bSizer13->Add( m_bitmapConsole, 0, wxTOP|wxBOTTOM|wxLEFT|wxALIGN_CENTER_VERTICAL, 5 );
 
+    wxStaticText* m_staticText6;
     m_staticText6 = new wxStaticText( m_panelMain, wxID_ANY, _("Command line to run when changes are detected:"), wxDefaultPosition, wxDefaultSize, 0 );
     m_staticText6->Wrap( -1 );
     bSizer13->Add( m_staticText6, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5 );
@@ -224,6 +235,7 @@ MainDlgGenerated::MainDlgGenerated( wxWindow* parent, wxWindowID id, const wxStr
     bSizer1->Fit( m_panelMain );
     bSizerMain->Add( m_panelMain, 1, wxEXPAND, 5 );
 
+    wxStaticLine* m_staticline5;
     m_staticline5 = new wxStaticLine( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
     bSizerMain->Add( m_staticline5, 0, wxEXPAND, 5 );
 

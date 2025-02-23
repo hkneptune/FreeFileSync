@@ -841,7 +841,7 @@ private:
     {
         assert(deletionVariant_ == DeletionVariant::versioning);
         if (!versioner_)
-            versioner_ = std::make_unique<FileVersioner>(versioningFolderPath_, versioningStyle_, syncStartTime_); //throw FileError
+            versioner_.emplace(versioningFolderPath_, versioningStyle_, syncStartTime_); //throw FileError
         return *versioner_;
     }
 
@@ -859,7 +859,7 @@ private:
     const AbstractPath versioningFolderPath_;
     const VersioningStyle versioningStyle_;
     const time_t syncStartTime_;
-    std::unique_ptr<FileVersioner> versioner_;
+    std::optional<FileVersioner> versioner_;
 
     //buffer status texts:
     const std::wstring txtDelFilePermanent_  = _("Deleting file %x");
@@ -2458,10 +2458,10 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
     //-------------------------------------------------------------------------------
 
     //prevent operating system going into sleep state
-    std::unique_ptr<SetProcessPriority> noStandby;
+    std::optional<SetProcessPriority> noStandby;
     try
     {
-        noStandby = std::make_unique<SetProcessPriority>(runWithBackgroundPriority ? ProcessPriority::background : ProcessPriority::normal); //throw FileError
+        noStandby.emplace(runWithBackgroundPriority ? ProcessPriority::background : ProcessPriority::normal); //throw FileError
     }
     catch (const FileError& e) //failure is not critical => log only
     {

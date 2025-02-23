@@ -28,7 +28,7 @@ using namespace xbrz;
 namespace
 {
 //blend front color with opacity M / N over opaque background: https://en.wikipedia.org/wiki/Alpha_compositing
-//TODO!? gamma correction:                                     https://en.wikipedia.org/wiki/Alpha_compositing#Gamma_correction
+//Limitation: alpha should be applied in gamma-decoded linear RGB space: https://ssp.impulsetrain.com/gamma-premult.html   
 template <unsigned int M, unsigned int N> inline
 uint32_t gradientRGB(uint32_t pixFront, uint32_t pixBack)
 {
@@ -46,7 +46,7 @@ uint32_t gradientRGB(uint32_t pixFront, uint32_t pixBack)
 
 
 //find intermediate color between two colors with alpha channels (=> NO alpha blending!!!)
-//TODO!? gamma correction: https://en.wikipedia.org/wiki/Alpha_compositing#Gamma_correction
+//Limitation: alpha should be applied in gamma-decoded linear RGB space: https://ssp.impulsetrain.com/gamma-premult.html   
 template <unsigned int M, unsigned int N> inline
 uint32_t gradientARGB(uint32_t pixFront, uint32_t pixBack)
 {
@@ -1220,45 +1220,46 @@ bool xbrz::equalColorTest2(uint32_t col1, uint32_t col2, ColorFormat colFmt, dou
 void xbrz::bilinearScale(const uint32_t* src, int srcWidth, int srcHeight,
                          /**/  uint32_t* trg, int trgWidth, int trgHeight)
 {
-    const auto pixReader = [src, srcWidth](int x, int y, BytePixel& pix)
+    const auto pixRead = [src, srcWidth](int x, int y)
     {
-        static_assert(sizeof(pix) == sizeof(*src));
         const uint32_t pixSrc = src[y * srcWidth + x];
 
-        const unsigned char a = getAlpha(pixSrc);
-        pix[0] = a;
-        pix[1] = xbrz::premultiply(getRed  (pixSrc), a); //r
-        pix[2] = xbrz::premultiply(getGreen(pixSrc), a); //g
-        pix[3] = xbrz::premultiply(getBlue (pixSrc), a); //b
+        return [pixSrc, a = int(getAlpha(pixSrc))](int channel)
+        {
+            if (channel == 3)
+                return a;
+
+            //Limitation: alpha should be applied in gamma-decoded linear RGB space: https://ssp.impulsetrain.com/gamma-premult.html   
+            return getByte(pixSrc, channel) * a;
+        };
     };
 
-    const auto pixWriter = [trg](const xbrz::BytePixel& pix) mutable
+    const auto pixWrite = [trg](const auto& interpolate) mutable
     {
-        const unsigned char a = pix[0];
-        * trg++ = makePixel(a,
-                            xbrz::demultiply(pix[1], a),  //r
-                            xbrz::demultiply(pix[2], a),  //g
-                            xbrz::demultiply(pix[3], a)); //b
+        const double a = interpolate(3);
+        if (a <= 0.0)
+            * trg++ = 0;
+        else
+            * trg++ = makePixel(byteRound(a),                   
+                                byteRound(interpolate(2) / a),  //r
+                                byteRound(interpolate(1) / a),  //g
+                                byteRound(interpolate(0) / a)); //b
     };
 
-    bilinearScaleSimple(pixReader, srcWidth, srcHeight,
-                        pixWriter, trgWidth, trgHeight, 0, trgHeight);
+    bilinearScale(pixRead, srcWidth, srcHeight,
+                         pixWrite, trgWidth, trgHeight, 0, trgHeight);
 }
 
 
 void xbrz::nearestNeighborScale(const uint32_t* src, int srcWidth, int srcHeight,
                                 /**/  uint32_t* trg, int trgWidth, int trgHeight)
 {
-    const auto imgReader = [src, srcWidth](int x, int y, BytePixel& pix)
-    {
-        static_assert(sizeof(pix) == sizeof(uint32_t));
-        std::memcpy(pix, src + y * srcWidth + x, sizeof(pix));
-    };
+    const auto pixRead = [src, srcWidth](int x, int y) { return src[y * srcWidth + x]; };
 
-    const auto imgWriter = [trg](const xbrz::BytePixel& pix) mutable { std::memcpy(trg++, pix, sizeof(pix)); };
+    const auto pixWrite = [trg](uint32_t pix) mutable { *trg++ = pix; };
 
-    nearestNeighborScale(imgReader, srcWidth, srcHeight,
-                         imgWriter, trgWidth, trgHeight, 0, trgHeight);
+    nearestNeighborScale(pixRead, srcWidth, srcHeight,
+                         pixWrite, trgWidth, trgHeight, 0, trgHeight);
 }
 
 
@@ -1275,7 +1276,7 @@ void bilinearScaleCpu(const uint32_t* src, int srcWidth, int srcHeight,
         tg.run([=]
     {
         const int iLast = std::min(i + TASK_GRANULARITY, trgHeight);
-        xbrz::bilinearScaleSimple(src, srcWidth, srcHeight, srcWidth * sizeof(uint32_t),
+        bilinearScale(src, srcWidth, srcHeight, srcWidth * sizeof(uint32_t),
                                   trg, trgWidth, trgHeight, trgWidth * sizeof(uint32_t),
         i, iLast, [](uint32_t pix) { return pix; });
     });

@@ -17,6 +17,7 @@ PopupDialogGenerated::PopupDialogGenerated( wxWindow* parent, wxWindowID id, con
     wxBoxSizer* bSizer24;
     bSizer24 = new wxBoxSizer( wxVERTICAL );
 
+    wxPanel* m_panel33;
     m_panel33 = new wxPanel( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL );
     m_panel33->SetBackgroundColour( wxSystemSettings::GetColour( wxSYS_COLOUR_WINDOW ) );
 
@@ -48,6 +49,7 @@ PopupDialogGenerated::PopupDialogGenerated( wxWindow* parent, wxWindowID id, con
     bSizer165->Fit( m_panel33 );
     bSizer24->Add( m_panel33, 1, wxEXPAND, 5 );
 
+    wxStaticLine* m_staticline6;
     m_staticline6 = new wxStaticLine( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
     bSizer24->Add( m_staticline6, 0, wxEXPAND, 5 );
 

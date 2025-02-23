@@ -200,6 +200,37 @@ See: http://soundfile.sapp.org/doc/WaveFormat/ => skip 8 bytes (Subchunk2ID and 
 +    m_data->m_data = (&m_data->m_dataWithHeader[data_offset + 8]);
 
 __________________________________________________________________________________________________________
+/src/common/bmpbndl.cpp
+DoGetPreferredSize()'s lossy "GetDefaultSize()*scaleBest" calculation can be 1-pixel-off compared to real image size => superfluous + ugly-looking image shrinking!
+
+ wxSize wxBitmapBundleImplSet::GetPreferredBitmapSizeAtScale(double scale) const
+ {
++    //work around  DoGetPreferredSize()'s flawed "GetDefaultSize()*scaleBest" calculation
++    for (const auto& entry : m_entries)
++        if (entry.bitmap.GetScaleFactor() == scale)
++            return entry.bitmap.GetSize();
++
+     return DoGetPreferredSize(scale);
+ }
+
+__________________________________________________________________________________________________________
+/src/common/stattextcmn.cpp
+Fix wxWidgets stupidly doing *nothing* when trimming east asian language strings with few spaces
+
+	// Find the last word to chop off.
+-	const size_t lastSpace = line.rfind(' ', posEnd);
+
++	size_t lastSpace = line.rfind(' ', posEnd);
++
++	//no, wxWidgets we are not even close to "can't wrap"!
++	if (lastSpace == wxString::npos)
++	{
++		lastSpace = line.find(' ');
++		if (lastSpace != wxString::npos && lastSpace > 0)
++		   widthMax = widths[lastSpace - 1];
++	}
+
+__________________________________________________________________________________________________________
 /src/gtk/button.cpp
 now this is absurd: if we add wxTranslations for "&OK/&Cancel", wxWidgets will detect "wxIsStockLabel()",
 throw away the label and do gtk_button_set_label(wxGetStockGtkID(wxID_OK/wxID_CANCEL)) instead,
@@ -220,3 +251,28 @@ https://github.com/wxWidgets/wxWidgets/blob/6561ca020048de57ec28fec5b27f80b00d44
 -    }
     wxGCC_WARNING_RESTORE()
 #endif
+
+__________________________________________________________________________________________________________
+/src/common/toplvcmn.cpp
+wxTopLevelWindow::Destroy() uses wxPendingDelete for deferred deletion during next idle event.
+There might not be a next idle event! E.g. on GTK2 a hidden window doesn't receive idle events.
+Reproduce on GTK2+KDE for toplevel window: Hide(); wxTheApp->Yield(); Destroy(); => process not exiting! https://freefilesync.org/forum/viewtopic.php?t=11935
+
+-    for ( wxWindowList::const_iterator i = wxTopLevelWindows.begin(),
+-          end = wxTopLevelWindows.end();
+-          i != end;
+-          ++i )
+-    {
+-        wxTopLevelWindow* const win = static_cast<wxTopLevelWindow*>(*i);
+-        if ( win != this && win->IsShown() )
+-        {
+-            // there remains at least one other visible TLW, we can hide this
+-            // one
+-            Hide();
+-
+-            break;
+-        }
+-    }
++    Hide();
++    wxWakeUpIdle();
+__________________________________________________________________________________________________________

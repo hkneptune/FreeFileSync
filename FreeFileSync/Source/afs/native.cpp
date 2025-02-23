@@ -163,7 +163,7 @@ std::vector<FsItem> getDirContentFlat(const Zstring& dirPath) //throw FileError
                 => the macOS SMB manager internally buffers file names as case-insensitive and NFC (= just like NTFS on Windows)
                 => test: create SMB share from Linux => *boom* on macOS: "Error Code 2: No such file or directory [lstat]"
                     or WORSE: folders "test" and "Test" *both* incorrectly return the content of one of the two
-                => Update 2020-04-24: converting to NFC doesn't help: both NFD/NFC forms fail(ENOENT) lstat in FFS, AS WELL AS IN FINDER => macOS bug!         */
+                => Update 2020-04-24: converting to NFC doesn't help: both NFD/NFC forms fail(ENOENT) lstat in FFS, AS WELL AS IN FINDER (silently skipped!) => macOS bug!         */
     }
 }
 

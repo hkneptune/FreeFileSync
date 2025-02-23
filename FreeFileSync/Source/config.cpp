@@ -962,14 +962,14 @@ bool readStruc(const XmlElement& input, ConfigFileItem& value)
 template <> inline
 void writeStruc(const ConfigFileItem& value, XmlElement& output)
 {
-    output.setAttribute("LastSync",  value.lastRunStats.startTime);
-    output.setAttribute("Result",    value.lastRunStats.syncResult);
+    output.setAttribute("LastSync", value.lastRunStats.startTime);
+    output.setAttribute("Result",   value.lastRunStats.syncResult);
 
     output.setAttribute("Config", makePortablePath(value.cfgFilePath));
     output.setAttribute("Log",    makePortablePath(AFS::getInitPathPhrase(value.lastRunStats.logFilePath)));
 
-    output.setAttribute("Items",     value.lastRunStats.itemsProcessed);
-    output.setAttribute("Bytes",     value.lastRunStats.bytesProcessed);
+    output.setAttribute("Items", value.lastRunStats.itemsProcessed);
+    output.setAttribute("Bytes", value.lastRunStats.bytesProcessed);
 
     output.setAttribute("TotalTime", value.lastRunStats.totalTime);
 
@@ -978,10 +978,10 @@ void writeStruc(const ConfigFileItem& value, XmlElement& output)
 
     if (value.backColor.IsOk())
     {
-        assert(value.backColor.Alpha() == 255);
-        const auto& [rh, rl] = hexify(value.backColor.Red  ());
-        const auto& [gh, gl] = hexify(value.backColor.Green());
-        const auto& [bh, bl] = hexify(value.backColor.Blue ());
+        assert(value.backColor.Alpha() == wxALPHA_OPAQUE);
+        const auto [rh, rl] = hexify(value.backColor.Red  ());
+        const auto [gh, gl] = hexify(value.backColor.Green());
+        const auto [bh, bl] = hexify(value.backColor.Blue ());
         output.setAttribute("Color", std::string({rh, rl, gh, gl, bh, bl}));
     }
 }

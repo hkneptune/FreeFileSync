@@ -154,7 +154,7 @@ private:
 
     const Statistics* syncStat_ = nullptr; //only bound while sync is running
 
-    std::unique_ptr<Taskbar> taskbar_;
+    std::optional<Taskbar> taskbar_;
     SpeedTest remTimeTest_{PERF_WINDOW_REMAINING_TIME};
     SpeedTest speedTest_  {PERF_WINDOW_BYTES_PER_SEC};
 
@@ -218,7 +218,7 @@ void CompareProgressPanel::Impl::init(const Statistics& syncStat, bool ignoreErr
 
     try //try to get access to Windows 7/Ubuntu taskbar
     {
-        taskbar_ = std::make_unique<Taskbar>(this); //throw TaskbarNotAvailable
+        taskbar_.emplace(this); //throw TaskbarNotAvailable
     }
     catch (const TaskbarNotAvailable&) {}
 
@@ -259,7 +259,7 @@ void CompareProgressPanel::Impl::initNewPhase()
 
     const bool haveTotalStats = itemsTotal >= 0 || bytesTotal >= 0;
 
-    if (taskbar_.get()) taskbar_->setStatus(haveTotalStats ? Taskbar::Status::normal : Taskbar::Status::indeterminate);
+    if (taskbar_) taskbar_->setStatus(haveTotalStats ? Taskbar::Status::normal : Taskbar::Status::indeterminate);
 
     m_staticTextProcessed     ->Show(haveTotalStats);
     m_staticTextRemaining     ->Show(haveTotalStats);
@@ -327,7 +327,7 @@ void CompareProgressPanel::Impl::updateProgressGui(bool allowYield)
         setTitle(formatProgressPercent(fractionTotal) + L' ' + getDialogPhaseText(*syncStat_, false /*paused*/));
 
         //progress indicators
-        if (taskbar_.get()) taskbar_->setProgress(fractionTotal);
+        if (taskbar_) taskbar_->setProgress(fractionTotal);
 
         curveDataBytes_.ref().setFraction(fractionBytes);
         curveDataItems_.ref().setFraction(fractionItems);
@@ -754,20 +754,17 @@ private:
     SharedRef<CurveDataTimeMarker> curveItemsTimeEstim_ = makeSharedRef<CurveDataTimeMarker>();
 
     const wxColor colorBytesRim_ = enhanceContrast(getColorBytes(),
-                                                   wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT),
                                                    wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW), 4.5 /*contrastRatioMin*/); //W3C recommends >= 4.5 for text
     const wxColor colorItemsRim_ = enhanceContrast(getColorItems(),
-                                                   wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT),
                                                    wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW), 4.5 /*contrastRatioMin*/); //W3C recommends >= 4.5 for text
     const wxColor colorEstimRim_ = enhanceContrast(getColorEstimate(),
-                                                   wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT),
                                                    wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW), 4.5 /*contrastRatioMin*/); //W3C recommends >= 4.5 for text
     const wxColor colorBytesNow_ = enhanceContrast(getColorBytes(), getColorEstimate(), 4.5 /*contrastRatioMin*/);
     const wxColor colorItemsNow_ = enhanceContrast(getColorItems(), getColorEstimate(), 4.5 /*contrastRatioMin*/);
 
     wxString parentTitleBackup_;
-    std::unique_ptr<FfsTrayIcon> trayIcon_; //optional: if filled all other windows should be hidden and conversely
-    std::unique_ptr<Taskbar> taskbar_;
+    std::optional<FfsTrayIcon> trayIcon_; //optional: if filled all other windows should be hidden and conversely
+    std::optional<Taskbar> taskbar_;
 
     bool ignoreErrors_ = false;
     EnumDescrList<PostSyncAction> enumPostSyncAction_
@@ -821,7 +818,6 @@ syncStat_(&syncStat)
     static_assert(std::is_same_v<TopLevelDialog, wxFrame > ||
                   std::is_same_v<TopLevelDialog, wxDialog>);
     assert((std::is_same_v<TopLevelDialog, wxFrame> == !parentFrame));
-
     //finish construction of this dialog:
     this->pnl_.m_panelProgress->SetMinSize({dipToWxsize(550), dipToWxsize(340)});
 
@@ -858,7 +854,7 @@ syncStat_(&syncStat)
 
     try //try to get access to Windows 7/Ubuntu taskbar
     {
-        taskbar_ = std::make_unique<Taskbar>(this); //throw TaskbarNotAvailable
+        taskbar_.emplace(this); //throw TaskbarNotAvailable
     }
     catch (const TaskbarNotAvailable&) {}
 
@@ -1121,7 +1117,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
         //progress indicators
         setText(*pnl_.m_staticTextPercentTotal, L"", &headerLayoutChanged);
 
-        if (trayIcon_.get()) trayIcon_->setProgress(1); //100% = fully visible FFS logo
+        if (trayIcon_) trayIcon_->setProgress(1); //100% = fully visible FFS logo
         //taskbar_ already set to STATUS_INDETERMINATE by initNewPhase()
     }
     else
@@ -1138,8 +1134,8 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateProgressGui(bool allowYield)
         //progress indicators
         setText(*pnl_.m_staticTextPercentTotal, L' ' + percentTotal, &headerLayoutChanged);
 
-        if (trayIcon_.get()) trayIcon_->setProgress(fractionTotal);
-        if (taskbar_ .get()) taskbar_ ->setProgress(fractionTotal);
+        if (trayIcon_) trayIcon_->setProgress(fractionTotal);
+        if (taskbar_ ) taskbar_ ->setProgress(fractionTotal);
 
         const double timeTotalSecTentative = bytesCurrent == bytesTotal ? timeElapsedDouble : std::max(curveBytesEstim_.ref().getTotalTime(), timeElapsedDouble);
 
@@ -1343,7 +1339,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::updateStaticGui() //depends on "syn
     setImage(*pnl_.m_bitmapStatus, statusImage);
 
     //show status on Windows 7 taskbar
-    if (taskbar_.get())
+    if (taskbar_)
     {
         if (paused_)
             taskbar_->setStatus(Taskbar::Status::paused);
@@ -1450,7 +1446,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::showSummary(TaskResult syncResult, 
     //pnl_.m_bitmapStatus->SetToolTip(); -> redundant
 
     //show status on Windows 7 taskbar
-    if (taskbar_.get())
+    if (taskbar_)
         switch (syncResult)
         {
             case TaskResult::success:
@@ -1674,9 +1670,9 @@ void SyncProgressDialogImpl<TopLevelDialog>::onIconize(wxIconizeEvent& event)
 template <class TopLevelDialog>
 void SyncProgressDialogImpl<TopLevelDialog>::minimizeToTray()
 {
-    if (!trayIcon_.get())
+    if (!trayIcon_)
     {
-        trayIcon_ = std::make_unique<FfsTrayIcon>([this] { this->resumeFromSystray(true /*userRequested*/); }); //FfsTrayIcon lifetime is a subset of "this"'s lifetime!
+        trayIcon_.emplace([this] { this->resumeFromSystray(true /*userRequested*/); }); //FfsTrayIcon lifetime is a subset of "this"'s lifetime!
         //we may destroy FfsTrayIcon even while in the FfsTrayIcon callback!!!!
 
         updateProgressGui(false /*allowYield*/); //set tray tooltip + progress: e.g. no updates while paused
@@ -1696,14 +1692,7 @@ void SyncProgressDialogImpl<TopLevelDialog>::resumeFromSystray(bool userRequeste
         trayIcon_.reset();
 
         if (parentFrame_)
-        {
-            //if (parentFrame_->IsIconized()) //caveat: if window is maximized calling Iconize(false) will erroneously un-maximize!
-            //    parentFrame_->Iconize(false);
             parentFrame_->Show();
-        }
-
-        //if (IsIconized()) //caveat: if window is maximized calling Iconize(false) will erroneously un-maximize!
-        //    Iconize(false);
         this->Show();
 
         updateStaticGui();                       //restore Windows 7 task bar status   (e.g. required in pause mode)

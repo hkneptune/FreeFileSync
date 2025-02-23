@@ -81,6 +81,7 @@ public:
         const addrinfo hints
         {
             .ai_flags = AI_ADDRCONFIG, //save a AAAA lookup on machines that can't use the returned data anyhow
+            .ai_family   = AF_UNSPEC, //don't care if AF_INET or AF_INET6
             .ai_socktype = SOCK_STREAM, //we *do* care about this one!
         };
 

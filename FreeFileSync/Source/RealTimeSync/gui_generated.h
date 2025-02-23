@@ -52,15 +52,9 @@ protected:
     wxMenu* m_menuHelp;
     wxMenuItem* m_menuItemAbout;
     wxBoxSizer* bSizerMain;
-    wxStaticText* m_staticText811;
-    wxStaticText* m_staticText10;
     wxStaticBitmap* m_bitmapBatch;
-    wxStaticText* m_staticText11;
-    wxHyperlinkCtrl* m_hyperlink243;
-    wxStaticLine* m_staticline2;
     wxPanel* m_panelMain;
     wxStaticBitmap* m_bitmapFolders;
-    wxStaticText* m_staticText7;
     wxPanel* m_panelMainFolder;
     wxBitmapButton* m_bpButtonAddFolder;
     wxBitmapButton* m_bpButtonRemoveTopFolder;
@@ -68,15 +62,9 @@ protected:
     wxButton* m_buttonSelectFolderMain;
     wxScrolledWindow* m_scrolledWinFolders;
     wxBoxSizer* bSizerFolders;
-    wxStaticLine* m_staticline212;
-    wxStaticText* m_staticText8;
     wxSpinCtrl* m_spinCtrlDelay;
-    wxStaticText* m_staticText71;
-    wxStaticLine* m_staticline211;
     wxStaticBitmap* m_bitmapConsole;
-    wxStaticText* m_staticText6;
     wxTextCtrl* m_textCtrlCommand;
-    wxStaticLine* m_staticline5;
     zen::BitmapTextButton* m_buttonStart;
 
     // Virtual event handlers, override them in your derived class

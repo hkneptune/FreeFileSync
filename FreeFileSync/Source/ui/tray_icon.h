@@ -36,11 +36,11 @@ private:
     FfsTrayIcon           (const FfsTrayIcon&) = delete;
     FfsTrayIcon& operator=(const FfsTrayIcon&) = delete;
 
-    class TaskBarImpl;
-    TaskBarImpl* trayIcon_;
+    class TrayIconImpl;
+    TrayIconImpl* trayIcon_;
 
     class ProgressIconGenerator;
-    std::unique_ptr<ProgressIconGenerator> iconGenerator_;
+    std::unique_ptr<ProgressIconGenerator> progressIcon_;
 
     wxString activeToolTip_ = L"FreeFileSync";
     double activeFraction_ = 1;

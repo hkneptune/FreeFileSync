@@ -53,13 +53,13 @@ enum TrayMode
 };
 
 
-class TrayIconObject : public wxTaskBarIcon
+class TrayIcon : public wxTaskBarIcon
 {
 public:
-    TrayIconObject(const wxString& jobname) :
+    explicit TrayIcon(const wxString& jobname) :
         jobName_(jobname)
     {
-        Bind(wxEVT_TASKBAR_LEFT_DCLICK, [this](wxTaskBarIconEvent& event) { onDoubleClick(event); });
+        Bind(wxEVT_TASKBAR_LEFT_UP, [this](wxTaskBarIconEvent& event) { onMouseClick(event); });
 
         assert(mode_ != TrayMode::active); //setMode() supports polling!
         setMode(TrayMode::active, Zstring());
@@ -69,7 +69,7 @@ public:
 
     //require polling:
     bool resumeIsRequested() const { return resumeRequested_; }
-    bool abortIsRequested () const { return cancelRequested_;  }
+    bool abortIsRequested () const { return exitRequested_; }
 
     //during TrayMode::error those two functions are available:
     void clearShowErrorRequested()     { assert(mode_ == TrayMode::error); showErrorMsgRequested_ = false; }
@@ -110,16 +110,13 @@ private:
 
     void setTrayIcon(const wxImage& img, const wxString& statusTxt)
     {
-        wxIcon realtimeIcon;
-        realtimeIcon.CopyFromBitmap(img);
-
         wxString tooltip = L"RealTimeSync";
         if (!jobName_.empty())
             tooltip += SPACED_DASH + jobName_;
 
         tooltip += L"\n" + statusTxt;
 
-        SetIcon(realtimeIcon, tooltip);
+        SetIcon(toScaledBitmap(img), tooltip);
     }
 
     wxMenu* CreatePopupMenu() override
@@ -145,12 +142,12 @@ private:
         contextMenu->AppendSeparator();
 
         wxMenuItem* itemAbort = contextMenu->Append(wxID_ANY, _("&Quit"));
-        contextMenu->Bind(wxEVT_COMMAND_MENU_SELECTED, [this](wxCommandEvent& event) { cancelRequested_ = true; }, itemAbort->GetId());
+        contextMenu->Bind(wxEVT_COMMAND_MENU_SELECTED, [this](wxCommandEvent& event) { exitRequested_ = true; }, itemAbort->GetId());
 
         return contextMenu; //ownership transferred to caller
     }
 
-    void onDoubleClick(wxEvent& event)
+    void onMouseClick(wxEvent& event)
     {
         switch (mode_)
         {
@@ -165,7 +162,7 @@ private:
     }
 
     bool resumeRequested_       = false;
-    bool cancelRequested_        = false;
+    bool exitRequested_         = false;
     bool showErrorMsgRequested_ = false;
 
     TrayMode mode_ = TrayMode::waiting;
@@ -191,15 +188,15 @@ struct AbortMonitoring //exception class
 class TrayIconHolder
 {
 public:
-    TrayIconHolder(const wxString& jobname) :
-        trayObj_(new TrayIconObject(jobname)) {}
+    explicit TrayIconHolder(const wxString& jobname) :
+        trayIcon_(new TrayIcon(jobname)) {}
 
     ~TrayIconHolder()
     {
         //harmonize with tray_icon.cpp!!!
-        trayObj_->RemoveIcon();
-        //use wxWidgets delayed destruction: delete during next idle loop iteration (handle late window messages, e.g. when double-clicking)
-        wxPendingDelete.Append(trayObj_);
+        trayIcon_->RemoveIcon();
+        //*schedule* for destruction: delete during next idle event (handle late window messages, e.g. when double-clicking)
+        trayIcon_->Destroy(); //uses wxPendingDelete
     }
 
     void doUiRefreshNow() //throw AbortMonitoring
@@ -207,20 +204,20 @@ public:
         wxTheApp->Yield(); //yield is UI-layer which is represented by this tray icon
 
         //advantage of polling vs callbacks: we can throw exceptions!
-        if (trayObj_->resumeIsRequested())
+        if (trayIcon_->resumeIsRequested())
             throw AbortMonitoring(CancelReason::requestGui);
 
-        if (trayObj_->abortIsRequested())
+        if (trayIcon_->abortIsRequested())
             throw AbortMonitoring(CancelReason::requestExit);
     }
 
-    void setMode(TrayMode m, const Zstring& missingFolderPath) { trayObj_->setMode(m, missingFolderPath); }
+    void setMode(TrayMode m, const Zstring& missingFolderPath) { trayIcon_->setMode(m, missingFolderPath); }
 
-    bool getShowErrorRequested() const { return trayObj_->getShowErrorRequested(); }
-    void clearShowErrorRequested() { trayObj_->clearShowErrorRequested(); }
+    bool getShowErrorRequested() const { return trayIcon_->getShowErrorRequested(); }
+    void clearShowErrorRequested() { trayIcon_->clearShowErrorRequested(); }
 
 private:
-    TrayIconObject* const trayObj_;
+    TrayIcon* const trayIcon_;
 };
 
 //##############################################################################################################

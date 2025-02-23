@@ -21,31 +21,30 @@ namespace
 {
 void fillRange(wxImage& img, int pixelFirst, int pixelLast, const wxColor& col) //tolerant input range
 {
-    if (img.IsOk())
+    const int width  = img.GetWidth ();
+    const int height = img.GetHeight();
+
+    if (width > 0 && height > 0)
     {
-        const int width  = img.GetWidth ();
-        const int height = img.GetHeight();
+        pixelFirst = std::max(pixelFirst, 0);
+        pixelLast  = std::min(pixelLast, width * height);
 
-        if (width > 0 && height > 0)
+        if (pixelFirst < pixelLast)
         {
-            pixelFirst = std::max(pixelFirst, 0);
-            pixelLast  = std::min(pixelLast, width * height);
+            const unsigned char r = col.Red  (); //
+            const unsigned char g = col.Green(); //getting RGB involves virtual function calls!
+            const unsigned char b = col.Blue (); //
 
-            if (pixelFirst < pixelLast)
+            unsigned char* rgb = img.GetData() + pixelFirst * 3;
+            for (int x = pixelFirst; x < pixelLast; ++x)
             {
-                unsigned char* const bytesBegin = img.GetData() + pixelFirst * 3;
-                unsigned char* const bytesEnd   = img.GetData() + pixelLast  * 3;
-
-                for (unsigned char* bytePos = bytesBegin; bytePos < bytesEnd; bytePos += 3)
-                {
-                    bytePos[0] = col.Red  ();
-                    bytePos[1] = col.Green();
-                    bytePos[2] = col.Blue ();
-                }
-
-                if (img.HasAlpha()) //make progress indicator fully opaque:
-                    std::fill(img.GetAlpha() + pixelFirst, img.GetAlpha() + pixelLast, wxIMAGE_ALPHA_OPAQUE);
+                *rgb++ = r;
+                *rgb++ = g;
+                *rgb++ = b;
             }
+
+            if (img.HasAlpha()) //make progress indicator fully opaque:
+                std::fill(img.GetAlpha() + pixelFirst, img.GetAlpha() + pixelLast, wxIMAGE_ALPHA_OPAQUE);
         }
     }
 }
@@ -57,18 +56,18 @@ void fillRange(wxImage& img, int pixelFirst, int pixelLast, const wxColor& col) 
 class FfsTrayIcon::ProgressIconGenerator
 {
 public:
-    ProgressIconGenerator(const wxImage& logo) : logo_(logo) {}
+    explicit ProgressIconGenerator(const wxImage& logo) : logo_(logo) {}
 
-    wxIcon get(double fraction);
+    wxBitmap get(double fraction);
 
 private:
     const wxImage logo_;
-    wxIcon iconBuf_;
+    wxBitmap iconBuf_;
     int startPixBuf_ = -1;
 };
 
 
-wxIcon FfsTrayIcon::ProgressIconGenerator::get(double fraction)
+wxBitmap FfsTrayIcon::ProgressIconGenerator::get(double fraction)
 {
     if (!logo_.IsOk() || logo_.GetWidth() <= 0 || logo_.GetHeight() <= 0)
         return wxIcon();
@@ -114,7 +113,7 @@ wxIcon FfsTrayIcon::ProgressIconGenerator::get(double fraction)
         //fill yellow remainder
         fillRange(genImage, startFillPixel, pixelCount, wxColor(240, 200, 0));
 
-        iconBuf_.CopyFromBitmap(genImage);
+        iconBuf_ = toScaledBitmap(genImage);
         startPixBuf_ = startFillPixel;
     }
 
@@ -122,17 +121,12 @@ wxIcon FfsTrayIcon::ProgressIconGenerator::get(double fraction)
 }
 
 
-class FfsTrayIcon::TaskBarImpl : public wxTaskBarIcon
+class FfsTrayIcon::TrayIconImpl : public wxTaskBarIcon
 {
 public:
-    TaskBarImpl(const std::function<void()>& requestResume) : requestResume_(requestResume)
+    TrayIconImpl(const std::function<void()>& requestResume) : requestResume_(requestResume)
     {
-        Bind(wxEVT_TASKBAR_LEFT_DCLICK, [this](wxTaskBarIconEvent& event) { onDoubleClick(event); });
-
-        //Windows User Experience Guidelines: show the context menu rather than doing *nothing* on single left clicks; however:
-        //MSDN: "Double-clicking the left mouse button actually generates a sequence of four messages: WM_LBUTTONDOWN, WM_LBUTTONUP, WM_LBUTTONDBLCLK, and WM_LBUTTONUP."
-        //Reference: https://docs.microsoft.com/en-us/windows/win32/inputdev/wm-lbuttondblclk
-        //=> the only way to distinguish single left click and double-click is to wait wxSystemSettings::GetMetric(wxSYS_DCLICK_MSEC) (480ms) which is way too long!
+        Bind(wxEVT_TASKBAR_LEFT_UP, [this](wxTaskBarIconEvent& event) { if (requestResume_) requestResume_(); });
     }
 
     void disconnectCallbacks() { requestResume_ = nullptr; }
@@ -156,12 +150,6 @@ private:
         return contextMenu; //ownership transferred to caller
     }
 
-    void onDoubleClick(wxEvent& event)
-    {
-        if (requestResume_)
-            requestResume_();
-    }
-
     //void onLeftDownClick(wxEvent& event)
     //{
     //  //copied from wxTaskBarIconBase::OnRightButtonDown()
@@ -177,47 +165,34 @@ private:
 
 
 FfsTrayIcon::FfsTrayIcon(const std::function<void()>& requestResume) :
-    trayIcon_(new TaskBarImpl(requestResume)),
-    iconGenerator_(std::make_unique<ProgressIconGenerator>(loadImage("start_sync", dipToScreen(24))))
+    trayIcon_(new TrayIconImpl(requestResume)),
+    progressIcon_(std::make_unique<ProgressIconGenerator>(loadImage("start_sync", dipToScreen(24))))
 {
-    [[maybe_unused]] const bool rv = trayIcon_->SetIcon(iconGenerator_->get(activeFraction_), activeToolTip_);
+    [[maybe_unused]] const bool rv = trayIcon_->SetIcon(progressIcon_->get(activeFraction_), activeToolTip_);
     assert(rv); //caveat wxTaskBarIcon::SetIcon() can return true, even if not wxTaskBarIcon::IsAvailable()!!!
 }
 
 
 FfsTrayIcon::~FfsTrayIcon()
 {
-    trayIcon_->disconnectCallbacks(); //TaskBarImpl has longer lifetime than FfsTrayIcon: avoid callback!
+    trayIcon_->disconnectCallbacks(); //TrayIconImpl has longer lifetime than FfsTrayIcon: avoid callback!
 
-    /*  This is not working correctly on OS X! It seems both wxTaskBarIcon::RemoveIcon() and ~wxTaskBarIcon() are broken and do NOT immediately
-        remove the icon from the system tray! Only some time later in the event loop which called these functions they will be removed.
-        Maybe some system component has still shared ownership? Objective C auto release pools are freed at the end of the current event loop...
-        Anyway, wxWidgets fails to disconnect the wxTaskBarIcon event handlers before calling "[m_statusitem release]"!
-
-        => !!!clicking on the icon after ~wxTaskBarIcon ran crashes the application!!!
-
-        - if ~wxTaskBarIcon() ran from the SyncProgressDialog::updateGui() event loop (e.g. user manually clicking the icon) => icon removed on return
-        - if ~wxTaskBarIcon() ran from SyncProgressDialog::closeDirectly() => leaves the icon dangling until user closes this dialog and outter event loop runs!
-
-        2021_01-04: yes the system indeed has a reference because wxWidgets forgets to call NSStatusBar::removeStatusItem in wxTaskBarIconCustomStatusItemImpl::RemoveIcon()
-            => when this call is added, all these defered deletion shenanigans are NOT NEEDED ANYMORE! (still wxWidgets should really add [m_statusItem setTarget:nil]!)
-        */
     trayIcon_->RemoveIcon();
 
-    //*schedule* for destruction: delete during next idle loop iteration (handle late window messages, e.g. when double-clicking)
-    trayIcon_->Destroy();
+    //*schedule* for destruction: delete during next idle event (handle late window messages, e.g. when double-clicking)
+    trayIcon_->Destroy(); //uses wxPendingDelete
 }
 
 
 void FfsTrayIcon::setToolTip(const wxString& toolTip)
 {
     activeToolTip_ = toolTip;
-    trayIcon_->SetIcon(iconGenerator_->get(activeFraction_), activeToolTip_); //another wxWidgets design bug: non-orthogonal method!
+    trayIcon_->SetIcon(progressIcon_->get(activeFraction_), activeToolTip_); //another wxWidgets design bug: non-orthogonal method!
 }
 
 
 void FfsTrayIcon::setProgress(double fraction)
 {
     activeFraction_ = fraction;
-    trayIcon_->SetIcon(iconGenerator_->get(activeFraction_), activeToolTip_);
+    trayIcon_->SetIcon(progressIcon_->get(activeFraction_), activeToolTip_);
 }

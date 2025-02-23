@@ -113,10 +113,13 @@ public:
         buttonToDisableWhenChecked_(cfg.buttonToDisableWhenChecked)
     {
 
+        //ensure wxWidgets' and our high-DPI handling are still matching
+        assert(GetDPIScaleFactor() == getScreenDpiScale());
+
         if (type != DialogInfoType::info)
             try
             {
-                taskbar_ = std::make_unique<Taskbar>(parent); //throw TaskbarNotAvailable
+                taskbar_.emplace(parent); //throw TaskbarNotAvailable
                 switch (type)
                 {
                     case DialogInfoType::info:
@@ -332,7 +335,6 @@ private:
     {
         switch (event.GetKeyCode())
         {
-
             case WXK_ESCAPE: //handle case where cancel button is hidden!
                 EndModal(static_cast<int>(ConfirmationButton3::cancel));
                 return;
@@ -357,7 +359,7 @@ private:
 
     bool* checkBoxValue_;
     const ConfirmationButton3 buttonToDisableWhenChecked_;
-    std::unique_ptr<Taskbar> taskbar_;
+    std::optional<Taskbar> taskbar_;
     wxTimer timer_;
 };
 

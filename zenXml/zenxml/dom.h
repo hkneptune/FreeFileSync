@@ -142,7 +142,7 @@ public:
 
     ///\sa getChildren
     Range<std::list<XmlElement>::iterator> getChildren() { return {childElements_.begin(), childElements_.end()}; }
-    
+
     ///Get parent XML element, may be nullptr for root element
     XmlElement* parent() { return parent_; }
     ///Get parent XML element, may be nullptr for root element

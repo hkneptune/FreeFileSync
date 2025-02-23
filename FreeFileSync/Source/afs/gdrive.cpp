@@ -629,7 +629,7 @@ GdriveAccessInfo gdriveAuthorizeAccess(const std::string& gdriveLoginHint, const
                     error = value; //e.g. "access_denied" => no more detailed error info available :(
         } //"add explicit braces to avoid dangling else [-Wdangling-else]"
 
-        std::optional<std::variant<GdriveAccessInfo, SysError>> authResult;
+        std::variant<std::monostate, GdriveAccessInfo, SysError> authResult;
 
         //send HTTP response; https://www.w3.org/Protocols/HTTP/1.0/spec.html#Request-Line
         std::string httpResponse;
@@ -692,12 +692,10 @@ GdriveAccessInfo gdriveAuthorizeAccess(const std::string& gdriveLoginHint, const
         shutdownSocketSend(clientSocket); //throw SysError
         //---------------------------------------------------------------
 
-        if (authResult)
-        {
-            if (const SysError* e = std::get_if<SysError>(&*authResult))
-                throw *e;
-            return std::get<GdriveAccessInfo>(*authResult);
-        }
+        if (const SysError* e = std::get_if<SysError>(&authResult))
+            throw *e;
+        if (const GdriveAccessInfo* res = std::get_if<GdriveAccessInfo>(&authResult))
+            return *res;
     }
 }
 //*INDENT-ON*
@@ -3319,7 +3317,7 @@ struct OutputStreamGdrive : public AFS::OutputStreamImpl
 
         asyncStreamOut_->closeStream();
 
-        while (futFilePrint_.wait_for(std::chrono::milliseconds(50)) == std::future_status::timeout)
+        while (futFilePrint_.wait_for(std::chrono::milliseconds(25)) == std::future_status::timeout)
             reportBytesProcessed(notifyUnbufferedIO); //throw X
         reportBytesProcessed(notifyUnbufferedIO); //[!] once more, now that *all* bytes were written
 

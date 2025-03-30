@@ -876,10 +876,10 @@ template <class S, class Num> inline
 S numberTo(const Num& number)
 {
     using TypeTag = std::integral_constant<impl::NumberType,
-                                           isSignedInt  <Num> ? impl::NumberType::signedInt :
-                                           isUnsignedInt<Num> ? impl::NumberType::unsignedInt :
-                                           isFloat      <Num> ? impl::NumberType::floatingPoint :
-                                           impl::NumberType::other>;
+          isSignedInt  <Num> ? impl::NumberType::signedInt :
+          isUnsignedInt<Num> ? impl::NumberType::unsignedInt :
+          isFloat      <Num> ? impl::NumberType::floatingPoint :
+          impl::NumberType::other>;
 
     return impl::numberTo<S>(number, TypeTag());
 }
@@ -889,10 +889,10 @@ template <class Num, class S> inline
 Num stringTo(const S& str)
 {
     using TypeTag = std::integral_constant<impl::NumberType,
-                                           isSignedInt  <Num> ? impl::NumberType::signedInt :
-                                           isUnsignedInt<Num> ? impl::NumberType::unsignedInt :
-                                           isFloat      <Num> ? impl::NumberType::floatingPoint :
-                                           impl::NumberType::other>;
+          isSignedInt  <Num> ? impl::NumberType::signedInt :
+          isUnsignedInt<Num> ? impl::NumberType::unsignedInt :
+          isFloat      <Num> ? impl::NumberType::floatingPoint :
+          impl::NumberType::other>;
 
     return impl::stringTo<Num>(str, TypeTag());
 }

@@ -185,11 +185,9 @@ void StatusHandlerTemporaryPanel::logMessage(const std::wstring& msg, MsgType ty
     {
         switch (type)
         {
-            //*INDENT-OFF*
             case MsgType::info:    return MSG_TYPE_INFO;
             case MsgType::warning: return MSG_TYPE_WARNING;
             case MsgType::error:   return MSG_TYPE_ERROR;
-            //*INDENT-ON*
         }
         assert(false);
         return MSG_TYPE_ERROR;
@@ -241,10 +239,10 @@ ProcessCallback::Response StatusHandlerTemporaryPanel::reportError(const ErrorIn
     if (errorInfo.retryNumber < autoRetryCount_)
     {
         logMsg(errorLog_, errorInfo.msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO, failTime);
-        delayAndCountDown(errorInfo.failTime + autoRetryDelay_,
+        delayAndCountDown(errorInfo.failTime + autoRetryDelay_ - std::chrono::steady_clock::now(),
                           [&, statusPrefix  = _("Automatic retry") +
                                               (errorInfo.retryNumber == 0 ? L"" : L' ' + formatNumber(errorInfo.retryNumber + 1)) + SPACED_DASH,
-                              statusPostfix = SPACED_DASH + _("Error") + L": " + replaceCpy(errorInfo.msg, L'\n', L' ')](const std::wstring& timeRemMsg)
+                           statusPostfix = SPACED_DASH + _("Error") + L": " + replaceCpy(errorInfo.msg, L'\n', L' ')](const std::wstring& timeRemMsg)
         { this->updateStatus(statusPrefix + timeRemMsg + statusPostfix); }); //throw CancelProcess
         return ProcessCallback::retry;
     }
@@ -466,14 +464,14 @@ StatusHandlerFloatingDialog::DlgOptions StatusHandlerFloatingDialog::showResult(
                     assert(!endsWith(operationName, L"."));
                     auto notifyStatus = [&](const std::wstring& timeRemMsg) { updateStatus(operationName + L"... " + timeRemMsg); /*throw CancelProcess*/ };
 
-                    delayAndCountDown(std::chrono::steady_clock::now() + std::chrono::seconds(10), notifyStatus); //throw CancelProcess
+                    delayAndCountDown(std::chrono::seconds(10), notifyStatus); //throw CancelProcess
                 }
                 catch (CancelProcess&) { return false; }
 
             return true;
         };
 
-        switch (progressDlg_->getOptionPostSyncAction())
+        switch (progressDlg_->getAndFreezePostSyncAction())
         {
             case PostSyncAction::none:
                 autoClose = progressDlg_->getOptionAutoCloseDialog();
@@ -547,11 +545,9 @@ void StatusHandlerFloatingDialog::logMessage(const std::wstring& msg, MsgType ty
     {
         switch (type)
         {
-            //*INDENT-OFF*
             case MsgType::info:    return MSG_TYPE_INFO;
             case MsgType::warning: return MSG_TYPE_WARNING;
             case MsgType::error:   return MSG_TYPE_ERROR;
-            //*INDENT-ON*
         }
         assert(false);
         return MSG_TYPE_ERROR;
@@ -603,10 +599,10 @@ ProcessCallback::Response StatusHandlerFloatingDialog::reportError(const ErrorIn
     if (errorInfo.retryNumber < autoRetryCount_)
     {
         logMsg(errorLog_.ref(), errorInfo.msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO, failTime);
-        delayAndCountDown(errorInfo.failTime + autoRetryDelay_,
+        delayAndCountDown(errorInfo.failTime + autoRetryDelay_ - std::chrono::steady_clock::now(),
                           [&, statusPrefix  = _("Automatic retry") +
                                               (errorInfo.retryNumber == 0 ? L"" : L' ' + formatNumber(errorInfo.retryNumber + 1)) + SPACED_DASH,
-                              statusPostfix = SPACED_DASH + _("Error") + L": " + replaceCpy(errorInfo.msg, L'\n', L' ')](const std::wstring& timeRemMsg)
+                           statusPostfix = SPACED_DASH + _("Error") + L": " + replaceCpy(errorInfo.msg, L'\n', L' ')](const std::wstring& timeRemMsg)
         { this->updateStatus(statusPrefix + timeRemMsg + statusPostfix); }); //throw CancelProcess
         return ProcessCallback::retry;
     }

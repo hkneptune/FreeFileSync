@@ -584,7 +584,7 @@ void Application::runBatchMode(const FfsBatchConfig& batchCfg, const Zstring& cf
             !cmdLine.empty())
             if (batchCfg.guiCfg.mainCfg.postSyncCondition == PostSyncCondition::completion ||
                 (batchCfg.guiCfg.mainCfg.postSyncCondition == PostSyncCondition::errors) == (r.summary.result == TaskResult::cancelled ||
-                        r.summary.result == TaskResult::error))
+                    r.summary.result == TaskResult::error))
                 try
                 {
                     //give consoleExecute() some "time to fail", but not too long to hang our process
@@ -610,10 +610,10 @@ void Application::runBatchMode(const FfsBatchConfig& batchCfg, const Zstring& cf
             !notifyEmail.empty())
             if (batchCfg.guiCfg.mainCfg.emailNotifyCondition == ResultsNotification::always ||
                 (batchCfg.guiCfg.mainCfg.emailNotifyCondition == ResultsNotification::errorWarning && (r.summary.result == TaskResult::cancelled ||
-                        r.summary.result == TaskResult::error ||
-                        r.summary.result == TaskResult::warning)) ||
+                    r.summary.result == TaskResult::error ||
+                    r.summary.result == TaskResult::warning)) ||
                 (batchCfg.guiCfg.mainCfg.emailNotifyCondition == ResultsNotification::errorOnly && (r.summary.result == TaskResult::cancelled ||
-                        r.summary.result == TaskResult::error)))
+                    r.summary.result == TaskResult::error)))
                 try
                 {
                     logMsg(r.errorLog.ref(), replaceCpy(_("Sending email notification to %x"), L"%x", utfTo<std::wstring>(notifyEmail)), MSG_TYPE_INFO);
@@ -681,12 +681,10 @@ void Application::runBatchMode(const FfsBatchConfig& batchCfg, const Zstring& cf
     //----------------------------------------------------------------------
     switch (r.summary.result)
     {
-        //*INDENT-OFF*
         case TaskResult::success:   raiseExitCode(exitCode_, FfsExitCode::success); break;
         case TaskResult::warning:   raiseExitCode(exitCode_, FfsExitCode::warning); break;
         case TaskResult::error:     raiseExitCode(exitCode_, FfsExitCode::error  ); break;
         case TaskResult::cancelled: raiseExitCode(exitCode_, FfsExitCode::cancelled); break;
-        //*INDENT-ON*
     }
 
     //email sending, or saving log file failed? at least this should affect the exit code:

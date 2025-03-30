@@ -18,7 +18,6 @@ using namespace zen;
 
 Zstring zen::escapeCommandArg(const Zstring& arg)
 {
-//*INDENT-OFF*    if not put exactly here, Astyle will seriously mess this .cpp file up!
     Zstring output;
     for (const char c : arg)
         switch (c)
@@ -33,7 +32,6 @@ Zstring zen::escapeCommandArg(const Zstring& arg)
         output = '"' + output + '"'; //caveat: single-quotes not working on macOS if string contains escaped chars! no such issue on Linux
 
     return output;
-//*INDENT-ON*
 }
 
 

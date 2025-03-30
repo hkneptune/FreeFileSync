@@ -7,10 +7,10 @@ CXXFLAGS += -std=c++23 -pipe -DWXINTL_NO_GETTEXT_MACRO -I../../.. -I../../../zen
 
 LDFLAGS += -s `wx-config --libs std, aui, richtext --debug=no` -pthread
 
-#Gtk - support "no button border"
-CXXFLAGS  += `pkg-config --cflags gtk+-2.0`
+
+CXXFLAGS += `pkg-config --cflags gtk+-2.0`
 #treat as system headers so that warnings are hidden:
-CXXFLAGS  += -isystem/usr/include/gtk-2.0
+CXXFLAGS += -isystem/usr/include/gtk-2.0
 
 cppFiles=
 cppFiles+=application.cpp

@@ -70,7 +70,7 @@ struct PhaseCallback
 //perform ui updates not more often than necessary:
 constexpr std::chrono::milliseconds UI_UPDATE_INTERVAL(50); //20 FPS
 //- Win 7 copy progress bar uses 100 ms
-//- Windows 10: not seeing CPU impact in Process Explorer when going as low as 2ms  => too good to be true?
+//- Windows 10: not seeing CPU impact in Process Explorer when going as low as 2ms => too good to be true?
 
 enum class ProcessPhase
 {

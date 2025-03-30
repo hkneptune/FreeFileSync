@@ -203,7 +203,6 @@ std::wstring formatSftpStatusCode(unsigned long sc)
     //=> all SFTP codes: https://tools.ietf.org/html/draft-ietf-secsh-filexfer-13#section-9.1
     switch (sc)
     {
-        //*INDENT-OFF*
         case  0: return L"SSH_FX_OK";
         case  1: return L"SSH_FX_EOF";
         case  2: return L"SSH_FX_NO_SUCH_FILE";
@@ -238,7 +237,6 @@ std::wstring formatSftpStatusCode(unsigned long sc)
         case 31: return L"SSH_FX_NO_MATCHING_BYTE_RANGE_LOCK";
 
 		default: return replaceCpy<std::wstring>(L"SFTP status %x", L"%x", numberTo<std::wstring>(sc));
-		//*INDENT-ON*
     }
 }
 }

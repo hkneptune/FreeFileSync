@@ -13,7 +13,7 @@
 #include "init_curl_libssh2.h"
 #include "ftp_common.h"
 #include "abstract_impl.h"
-    #include <glib.h>
+    //#include <glib.h>
     #include <fcntl.h>
 
 using namespace zen;
@@ -159,13 +159,13 @@ std::wstring getCurlDisplayPath(const FtpDeviceId& deviceId, const AfsPath& item
     if (!deviceId.username.empty()) //show username! consider AFS::compareDeviceSameAfsType()
         displayPath += deviceId.username + Zstr('@');
 
-    if (parseIpv6Address(deviceId.server) && deviceId.port != DEFAULT_PORT_FTP)
-        displayPath += Zstr('[') + deviceId.server + Zstr(']');
-    else
-        displayPath += deviceId.server;
+    //if (parseIpv6Address(deviceId.server) && deviceId.port != DEFAULT_PORT_FTP)
+    //    displayPath += Zstr('[') + deviceId.server + Zstr(']');
+    //else
+    displayPath += deviceId.server;
 
-    if (deviceId.port != DEFAULT_PORT_FTP)
-        displayPath += Zstr(':') + numberTo<Zstring>(deviceId.port);
+    //if (deviceId.port != DEFAULT_PORT_FTP)
+    //    displayPath += Zstr(':') + numberTo<Zstring>(deviceId.port);
 
     const Zstring& relPath = getServerRelPath(itemPath);
     if (relPath != Zstr("/"))
@@ -238,7 +238,6 @@ std::wstring formatFtpStatus(int sc)
     {
         switch (sc)
         {
-            //*INDENT-OFF*
             case 400: return L"The command was not accepted but the error condition is temporary.";
             case 421: return L"Service not available, closing control connection.";
             case 425: return L"Cannot open data connection.";
@@ -270,7 +269,6 @@ std::wstring formatFtpStatus(int sc)
             case 553: return L"File name not allowed.";
 
             default:  return L"";
-            //*INDENT-ON*
         }
     }();
 
@@ -402,8 +400,8 @@ public:
 
         //long-running file uploads require keep-alives for the TCP control connection: https://freefilesync.org/forum/viewtopic.php?t=6928
         setCurlOption({CURLOPT_TCP_KEEPALIVE, 1}); //throw SysError
-        //=> CURLOPT_TCP_KEEPIDLE (=delay until sending first keepalive probe) and 
-        // CURLOPT_TCP_KEEPINTVL (interval between probes) both default to 60 sec, 
+        //=> CURLOPT_TCP_KEEPIDLE (=delay until sending first keepalive probe) and
+        // CURLOPT_TCP_KEEPINTVL (interval between probes) both default to 60 sec,
         // CURLOPT_TCP_KEEPCNT (number of probes with *no server response* before dropping connection) defaults to 9
 
 
@@ -1445,11 +1443,9 @@ private:
                 assert(!line.empty()); //see splitFtpResponse()
                 switch (line[0])
                 {
-                    //*INDENT-OFF*
                     case 'd': return  dirOwnerGroupCount;
                     case 'l': return linkOwnerGroupCount;
                     default : return fileOwnerGroupCount;
-                    //*INDENT-ON*
                 }
             }();
 
@@ -2057,8 +2053,8 @@ struct OutputStreamFtp : public AFS::OutputStreamImpl
         futUploadDone_ = promUploadDone.get_future();
 
         worker_ = InterruptibleThread([login, filePath,
-                                              asyncStreamIn = this->asyncStreamOut_,
-                                              pUploadDone   = std::move(promUploadDone)]() mutable
+                                       asyncStreamIn = this->asyncStreamOut_,
+                                       pUploadDone   = std::move(promUploadDone)]() mutable
         {
             setCurrentThreadName(Zstr("Ostream ") + utfTo<Zstring>(getCurlDisplayPath(login, filePath)));
             try

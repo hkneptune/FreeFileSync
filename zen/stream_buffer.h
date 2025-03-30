@@ -117,7 +117,7 @@ public:
     }
 
 #if 0
-    //function not needed: when writing is completed successfully, no further error can occur!
+    //function not needed: after file upload completed successfully, no further error can occur!
     //  => caveat: writing is NOT done (yet) when closeStream() is called!
     //context of *output* thread
     void checkReadErrors() //throw <read error>

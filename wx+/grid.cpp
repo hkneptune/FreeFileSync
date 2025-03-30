@@ -39,7 +39,7 @@ using namespace zen;
     => use MSWDisableComposited() to remove WS_EX_COMPOSITED from top window under wxFrame/wxDialog if perf issue.
        SetDoubleBuffered(false) OTOH is useless as it doesn't affect parent windows and silently fails!
        IsDoubleBuffered() however correctly checks parents: CONSISTENCY, people, for fucks sake!
-     
+
     CAVEAT: MSWDisableComposited() leads to severe flickering for other child windows (e.g. wxStaticBitmap, wxBitmapButton)
         that lack custom double-buffering. It's even worse since wxWidgets in its wisdom sets WS_EX_COMPOSITED
         together with CS_HREDRAW/CS_VREDRAW, https://github.com/vadz/wxWidgets/blob/8de0694a5e9c9d7c24e0af2ccf71454df5e6b9d0/src/msw/window.cpp#L507

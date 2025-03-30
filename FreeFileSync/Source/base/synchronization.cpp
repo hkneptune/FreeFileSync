@@ -412,11 +412,9 @@ bool plannedWriteAccess(const FileSystemObject& fsObj)
 {
     switch (getEffectiveSyncDir(fsObj.getSyncOperation()))
     {
-        //*INDENT-OFF*
         case SyncDirection::none:  return false;
         case SyncDirection::left:  return side == SelectSide::left;
         case SyncDirection::right: return side == SelectSide::right;
-        //*INDENT-ON*
     }
     throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
 }
@@ -1356,7 +1354,7 @@ void FolderPairSyncer::runPass(PassNo pass, SyncCtx& syncCtx, BaseFolderPair& ba
                 workItem(); //throw ThreadStopRequest
             }
         });
-    acb.waitUntilDone(UI_UPDATE_INTERVAL / 2 /*every ~50 ms*/, cb); //throw X
+    acb.waitUntilDone(UI_UPDATE_INTERVAL / 2 /*every ~25 ms*/, cb); //throw X
 }
 
 
@@ -2675,7 +2673,7 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
             if (previewRemain == previewRemainOld)
                 break;
         }
-break2:
+    break2:
 
         std::wstring msg = _("The following items have unresolved conflicts and will not be synchronized:");
 

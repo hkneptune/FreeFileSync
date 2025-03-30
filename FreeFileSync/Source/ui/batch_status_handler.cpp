@@ -145,14 +145,14 @@ BatchStatusHandler::DlgOptions BatchStatusHandler::showResult()
                                 throw;
                         }
                     };
-                    delayAndCountDown(std::chrono::steady_clock::now() + std::chrono::seconds(10), notifyStatusThrowOnCancel); //throw CancelProcess
+                    delayAndCountDown(std::chrono::seconds(10), notifyStatusThrowOnCancel); //throw CancelProcess
                 }
                 catch (CancelProcess&) { return false; }
 
             return true;
         };
 
-        switch (progressDlg_->getOptionPostSyncAction())
+        switch (progressDlg_->getAndFreezePostSyncAction())
         {
             case PostSyncAction::none:
                 autoClose = progressDlg_->getOptionAutoCloseDialog();
@@ -241,11 +241,9 @@ void BatchStatusHandler::logMessage(const std::wstring& msg, MsgType type)
     {
         switch (type)
         {
-            //*INDENT-OFF*
             case MsgType::info:    return MSG_TYPE_INFO;
             case MsgType::warning: return MSG_TYPE_WARNING;
             case MsgType::error:   return MSG_TYPE_ERROR;
-            //*INDENT-ON*
         }
         assert(false);
         return MSG_TYPE_ERROR;
@@ -311,10 +309,10 @@ ProcessCallback::Response BatchStatusHandler::reportError(const ErrorInfo& error
     if (errorInfo.retryNumber < autoRetryCount_)
     {
         logMsg(errorLog_.ref(), errorInfo.msg + L"\n-> " + _("Automatic retry"), MSG_TYPE_INFO, failTime);
-        delayAndCountDown(errorInfo.failTime + autoRetryDelay_,
+        delayAndCountDown(errorInfo.failTime + autoRetryDelay_ - std::chrono::steady_clock::now(),
                           [&, statusPrefix  = _("Automatic retry") +
                                               (errorInfo.retryNumber == 0 ? L"" : L' ' + formatNumber(errorInfo.retryNumber + 1)) + SPACED_DASH,
-                              statusPostfix = SPACED_DASH + _("Error") + L": " + replaceCpy(errorInfo.msg, L'\n', L' ')](const std::wstring& timeRemMsg)
+                           statusPostfix = SPACED_DASH + _("Error") + L": " + replaceCpy(errorInfo.msg, L'\n', L' ')](const std::wstring& timeRemMsg)
         { this->updateStatus(statusPrefix + timeRemMsg + statusPostfix); }); //throw CancelProcess
         return ProcessCallback::retry;
     }

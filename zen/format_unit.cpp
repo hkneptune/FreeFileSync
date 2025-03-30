@@ -89,12 +89,10 @@ std::wstring formatUnitTime(int val, UnitRemTime unit)
 {
     switch (unit)
     {
-        //*INDENT-OFF*
         case UnitRemTime::sec:  return _P("1 sec",  "%x sec",   val);
         case UnitRemTime::min:  return _P("1 min",  "%x min",   val);
         case UnitRemTime::hour: return _P("1 hour", "%x hours", val);
         case UnitRemTime::day:  return _P("1 day",  "%x days",  val);
-        //*INDENT-ON*
     }
     assert(false);
     return _("Error");

@@ -5,7 +5,7 @@
 // *****************************************************************************
 
 #include "zstring.h"
-    #include <glib.h>
+    //#include <glib.h>
     #include "sys_error.h"
 
 using namespace zen;
@@ -176,7 +176,7 @@ std::weak_ordering compareNatural(const Zstring& lhs, const Zstring& rhs)
 {
     try
     {
-        /* Unicode normal forms:
+        /* Unicode Normalization Forms:
               Windows: CompareString() ignores NFD/NFC differences and converts to NFD
               Linux:  g_unichar_toupper() can't ignore differences
               macOS:  CFStringCompare() considers differences */
@@ -242,7 +242,7 @@ std::weak_ordering compareNatural(const Zstring& lhs, const Zstring& rhs)
                 continue;
             }
 
-            //compare full junks of text: consider unicode encoding!
+            //compare full junks of text: consider Unicode encoding!
             const char* textBeginL = strL++;
             const char* textBeginR = strR++; //current char is neither white space nor digit at this point!
             while (strL != strEndL && !isWhiteSpace(*strL) && !isDigit(*strL)) ++strL;

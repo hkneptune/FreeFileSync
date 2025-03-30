@@ -83,7 +83,7 @@ struct SyncProgressDialog
     //allow changing a few options dynamically during sync
     virtual bool getOptionIgnoreErrors()           const = 0;
     virtual void setOptionIgnoreErrors(bool ignoreError) = 0;
-    virtual PostSyncAction getOptionPostSyncAction() const = 0;
+    virtual PostSyncAction getAndFreezePostSyncAction() const = 0;
     virtual bool getOptionAutoCloseDialog() const = 0;
 
     virtual void timerSetStatus(bool active) = 0; //start/stop all internal timers!

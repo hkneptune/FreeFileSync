@@ -682,7 +682,11 @@ public:
 
     bool getOptionIgnoreErrors()                 const override { return ignoreErrors_; }
     void setOptionIgnoreErrors(bool ignoreErrors)      override { ignoreErrors_ = ignoreErrors; updateStaticGui(); }
-    PostSyncAction getOptionPostSyncAction()    const override { return enumPostSyncAction_.get(); }
+    PostSyncAction getAndFreezePostSyncAction() const override
+    {
+        pnl_.m_choicePostSyncAction->Disable();
+        return enumPostSyncAction_.get();
+    }
     bool getOptionAutoCloseDialog()              const override { return pnl_.m_checkBoxAutoClose->GetValue(); }
 
     void timerSetStatus(bool active) override

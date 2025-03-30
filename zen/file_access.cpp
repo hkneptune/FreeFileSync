@@ -714,7 +714,7 @@ FileCopyResult zen::copyNewFile(const Zstring& sourceFile, const Zstring& target
     },
     fileIn.getBlockSize() /*throw FileError*/,
 
-    [&](const void* buffer, size_t bytesToWrite)
+          [&](const void* buffer, size_t bytesToWrite)
     {
         const size_t bytesWritten = fileOut.tryWrite(buffer, bytesToWrite); //throw FileError
         notifyIoDiv(bytesWritten); //throw X

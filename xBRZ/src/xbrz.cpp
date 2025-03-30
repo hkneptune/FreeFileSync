@@ -28,7 +28,7 @@ using namespace xbrz;
 namespace
 {
 //blend front color with opacity M / N over opaque background: https://en.wikipedia.org/wiki/Alpha_compositing
-//Limitation: alpha should be applied in gamma-decoded linear RGB space: https://ssp.impulsetrain.com/gamma-premult.html   
+//Limitation: alpha should be applied in gamma-decoded linear RGB space: https://ssp.impulsetrain.com/gamma-premult.html
 template <unsigned int M, unsigned int N> inline
 uint32_t gradientRGB(uint32_t pixFront, uint32_t pixBack)
 {
@@ -46,7 +46,7 @@ uint32_t gradientRGB(uint32_t pixFront, uint32_t pixBack)
 
 
 //find intermediate color between two colors with alpha channels (=> NO alpha blending!!!)
-//Limitation: alpha should be applied in gamma-decoded linear RGB space: https://ssp.impulsetrain.com/gamma-premult.html   
+//Limitation: alpha should be applied in gamma-decoded linear RGB space: https://ssp.impulsetrain.com/gamma-premult.html
 template <unsigned int M, unsigned int N> inline
 uint32_t gradientARGB(uint32_t pixFront, uint32_t pixBack)
 {
@@ -1162,7 +1162,6 @@ void xbrz::scale(size_t factor, const uint32_t* src, uint32_t* trg, int srcWidth
     static_assert(SCALE_FACTOR_MAX == 6);
     switch (colFmt)
     {
-        //*INDENT-OFF*
         case ColorFormat::rgb:
             switch (factor)
             {
@@ -1195,7 +1194,6 @@ void xbrz::scale(size_t factor, const uint32_t* src, uint32_t* trg, int srcWidth
                 case 6: return scaleImage<Scaler6x<ColorGradientARGB>, ColorDistanceUnbufferedARGB, OobReaderTransparent>(src, trg, srcWidth, srcHeight, cfg, yFirst, yLast);
             }
             break;
-        //*INDENT-ON*
     }
     assert(false);
 }
@@ -1229,7 +1227,7 @@ void xbrz::bilinearScale(const uint32_t* src, int srcWidth, int srcHeight,
             if (channel == 3)
                 return a;
 
-            //Limitation: alpha should be applied in gamma-decoded linear RGB space: https://ssp.impulsetrain.com/gamma-premult.html   
+            //Limitation: alpha should be applied in gamma-decoded linear RGB space: https://ssp.impulsetrain.com/gamma-premult.html
             return getByte(pixSrc, channel) * a;
         };
     };
@@ -1240,14 +1238,14 @@ void xbrz::bilinearScale(const uint32_t* src, int srcWidth, int srcHeight,
         if (a <= 0.0)
             * trg++ = 0;
         else
-            * trg++ = makePixel(byteRound(a),                   
+            * trg++ = makePixel(byteRound(a),
                                 byteRound(interpolate(2) / a),  //r
                                 byteRound(interpolate(1) / a),  //g
                                 byteRound(interpolate(0) / a)); //b
     };
 
     bilinearScale(pixRead, srcWidth, srcHeight,
-                         pixWrite, trgWidth, trgHeight, 0, trgHeight);
+                  pixWrite, trgWidth, trgHeight, 0, trgHeight);
 }
 
 
@@ -1277,7 +1275,7 @@ void bilinearScaleCpu(const uint32_t* src, int srcWidth, int srcHeight,
     {
         const int iLast = std::min(i + TASK_GRANULARITY, trgHeight);
         bilinearScale(src, srcWidth, srcHeight, srcWidth * sizeof(uint32_t),
-                                  trg, trgWidth, trgHeight, trgWidth * sizeof(uint32_t),
+                      trg, trgWidth, trgHeight, trgWidth * sizeof(uint32_t),
         i, iLast, [](uint32_t pix) { return pix; });
     });
     tg.wait();

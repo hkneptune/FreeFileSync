@@ -465,7 +465,7 @@ private:
                 if (contains(original,    std::string(" ") + punctChar) ||
                     contains(translation, std::string(" ") + punctChar))
                     throw ParsingError({replaceCpy<std::wstring>(L"Text contains a space before the \"%x\" character. Are line-breaks really allowed here?"
-                                                                 " Maybe this should be a \"non-breaking space\" (Windows: Alt 0160    UTF8: 0xC2 0xA0)?",
+                                                                 L" Maybe this should be a \"non-breaking space\" (Windows: Alt 0160    UTF8: 0xC2 0xA0)?",
                                                                  L"%x", utfTo<std::wstring>(punctChar)), scn_.posRow(), scn_.posCol()});
         }
     }
@@ -589,7 +589,7 @@ private:
                 for (const std::string& str : allTexts)
                     if (contains(str, std::string(" ") + punctChar))
                         throw ParsingError({replaceCpy<std::wstring>(L"Text contains a space before the \"%x\" character. Are line-breaks really allowed here?"
-                                                                     " Maybe this should be a \"non-breaking space\" (Windows: Alt 0160    UTF8: 0xC2 0xA0)?",
+                                                                     L" Maybe this should be a \"non-breaking space\" (Windows: Alt 0160    UTF8: 0xC2 0xA0)?",
                                                                      L"%x", utfTo<std::wstring>(punctChar)), scn_.posRow(), scn_.posCol()});
         }
     }

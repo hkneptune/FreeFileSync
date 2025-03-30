@@ -20,11 +20,9 @@ std::wstring fff::getVariantName(std::optional<CompareVariant> var)
 
     switch (*var)
     {
-        //*INDENT-OFF*
         case CompareVariant::timeSize: return _("File time and size");
         case CompareVariant::content:  return _("File content");
         case CompareVariant::size:     return _("File size");
-        //*INDENT-ON*
     }
     assert(false);
     return _("Error");
@@ -38,12 +36,10 @@ std::wstring fff::getVariantName(std::optional<SyncVariant> var)
 
     switch (*var)
     {
-        //*INDENT-OFF*
         case SyncVariant::twoWay: return _("Two way");
         case SyncVariant::mirror: return _("Mirror");
         case SyncVariant::update: return _("Update");
         case SyncVariant::custom: return _("Custom");
-        //*INDENT-ON*
     }
     assert(false);
     return _("Error");
@@ -55,12 +51,10 @@ std::wstring fff::getVariantNameWithSymbol(SyncVariant var)
 {
     switch (var)
     {
-        //*INDENT-OFF*
         case SyncVariant::twoWay: return _("Two way") + L" <->";
         case SyncVariant::mirror: return _("Mirror")  + L" ->";
         case SyncVariant::update: return _("Update")  + L" >";
         case SyncVariant::custom: return _("Custom")  + L" <>";
-        //*INDENT-ON*
     }
     assert(false);
     return _("Error");
@@ -181,12 +175,10 @@ SyncDirectionConfig fff::getDefaultSyncCfg(SyncVariant syncVar)
 {
     switch (syncVar)
     {
-        //*INDENT-OFF*
         case SyncVariant::twoWay: return { .dirs = getTwoWayDirSet() };
         case SyncVariant::mirror: return { .dirs = getMirrorDirSet() };
         case SyncVariant::update: return { .dirs = getUpdateDirSet() };
         case SyncVariant::custom: return { .dirs = getDiffDirDefault(getTwoWayDirSet()) };
-        //*INDENT-ON*
     }
     throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
 }
@@ -228,9 +220,8 @@ std::wstring fff::getSymbol(CompareFileResult cmpRes)
 {
     switch (cmpRes)
     {
-        //*INDENT-OFF*
         case FILE_EQUAL:             return L"'="; //added quotation mark to avoid error in Excel cell when exporting to *.cvs
-        case FILE_RENAMED:           return L"renamed"; 
+        case FILE_RENAMED:           return L"renamed";
         case FILE_LEFT_ONLY:         return L"only <-";
         case FILE_RIGHT_ONLY:        return L"only ->";
         case FILE_LEFT_NEWER:        return L"newer <-";
@@ -238,7 +229,6 @@ std::wstring fff::getSymbol(CompareFileResult cmpRes)
         case FILE_DIFFERENT_CONTENT: return L"!=";
         case FILE_TIME_INVALID:
         case FILE_CONFLICT:          return L"conflict";
-        //*INDENT-ON*
     }
     assert(false);
     return std::wstring();
@@ -249,7 +239,6 @@ std::wstring fff::getSymbol(SyncOperation op)
 {
     switch (op)
     {
-        //*INDENT-OFF*
         case SO_CREATE_LEFT:     return L"create <-";
         case SO_CREATE_RIGHT:    return L"create ->";
         case SO_DELETE_LEFT:     return L"delete <-";
@@ -265,7 +254,6 @@ std::wstring fff::getSymbol(SyncOperation op)
         case SO_DO_NOTHING:      return L" -";
         case SO_EQUAL:           return L"'="; //added quotation mark to avoid error in Excel cell when exporting to *.cvs
         case SO_UNRESOLVED_CONFLICT: return L"conflict"; //portable Unicode symbol: ⚡
-        //*INDENT-ON*
     };
     assert(false);
     return std::wstring();

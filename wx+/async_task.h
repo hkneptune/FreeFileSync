@@ -44,16 +44,20 @@ public:
     ConcreteTask(std::future<ResultType>&& asyncResult, Fun2&& evalOnGui) :
         asyncResult_(std::move(asyncResult)), evalOnGui_(std::forward<Fun2>(evalOnGui)) {}
 
-    bool resultReady   () const override { return isReady(asyncResult_); }
-    void evaluateResult()       override
+    bool resultReady() const override { return isReady(asyncResult_); }
+
+    void evaluateResult() override
     {
-        evalResult(std::is_same<ResultType, void>());
+        if constexpr (std::is_same_v<ResultType, void>)
+        {
+            asyncResult_.get();
+            evalOnGui_();
+        }
+        else
+            evalOnGui_(asyncResult_.get());
     }
 
 private:
-    void evalResult(std::false_type /*void result type*/) { evalOnGui_(asyncResult_.get()); }
-    void evalResult(std::true_type  /*void result type*/) { asyncResult_.get(); evalOnGui_(); }
-
     std::future<ResultType> asyncResult_;
     Fun evalOnGui_; //keep "evalOnGui" strictly separated from async thread: in particular do not copy in thread!
 };
@@ -68,20 +72,35 @@ public:
     void add(Fun&& evalAsync, Fun2&& evalOnGui)
     {
         using ResultType = decltype(evalAsync());
-        tasks_.push_back(std::make_unique<ConcreteTask<ResultType, std::decay_t<Fun2>>>(zen::runAsync(std::forward<Fun>(evalAsync)), std::forward<Fun2>(evalOnGui)));
+
+        std::promise<ResultType> prom;
+        tasks_.push_back(std::make_unique<ConcreteTask<ResultType, std::decay_t<Fun2>>>(prom.get_future(), std::forward<Fun2>(evalOnGui)));
+
+        //don't use zen::runAsync() and std::packaged_task => let exceptions crash the app directly at throw location!
+        std::thread([prom = std::move(prom),
+                     fun = std::forward<Fun>(evalAsync)]() mutable
+        {
+            if constexpr (std::is_same_v<ResultType, void>)
+            {
+                fun(); //throw? => let it crash!
+                prom.set_value();
+            }
+            else
+                prom.set_value(fun()); //throw? => let it crash!
+        }).detach();
     }
     //equivalent to "evalOnGui(evalAsync())"
     //  -> evalAsync: the usual thread-safety requirements apply!
     //  -> evalOnGui: no thread-safety concerns, but must only reference variables with greater-equal lifetime than the AsyncTask instance!
 
-    void evalResults() //call from gui thread repreatedly
+    void evalResults() //call from GUI thread repreatedly
     {
         if (!inRecursion_) //prevent implicit recursion, e.g. if we're called from an idle event and spawn another one within the callback below
         {
             inRecursion_ = true;
             ZEN_ON_SCOPE_EXIT(inRecursion_ = false);
 
-            std::vector<std::unique_ptr<Task>> readyTasks; //Reentrancy; access to AsyncTasks::add is not protected! => evaluate outside eraseIf
+            std::vector<std::unique_ptr<Task>> readyTasks; //Reentrancy; access to AsyncTasks::add is not protected! => evaluate outside of eraseIf()
 
             eraseIf(tasks_, [&](std::unique_ptr<Task>& task)
             {

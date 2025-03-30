@@ -81,10 +81,10 @@ void setBestInitialSize(wxRichTextCtrl& ctrl, const wxString& text, wxSize maxSi
     ctrl.SetMinSize(bestSize); //alas, SetMinClientSize() is just not working!
 #if 0
     std::cout << "rowCount       " << rowCount << "\n" <<
-              "maxLineWidth   " << maxLineWidth << "\n" <<
-              "rowHeight      " << rowHeight << "\n" <<
-              "haveLineWrap   " << haveLineWrap << "\n" <<
-              "scrollbarWidth " << scrollbarWidth << "\n\n";
+                 "maxLineWidth   " << maxLineWidth << "\n" <<
+                 "rowHeight      " << rowHeight << "\n" <<
+                 "haveLineWrap   " << haveLineWrap << "\n" <<
+                 "scrollbarWidth " << scrollbarWidth << "\n\n";
 #endif
 }
 }
@@ -348,12 +348,10 @@ private:
     {
         switch (buttonToDisableWhenChecked_)
         {
-            //*INDENT-OFF*
             case ConfirmationButton3::accept:  m_buttonAccept ->Enable(!m_checkBoxCustom->GetValue()); break;
             case ConfirmationButton3::accept2: m_buttonAccept2->Enable(!m_checkBoxCustom->GetValue()); break;
             case ConfirmationButton3::decline: m_buttonDecline->Enable(!m_checkBoxCustom->GetValue()); break;
             case ConfirmationButton3::cancel: break;
-            //*INDENT-ON*
         }
     }
 

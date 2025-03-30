@@ -78,11 +78,9 @@ void TreeView::extractVisibleSubtree(ContainerObject& conObj, //in
 #if 0 //give accumulated bytes the semantics of a sync preview?
         switch (getEffectiveSyncDir(file.getSyncOperation()))
         {
-            //*INDENT-OFF*
             case SyncDirection::none: break;
             case SyncDirection::left:  return file.getFileSize<SelectSide::right>();
             case SyncDirection::right: return file.getFileSize<SelectSide::left>();
-            //*INDENT-ON*
         }
 #endif
         //prefer file-browser semantics over sync preview (=> always show useful numbers, even for SyncDirection::none)
@@ -190,27 +188,27 @@ struct TreeView::LessShortName
 
         switch (lhs.type)
         {
-            case NodeType::root:
-                return makeSortDirection(LessNaturalSort() /*even on Linux*/,
-                                         std::bool_constant<ascending>())(utfTo<Zstring>(static_cast<const RootNodeImpl*>(lhs.node)->displayName),
-                                                                          utfTo<Zstring>(static_cast<const RootNodeImpl*>(rhs.node)->displayName));
-            case NodeType::folder:
-            {
-                const auto* folderL = static_cast<FolderPair*>(lhs.node->containerRef.lock().get());
-                const auto* folderR = static_cast<FolderPair*>(rhs.node->containerRef.lock().get());
+        case NodeType::root:
+                    return makeSortDirection(LessNaturalSort() /*even on Linux*/,
+                                             std::bool_constant<ascending>())(utfTo<Zstring>(static_cast<const RootNodeImpl*>(lhs.node)->displayName),
+                                                                              utfTo<Zstring>(static_cast<const RootNodeImpl*>(rhs.node)->displayName));
+        case NodeType::folder:
+                {
+                    const auto* folderL = static_cast<FolderPair*>(lhs.node->containerRef.lock().get());
+                    const auto* folderR = static_cast<FolderPair*>(rhs.node->containerRef.lock().get());
 
-                if (!folderL)
+                    if (!folderL)
                     return false;
-                else if (!folderR)
-                    return true;
+                    else if (!folderR)
+                        return true;
 
-                return makeSortDirection(LessNaturalSort(), std::bool_constant<ascending>())(getFolderPairName(*folderL), getFolderPairName(*folderR));
-            }
+                        return makeSortDirection(LessNaturalSort(), std::bool_constant<ascending>())(getFolderPairName(*folderL), getFolderPairName(*folderR));
+                    }
 
-            case NodeType::files:
-                break;
-        }
-        assert(false);
+                case NodeType::files:
+                            break;
+    }
+    assert(false);
         return false; //:= all equal
     }
 };
@@ -506,13 +504,13 @@ void TreeView::applyDifferenceFilter(bool showExcluded,
                                      bool conflictFilesActive)
 {
     updateView([showExcluded, //make sure the predicate can be stored safely!
-                              leftOnlyFilesActive,
-                              rightOnlyFilesActive,
-                              leftNewerFilesActive,
-                              rightNewerFilesActive,
-                              differentFilesActive,
-                              equalFilesActive,
-                              conflictFilesActive](const FileSystemObject& fsObj) -> bool
+                leftOnlyFilesActive,
+                rightOnlyFilesActive,
+                leftNewerFilesActive,
+                rightNewerFilesActive,
+                differentFilesActive,
+                equalFilesActive,
+                conflictFilesActive](const FileSystemObject& fsObj) -> bool
     {
         if (!fsObj.isActive() && !showExcluded)
             return false;
@@ -554,15 +552,15 @@ void TreeView::applyActionFilter(bool showExcluded,
                                  bool conflictFilesActive)
 {
     updateView([showExcluded, //make sure the predicate can be stored safely!
-                              syncCreateLeftActive,
-                              syncCreateRightActive,
-                              syncDeleteLeftActive,
-                              syncDeleteRightActive,
-                              syncDirOverwLeftActive,
-                              syncDirOverwRightActive,
-                              syncDirNoneActive,
-                              syncEqualActive,
-                              conflictFilesActive](const FileSystemObject& fsObj) -> bool
+                syncCreateLeftActive,
+                syncCreateRightActive,
+                syncDeleteLeftActive,
+                syncDeleteRightActive,
+                syncDirOverwLeftActive,
+                syncDirOverwRightActive,
+                syncDirNoneActive,
+                syncEqualActive,
+                conflictFilesActive](const FileSystemObject& fsObj) -> bool
     {
         if (!fsObj.isActive() && !showExcluded)
             return false;
@@ -661,7 +659,6 @@ wxColor getColorForLevel(size_t level)
 {
     switch (level % 12)
     {
-        //*INDENT-OFF*
         case  0: return {0xcc, 0xcc, 0xff};
         case  1: return {0xcc, 0xff, 0xcc};
         case  2: return {0xff, 0xff, 0x99};
@@ -674,7 +671,6 @@ wxColor getColorForLevel(size_t level)
         case  9: return {0xff, 0xff, 0xcc};
         case 10: return {0xcc, 0xff, 0xff};
         case 11: return {0xff, 0xcc, 0x99};
-        //*INDENT-ON*
     }
     assert(false);
     return *wxBLACK;

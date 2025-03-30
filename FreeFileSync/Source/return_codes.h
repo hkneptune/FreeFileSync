@@ -44,12 +44,10 @@ std::wstring getSyncResultLabel(TaskResult syncResult)
 {
     switch (syncResult)
     {
-        //*INDENT-OFF*
         case TaskResult::success: return _("Completed successfully");
         case TaskResult::warning: return _("Completed with warnings");
         case TaskResult::error:   return _("Completed with errors");
         case TaskResult::cancelled: return _("Stopped");
-        //*INDENT-ON*
     }
     assert(false);
     return std::wstring();

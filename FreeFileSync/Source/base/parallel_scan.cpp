@@ -37,7 +37,7 @@ const int FOLDER_TRAVERSAL_LEVEL_MAX = 100;
     1 Thread:          41s      |        13s             1 Thread:          45s      |        13s
     2 Threads:         42s      |        11s             2 Threads:         38s      |         8s
 
-    => Traversing does not take any advantage of file locality so that even multiple threads operating on the same disk impose no performance overhead! (even faster on XP)    */
+    => Traversing does not take any advantage of file locality so that multiple threads operating on the same disk impose no performance overhead! (even faster on XP)    */
 
 class AsyncCallback
 {
@@ -68,12 +68,12 @@ public:
     }
 
     //context of main thread
-    void waitUntilDone(std::chrono::milliseconds duration, const TravErrorCb& onError, const TravStatusCb& onStatusUpdate) //throw X
+    void waitUntilDone(const TravErrorCb& onError, const TravStatusCb& onStatusUpdate) //throw X
     {
         assert(runningOnMainThread());
         for (;;)
         {
-            const std::chrono::steady_clock::time_point callbackTime = std::chrono::steady_clock::now() + duration;
+            const std::chrono::steady_clock::time_point callbackTime = std::chrono::steady_clock::now() + cbInterval_;
 
             for (std::unique_lock dummy(lockRequest_) ;;) //process all errors without delay
             {
@@ -131,10 +131,12 @@ public:
         currentFile_ = filePath;
     }
 
-    void incItemsScanned() { ++itemsScanned_; } //perf: irrelevant! scanning is almost entirely file I/O bound, not CPU bound! => no prob having multiple threads poking at the same variable!
+    void incItemsScanned() { ++itemsScanned_; }
+    //perf: scanning is almost entirely file I/O bound, not CPU bound! => no prob having multiple threads poking at the same variable!
 
-    void notifyWorkBegin(int threadIdx, const size_t parallelOps)
+    void notifyTaskBegin(int threadIdx, size_t parallelOps)
     {
+        assert(!zen::runningOnMainThread());
         std::lock_guard dummy(lockCurrentStatus_);
 
         [[maybe_unused]] const auto [it, inserted] = activeThreadIdxs_.emplace(threadIdx, parallelOps);
@@ -143,8 +145,9 @@ public:
         notifyingThreadIdx_ = activeThreadIdxs_.begin()->first;
     }
 
-    void notifyWorkEnd(int threadIdx)
+    void notifyTaskEnd(int threadIdx)
     {
+        assert(!zen::runningOnMainThread());
         {
             std::lock_guard dummy(lockCurrentStatus_);
 
@@ -254,16 +257,16 @@ public:
                     AsyncCallback& acb, int threadIdx, std::chrono::steady_clock::time_point& lastReportTime) :
         DirCallback(travCfg_ /*not yet constructed!!!*/, Zstring(), output.folderCont, 0 /*level*/),
         travCfg_
-    {
-        baseFolderKey.folderPath,
-        baseFolderKey.filter,
-        baseFolderKey.handleSymlinks,
-        output.failedFolderReads,
-        output.failedItemReads,
-        acb,
-        threadIdx,
-        lastReportTime,
-    }
+        {
+            baseFolderKey.folderPath,
+            baseFolderKey.filter,
+            baseFolderKey.handleSymlinks,
+            output.failedFolderReads,
+            output.failedItemReads,
+            acb,
+            threadIdx,
+            lastReportTime,
+        }
     {
         if (acb.mayReportCurrentFile(threadIdx, lastReportTime))
             acb.reportCurrentFile(AFS::getDisplayPath(baseFolderKey.folderPath)); //just in case first directory access is blocking
@@ -402,9 +405,9 @@ DirCallback::HandleError DirCallback::reportError(const ErrorInfo& errorInfo, co
 }
 
 
-std::map<DirectoryKey, DirectoryValue> fff::parallelDeviceTraversal(const std::set<DirectoryKey>& foldersToRead,
-                                                                    const TravErrorCb& onError, const TravStatusCb& onStatusUpdate,
-                                                                    std::chrono::milliseconds cbInterval)
+std::map<DirectoryKey, DirectoryValue> fff::parallelFolderScan(const std::set<DirectoryKey>& foldersToRead,
+                                                               const TravErrorCb& onError, const TravStatusCb& onStatusUpdate,
+                                                               std::chrono::milliseconds cbInterval)
 {
     std::map<DirectoryKey, DirectoryValue> output;
 
@@ -441,8 +444,8 @@ std::map<DirectoryKey, DirectoryValue> fff::parallelDeviceTraversal(const std::s
         {
             setCurrentThreadName(threadName);
 
-            acb.notifyWorkBegin(threadIdx, parallelOps);
-            ZEN_ON_SCOPE_EXIT(acb.notifyWorkEnd(threadIdx));
+            acb.notifyTaskBegin(threadIdx, parallelOps);
+            ZEN_ON_SCOPE_EXIT(acb.notifyTaskEnd(threadIdx));
 
             std::chrono::steady_clock::time_point lastReportTime; //keep thread-local!
 
@@ -456,7 +459,7 @@ std::map<DirectoryKey, DirectoryValue> fff::parallelDeviceTraversal(const std::s
             AFS::traverseFolderRecursive(afsDevice, travWorkload, parallelOps); //throw ThreadStopRequest
         });
     }
-    acb.waitUntilDone(cbInterval, onError, onStatusUpdate); //throw X
+    acb.waitUntilDone(onError, onStatusUpdate); //throw X
 
     return output;
 }

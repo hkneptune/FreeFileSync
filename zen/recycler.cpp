@@ -14,7 +14,6 @@ using namespace zen;
 
 
 
-//*INDENT-OFF*
 void zen::moveToRecycleBin(const Zstring& itemPath) //throw FileError, RecycleBinUnavailable
 {
     GFile* file = ::g_file_new_for_path(itemPath.c_str()); //never fails according to docu
@@ -30,6 +29,8 @@ void zen::moveToRecycleBin(const Zstring& itemPath) //throw FileError, RecycleBi
                 CentOS 7 (GLib 2.56): G_IO_ERROR_FAILED:        Unable to find or create trash directory for file.txt => localized! >:(
                 master   (GLib 2.64): G_IO_ERROR_NOT_SUPPORTED: Trashing on system internal mounts is not supported
                 https://gitlab.gnome.org/GNOME/glib/blob/master/gio/glocalfile.c#L2042                              */
+
+        //*INDENT-OFF*
         const bool trashUnavailable = error && error->domain == G_IO_ERROR &&
                                       (error->code == G_IO_ERROR_NOT_SUPPORTED ||
 
@@ -93,6 +94,7 @@ void zen::moveToRecycleBin(const Zstring& itemPath) //throw FileError, RecycleBi
 
                                             return false;
                                         }()));
+        //*INDENT-ON*
 
         if (trashUnavailable)
             throw RecycleBinUnavailable(replaceCpy(_("The recycle bin is not available for %x."), L"%x", fmtPath(itemPath)),
@@ -102,4 +104,3 @@ void zen::moveToRecycleBin(const Zstring& itemPath) //throw FileError, RecycleBi
                         formatGlibError("g_file_trash", error));
     }
 }
-//*INDENT-ON*

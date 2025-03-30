@@ -1224,12 +1224,10 @@ SyncConfirmationDlg::SyncConfirmationDlg(wxWindow* parent,
     if (syncVar)
         switch (*syncVar)
         {
-            //*INDENT-OFF*
             case SyncVariant::twoWay: varImgName = "sync_twoway"; break;
             case SyncVariant::mirror: varImgName = "sync_mirror"; break;
             case SyncVariant::update: varImgName = "sync_update"; break;
             case SyncVariant::custom: varImgName = "sync_custom"; break;
-            //*INDENT-ON*
         }
     if (varImgName)
         setImage(*m_bitmapSyncVar, loadImage(varImgName, -1 /*maxWidth*/, dipToScreen(getMenuIconDipSize())));

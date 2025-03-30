@@ -8,6 +8,8 @@
 #define SOCKET_H_23498325972583947678456437
 
 #include "sys_error.h"
+    #include <idn2.h>
+    #undef G_GNUC_UNUSED //defined in idn2.h: clashes with glib.h
     #include <unistd.h> //close
     #include <sys/socket.h>
     #include <netinet/tcp.h> //TCP_NODELAY
@@ -78,9 +80,22 @@ public:
         if (trimCpy(server).empty())
             throw SysError(_("Server name must not be empty."));
 
+        Zstring nodeName = server; //macOS supports IDN out of the box, it seems :) - unlike Linux:
+        if (!isAsciiString(server))
+        {
+            char* punyEncoded = nullptr;
+            int rc = idn2_lookup_ul(server.c_str(), &punyEncoded, IDN2_NFC_INPUT | IDN2_NONTRANSITIONAL); //follow libcurl/src/lib/idn.c
+            if (rc != IDN2_OK)
+                rc = idn2_lookup_ul(server.c_str(), &punyEncoded, IDN2_TRANSITIONAL); //fallback to TR46 Transitional mode for better IDNA2003 compatibility
+            if (rc != IDN2_OK)
+                throw SysError(formatSystemError("idn2_lookup_ul", replaceCpy(_("Error code %x"), L"%x", numberTo<std::wstring>(rc)), L""));
+            ZEN_ON_SCOPE_EXIT(idn2_free(punyEncoded));
+
+            nodeName = punyEncoded;
+        }
         const addrinfo hints
         {
-            .ai_flags = AI_ADDRCONFIG, //save a AAAA lookup on machines that can't use the returned data anyhow
+            .ai_flags    = AI_ADDRCONFIG, //return IPv4 address iff system supports it; dito for IPv6
             .ai_family   = AF_UNSPEC, //don't care if AF_INET or AF_INET6
             .ai_socktype = SOCK_STREAM, //we *do* care about this one!
         };
@@ -88,7 +103,7 @@ public:
         addrinfo* servinfo = nullptr;
         ZEN_ON_SCOPE_EXIT(if (servinfo) ::freeaddrinfo(servinfo));
 
-        const int rcGai = ::getaddrinfo(server.c_str(), serviceName.c_str(), &hints, &servinfo);
+        const int rcGai = ::getaddrinfo(nodeName.c_str(), serviceName.c_str(), &hints, &servinfo);
         if (rcGai != 0)
             THROW_LAST_SYS_ERROR_GAI(rcGai);
         if (!servinfo)

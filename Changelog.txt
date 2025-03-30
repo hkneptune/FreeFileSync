@@ -1,3 +1,13 @@
+FreeFileSync 14.3 [2025-03-27]
+------------------------------
+Support internationalized domain names (IDN) for (S)FTP and email
+Log performance statistics for file content comparison
+Support installation using Ptyxis terminal (Linux)
+Support pausing countdown towards system shutdown
+Support KDE Plasma 6 service menu (Linux)
+Fixed crash on app exit when called by Cron (Linux)
+
+
 FreeFileSync 14.2 [2025-02-20]
 ------------------------------
 Fixed crash when closing progress dialog after sync (Windows)

@@ -5,6 +5,7 @@
 // *****************************************************************************
 
 #include "comparison.h"
+#include <zen/perf.h>
 #include <zen/process_priority.h>
 #include <zen/time.h>
 #include "algorithm.h"
@@ -36,7 +37,7 @@ std::vector<FolderPairCfg> fff::extractCompareCfg(const MainConfiguration& mainC
         NormalizedFilter filter = normalizeFilters(mainCfg.globalFilter, lpc.localFilter);
 
         //exclude sync.ffs_db and lock files
-        //=> can't put inside fff::parallelDeviceTraversal() which is also used by versioning
+        //=> can't put inside fff::parallelFolderScan() which is also used by versioning
         filter.nameFilter = filter.nameFilter.ref().copyFilterAddingExclusion(Zstring(Zstr("*")) + SYNC_DB_FILE_ENDING + Zstr("\n*") + LOCK_FILE_ENDING);
 
         output.push_back(
@@ -242,7 +243,7 @@ FolderComparison ComparisonBuffer::execute(const std::vector<std::pair<ResolvedF
         }
 
     //------------------------------------------------------------------
-    const std::chrono::steady_clock::time_point compareStartTime = std::chrono::steady_clock::now();
+    StopWatch scanTime;
     int itemsReported = 0;
 
     auto onStatusUpdate = [&, textScanning = _("Scanning:") + L' '](const std::wstring& statusLine, int itemsTotal)
@@ -253,18 +254,18 @@ FolderComparison ComparisonBuffer::execute(const std::vector<std::pair<ResolvedF
         cb_.updateStatus(textScanning + statusLine); //throw X
     };
 
-    //PERF_START;
-    folderBuffer_ = parallelDeviceTraversal(foldersToRead,
+    folderBuffer_ = parallelFolderScan(foldersToRead,
     [&](const PhaseCallback::ErrorInfo& errorInfo) { return cb_.reportError(errorInfo); }, //throw X
     onStatusUpdate, //throw X
-    UI_UPDATE_INTERVAL / 2); //every ~50 ms
-    //PERF_STOP;
+    UI_UPDATE_INTERVAL / 2); //every ~25 ms
 
-    const int64_t totalTimeSec = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - compareStartTime).count();
-    cb_.logMessage(_("Comparison finished:") + L' ' +
-                   _P("1 item found", "%x items found", itemsReported) + SPACED_DASH +
+    //------------------------------------------------------------------
+    const int64_t totalTimeSec = std::chrono::duration_cast<std::chrono::seconds>(scanTime.elapsed()).count();
+
+    cb_.logMessage(_P("1 item found", "%x items found", itemsReported) + L" | " +
                    _("Time elapsed:") + L' ' + utfTo<std::wstring>(formatTimeSpan(totalTimeSec)),
                    PhaseCallback::MsgType::info); //throw X
+    //caveat: the time while waiting on error dialog or while paused is counted, too :/ OTOH other threads continue working => unclear how to count...
     //------------------------------------------------------------------
 
     //process binary comparison as one junk
@@ -582,9 +583,9 @@ std::vector<SharedRef<BaseFolderPair>> ComparisonBuffer::compareByContent(const 
             for (const FilePair* file : bwl.filesToCompareBytewise)
                 bytesTotal += file->getFileSize<SelectSide::left>(); //left and right file sizes are equal
         }
-        cb_.initNewPhase(itemsTotal, bytesTotal, ProcessPhase::binaryCompare); //throw X
 
-        //PERF_START;
+        cb_.initNewPhase(itemsTotal, bytesTotal, ProcessPhase::binaryCompare); //throw X
+        StopWatch compareTime;
 
         std::mutex singleThread; //only a single worker thread may run at a time, except for parallel file I/O
 
@@ -637,7 +638,14 @@ std::vector<SharedRef<BaseFolderPair>> ComparisonBuffer::compareByContent(const 
             scheduleMoreTasks(); //set initial load
         }
 
-        acb.waitUntilDone(UI_UPDATE_INTERVAL / 2 /*every ~50 ms*/, cb_); //throw X
+        const auto [itemsProcessed, bytesProcessed] = acb.waitUntilDone(UI_UPDATE_INTERVAL / 2 /*every ~25 ms*/, cb_); //throw X
+
+        //---------------------------------------------------------------
+        const int64_t totalTimeSec = std::chrono::duration_cast<std::chrono::seconds>(compareTime.elapsed()).count();
+
+        cb_.logMessage(_("File contents compared:") + L' '  + formatNumber(itemsProcessed) + L" (" + formatFilesizeShort(bytesProcessed) + L") | " +
+                       _("Time elapsed:") + L' ' + utfTo<std::wstring>(formatTimeSpan(totalTimeSec)),
+                       PhaseCallback::MsgType::info); //throw X
     }
 
     return output;
@@ -919,7 +927,7 @@ void MergeSides::mergeFolders(const FolderContainer& lhs, const FolderContainer&
 
 //-----------------------------------------------------------------------------------------------
 
-//uncheck excluded directories (see parallelDeviceTraversal()) + remove superfluous excluded subdirectories
+//uncheck excluded directories (see parallelFolderScan()) + remove superfluous excluded subdirectories
 void stripExcludedDirectories(ContainerObject& conObj, const PathFilter& filter)
 {
     for (FolderPair& folder : conObj.subfolders())
@@ -1043,7 +1051,7 @@ SharedRef<BaseFolderPair> ComparisonBuffer::performComparison(const ResolvedFold
 
     //attention: some excluded directories are still in the comparison result! (see include filter handling!)
     if (!fpCfg.filter.nameFilter.ref().isNull())
-        stripExcludedDirectories(output.ref(), fpCfg.filter.nameFilter.ref()); //mark excluded directories (see parallelDeviceTraversal()) + remove superfluous excluded subdirectories
+        stripExcludedDirectories(output.ref(), fpCfg.filter.nameFilter.ref()); //mark excluded directories (see parallelFolderScan()) + remove superfluous excluded subdirectories
 
     //apply soft filtering (hard filter already applied during traversal!)
     addSoftFiltering(output.ref(), fpCfg.filter.timeSizeFilter);
@@ -1064,7 +1072,7 @@ FolderComparison fff::compare(WarningDialogs& warnings,
                               ProcessCallback& callback /*throw X*/) //throw X
 {
     //indicator at the very beginning of the log to make sense of "total time"
-    //init process: keep at beginning so that all gui elements are initialized properly
+    //init process: keep at beginning so that all GUI elements are initialized properly
     callback.initNewPhase(-1, -1, ProcessPhase::scan); //throw X; it's unknown how many files will be scanned => -1 objects
     //callback.logInfo(Comparison started")); -> still useful?
 

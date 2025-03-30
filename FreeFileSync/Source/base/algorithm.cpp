@@ -751,12 +751,10 @@ private:
         const auto& changedirs = selectParam<side>(dirs_.left, dirs_.right);
         switch (change)
         {
-            //*INDENT-OFF*
             case CudAction::noChange: return SyncDirection::none;
             case CudAction::create:  return changedirs.create;
             case CudAction::update:  return changedirs.update;
             case CudAction::delete_: return changedirs.delete_;
-            //*INDENT-ON*
         }
         throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
     }

@@ -29,7 +29,10 @@ public:
                      long style                   = 0,
                      const wxValidator& validator = wxDefaultValidator,
                      const wxString& name         = wxASCII_STR(wxButtonNameStr)) :
-        wxBitmapButton(parent, id, wxNullBitmap, pos, size, style, validator, name)
+        wxBitmapButton(parent, id,
+                       //(FreeFileSync_x86_64:77379): Gtk-CRITICAL **: 11:04:31.752: IA__gtk_widget_modify_style: assertion 'GTK_IS_WIDGET (widget)' failed
+                       rectangleImage({1, 1}, *wxRED),
+    pos, size, style, validator, name)
     {
         SetLabel(label);
     }

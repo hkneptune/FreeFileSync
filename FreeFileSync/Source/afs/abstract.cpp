@@ -95,16 +95,9 @@ void AFS::traverseFolder(const AfsPath& folderPath, //throw FileError
 AFS::FileCopyResult AFS::copyFileAsStream(const AfsPath& sourcePath, const StreamAttributes& attrSource, //throw FileError, ErrorFileLocked, X
                                           const AbstractPath& targetPath, const IoCallback& notifyUnbufferedIO /*throw X*/) const
 {
-    int64_t totalBytesNotified = 0;
-    IOCallbackDivider notifyIoDiv(notifyUnbufferedIO, totalBytesNotified);
-
-    int64_t totalBytesRead    = 0;
-    int64_t totalBytesWritten = 0;
-    IoCallback /*[!] not auto!*/ notifyUnbufferedRead  = [&](int64_t bytesDelta) { totalBytesRead    += bytesDelta; notifyIoDiv(bytesDelta); };
-    IoCallback                   notifyUnbufferedWrite = [&](int64_t bytesDelta) { totalBytesWritten += bytesDelta; notifyIoDiv(bytesDelta); };
-    //--------------------------------------------------------------------------------------------------------
-
     auto streamIn = getInputStream(sourcePath); //throw FileError, ErrorFileLocked
+
+    warn_static("maybe only call if deviating from attrSource!? support file append in progress")
 
     StreamAttributes attrSourceNew = {};
     //try to get the most current attributes if possible (input file might have changed after comparison!)
@@ -117,36 +110,38 @@ AFS::FileCopyResult AFS::copyFileAsStream(const AfsPath& sourcePath, const Strea
     //already existing: undefined behavior! (e.g. fail/overwrite/auto-rename)
     auto streamOut = getOutputStream(targetPath, attrSourceNew.fileSize, attrSourceNew.modTime); //throw FileError
 
+    int64_t totalBytesNotified = 0;
+    IOCallbackDivider notifyIoDiv(notifyUnbufferedIO, totalBytesNotified);
 
-    unbufferedStreamCopy([&](void* buffer, size_t bytesToRead)
+    const uint64_t streamSize = unbufferedStreamCopy([&](void* buffer, size_t bytesToRead)
     {
-        return streamIn->tryRead(buffer, bytesToRead, notifyUnbufferedRead); //throw FileError, ErrorFileLocked, X
+        return streamIn->tryRead(buffer, bytesToRead, notifyIoDiv); //throw FileError, ErrorFileLocked, X
     },
     streamIn->getBlockSize() /*throw FileError*/,
 
     [&](const void* buffer, size_t bytesToWrite)
     {
-        return streamOut->tryWrite(buffer, bytesToWrite, notifyUnbufferedWrite); //throw FileError, X
+        return streamOut->tryWrite(buffer, bytesToWrite, notifyIoDiv); //throw FileError, X
     },
     streamOut->getBlockSize() /*throw FileError*/); //throw FileError, ErrorFileLocked, X
 
-
     //check incomplete input *before* failing with (slightly) misleading error message in OutputStream::finalize()
-    if (totalBytesRead != makeSigned(attrSourceNew.fileSize))
+    if (streamSize != attrSourceNew.fileSize)
         throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(getDisplayPath(sourcePath))),
-                        _("Unexpected size of data stream:") + L' ' + formatNumber(totalBytesRead) + L'\n' +
-                        _("Expected:") + L' ' + formatNumber(attrSourceNew.fileSize) + L" [notifyUnbufferedRead]");
+                        _("Unexpected size of data stream:") + L' ' + formatNumber(streamSize) + L'\n' +
+                        _("Expected:") + L' ' + formatNumber(attrSourceNew.fileSize) + L" [unbufferedStreamCopy]");
 
-    const FinalizeResult finResult = streamOut->finalize(notifyUnbufferedWrite); //throw FileError, X
+    const FinalizeResult finResult = streamOut->finalize(notifyIoDiv); //throw FileError, X
 
     ZEN_ON_SCOPE_FAIL(try { removeFilePlain(targetPath); }
     catch (const FileError& e) { logExtraError(e.toString()); }); //after finalize(): not guarded by ~AFS::OutputStream() anymore!
+    //--------------------------------------------------------------------------------------------------------
 
-    //catch file I/O bugs + read/write conflicts: (note: different check than inside AFS::OutputStream::finalize() => checks notifyUnbufferedIO()!)
-    if (totalBytesWritten != totalBytesRead)
+    //catch file I/O notification bugs => should never happen in *cross-device* context... OTOH BackupRead/BackupWrite may notify less data when copying sparse files
+    if (totalBytesNotified != makeSigned(2 * streamSize))
         throw FileError(replaceCpy(_("Cannot write file %x."), L"%x", fmtPath(getDisplayPath(targetPath))),
-                        _("Unexpected size of data stream:") + L' ' + formatNumber(totalBytesWritten) + L'\n' +
-                        _("Expected:") + L' ' + formatNumber(totalBytesRead) + L" [notifyUnbufferedWrite]");
+                        _("Unexpected size of data stream:") + L' ' + formatNumber(totalBytesNotified) + L'\n' +
+                        _("Expected:") + L' ' + formatNumber(2 * streamSize) + L" [IOCallbackDivider]");
     return
     {
         .fileSize        = attrSourceNew.fileSize,

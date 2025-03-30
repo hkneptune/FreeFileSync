@@ -16,7 +16,7 @@
 
 namespace fff
 {
-class AsyncCallback //actor pattern
+class AsyncCallback
 {
 public:
     AsyncCallback() {}
@@ -105,7 +105,7 @@ public:
     }
 
     //context of main thread
-    void waitUntilDone(std::chrono::milliseconds cbInterval, PhaseCallback& cb) //throw X
+    std::pair<int /*itemsProcessed*/, int64_t /*bytesProcessed*/> waitUntilDone(std::chrono::milliseconds cbInterval, PhaseCallback& cb) //throw X
     {
         assert(zen::runningOnMainThread());
         for (;;)
@@ -145,12 +145,12 @@ public:
                 {
                     dummy.unlock(); //call member functions outside of mutex scope:
                     reportStats(cb); //one last call for accurate stat-reporting!
-                    return;
+                    return std::make_pair(itemsProcessed_, bytesProcessed_);
                 }
             }
 
             //call back outside of mutex scope:
-            cb.updateStatus(getCurrentStatus()); //throw X
+            cb.updateStatus(getStatusMsg()); //throw X
             reportStats(cb);
         }
     }
@@ -162,23 +162,10 @@ public:
         std::lock_guard dummy(lockCurrentStatus_);
         assert(!getThreadStatus());
 
-        //const size_t taskIdx = [&]() -> size_t
-        //{
-        //    auto it = std::find(usedIndexNums_.begin(), usedIndexNums_.end(), false);
-        //    if (it != usedIndexNums_.end())
-        //    {
-        //        *it = true;
-        //        return it - usedIndexNums_.begin();
-        //    }
-
-        //    usedIndexNums_.push_back(true);
-        //    return usedIndexNums_.size() - 1;
-        //}();
-
         if (statusByPriority_.size() < prio + 1)
             statusByPriority_.resize(prio + 1);
 
-        statusByPriority_[prio].push_back({threadId, /*taskIdx,*/ std::wstring()});
+        statusByPriority_[prio].push_back({threadId, std::wstring()});
     }
 
     void notifyTaskEnd() //noexcept
@@ -191,7 +178,6 @@ public:
             for (ThreadStatus& ts : sbp)
                 if (ts.threadId == threadId)
                 {
-                    //usedIndexNums_[ts.taskIdx] = false;
                     std::swap(ts, sbp.back());
                     sbp.pop_back();
                     return;
@@ -216,7 +202,6 @@ private:
     struct ThreadStatus
     {
         std::thread::id threadId;
-        //size_t   taskIdx = 0; //nice human-readable task id for GUI
         std::wstring statusMsg;
     };
 
@@ -232,40 +217,32 @@ private:
         return nullptr;
     }
 
-#if 0 //maybe not that relevant after all!?
-    std::wstring getTaskPrefix() //call *outside* of "lockCurrentStatus_" lock!!
-    {
-        const size_t taskIdx = [&]
-        {
-            std::lock_guard dummy(lockCurrentStatus_);
-            const ThreadStatus* ts = getThreadStatus(); //call while holding "lockCurrentStatus_" lock!!
-            return ts ? ts->taskIdx : static_cast<size_t>(-2);
-        }();
-        return totalThreadCount_ > 1 ? L'[' + zen::formatNumber(taskIdx + 1) + L"] " : L"";
-    }
-#endif
-
     //context of main thread
     void reportStats(PhaseCallback& cb)
     {
         assert(zen::runningOnMainThread());
+        const int     itemsDeltaProcessed = itemsDeltaProcessed_; //get value snapshot from atomics
+        const int64_t bytesDeltaProcessed = bytesDeltaProcessed_; //
+        if (itemsDeltaProcessed != 0 || bytesDeltaProcessed != 0)
+        {
+            updateDataProcessed   (-itemsDeltaProcessed, -bytesDeltaProcessed); //careful with these atomics: don't just set to 0
+            cb.updateDataProcessed( itemsDeltaProcessed,  bytesDeltaProcessed); //noexcept!
 
-        const std::pair<int, int64_t> deltaProcessed(itemsDeltaProcessed_, bytesDeltaProcessed_);
-        if (deltaProcessed.first != 0 || deltaProcessed.second != 0)
-        {
-            updateDataProcessed   (-deltaProcessed.first, -deltaProcessed.second); //careful with these atomics: don't just set to 0
-            cb.updateDataProcessed( deltaProcessed.first,  deltaProcessed.second); //noexcept!
+            itemsProcessed_ += itemsDeltaProcessed;
+            bytesProcessed_ += bytesDeltaProcessed;
         }
-        const std::pair<int, int64_t> deltaTotal(itemsDeltaTotal_, bytesDeltaTotal_);
-        if (deltaTotal.first != 0 || deltaTotal.second != 0)
+
+        const int     itemsDeltaTotal = itemsDeltaTotal_;
+        const int64_t bytesDeltaTotal = bytesDeltaTotal_;
+        if (itemsDeltaTotal != 0 || bytesDeltaTotal != 0)
         {
-            updateDataTotal   (-deltaTotal.first, -deltaTotal.second);
-            cb.updateDataTotal( deltaTotal.first,  deltaTotal.second); //noexcept!
+            updateDataTotal   (-itemsDeltaTotal, -bytesDeltaTotal);
+            cb.updateDataTotal( itemsDeltaTotal,  bytesDeltaTotal); //noexcept!
         }
     }
 
     //context of main thread, call repreatedly
-    std::wstring getCurrentStatus()
+    std::wstring getStatusMsg()
     {
         assert(zen::runningOnMainThread());
 
@@ -275,7 +252,8 @@ private:
             std::lock_guard dummy(lockCurrentStatus_);
 
             for (const auto& sbp : statusByPriority_)
-                parallelOpsTotal += sbp.empty() ? 0 : 1;
+                parallelOpsTotal += sbp.size();
+
             statusMsg = [&]
             {
                 for (const std::vector<ThreadStatus>& sbp : statusByPriority_)
@@ -320,13 +298,15 @@ private:
     std::vector<std::vector<ThreadStatus>> statusByPriority_;
     //give status messages priority according to their folder pair (e.g. first folder pair has prio 0) => visualize (somewhat) natural processing order
 
-    //std::vector<char/*bool*/> usedIndexNums_; //keep info for human-readable task index numbers
-
     //---- status updates II (lock-free) ----
     std::atomic<int>     itemsDeltaProcessed_{0}; //
     std::atomic<int64_t> bytesDeltaProcessed_{0}; //std:atomic is uninitialized by default!
     std::atomic<int>     itemsDeltaTotal_    {0}; //
     std::atomic<int64_t> bytesDeltaTotal_    {0}; //
+
+    //---- aggregated numbers; accessed by main thread only ----
+    int     itemsProcessed_ = 0;
+    int64_t bytesProcessed_ = 0;
 };
 
 
@@ -346,8 +326,8 @@ public:
         if (scopeFail)
             cb_.updateDataTotal(itemsReported_, bytesReported_); //=> unexpected increase of total workload
         else
-            //update statistics to consider the real amount of data, e.g. more than the "file size" for ADS streams,
-            //less for sparse and compressed files,  or file changed in the meantime!
+            //update statistics to consider the real amount of data, e.g. CopyFileEx: more than the "file size" for ADS streams,
+            //less for sparse and compressed files, or file changed in the meantime!
             cb_.updateDataTotal(itemsReported_ - itemsExpected_, bytesReported_ - bytesExpected_); //noexcept!
     }
 
@@ -409,7 +389,7 @@ struct PercentStatReporter
         bytesCopied_ += bytesDelta;
 
         const auto now = std::chrono::steady_clock::now();
-        if (now >= lastUpdate_ + UI_UPDATE_INTERVAL / 2) //every ~50 ms
+        if (now >= lastUpdate_ + UI_UPDATE_INTERVAL / 2) //every ~25 ms
         {
             lastUpdate_ = now;
 
@@ -456,9 +436,9 @@ private:
             if (expectedSteps <=   1000) return 1;
             if (expectedSteps <=  10000) return 2;
             if (expectedSteps <= 100000) return 3;
+            //return static_cast<int>(std::ceil(std::log10(expectedSteps))) - 2; -> overkill!
             /**/                         return 4;
         }();
-        //const int decPlaces = expectedSteps <= 100 ? 0 : static_cast<int>(std::ceil(std::log10(expectedSteps))) - 2; -> overkill?
         return zen::formatProgressPercent(fraction, decPlaces);
     }
 
@@ -491,7 +471,7 @@ std::wstring tryReportingError(Function cmd /*throw FileError*/, Callback& cb /*
             cmd(); //throw FileError
             return std::wstring();
         }
-        catch (zen::FileError& e)
+        catch (const zen::FileError& e)
         {
             assert(!e.toString().empty());
             switch (cb.reportError({e.toString(), std::chrono::steady_clock::now(), retryNumber})) //throw X
@@ -560,7 +540,7 @@ void massParallelExecute(const std::vector<std::pair<AbstractPath, ParallelWorkI
         });
     }
 
-    acb.waitUntilDone(UI_UPDATE_INTERVAL / 2 /*every ~50 ms*/, callback); //throw X
+    acb.waitUntilDone(UI_UPDATE_INTERVAL / 2 /*every ~25 ms*/, callback); //throw X
 }
 }
 

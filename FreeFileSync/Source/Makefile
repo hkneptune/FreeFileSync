@@ -8,24 +8,24 @@ CXXFLAGS += -std=c++23 -pipe -DWXINTL_NO_GETTEXT_MACRO -I../.. -I../../zenXml -i
 LDFLAGS += -s `wx-config --libs std, aui, richtext --debug=no` -pthread
 
 
-CXXFLAGS  += `pkg-config --cflags openssl`
-LDFLAGS += `pkg-config --libs   openssl`
+CXXFLAGS += `pkg-config --cflags openssl`
+LDFLAGS  += `pkg-config --libs openssl`
 
-CXXFLAGS  += `pkg-config --cflags libcurl`
-LDFLAGS += `pkg-config --libs   libcurl`
+CXXFLAGS += `pkg-config --cflags libcurl`
+LDFLAGS  += `pkg-config --libs libcurl` -lidn2
 
-CXXFLAGS  += `pkg-config --cflags libssh2`
-LDFLAGS += `pkg-config --libs   libssh2`
+CXXFLAGS += `pkg-config --cflags libssh2`
+LDFLAGS  += `pkg-config --libs libssh2`
 
-CXXFLAGS  += `pkg-config --cflags gtk+-2.0`
+CXXFLAGS += `pkg-config --cflags gtk+-2.0`
 #treat as system headers so that warnings are hidden:
-CXXFLAGS  += -isystem/usr/include/gtk-2.0
+CXXFLAGS += -isystem/usr/include/gtk-2.0
 
 #support for SELinux (optional)
 SELINUX_EXISTING=$(shell pkg-config --exists libselinux && echo YES)
 ifeq ($(SELINUX_EXISTING),YES)
-CXXFLAGS  += `pkg-config --cflags libselinux` -DHAVE_SELINUX
-LDFLAGS += `pkg-config --libs libselinux`
+CXXFLAGS += `pkg-config --cflags libselinux` -DHAVE_SELINUX
+LDFLAGS  += `pkg-config --libs libselinux`
 endif
 
 cppFiles=

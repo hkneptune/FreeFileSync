@@ -1047,7 +1047,6 @@ void FilePair::flip()
 
     switch (contentCategory_)
     {
-        //*INDENT-OFF*
         case FileContentCategory::unknown:
         case FileContentCategory::equal:
         case FileContentCategory::invalidTime:
@@ -1055,7 +1054,6 @@ void FilePair::flip()
         case FileContentCategory::conflict: break;
         case FileContentCategory::leftNewer:  contentCategory_ = FileContentCategory::rightNewer; break;
         case FileContentCategory::rightNewer: contentCategory_ = FileContentCategory::leftNewer; break;
-        //*INDENT-ON*
     }
 }
 
@@ -1068,7 +1066,6 @@ void SymlinkPair::flip()
 
     switch (contentCategory_)
     {
-        //*INDENT-OFF*
         case FileContentCategory::unknown:
         case FileContentCategory::equal:
         case FileContentCategory::invalidTime:
@@ -1076,7 +1073,6 @@ void SymlinkPair::flip()
         case FileContentCategory::conflict: break;
         case FileContentCategory::leftNewer:  contentCategory_ = FileContentCategory::rightNewer; break;
         case FileContentCategory::rightNewer: contentCategory_ = FileContentCategory::leftNewer; break;
-        //*INDENT-ON*
     }
 }
 
@@ -1232,7 +1228,6 @@ CompareFileResult FilePair::getCategory() const
             //3. FILE_EQUAL is expected to mean identical file sizes! See InSyncFile
             switch (contentCategory_)
             {
-                //*INDENT-OFF*
                 case FileContentCategory::unknown:
                 case FileContentCategory::conflict: assert(false); return FILE_CONFLICT;
                 case FileContentCategory::equal:       return hasEquivalentItemNames() ? FILE_EQUAL : FILE_RENAMED;
@@ -1240,7 +1235,6 @@ CompareFileResult FilePair::getCategory() const
                 case FileContentCategory::rightNewer:  return FILE_RIGHT_NEWER;
                 case FileContentCategory::invalidTime: return FILE_TIME_INVALID;
                 case FileContentCategory::different:   return FILE_DIFFERENT_CONTENT;
-                //*INDENT-ON*
             }
     }
     throw std::logic_error(std::string(__FILE__) + '[' + zen::numberTo<std::string>(__LINE__) + "] Contract violation!");
@@ -1277,7 +1271,6 @@ CompareFileResult SymlinkPair::getCategory() const
             //2. harmonize with "bool stillInSync()" in algorithm.cpp, FilePair::setSyncedTo() in file_hierarchy.h
             switch (contentCategory_)
             {
-                //*INDENT-OFF*
                 case FileContentCategory::unknown:
                 case FileContentCategory::conflict: assert(false); return FILE_CONFLICT;
                 case FileContentCategory::equal:       return hasEquivalentItemNames() ? FILE_EQUAL : FILE_RENAMED;
@@ -1285,7 +1278,6 @@ CompareFileResult SymlinkPair::getCategory() const
                 case FileContentCategory::rightNewer:  return FILE_RIGHT_NEWER;
                 case FileContentCategory::invalidTime: return FILE_TIME_INVALID;
                 case FileContentCategory::different:   return FILE_DIFFERENT_CONTENT;
-                //*INDENT-ON*
             }
     }
     throw std::logic_error(std::string(__FILE__) + '[' + zen::numberTo<std::string>(__LINE__) + "] Contract violation!");

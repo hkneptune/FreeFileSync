@@ -80,28 +80,26 @@ std::string normalize(const std::string_view& str, Predicate pred) //pred: unary
     for (const char c : str)
         switch (c)
         {
-			//*INDENT-OFF*
-			case '&': output += "&amp;"; break; //
-			case '<': output +=  "&lt;"; break; //normalization mandatory: https://www.w3.org/TR/xml/#syntax
-			case '>': output +=  "&gt;"; break; //
-			default:
-				if (pred(c))
-				{
-					if      (c == '\'') output += "&apos;";
-					else if (c ==  '"') output += "&quot;";
-					else
-					{
-						output += "&#x";
-						const auto [high, low] = hexify(c);
-						output += high;
-						output += low;
-						output += ';';
-					}
-				}
-				else
-					output += c;
-				break;
-			//*INDENT-ON*
+            case '&': output += "&amp;"; break; //
+            case '<': output +=  "&lt;"; break; //normalization mandatory: https://www.w3.org/TR/xml/#syntax
+            case '>': output +=  "&gt;"; break; //
+            default:
+                if (pred(c))
+                {
+                    if      (c == '\'') output += "&apos;";
+                    else if (c ==  '"') output += "&quot;";
+                    else
+                    {
+                        output += "&#x";
+                        const auto [high, low] = hexify(c);
+                        output += high;
+                        output += low;
+                        output += ';';
+                    }
+                }
+                else
+                    output += c;
+                break;
         }
     return output;
 }
@@ -152,16 +150,11 @@ std::string denormalize(const std::string_view& str)
 
         if (c == '&')
         {
-            if (checkEntity(it, str.end(), "&amp;"))
-                output += '&';
-            else if (checkEntity(it, str.end(), "&lt;"))
-                output += '<';
-            else if (checkEntity(it, str.end(), "&gt;"))
-                output += '>';
-            else if (checkEntity(it, str.end(), "&apos;"))
-                output += '\'';
-            else if (checkEntity(it, str.end(), "&quot;"))
-                output += '"';
+            if      (checkEntity(it, str.end(), "&amp;"))  output += '&';
+            else if (checkEntity(it, str.end(), "&lt;"))   output += '<';
+            else if (checkEntity(it, str.end(), "&gt;"))   output += '>';
+            else if (checkEntity(it, str.end(), "&apos;")) output += '\'';
+            else if (checkEntity(it, str.end(), "&quot;")) output += '"';
             else if (str.end() - it >= 6 &&
                      it[1] == '#' &&
                      it[2] == 'x' &&

@@ -211,9 +211,9 @@ public:
         {
             folderSelectorLeft_ .getPath(),
             folderSelectorRight_.getPath(),
-            this->getCompConfig(),
-            this->getSyncConfig(),
-            this->getFilterConfig()
+                                this->getCompConfig(),
+                                this->getSyncConfig(),
+                                this->getFilterConfig()
         };
     }
 
@@ -551,6 +551,30 @@ void MainDialog::create(const FfsGuiConfig& guiCfg, const std::vector<Zstring>& 
                         bool startComparison)
 {
     MainDialog* mainDlg = new MainDialog(guiCfg, cfgFilePaths, globalCfg, globalCfgFilePath);
+
+    //avoid Windows 10 white flash when showing dark mode window: https://chromium-review.googlesource.com/c/chromium/src/+/6092335
+#if 0 //variant 1: works, but no fade-in animation
+#include <dwmapi.h>
+#pragma comment(lib, "dwmapi.lib")
+
+    BOOL cloak = true; //requires Windows 8 and later
+    bool cloaked = SUCCEEDED(::DwmSetWindowAttribute(mainDlg->GetHWND(), DWMWA_CLOAK, &cloak, sizeof(cloak)));
+
+    mainDlg->Show();
+
+    if (cloaked)
+    {
+        /*BOOL success = */ ::UpdateWindow(mainDlg->GetHWND());
+        BOOL cloak = false;
+        /*HRESULT hr = */::DwmSetWindowAttribute(mainDlg->GetHWND(), DWMWA_CLOAK, &cloak, sizeof(cloak));
+    }
+#endif
+#if 0 //variant 2: works, but different fade-in animation
+    mainDlg->Iconize();
+    mainDlg->Show();
+    mainDlg->Iconize(false);
+#endif
+
     mainDlg->Show();
 
     //------------------------------------------------------------------------------------------
@@ -3636,7 +3660,7 @@ void MainDialog::onCfgGridSelection(GridSelectEvent& event)
     const bool skipSelection = [&] //what about multi-selection? a second selection probably *should* clear results
     {
         return filePaths.size() == 1 && activeConfigFiles_.size() == 1 &&
-        filePaths[0] == activeConfigFiles_[0];
+                        filePaths[0] == activeConfigFiles_[0];
     }();
 
     if (!skipSelection)
@@ -4665,22 +4689,18 @@ void MainDialog::updateGui()
     if (cmpVar)
         switch (*cmpVar)
         {
-            //*INDENT-OFF*
             case CompareVariant::timeSize: cmpVarIconName = "cmp_time";    break;
             case CompareVariant::content:  cmpVarIconName = "cmp_content"; break;
             case CompareVariant::size:     cmpVarIconName = "cmp_size";    break;
-            //*INDENT-ON*
         }
     const char* syncVarIconName = nullptr;
     if (syncVar)
         switch (*syncVar)
         {
-            //*INDENT-OFF*
             case SyncVariant::twoWay: syncVarIconName = "sync_twoway"; break;
             case SyncVariant::mirror: syncVarIconName = "sync_mirror"; break;
             case SyncVariant::update: syncVarIconName = "sync_update"; break;
             case SyncVariant::custom: syncVarIconName = "sync_custom"; break;
-            //*INDENT-ON*
         }
 
     const bool useDbFile = [&]
@@ -4956,8 +4976,8 @@ void MainDialog::onStartSync(wxCommandEvent& event)
             !notifyEmail.empty())
             if (guiCfg.mainCfg.emailNotifyCondition == ResultsNotification::always ||
                 (guiCfg.mainCfg.emailNotifyCondition == ResultsNotification::errorWarning && (fullSummary.result == TaskResult::cancelled ||
-                        fullSummary.result == TaskResult::error ||
-                        fullSummary.result == TaskResult::warning)) ||
+                    fullSummary.result == TaskResult::error ||
+                    fullSummary.result == TaskResult::warning)) ||
                 (guiCfg.mainCfg.emailNotifyCondition == ResultsNotification::errorOnly && (fullSummary.result == TaskResult::cancelled ||
                                                                                            fullSummary.result == TaskResult::error)))
                 try

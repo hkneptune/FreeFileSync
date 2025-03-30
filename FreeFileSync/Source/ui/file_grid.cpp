@@ -93,7 +93,6 @@ std::pair<CudAction, SelectSide> getCudAction(SyncOperation so)
 {
     switch (so)
     {
-        //*INDENT-OFF*
         case SO_CREATE_LEFT:
         case SO_MOVE_LEFT_TO: return {CudAction::create, SelectSide::left};
 
@@ -115,7 +114,6 @@ std::pair<CudAction, SelectSide> getCudAction(SyncOperation so)
         case SO_DO_NOTHING:
         case SO_EQUAL:
         case SO_UNRESOLVED_CONFLICT: return {CudAction::noChange, SelectSide::left};
-        //*INDENT-ON*
     }
     assert(false);
     return {CudAction::noChange, SelectSide::left};
@@ -157,7 +155,6 @@ wxColor getBackGroundColorCmpDifference(CompareFileResult cmpResult)
 {
     switch (cmpResult)
     {
-        //*INDENT-OFF*
         case FILE_EQUAL:
             break; //usually white
         case FILE_LEFT_ONLY:  return getColorSyncBlue(false /*faint*/);
@@ -172,7 +169,6 @@ wxColor getBackGroundColorCmpDifference(CompareFileResult cmpResult)
         case FILE_TIME_INVALID:
         case FILE_CONFLICT:
             return getColorConflictBackground(false /*faint*/);
-        //*INDENT-ON*
     }
     return wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW);
 }
@@ -570,11 +566,9 @@ private:
                 if (pdi.fsObj && !pdi.fsObj->isEmpty<side>()) //do we need color indication for *inactive* empty rows? probably not...
                     switch (getObjectDisplayType(*pdi.fsObj))
                     {
-                        //*INDENT-OFF*
                         case DisplayType::normal: break;
                         case DisplayType::symlink:  return getColorSymlinkBackground();
                         case DisplayType::inactive: return getColorInactiveBack();
-                        //*INDENT-ON*
                     }
                 return getDefaultBackgroundColorAlternating(pdi.groupIdx % 2 == 0);
             }();
@@ -800,7 +794,7 @@ private:
                         if (compPos == groupParentFolder.size())
                             goto break2;
                     }
-break2:
+            break2:
                 if (endsWith(groupParentPart, L'\n'))
                     groupParentPart.pop_back();
             }
@@ -845,11 +839,9 @@ break2:
             else if (!pdi.fsObj->isEmpty<side>())
                 switch (getObjectDisplayType(*pdi.fsObj))
                 {
-                    //*INDENT-OFF*
                     case DisplayType::normal: break;
                     case DisplayType::symlink:  textColor.Set(*wxBLACK); break;
                     case DisplayType::inactive: textColor.Set(getColorInactiveText()); break;
-                    //*INDENT-ON*
                 }
 
             wxRect rectTmp = rect;
@@ -1000,7 +992,7 @@ break2:
 
                             //let's not waste empty row space for medium + large icon sizes: print multiple lines per row!
                             split(groupParentPart, L'\n', [&, linesPerRow = std::max(refGrid().getRowHeight() / charHeight_, 1),
-                                                              lineNo = 0](const std::wstring_view line) mutable
+                                                           lineNo = 0](const std::wstring_view line) mutable
                             {
                                 drawCellText(dc, {
                                     rectGroupParentText.x, //distribute lines evenly across multiple rows:
@@ -1221,7 +1213,6 @@ break2:
     {
         switch (static_cast<ColumnTypeRim>(colType))
         {
-            //*INDENT-OFF*
             case ColumnTypeRim::path:
                 switch (itemPathFormat_)
                 {
@@ -1234,7 +1225,6 @@ break2:
             case ColumnTypeRim::size:      return _("Size");
             case ColumnTypeRim::date:      return _("Date");
             case ColumnTypeRim::extension: return _("Extension");
-            //*INDENT-ON*
         }
         //assert(false); may be ColumnType::none
         return std::wstring();
@@ -1269,9 +1259,10 @@ break2:
 
         if (const FileSystemObject* tipObj = static_cast<HoverAreaGroup>(rowHover) == HoverAreaGroup::groupName ? pdi.folderGroupObj : pdi.fsObj)
         {
-            toolTip = getDataView().getEffectiveFolderPairCount() > 1 ?
-                      AFS::getDisplayPath(tipObj->getAbstractPath<side>()) :
-                      utfTo<std::wstring>(tipObj->getRelativePath<side>());
+            if (getDataView().getEffectiveFolderPairCount() > 1)
+                toolTip += AFS::getDisplayPath(tipObj->base().getAbstractPath<side>()) + rightArrowDown_ + L"\n\n";
+
+            toolTip += utfTo<std::wstring>(tipObj->getRelativePath<side>());
 
             //path components should follow the app layout direction and are NOT a single piece of text!
             //caveat: add Bidi support only during rendering and not in getValue() or AFS::getDisplayPath(): e.g. support "open file in Explorer"
@@ -1280,21 +1271,21 @@ break2:
             replace(toolTip, L'\\', bslashBidi_);
 
             if (tipObj->isEmpty<side>())
-                toolTip += L"\n<" + _("Item not existing") + L'>';
+                toolTip += std::wstring(L"\n") + TAB_SPACE + L'<' + _("Item not existing") + L'>';
             else
                 visitFSObject(*tipObj, [&](const FolderPair& folder)
             {
-                //toolTip += L"\n<" + _("Folder") + L'>'; -> redundant!?
+                //toolTip += std::wstring(L"\n") + TAB_SPACE + '<' + _("Folder") + L'>'; -> redundant!?
             },
             [&](const FilePair& file)
             {
-                toolTip += L'\n' + _("Size:") + L' ' + formatFilesizeShort (file.getFileSize     <side>()) +
-                           L'\n' + _("Date:") + L' ' + formatUtcToLocalTime(file.getLastWriteTime<side>());
+                toolTip += std::wstring(L"\n") + TAB_SPACE + _("Size:") + L' ' + formatFilesizeShort (file.getFileSize     <side>()) +
+                           /**/         L'\n'  + TAB_SPACE + _("Date:") + L' ' + formatUtcToLocalTime(file.getLastWriteTime<side>());
             },
             [&](const SymlinkPair& symlink)
             {
-                toolTip +=  L"\n<" + _("Symlink") + L'>' +
-                            L'\n'  + _("Date:") + L' ' + formatUtcToLocalTime(symlink.getLastWriteTime<side>());
+                toolTip += std::wstring(L"\n") + TAB_SPACE + L'<' + _("Symlink") + L'>' +
+                           /**/         L'\n'  + TAB_SPACE + _("Date:") + L' ' + formatUtcToLocalTime(symlink.getLastWriteTime<side>());
             });
         }
         return toolTip;
@@ -1696,7 +1687,6 @@ private:
                 }
     }
 
-    //*INDENT-OFF*
     void showToolTip(size_t row, ColumnTypeCenter colType, wxPoint posScreen)
     {
         if (const FileSystemObject* fsObj = getFsObject(row))
@@ -1717,7 +1707,7 @@ private:
                             case FILE_LEFT_NEWER:        return "cat_left_newer";
                             case FILE_RIGHT_NEWER:       return "cat_right_newer";
                             case FILE_DIFFERENT_CONTENT: return "cat_different";
-                            case FILE_TIME_INVALID: 
+                            case FILE_TIME_INVALID:
                             case FILE_CONFLICT:          return "cat_conflict";
                         }
                         assert(false);
@@ -1762,7 +1752,6 @@ private:
         else
             toolTip_.hide(); //if invalid row...
     }
-    //*INDENT-ON*
 
     bool selectionInProgress_ = false;
 
@@ -2278,9 +2267,8 @@ wxImage fff::getSyncOpImage(SyncOperation syncOp)
 {
     switch (syncOp) //evaluate comparison result and sync direction
     {
-        //*INDENT-OFF*
-        case SO_CREATE_LEFT:     return loadImage("so_create_left_sicon");
-        case SO_CREATE_RIGHT:    return loadImage("so_create_right_sicon");
+        case SO_CREATE_LEFT:         return loadImage("so_create_left_sicon");
+        case SO_CREATE_RIGHT:        return loadImage("so_create_right_sicon");
         case SO_DELETE_LEFT:         return loadImage("so_delete_left_sicon");
         case SO_DELETE_RIGHT:        return loadImage("so_delete_right_sicon");
         case SO_MOVE_LEFT_FROM:      return loadImage("so_move_left_source_sicon");
@@ -2294,7 +2282,6 @@ wxImage fff::getSyncOpImage(SyncOperation syncOp)
         case SO_DO_NOTHING:          return loadImage("so_none_sicon");
         case SO_EQUAL:               return loadImage("cat_equal_sicon");
         case SO_UNRESOLVED_CONFLICT: return loadImage("cat_conflict_small");
-        //*INDENT-ON*
     }
     assert(false);
     return wxNullImage;
@@ -2305,9 +2292,8 @@ wxImage fff::getCmpResultImage(CompareFileResult cmpResult)
 {
     switch (cmpResult)
     {
-        //*INDENT-OFF*
         case FILE_RENAMED: //similar to both "equal" and "conflict"
-        case FILE_EQUAL:             return loadImage("cat_equal_sicon"); 
+        case FILE_EQUAL:             return loadImage("cat_equal_sicon");
         case FILE_LEFT_ONLY:         return loadImage("cat_left_only_sicon");
         case FILE_RIGHT_ONLY:        return loadImage("cat_right_only_sicon");
         case FILE_LEFT_NEWER:        return loadImage("cat_left_newer_sicon");
@@ -2315,7 +2301,6 @@ wxImage fff::getCmpResultImage(CompareFileResult cmpResult)
         case FILE_DIFFERENT_CONTENT: return loadImage("cat_different_sicon");
         case FILE_TIME_INVALID:
         case FILE_CONFLICT:          return loadImage("cat_conflict_small");
-        //*INDENT-ON*
     }
     assert(false);
     return wxNullImage;

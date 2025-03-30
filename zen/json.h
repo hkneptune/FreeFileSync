@@ -102,7 +102,6 @@ namespace
     for (const char c : str)
         switch (c)
         {
-            //*INDENT-OFF*
             case '\\': output += "\\\\"; break; //
             case  '"': output += "\\\""; break; //escaping mandatory
 
@@ -123,7 +122,6 @@ namespace
                 else
                     output += c;
                 break;
-            //*INDENT-ON*
         }
     return output;
 }
@@ -165,7 +163,6 @@ namespace
             const char c2 = *it;
             switch (c2)
             {
-                //*INDENT-OFF*
                 case '\\':
                 case '"':
                 case '/': writeOut(c2);   break;
@@ -192,7 +189,6 @@ namespace
                         writeOut(c2);
                     }
                     break;
-                //*INDENT-ON*
             }
         }
         else

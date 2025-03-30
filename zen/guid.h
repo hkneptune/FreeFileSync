@@ -29,36 +29,22 @@ std::string generateGUID() //creates a 16-byte GUID
         throw std::runtime_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Failed to generate GUID." + "\n\n" +
                                  utfTo<std::string>(formatSystemError("getentropy", errno)));
 #else
-    class RandomGeneratorPosix
+    //keep fd open and thread_local? NO! susceptible to global destruction fiasco: e.g. used by setFileContent() + getPathWithTempName() by globalShutdownTasks
+    const int fd = ::open("/dev/urandom", O_RDONLY | O_CLOEXEC);
+    if (fd == -1)
+        throw std::runtime_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Failed to generate GUID." + "\n\n" +
+                                 utfTo<std::string>(formatSystemError("open", errno)));
+    ZEN_ON_SCOPE_EXIT(::close(fd));
+
+    for (size_t offset = 0; offset < guid.size(); )
     {
-    public:
-        RandomGeneratorPosix()
-        {
-            if (fd_ == -1)
-                throw std::runtime_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Failed to generate GUID." + "\n\n" +
-                                         utfTo<std::string>(formatSystemError("open", errno)));
-        }
-
-        ~RandomGeneratorPosix() { ::close(fd_); }
-
-        void getBytes(void* buf, size_t size)
-        {
-            for (size_t offset = 0; offset < size; )
-            {
-                const ssize_t bytesRead = ::read(fd_, static_cast<char*>(buf) + offset, size - offset);
-                if (bytesRead < 1) //0 means EOF => error in this context (should check for buffer overflow, too?)
-                    throw std::runtime_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Failed to generate GUID." + "\n\n" +
-                                             utfTo<std::string>(formatSystemError("read", bytesRead < 0 ? errno : EIO)));
-                offset += bytesRead;
-                assert(offset <= size);
-            }
-        }
-
-    private:
-        const int fd_ = ::open("/dev/urandom", O_RDONLY | O_CLOEXEC);
-    };
-    thread_local RandomGeneratorPosix gen;
-    gen.getBytes(guid.data(), guid.size());
+        const ssize_t bytesRead = ::read(fd, guid.data() + offset, guid.size() - offset);
+        if (bytesRead <= 0) //0 means EOF => error in this context (should check for buffer overflow, too?)
+            throw std::runtime_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Failed to generate GUID." + "\n\n" +
+                                     utfTo<std::string>(formatSystemError("read", bytesRead < 0 ? errno : EIO)));
+        offset += bytesRead;
+        assert(offset <= guid.size());
+    }
 #endif
     return guid;
 

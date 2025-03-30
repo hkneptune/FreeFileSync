@@ -451,16 +451,14 @@ GdriveAccessInfo gdriveExchangeAuthCode(const GdriveAuthCode& authCode, int time
 }
 
 
-//Astyle fucks up because of the raw string literal!
-//*INDENT-OFF*
 GdriveAccessInfo gdriveAuthorizeAccess(const std::string& gdriveLoginHint, const std::function<void()>& updateGui /*throw X*/, int timeoutSec) //throw SysError, X
 {
     //spin up a web server to wait for the HTTP GET after Google authentication
-    const addrinfo hints 
+    const addrinfo hints
     {
-        .ai_flags =  
-                    AI_ADDRCONFIG | //no such issue on Linux: https://bugs.chromium.org/p/chromium/issues/detail?id=5234
-                    AI_PASSIVE, //the returned socket addresses will be suitable for bind(2)ing a socket that will accept(2) connections.
+        .ai_flags =
+        AI_ADDRCONFIG | //no such issue on Linux: https://bugs.chromium.org/p/chromium/issues/detail?id=5234
+        AI_PASSIVE, //the returned socket addresses will be suitable for bind(2)ing a socket that will accept(2) connections.
         .ai_family   = AF_UNSPEC, //don't care if AF_INET or AF_INET6
         .ai_socktype = SOCK_STREAM, //we *do* care about this one!
     };
@@ -499,7 +497,7 @@ GdriveAccessInfo gdriveAuthorizeAccess(const std::string& gdriveLoginHint, const
     std::optional<SysError> firstError;
 
     for (const auto* /*::addrinfo*/ si = servinfo; si; si = si->ai_next)
-        if (si->ai_family == AF_INET || 
+        if (si->ai_family == AF_INET ||
             si->ai_family == AF_INET6)
             try
             {
@@ -511,7 +509,7 @@ GdriveAccessInfo gdriveAuthorizeAccess(const std::string& gdriveLoginHint, const
     if (socket == invalidSocket)
     {
         if (firstError)
-            throw *firstError;
+            throw* firstError;
         throw SysError(formatSystemError("getaddrinfo", L"" /*errorCode*/, L"No local IPv4 or IPv6 address available"));
     }
     ZEN_ON_SCOPE_EXIT(closeSocket(socket));
@@ -698,7 +696,6 @@ GdriveAccessInfo gdriveAuthorizeAccess(const std::string& gdriveLoginHint, const
             return *res;
     }
 }
-//*INDENT-ON*
 
 
 GdriveAccessToken gdriveRefreshAccess(const std::string& refreshToken, int timeoutSec) //throw SysError
@@ -1626,8 +1623,8 @@ std::string /*itemId*/ gdriveUploadSmallFile(const Zstring& fileName, const std:
                                     "Content-Type: application/json; charset=UTF-8" "\r\n"
                                     /**/                                            "\r\n" +
                                     metaDataBuf +                                   "\r\n"
-                                    "--" + boundaryString +                         "\r\n"
-                                    "Content-Type: application/octet-stream"        "\r\n"
+                                                    "--" + boundaryString +                         "\r\n"
+                                                    "Content-Type: application/octet-stream"        "\r\n"
                                     /**/                                            "\r\n";
 
     const std::string postBufTail = "\r\n--" + boundaryString + "--";
@@ -3213,10 +3210,10 @@ struct OutputStreamGdrive : public AFS::OutputStreamImpl
         });
 
         worker_ = InterruptibleThread([gdrivePath, modTime, fileName, asyncStreamIn = this->asyncStreamOut_,
-                                                   pFilePrint = std::move(promFilePrint),
-                                                   parentId   = std::move(parentId),
-                                                   aai        = std::move(aai),
-                                                   pal        = std::move(pal)]() mutable
+                                       pFilePrint = std::move(promFilePrint),
+                                       parentId   = std::move(parentId),
+                                       aai        = std::move(aai),
+                                       pal        = std::move(pal)]() mutable
         {
             assert(pal); //bind life time to worker thread!
             setCurrentThreadName(Zstr("Ostream ") + utfTo<Zstring>(getGdriveDisplayPath(gdrivePath)));
@@ -3428,11 +3425,9 @@ private:
             if (ps.relPath.empty())
                 switch (ps.existingType)
                 {
-                    //*INDENT-OFF*
                     case GdriveItemType::file:     return ItemType::file;
                     case GdriveItemType::folder:   return ItemType::folder;
                     case GdriveItemType::shortcut: return ItemType::symlink;
-                    //*INDENT-ON*
                 }
 
             throw SysError(replaceCpy(_("%x does not exist."), L"%x", fmtPath(Zstring(ps.relPath.front()))));
@@ -3452,11 +3447,9 @@ private:
             if (ps.relPath.empty())
                 switch (ps.existingType)
                 {
-                    //*INDENT-OFF*
                     case GdriveItemType::file:     return ItemType::file;
                     case GdriveItemType::folder:   return ItemType::folder;
                     case GdriveItemType::shortcut: return ItemType::symlink;
-                    //*INDENT-ON*
                 }
             return std::nullopt;
         }
@@ -3523,11 +3516,9 @@ private:
             if (expectedType && itemDetails.type != *expectedType)
                 switch (*expectedType)
                 {
-                    //*INDENT-OFF*
                     case GdriveItemType::file:     throw SysError(L"Item is not a file");
                     case GdriveItemType::folder:   throw SysError(L"Item is not a folder");
                     case GdriveItemType::shortcut: throw SysError(L"Item is not a shortcut");
-                    //*INDENT-ON*
                 }
 
             //hard-link handling applies to shared files as well: 1. it's the right thing (TM) 2. if we're not the owner: deleting would fail

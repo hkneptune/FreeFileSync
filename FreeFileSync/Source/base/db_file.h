@@ -80,7 +80,7 @@ struct InSyncFolder
 
 
 std::unordered_map<const BaseFolderPair*, zen::SharedRef<const InSyncFolder>> loadLastSynchronousState(const std::vector<const BaseFolderPair*>& baseFolders,
-                                                                           PhaseCallback& callback /*throw X*/); //throw X
+        PhaseCallback& callback /*throw X*/); //throw X
 
 void saveLastSynchronousState(const BaseFolderPair& baseFolder, bool transactionalCopy, //throw X
                               PhaseCallback& callback /*throw X*/);

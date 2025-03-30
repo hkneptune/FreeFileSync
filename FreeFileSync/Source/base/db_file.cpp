@@ -745,7 +745,7 @@ struct StreamStatusNotifier
         bytesTotal_ += bytesDelta;
 
         const auto now = std::chrono::steady_clock::now();
-        if (now >= lastUpdate_ + UI_UPDATE_INTERVAL / 2) //every ~50 ms
+        if (now >= lastUpdate_ + UI_UPDATE_INTERVAL / 2) //every ~25 ms
         {
             lastUpdate_ = now;
             acb_.updateStatus(msgPrefix_ + formatFilesizeShort(bytesTotal_)); //throw ThreadStopRequest
@@ -793,7 +793,7 @@ std::pair<DbStreams::const_iterator,
 //#######################################################################################################################################
 
 std::unordered_map<const BaseFolderPair*, SharedRef<const InSyncFolder>> fff::loadLastSynchronousState(const std::vector<const BaseFolderPair*>& baseFolders,
-                                                                      PhaseCallback& callback /*throw X*/) //throw X
+        PhaseCallback& callback /*throw X*/) //throw X
 {
     std::set<AbstractPath> dbFilePaths;
 
@@ -999,9 +999,9 @@ void fff::saveLastSynchronousState(const BaseFolderPair& baseFolder, bool transa
          })
     {
         parallelWorkloadSave.emplace_back(dbPath, [&streams = *streams,
-                                                            &saveSuccess = *saveSuccess,
-                                                            &dbPathTmp = *dbPathTmp,
-                                                            transactionalCopy](ParallelContext& ctx) //throw ThreadStopRequest
+                                                   &saveSuccess = *saveSuccess,
+                                                   &dbPathTmp = *dbPathTmp,
+                                                   transactionalCopy](ParallelContext& ctx) //throw ThreadStopRequest
         {
             const std::wstring errMsg = tryReportingError([&] //throw ThreadStopRequest
             {

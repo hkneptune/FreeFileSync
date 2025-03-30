@@ -214,23 +214,6 @@ DoGetPreferredSize()'s lossy "GetDefaultSize()*scaleBest" calculation can be 1-p
  }
 
 __________________________________________________________________________________________________________
-/src/common/stattextcmn.cpp
-Fix wxWidgets stupidly doing *nothing* when trimming east asian language strings with few spaces
-
-	// Find the last word to chop off.
--	const size_t lastSpace = line.rfind(' ', posEnd);
-
-+	size_t lastSpace = line.rfind(' ', posEnd);
-+
-+	//no, wxWidgets we are not even close to "can't wrap"!
-+	if (lastSpace == wxString::npos)
-+	{
-+		lastSpace = line.find(' ');
-+		if (lastSpace != wxString::npos && lastSpace > 0)
-+		   widthMax = widths[lastSpace - 1];
-+	}
-
-__________________________________________________________________________________________________________
 /src/gtk/button.cpp
 now this is absurd: if we add wxTranslations for "&OK/&Cancel", wxWidgets will detect "wxIsStockLabel()",
 throw away the label and do gtk_button_set_label(wxGetStockGtkID(wxID_OK/wxID_CANCEL)) instead,

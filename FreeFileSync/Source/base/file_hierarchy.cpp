@@ -90,21 +90,17 @@ SyncOperation getIsolatedSyncOperation(const FileSystemObject& fsObj,
             else //right-only
                 switch (syncDir)
                 {
-                    //*INDENT-OFF*
                     case SyncDirection::left:  return SO_CREATE_LEFT;
                     case SyncDirection::right: return SO_DELETE_RIGHT;
                     case SyncDirection::none:  return SO_DO_NOTHING;
-                    //*INDENT-ON*
                 }
         }
         else //left-only
             switch (syncDir)
             {
-                //*INDENT-OFF*
                 case SyncDirection::left:  return SO_DELETE_LEFT;
                 case SyncDirection::right: return SO_CREATE_RIGHT;
                 case SyncDirection::none:  return SO_DO_NOTHING;
-                //*INDENT-ON*
             }
     }
     //--------------------------------------------------------------
@@ -127,11 +123,9 @@ SyncOperation getIsolatedSyncOperation(const FileSystemObject& fsObj,
 
         switch (syncDir)
         {
-            //*INDENT-OFF*
             case SyncDirection::left:  return result = SO_RENAME_LEFT;
             case SyncDirection::right: return result = SO_RENAME_RIGHT;
             case SyncDirection::none:  return result = SO_DO_NOTHING;
-            //*INDENT-ON*
         }
         throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
     },
@@ -160,22 +154,18 @@ SyncOperation getIsolatedSyncOperation(const FileSystemObject& fsObj,
             case FileContentCategory::conflict:
                 switch (syncDir)
                 {
-                    //*INDENT-OFF*
                     case SyncDirection::left:  return result = SO_OVERWRITE_LEFT;
                     case SyncDirection::right: return result = SO_OVERWRITE_RIGHT;
                     case SyncDirection::none:  return result = SO_DO_NOTHING;
-                    //*INDENT-ON*
                 }
                 break;
 
             case FileContentCategory::equal:
                 switch (syncDir)
                 {
-                    //*INDENT-OFF*
                     case SyncDirection::left:  return result = SO_RENAME_LEFT;
                     case SyncDirection::right: return result = SO_RENAME_RIGHT;
                     case SyncDirection::none:  return result = SO_DO_NOTHING;
-                    //*INDENT-ON*
                 }
                 break;
         }
@@ -206,22 +196,18 @@ SyncOperation getIsolatedSyncOperation(const FileSystemObject& fsObj,
             case FileContentCategory::conflict:
                 switch (syncDir)
                 {
-                    //*INDENT-OFF*
                     case SyncDirection::left:  return result = SO_OVERWRITE_LEFT;
                     case SyncDirection::right: return result = SO_OVERWRITE_RIGHT;
                     case SyncDirection::none:  return result = SO_DO_NOTHING;
-                    //*INDENT-ON*
                 }
                 break;
 
             case FileContentCategory::equal:
                 switch (syncDir)
                 {
-                    //*INDENT-OFF*
                     case SyncDirection::left:  return result = SO_RENAME_LEFT;
                     case SyncDirection::right: return result = SO_RENAME_RIGHT;
                     case SyncDirection::none:  return result = SO_DO_NOTHING;
-                    //*INDENT-ON*
                 }
                 break;
         }

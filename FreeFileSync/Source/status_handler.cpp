@@ -21,7 +21,7 @@ bool fff::uiUpdateDue(bool force)
 {
     const auto now = std::chrono::steady_clock::now();
 
-    if (now >= lastExec + UI_UPDATE_INTERVAL || force)
+    if (force || now >= lastExec + UI_UPDATE_INTERVAL)
     {
         lastExec = now;
         return true;
@@ -30,17 +30,18 @@ bool fff::uiUpdateDue(bool force)
 }
 
 
-void fff::delayAndCountDown(std::chrono::steady_clock::time_point delayUntil, const std::function<void(const std::wstring& timeRemMsg)>& notifyStatus)
+void fff::delayAndCountDown(std::chrono::nanoseconds delay, const std::function<void(const std::wstring& timeRemMsg)>& notifyStatus)
 {
     assert(notifyStatus);
     if (notifyStatus)
-        for (auto now = std::chrono::steady_clock::now(); now < delayUntil; now = std::chrono::steady_clock::now())
+        while (delay > std::chrono::nanoseconds(0))
         {
-            const auto timeRemMs = std::chrono::duration_cast<std::chrono::milliseconds>(delayUntil - now).count();
+            const auto timeRemMs = std::chrono::duration_cast<std::chrono::milliseconds>(delay).count();
             notifyStatus(_P("1 sec", "%x sec", numeric::intDivCeil(timeRemMs, 1000)));
 
             std::this_thread::sleep_for(UI_UPDATE_INTERVAL / 2);
+            delay -= UI_UPDATE_INTERVAL / 2; //support "Pause" => don't count time spent in notifyStatus()!
         }
     else
-        std::this_thread::sleep_until(delayUntil);
+        std::this_thread::sleep_for(delay /*may be negative*/);
 }

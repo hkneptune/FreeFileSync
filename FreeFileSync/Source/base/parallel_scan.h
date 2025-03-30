@@ -46,9 +46,9 @@ struct DirectoryValue
 using TravErrorCb  = std::function<PhaseCallback::Response(const PhaseCallback::ErrorInfo& errorInfo)>;
 using TravStatusCb = std::function<void(const std::wstring& statusLine, int itemsTotal)>;
 
-std::map<DirectoryKey, DirectoryValue> parallelDeviceTraversal(const std::set<DirectoryKey>& foldersToRead,
-                                                               const TravErrorCb& onError, const TravStatusCb& onStatusUpdate, //NOT optional
-                                                               std::chrono::milliseconds cbInterval);
+std::map<DirectoryKey, DirectoryValue> parallelFolderScan(const std::set<DirectoryKey>& foldersToRead,
+                                                          const TravErrorCb& onError, const TravStatusCb& onStatusUpdate, //NOT optional
+                                                          std::chrono::milliseconds cbInterval);
 }
 
 #endif //PARALLEL_SCAN_H_924588904275284572857

@@ -184,13 +184,13 @@ std::wstring getSftpDisplayPath(const SshDeviceId& deviceId, const AfsPath& item
     if (!deviceId.username.empty()) //show username! consider AFS::compareDeviceSameAfsType()
         displayPath += deviceId.username + Zstr('@');
 
-    if (parseIpv6Address(deviceId.server) && deviceId.port != DEFAULT_PORT_SFTP)
-        displayPath += Zstr('[') + deviceId.server + Zstr(']');
-    else
-        displayPath += deviceId.server;
+    //if (parseIpv6Address(deviceId.server) && deviceId.port != DEFAULT_PORT_SFTP)
+    //    displayPath += Zstr('[') + deviceId.server + Zstr(']');
+    //else
+    displayPath += deviceId.server;
 
-    if (deviceId.port != DEFAULT_PORT_SFTP)
-        displayPath += Zstr(':') + numberTo<Zstring>(deviceId.port);
+    //if (deviceId.port != DEFAULT_PORT_SFTP)
+    //    displayPath += Zstr(':') + numberTo<Zstring>(deviceId.port);
 
     const Zstring& relPath = getServerRelPath(itemPath);
     if (relPath != Zstr("/"))

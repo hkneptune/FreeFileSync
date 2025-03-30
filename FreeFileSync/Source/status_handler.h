@@ -163,14 +163,14 @@ private:
 
     ProcessPhase currentPhase_ = ProcessPhase::none;
     ProgressStats statsCurrent_;
-    ProgressStats statsTotal_ {-1, -1};
+    ProgressStats statsTotal_{-1, -1};
     std::wstring statusText_;
 
     std::optional<CancelReason> cancelRequested_;
 };
 
 
-void delayAndCountDown(std::chrono::steady_clock::time_point delayUntil, const std::function<void(const std::wstring& timeRemMsg)>& notifyStatus);
+void delayAndCountDown(std::chrono::nanoseconds delay, const std::function<void(const std::wstring& timeRemMsg)>& notifyStatus);
 }
 
 #endif //STATUS_HANDLER_H_81704805908341534

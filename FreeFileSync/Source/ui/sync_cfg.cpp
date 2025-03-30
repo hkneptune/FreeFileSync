@@ -978,8 +978,8 @@ FilterConfig ConfigDialog::getFilterConfig() const
         sanitizeFilter(m_textCtrlInclude->GetValue()), sanitizeFilter(m_textCtrlExclude->GetValue()),
         makeUnsigned(m_spinCtrlTimespan->GetValue()),
         enumTimeDescr_.get(),
-        makeUnsigned(m_spinCtrlMinSize->GetValue()), enumMinSizeDescr_.get(),
-        makeUnsigned(m_spinCtrlMaxSize->GetValue()), enumMaxSizeDescr_.get()};
+                      makeUnsigned(m_spinCtrlMinSize->GetValue()), enumMinSizeDescr_.get(),
+                      makeUnsigned(m_spinCtrlMaxSize->GetValue()), enumMaxSizeDescr_.get()};
 }
 
 
@@ -1557,9 +1557,9 @@ void ConfigDialog::updateMiscGui()
         m_comboBoxEmail->Show(sendEmailEnabled);
 
         auto updateButton = [successIcon = loadImage("msg_success", dipToScreen(getMenuIconDipSize())),
-                                         warningIcon = loadImage("msg_warning", dipToScreen(getMenuIconDipSize())),
-                                         errorIcon   = loadImage("msg_error",   dipToScreen(getMenuIconDipSize())),
-                                         sendEmailEnabled, this](wxBitmapButton& button, ResultsNotification notifyCondition)
+                             warningIcon = loadImage("msg_warning", dipToScreen(getMenuIconDipSize())),
+                             errorIcon   = loadImage("msg_error",   dipToScreen(getMenuIconDipSize())),
+                             sendEmailEnabled, this](wxBitmapButton& button, ResultsNotification notifyCondition)
         {
             button.Show(sendEmailEnabled);
             if (sendEmailEnabled)

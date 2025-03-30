@@ -300,8 +300,8 @@ struct FilterConfig
 
 
 void resolveUnits(size_t timeSpan, UnitTime unitTimeSpan,
-                  uint64_t sizeMin,  UnitSize unitSizeMin,
-                  uint64_t sizeMax,  UnitSize unitSizeMax,
+                  uint64_t sizeMin, UnitSize unitSizeMin,
+                  uint64_t sizeMax, UnitSize unitSizeMax,
                   time_t&   timeFrom,   //unit: UTC time, seconds
                   uint64_t& sizeMinBy,  //unit: bytes
                   uint64_t& sizeMaxBy); //unit: bytes

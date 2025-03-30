@@ -68,9 +68,9 @@ public:
         auto postBytesSent = std::make_shared<std::atomic<int64_t>>(0);
 
         worker_ = InterruptibleThread([asyncStreamOut = this->asyncStreamIn_, promHeader, headers = std::move(headers), postBytesSent,
-                                                      server, useTls, caCertFilePath, userAgent = utfTo<std::string>(userAgent),
-                                                      postBuf = postBuf ? std::optional<std::string>(*postBuf) : std::nullopt, //[!] life-time!
-                                                      serverRelPath = utfTo<std::string>(page)]
+                                       server, useTls, caCertFilePath, userAgent = utfTo<std::string>(userAgent),
+                                       postBuf = postBuf ? std::optional<std::string>(*postBuf) : std::nullopt, //[!] life-time!
+                                       serverRelPath = utfTo<std::string>(page)]
         {
             setCurrentThreadName(Zstr("Istream ") + server);
 
@@ -410,7 +410,6 @@ std::wstring zen::formatHttpError(int sc)
     {
         switch (sc)
         {
-            //*INDENT-OFF*
             case 300: return L"Multiple choices.";
             case 301: return L"Moved permanently.";
             case 302: return L"Moved temporarily.";
@@ -475,7 +474,6 @@ std::wstring zen::formatHttpError(int sc)
             case 530: return L"Origin DNS error (Cloudflare)";
 
             default:  return L"";
-            //*INDENT-ON*
         }
     }();
 
@@ -546,14 +544,12 @@ std::string zen::htmlSpecialChars(const std::string_view& str)
     for (const char c : str)
         switch (c)
         {
-            //*INDENT-OFF*
             case '&': output += "&amp;" ; break;
             case '"': output += "&quot;"; break;
             case '<': output += "&lt;"  ; break;
             case '>': output += "&gt;"  ; break;
             //case '\'': output += "&apos;"; break; -> not encoded by default (needs ENT_QUOTES)
             default: output += c; break;
-            //*INDENT-ON*
         }
     return output;
 }

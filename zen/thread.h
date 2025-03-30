@@ -506,7 +506,7 @@ template <class Function> inline
 InterruptibleThread::InterruptibleThread(Function&& f)
 {
     stdThread_ = std::thread([f = std::forward<Function>(f),
-                                intStatus = this->intStatus_]() mutable
+                              intStatus = this->intStatus_]() mutable
     {
         assert(!impl::threadLocalInterruptionStatus);
         impl::threadLocalInterruptionStatus = intStatus.get();

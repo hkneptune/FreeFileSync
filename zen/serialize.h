@@ -57,8 +57,8 @@ void unbufferedSave(const BinContainer& cont, Function tryWrite /*(const void* b
                     size_t blockSize); //throw X
 
 template <class Function1, class Function2>
-void unbufferedStreamCopy(Function1 tryRead /*(void* buffer, size_t bytesToRead) throw X; may return short; only 0 means EOF*/,  size_t blockSizeIn,
-                          Function2 tryWrite /*(const void* buffer, size_t bytesToWrite) throw X; may return short*/,            size_t blockSizeOut); //throw X
+uint64_t /*streamSize*/ unbufferedStreamCopy(Function1 tryRead /*(void* buffer, size_t bytesToRead) throw X; may return short; only 0 means EOF*/, size_t blockSizeIn,
+                                             Function2 tryWrite /*(const void* buffer, size_t bytesToWrite) throw X; may return short*/,           size_t blockSizeOut); //throw X
 
 
 template <class N, class BufferedOutputStream> void writeNumber   (BufferedOutputStream& stream, const N& num);                   //
@@ -306,10 +306,10 @@ void unbufferedSave(const BinContainer& cont,
 
 
 template <class Function1, class Function2> inline
-void unbufferedStreamCopy(Function1 tryRead /*(void* buffer, size_t bytesToRead) throw X; may return short; only 0 means EOF*/,
-                          size_t blockSizeIn,
-                          Function2 tryWrite /*(const void* buffer, size_t bytesToWrite) throw X; may return short*/,
-                          size_t blockSizeOut) //throw X
+uint64_t /*streamSize*/ unbufferedStreamCopy(Function1 tryRead /*(void* buffer, size_t bytesToRead) throw X; may return short; only 0 means EOF*/,
+                                             size_t blockSizeIn,
+                                             Function2 tryWrite /*(const void* buffer, size_t bytesToWrite) throw X; may return short*/,
+                                             size_t blockSizeOut) //throw X
 {
     /*  caveat: buffer block sizes might not be a power of 2:
          - f_iosize for network share on macOS
@@ -330,6 +330,7 @@ void unbufferedStreamCopy(Function1 tryRead /*(void* buffer, size_t bytesToRead)
     errno = ::posix_memalign(reinterpret_cast<void**>(&buf), alignment, bufCapacity);
     ZEN_ON_SCOPE_EXIT(::free(buf));
 
+    uint64_t streamSize = 0;
     size_t bufPosEnd = 0;
     for (;;)
     {
@@ -340,11 +341,12 @@ void unbufferedStreamCopy(Function1 tryRead /*(void* buffer, size_t bytesToRead)
             size_t bufPos = 0;
             while (bufPos < bufPosEnd)
                 bufPos += tryWrite(buf + bufPos, bufPosEnd - bufPos); //throw X; may return short
-            return;
+            return streamSize;
         }
         else
         {
-            bufPosEnd += bytesRead;
+            streamSize += bytesRead;
+            bufPosEnd  += bytesRead;
 
             size_t bufPos = 0;
             while (bufPosEnd - bufPos >= blockSizeOut)

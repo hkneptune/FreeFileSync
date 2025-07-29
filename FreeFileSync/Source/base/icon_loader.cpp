@@ -250,7 +250,7 @@ FileIconHolder fff::getFileIcon(const Zstring& filePath, int maxSize) //throw Sy
     //the remaining icon types won't block!
     assert(GDK_IS_PIXBUF(gicon) || G_IS_THEMED_ICON(gicon) || G_IS_EMBLEMED_ICON(gicon));
 
-    ::g_object_ref(gicon);                 //pass ownership
+    g_object_ref(gicon); /*macro!*/        //pass ownership
     return FileIconHolder(gicon, maxSize); //
 
 }

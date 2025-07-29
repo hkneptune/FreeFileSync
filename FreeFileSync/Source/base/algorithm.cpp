@@ -1147,7 +1147,7 @@ template <SelectSide side, class T> inline
 bool matchesTime(const T& obj, time_t timeFrom, time_t timeTo)
 {
     return timeFrom <= obj.template getLastWriteTime<side>() &&
-           /**/        obj.template getLastWriteTime<side>() <= timeTo;
+    /**/               obj.template getLastWriteTime<side>() <= timeTo;
 }
 }
 

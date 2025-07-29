@@ -113,7 +113,7 @@ ComputerModel zen::getComputerModel() //throw FileError
             try
             {
                 const std::string stream = getFileContent(filePath, nullptr /*notifyUnbufferedIO*/); //throw FileError
-                return utfTo<std::wstring>(trimCpy(stream));
+                return utfTo<std::wstring>(stream);
             }
             catch (FileError&)
             {
@@ -130,17 +130,19 @@ ComputerModel zen::getComputerModel() //throw FileError
         cm.model  = beforeFirst(cm.model,  L'\u00ff', IfNotFoundReturn::all); //fix broken BIOS entries:
         cm.vendor = beforeFirst(cm.vendor, L'\u00ff', IfNotFoundReturn::all); //0xff can be considered 0
 
-        trim(cm.model,  TrimSide::right, [](wchar_t c) { return c == L'_'; }); //e.g. "CBX3___" or just "_"
-        trim(cm.vendor, TrimSide::right, [](wchar_t c) { return c == L'_'; }); //e.g. "DELL__"  or just "_"
+        replace(cm.model,  L'_', L' '); //e.g. "CBX3___", "SYSTEM_MANUFACTURER", or just "_"
+        replace(cm.vendor, L'_', L' '); //e.g. "DELL__", "Exertis_CapTech", or just "_"
+
+        trim(cm.model);
+        trim(cm.vendor);
 
         for (const char* dummyModel :
              {
                  "Please change product name",
-                 "SYSTEM_PRODUCT_NAME",
                  "System Product Name",
                  "To Be Filled By O.E.M.",
                  "Default string",
-                 "$(DEFAULT_STRING)",
+                 "$(DEFAULT STRING)",
                  "<null string>",
                  "Product Name",
                  "Undefined",
@@ -162,12 +164,11 @@ ComputerModel zen::getComputerModel() //throw FileError
         for (const char* dummyVendor :
              {
                  "OEM Manufacturer",
-                 "SYSTEM_MANUFACTURER",
                  "System manufacturer",
                  "System Manufacter",
                  "To Be Filled By O.E.M.",
                  "Default string",
-                 "$(DEFAULT_STRING)",
+                 "$(DEFAULT STRING)",
                  "Undefined",
                  "Unknow",
                  "empty",

@@ -7,7 +7,7 @@
 #ifndef APPLICATION_H_081568741942010985702395
 #define APPLICATION_H_081568741942010985702395
 
-#include <vector>
+//#include <vector>
 #include <zen/zstring.h>
 #include <wx/app.h>
 #include "config.h"

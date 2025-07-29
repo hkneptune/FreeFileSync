@@ -1681,6 +1681,11 @@ void SyncProgressDialogImpl<TopLevelDialog>::minimizeToTray()
 
         updateProgressGui(false /*allowYield*/); //set tray tooltip + progress: e.g. no updates while paused
 
+
+        warn_static("need delay for minimize animation to play out?")
+        //std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+
         this->Hide();
         if (parentFrame_)
             parentFrame_->Hide();

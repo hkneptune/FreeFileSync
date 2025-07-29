@@ -208,7 +208,7 @@ bool Application::OnInit()
     //- log off: Windows/macOS generates wxEVT_QUERY_END_SESSION/wxEVT_END_SESSION
     //           Linux/macOS generates SIGTERM, which we handle below
     //- Windows sends WM_QUERYENDSESSION, WM_ENDSESSION during log off, *not* WM_CLOSE https://devblogs.microsoft.com/oldnewthing/20080421-00/?p=22663
-    //   => taskkill sending WM_CLOSE (without /f) is a misguided app simulating a button-click on X
+    //   => "taskkill sending WM_CLOSE (without /f)" is a misguided app simulating a button-click on X
     //      -> should send WM_QUERYENDSESSION instead!
     if (auto /*sighandler_t n.a. on macOS*/ oldHandler = ::signal(SIGTERM, onSystemShutdown);//"graceful" exit requested, unlike SIGKILL
         oldHandler == SIG_ERR)

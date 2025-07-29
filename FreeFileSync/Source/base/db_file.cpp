@@ -12,7 +12,6 @@
 #include "../afs/native.h"
 #include "status_handler_impl.h"
 
-
 using namespace zen;
 using namespace fff;
 

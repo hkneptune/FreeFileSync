@@ -77,6 +77,8 @@ const int FILE_GRID_GAP_SIZE_WIDE_DIP = 6;
 wxColor getGridAlternateBackgroundColor()
 {
     const wxColor backCol = wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW);
+    /*  CAVEAT: macOS uses partially-transparent colors! but probably not for this one:
+                wxSYS_COLOUR_WINDOW     RGBA = #171717FF      */
 
     const bool isColorLight = relativeLuminance(backCol) > 0.5;
 

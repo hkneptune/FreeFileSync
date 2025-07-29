@@ -13,7 +13,6 @@
 #include "extra_log.h"   //
 
     #include <glib.h>
-    #undef G_GNUC_UNUSED //defined in glib.h: clashes with idn2.h
     #include <cerrno>
 
 

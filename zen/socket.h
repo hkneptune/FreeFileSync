@@ -9,7 +9,6 @@
 
 #include "sys_error.h"
     #include <idn2.h>
-    #undef G_GNUC_UNUSED //defined in idn2.h: clashes with glib.h
     #include <unistd.h> //close
     #include <sys/socket.h>
     #include <netinet/tcp.h> //TCP_NODELAY

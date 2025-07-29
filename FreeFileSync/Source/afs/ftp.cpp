@@ -518,6 +518,10 @@ public:
             setCurlOption({CURLOPT_FTPSSLAUTH, CURLFTPAUTH_TLS}); //throw SysError
         }
 
+        //support older FTP servers with less than 2048 bit TLS keys ("CURLE_SSL_CONNECT_ERROR: TLS connect error: error:0A00018A:SSL routines::dh key too small")
+        //=> OpenSSL defaults to security level 2 (unless OPENSSL_TLS_SECURITY_LEVEL=level is defined during compilation) https://docs.openssl.org/master/man3/SSL_CTX_set_security_level/
+        setCurlOption({CURLOPT_SSL_CIPHER_LIST, "DEFAULT:@SECLEVEL=1"}); //throw SysError
+
         for (const CurlOption& option : extraOptions)
             setCurlOption(option); //throw SysError
 

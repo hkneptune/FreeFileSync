@@ -1,3 +1,9 @@
+FreeFileSync 14.4
+------------------------------
+Fixed FTP login error "dh key too small"
+Updated all 3rd party libraries to latest versions
+
+
 FreeFileSync 14.3 [2025-03-27]
 ------------------------------
 Support internationalized domain names (IDN) for (S)FTP and email

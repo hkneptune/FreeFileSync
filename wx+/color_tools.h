@@ -69,7 +69,7 @@ wxColor enhanceContrast(wxColor col1, const wxColor& col2, double contrastRatioM
     if (col2.Alpha() != wxALPHA_OPAQUE)
         return *wxRED; //make some noise
 
-    /*  Caveat: macOS uses partially-transparent colors! e.g. in #RGBA:
+    /*  CAVEAT: macOS uses partially-transparent colors! e.g. in #RGBA:
         wxSYS_COLOUR_GRAYTEXT   #FFFFFF3F
         wxSYS_COLOUR_WINDOWTEXT #FFFFFFD8
         wxSYS_COLOUR_WINDOW     #171717FF      */

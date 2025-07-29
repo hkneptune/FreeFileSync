@@ -12,7 +12,10 @@ CXXFLAGS += `pkg-config --cflags openssl`
 LDFLAGS  += `pkg-config --libs openssl`
 
 CXXFLAGS += `pkg-config --cflags libcurl`
-LDFLAGS  += `pkg-config --libs libcurl` -lidn2
+LDFLAGS  += `pkg-config --libs libcurl`
+
+CXXFLAGS += `pkg-config --cflags libidn2`
+LDFLAGS  += `pkg-config --libs libidn2`
 
 CXXFLAGS += `pkg-config --cflags libssh2`
 LDFLAGS  += `pkg-config --libs libssh2`

@@ -4,9 +4,9 @@ The FreeFileSync standard and Donation Edition
 are for **private use** only:
 https://freefilesync.org/faq.php#donation-edition
 
-**Commercial use** requires buying the
-FreeFileSync Business Edition: https://freefilesync.org/faq.php#business
-This also applies to government organizations.
+**Commercial use**, government use, and other non-private uses require
+the purchase of the FreeFileSync Business Edition:
+https://freefilesync.org/faq.php#business
 
 ==================================================================
 

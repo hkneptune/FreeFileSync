@@ -240,9 +240,9 @@ void zen::openWithDefaultApp(const Zstring& itemPath) //throw FileError
     try
     {
         std::optional<int> timeoutMs;
-        const Zstring cmdTemplate = R"(xdg-open "%x")"; //*might* block!
+        const Zstring cmdTemplate = "xdg-open %x"; //*might* block!
         timeoutMs = 0; //e.g. on Lubuntu if Firefox is started and not already running => no need for time out! https://freefilesync.org/forum/viewtopic.php?t=8260
-        const Zstring cmdLine = replaceCpy(cmdTemplate, Zstr("%x"), itemPath);
+        const Zstring cmdLine = replaceCpy(cmdTemplate, Zstr("%x"), escapeCommandArg(itemPath));
 
         if (const auto& [exitCode, output] = consoleExecute(cmdLine, timeoutMs); //throw SysError, SysErrorTimeOut
             exitCode != 0)

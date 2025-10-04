@@ -10,7 +10,12 @@
 /*  Portable Compile-Time Warning
     -----------------------------
     Usage:
-        warn_static("my message")      */
+        warn_static("my message")     
+        
+        
+    => use warning directive with C++23: (already supported on GCC/Clang)
+        https://en.cppreference.com/w/c/preprocessor/warning
+        #warning my message                                                       */
 
 #define ZEN_STRINGIZE_STRING(NUM) #NUM
 #define ZEN_STRINGIZE_NUMBER(NUM) ZEN_STRINGIZE_STRING(NUM)

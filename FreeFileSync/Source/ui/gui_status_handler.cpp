@@ -108,11 +108,13 @@ StatusHandlerTemporaryPanel::~StatusHandlerTemporaryPanel()
     //Workaround wxAuiManager crash when starting panel resizing during comparison and holding button until after comparison has finished:
     //- unlike regular window resizing, wxAuiManager does not run a dedicated event loop while the mouse button is held
     //- wxAuiManager internally stores the panel index that is currently resized
-    //- our previous hiding of the compare status panel invalidates this index
+    //- our hiding of the compare status panel invalidates this index
     // => the next mouse move will have wxAuiManager crash => another fine piece of "wxQuality" code
     // => mitigate:
     wxMouseCaptureLostEvent dummy;
-    mainDlg_.auiMgr_.ProcessEvent(dummy); //should be no-op if no mouse buttons are pressed
+    mainDlg_.ProcessEvent(dummy); //trigger wxAuiManager::OnCaptureLost(); should be no-op if no mouse buttons are pressed
+    if (wxWindow::GetCapture() == &mainDlg_)
+        mainDlg_.ReleaseMouse();
 
     mainDlg_.auiMgr_.GetPane(mainDlg_.compareStatus_->getAsWindow()).Hide();
     mainDlg_.auiMgr_.Update();

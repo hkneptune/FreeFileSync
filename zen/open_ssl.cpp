@@ -28,9 +28,6 @@ namespace
     #error FFS, we are royally screwed!
 #endif
 
-static_assert(OPENSSL_VERSION_NUMBER >= 0x30000000L, "OpenSSL version is too old!");
-
-
 /*  Sign a file using SHA-256:
         openssl dgst -sha256 -sign private.pem -out file.sig file.txt
 
@@ -596,7 +593,8 @@ std::string zen::convertPuttyKeyToPkix(const std::string_view keyStream, const s
 
     auto numToBeString = [](size_t n) -> std::string
     {
-        static_assert(std::endian::native == std::endian::little&& sizeof(n) >= 4);
+        static_assert(std::endian::native == std::endian::little && sizeof(n) >= 4);
+        assert(n == static_cast<uint32_t>(n));
         const char* numStr = reinterpret_cast<const char*>(&n);
         return {numStr[3], numStr[2], numStr[1], numStr[0]}; //big endian!
     };

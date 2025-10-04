@@ -20,20 +20,20 @@ using namespace fff; //required for correct overload resolution!
 namespace
 {
 //-------------------------------------------------------------------------------------------------------------------------------
-const int XML_FORMAT_GLOBAL_CFG = 27; //2023-05-13
+const int XML_FORMAT_GLOBAL_CFG = 28; //2025-09-25
 const int XML_FORMAT_SYNC_CFG   = 23; //2023-08-24
 //-------------------------------------------------------------------------------------------------------------------------------
 }
 
 
 const ExternalApp fff::extCommandFileManager
-//"xdg-open \"%parent_path%\"" -> not good enough: we need %local_path% for proper MTP/Google Drive handling
-{L"Show in file manager", "xdg-open \"$(dirname \"%local_path%\")\""};
+//"xdg-open %parent_path%" -> not good enough: we need %local_path% for proper MTP/Google Drive handling
+{L"Show in file manager", "xdg-open \"$(dirname %local_path%)\""};
 //mark for extraction: _("Show in file manager") Linux doesn't use the term "folder"
 
 
 const ExternalApp fff::extCommandOpenDefault
-{L"Open with default application", "xdg-open \"%local_path%\""};
+{L"Open with default application", "xdg-open %local_path%"};
 
 
 
@@ -1758,7 +1758,7 @@ void readConfig(const XmlIn& in, GlobalConfig& cfg, int formatVer)
         {
             trim(item.cmdLine);
             if (item.cmdLine == "xdg-open \"%parent_path%\"")
-                item.cmdLine = "xdg-open \"$(dirname \"%local_path%\")\"";
+                item.cmdLine = "xdg-open \"$(dirname %local_path%)\"";
         }
 
     //TODO: remove after migration! 2022-04-29
@@ -1766,6 +1766,27 @@ void readConfig(const XmlIn& in, GlobalConfig& cfg, int formatVer)
         for (ExternalApp& item : cfg.externalApps)
             if (item.description == L"Browse directory")
                 item.description = L"Show in file manager";
+
+    //TODO: remove after migration! 2025-09-25
+    if (formatVer < 28)
+        for (ExternalApp& item : cfg.externalApps)
+        {
+            trim(item.cmdLine);
+
+            auto removeQuotes = [&](const ZstringView macroName) { replace(item.cmdLine, Zstring() + Zstr('"') + macroName + Zstr('"'), macroName); };
+            removeQuotes(Zstr("%item_path%"));
+            removeQuotes(Zstr("%item_path2%"));
+            removeQuotes(Zstr("%item_paths%"));
+            removeQuotes(Zstr("%local_path%"));
+            removeQuotes(Zstr("%local_path2%"));
+            removeQuotes(Zstr("%local_paths%"));
+            removeQuotes(Zstr("%item_name%"));
+            removeQuotes(Zstr("%item_name2%"));
+            removeQuotes(Zstr("%item_names%"));
+            removeQuotes(Zstr("%parent_path%"));
+            removeQuotes(Zstr("%parent_path2%"));
+            removeQuotes(Zstr("%parent_paths%"));
+        }
 
     if (formatVer < 20) //TODO: remove old parameter after migration! 2020-12-03
     {

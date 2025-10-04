@@ -4,8 +4,8 @@
 // * Copyright (C) Zenju (zenju AT freefilesync DOT org) - All Rights Reserved *
 // *****************************************************************************
 
-#ifndef WIN_VER_H_238470348254325
-#define WIN_VER_H_238470348254325
+#ifndef SYS_VER_H_238470348254325
+#define SYS_VER_H_238470348254325
 
 #include "file_error.h"
 
@@ -34,4 +34,4 @@ OsVersion getOsVersion();
 
 }
 
-#endif //WIN_VER_H_238470348254325
+#endif //SYS_VER_H_238470348254325

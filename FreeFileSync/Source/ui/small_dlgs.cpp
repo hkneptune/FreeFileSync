@@ -385,15 +385,15 @@ CloudSetupDlg::CloudSetupDlg(wxWindow* parent, Zstring& folderPathPhrase, Zstrin
 
         if (login.portCfg > 0)
             m_textCtrlPort->ChangeValue(numberTo<wxString>(login.portCfg));
-        m_textCtrlServer         ->ChangeValue(utfTo<wxString>(login.server));
-        m_textCtrlUserName       ->ChangeValue(utfTo<wxString>(login.username));
+        m_textCtrlServer  ->ChangeValue(utfTo<wxString>(login.server));
+        m_textCtrlUserName->ChangeValue(utfTo<wxString>(login.username));
         if (login.password)
             m_textCtrlPasswordHidden ->ChangeValue(utfTo<wxString>(*login.password));
         else
             m_checkBoxPasswordPrompt->SetValue(true);
-        m_textCtrlServerPath     ->ChangeValue(utfTo<wxString>(FILE_NAME_SEPARATOR + folderPath.afsPath.value));
+        m_textCtrlServerPath->ChangeValue(utfTo<wxString>(FILE_NAME_SEPARATOR + folderPath.afsPath.value));
         (login.useTls ? m_radioBtnEncryptSsl : m_radioBtnEncryptNone)->SetValue(true);
-        m_spinCtrlTimeout        ->SetValue(login.timeoutSec);
+        m_spinCtrlTimeout->SetValue(login.timeoutSec);
     }
 
     m_spinCtrlConnectionCount->SetValue(parallelOps);

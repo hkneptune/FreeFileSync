@@ -1907,6 +1907,18 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
                                          const std::vector<FileSystemObject*>& selectionL,
                                          const std::vector<FileSystemObject*>& selectionR)
 {
+        //do not open more than one Explorer instance!
+        if (commandLinePhrase == extCommandFileManager.cmdLine)
+            if (selectionL.size() + selectionR.size() > 1)
+            {
+                if (( leftSide && !selectionL.empty()) ||
+                    (!leftSide &&  selectionR.empty()))
+                    return openExternalApplication(commandLinePhrase, leftSide, {selectionL[0]}, {});
+                else
+                    return openExternalApplication(commandLinePhrase, leftSide, {}, {selectionR[0]});
+            }
+
+    //----------------------------------------------------------------
     if (std::exchange(operationInProgress_, true))
         return;
     ZEN_ON_SCOPE_EXIT(operationInProgress_ = false);
@@ -1916,15 +1928,6 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
         //support fallback instead of an error in this special case
         if (commandLinePhrase == extCommandFileManager.cmdLine)
         {
-            if (selectionL.size() + selectionR.size() > 1) //do not open more than one Explorer instance!
-            {
-                if (( leftSide && !selectionL.empty()) ||
-                    (!leftSide &&  selectionR.empty()))
-                    return openExternalApplication(commandLinePhrase, leftSide, {selectionL[0]}, {});
-                else
-                    return openExternalApplication(commandLinePhrase, leftSide, {}, {selectionR[0]});
-            }
-
             //either left or right selection is filled with exactly one item (or no selection at all)
             AbstractPath itemPath = getNullPath();
             if (!selectionL.empty())
@@ -2028,22 +2031,10 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
             Zstring cmdLineTmp = expandMacros(commandLinePhrase);
 
             //support path lists for a single command line: https://freefilesync.org/forum/viewtopic.php?t=10328#p39305
-            auto replacePathList = [&](const ZstringView macroName, const Zstring ItemPathInfo::*itemPath)
+            auto replaceListMacro = [&](const ZstringView macroName, const Zstring ItemPathInfo::*itemPath)
             {
-                const Zstring& macroNameQuoted = Zstring() + Zstr('"') + macroName + Zstr('"');
-                if (contains(cmdLineTmp, macroNameQuoted))
-                {
-                    Zstring pathList;
-                    for (const ItemPathInfo& pathInfo : pathInfos)
-                    {
-                        if (!pathList.empty())
-                            pathList += Zstr(' ');
-                        pathList += Zstr('"');
-                        pathList += pathInfo.*itemPath;
-                        pathList += Zstr('"');
-                    }
-                    replace(cmdLineTmp, macroNameQuoted, pathList);
-                }
+                replace(cmdLineTmp, Zstring() + Zstr('"') + macroName + Zstr('"'), macroName); //get rid of quotes if existing
+
                 if (contains(cmdLineTmp, macroName))
                 {
                     Zstring pathList;
@@ -2051,15 +2042,15 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
                     {
                         if (!pathList.empty())
                             pathList += Zstr(' ');
-                        pathList += pathInfo.*itemPath;
+                        pathList += escapeCommandArg(pathInfo.*itemPath);
                     }
                     replace(cmdLineTmp, macroName, pathList);
                 }
             };
-            replacePathList(macroNameItemPaths,   &ItemPathInfo::itemPath);
-            replacePathList(macroNameLocalPaths,  &ItemPathInfo::localPath);
-            replacePathList(macroNameItemNames,   &ItemPathInfo::itemName);
-            replacePathList(macroNameParentPaths, &ItemPathInfo::parentPath);
+            replaceListMacro(macroNameItemPaths,   &ItemPathInfo::itemPath);
+            replaceListMacro(macroNameLocalPaths,  &ItemPathInfo::localPath);
+            replaceListMacro(macroNameItemNames,   &ItemPathInfo::itemName);
+            replaceListMacro(macroNameParentPaths, &ItemPathInfo::parentPath);
 
             //generate multiple command lines per each selected item
             for (const ItemPathInfo& pathInfo : pathInfos)
@@ -2068,17 +2059,24 @@ void MainDialog::openExternalApplication(const Zstring& commandLinePhrase, bool 
                     openWithDefaultApp(pathInfo.localPath); //throw FileError
                 else
                 {
-                    Zstring cmdLine = cmdLineTmp;
-                    replace(cmdLine, macroNameItemPath,    pathInfo.itemPath);
-                    replace(cmdLine, macroNameItemPath2,   pathInfo.itemPath2);
-                    replace(cmdLine, macroNameLocalPath,   pathInfo.localPath);
-                    replace(cmdLine, macroNameLocalPath2,  pathInfo.localPath2);
-                    replace(cmdLine, macroNameItemName,    pathInfo.itemName);
-                    replace(cmdLine, macroNameItemName2,   pathInfo.itemName2);
-                    replace(cmdLine, macroNameParentPath,  pathInfo.parentPath);
-                    replace(cmdLine, macroNameParentPath2, pathInfo.parentPath2);
+                    Zstring cmdLineItem = cmdLineTmp;
 
-                    cmdLines.push_back(std::move(cmdLine));
+                    auto replaceMacro = [&](const ZstringView macroName, const Zstring& value)
+                    {
+                        replace(cmdLineItem, Zstring() + Zstr('"') + macroName + Zstr('"'), macroName); //get rid of quotes if existing
+                        replace(cmdLineItem, macroName, escapeCommandArg(value));
+                    };
+
+                    replaceMacro(macroNameItemPath,    pathInfo.itemPath);
+                    replaceMacro(macroNameItemPath2,   pathInfo.itemPath2);
+                    replaceMacro(macroNameLocalPath,   pathInfo.localPath);
+                    replaceMacro(macroNameLocalPath2,  pathInfo.localPath2);
+                    replaceMacro(macroNameItemName,    pathInfo.itemName);
+                    replaceMacro(macroNameItemName2,   pathInfo.itemName2);
+                    replaceMacro(macroNameParentPath,  pathInfo.parentPath);
+                    replaceMacro(macroNameParentPath2, pathInfo.parentPath2);
+
+                    cmdLines.push_back(std::move(cmdLineItem));
                 }
 
             removeDuplicatesStable(cmdLines);
@@ -4049,7 +4047,7 @@ void MainDialog::onCfgGridContext(GridContextMenuEvent& event)
         if (!selectedRows.empty())
             if (const ConfigView::Details* cfg = cfggrid::getDataView(*m_gridCfgHistory).getItem(selectedRows[0]))
             {
-                const Zstring cmdLine = replaceCpy(expandMacros(extCommandFileManager.cmdLine), Zstr("%local_path%"), cfg->cfgItem.cfgFilePath);
+                const Zstring cmdLine = replaceCpy(expandMacros(extCommandFileManager.cmdLine), Zstr("%local_path%"), escapeCommandArg(cfg->cfgItem.cfgFilePath));
                 try
                 {
                     if (const auto& [exitCode, output] = consoleExecute(cmdLine, EXT_APP_MAX_TOTAL_WAIT_TIME_MS); //throw SysError, SysErrorTimeOut

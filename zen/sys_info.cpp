@@ -198,7 +198,7 @@ std::wstring zen::getOsDescription() //throw FileError
     try
     {
         const OsVersionDetail verDetail = getOsVersionDetail(); //throw SysError
-        return trimCpy(verDetail.osName + L' ' + verDetail.osVersionRaw); //e.g. "CentOS 7.8.2003"
+        return trimCpy(verDetail.osName + L" (" + verDetail.osVersionRaw) + L')'; //e.g. "CentOS (7.8.2003)"
 
     }
     catch (const SysError& e) { throw FileError(_("Cannot get process information."), e.toString()); }

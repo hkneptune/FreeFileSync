@@ -5,7 +5,7 @@ the ones mentioned below. The remaining issues that are yet to be fixed are list
 
 
 -----------------
-| libcurl 8.15.1|
+| libcurl 8.16.0|
 -----------------
 __________________________________________________________________________________________________________
 /lib/ftp.c

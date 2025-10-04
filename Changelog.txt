@@ -1,4 +1,13 @@
-FreeFileSync 14.4
+FreeFileSync 14.5 [2025-10-03]
+------------------------------
+Quotation not needed anymore for external application macros
+Unambiguous license key file extension
+Fixed crash when resizing config panel during comparison
+Fixed log file viewing when config name contains special characters
+Dedicated installer for x86_64-only operating system (Linux)
+
+
+FreeFileSync 14.4 [2025-07-26]
 ------------------------------
 Fixed FTP login error "dh key too small"
 Updated all 3rd party libraries to latest versions

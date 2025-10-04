@@ -316,7 +316,7 @@ public:
     void setContextTimeout(const std::weak_ptr<int>& timeoutSec) { timeoutSec_ = timeoutSec; }
 
     //returns server response (header data)
-    std::string perform(const AfsPath& itemPath, bool isDir, curl_ftpmethod pathMethod,
+    std::string perform(const AfsPath& itemPath, bool isDir, long pathMethod,
                         const std::vector<CurlOption>& extraOptions, bool requestUtf8) //throw SysError, SysErrorPassword, SysErrorFtpProtocol
     {
         if (requestUtf8) //avoid endless recursion
@@ -1262,7 +1262,7 @@ public:
                 {CURLOPT_WRITEDATA, &rawListing},
                 {CURLOPT_WRITEFUNCTION, onBytesReceived},
             };
-            curl_ftpmethod pathMethod = CURLFTPMETHOD_SINGLECWD;
+            long pathMethod = CURLFTPMETHOD_SINGLECWD;
 
             if (session.supportsMlsd()) //throw SysError
             {

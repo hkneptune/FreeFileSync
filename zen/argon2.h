@@ -15,7 +15,6 @@ enum class Argon2Flavor { d, i, id };
 
 std::string zargon2(zen::Argon2Flavor flavour, uint32_t mem, uint32_t passes, uint32_t parallel, uint32_t taglen,
                     const std::string_view password, const std::string_view salt);
-
 }
 
 #endif //ARGON2_H_0175896874598102356081374

@@ -538,7 +538,7 @@ private:
 
 
 template <SelectSide sideL, SelectSide sideR>
-std::weak_ordering compareHashedPathNoCase(const ChildPathRef& lhs, const ChildPathRef& rhs)
+std::weak_ordering comparePathNoCase(const ChildPathRef& lhs, const ChildPathRef& rhs)
 {
     //assert(lhs.fsObj->getAbstractPath<sideL>().afsDevice ==         -> too slow, even for debug build
     //       rhs.fsObj->getAbstractPath<sideR>().afsDevice);
@@ -557,7 +557,7 @@ void sortAndRemoveDuplicates(std::vector<ChildPathRef>& pathRefs)
 {
     std::sort(pathRefs.begin(), pathRefs.end(), [](const ChildPathRef& lhs, const ChildPathRef& rhs)
     {
-        if (const std::weak_ordering cmp = compareHashedPathNoCase<side, side>(lhs, rhs);
+        if (const std::weak_ordering cmp = comparePathNoCase<side, side>(lhs, rhs);
             cmp != std::weak_ordering::equivalent)
             return cmp < 0;
 
@@ -567,7 +567,7 @@ void sortAndRemoveDuplicates(std::vector<ChildPathRef>& pathRefs)
     });
 
     pathRefs.erase(std::unique(pathRefs.begin(), pathRefs.end(),
-    [](const ChildPathRef& lhs, const ChildPathRef& rhs) { return compareHashedPathNoCase<side, side>(lhs, rhs) == std::weak_ordering::equivalent; }),
+    [](const ChildPathRef& lhs, const ChildPathRef& rhs) { return comparePathNoCase<side, side>(lhs, rhs) == std::weak_ordering::equivalent; }),
     pathRefs.end());
 
     //let's not use removeDuplicates(): we rely too much on implementation details!
@@ -639,7 +639,7 @@ void checkPathRaceCondition(const BaseFolderPair& baseFolderP, const BaseFolderP
                     pathRaceItems.push_back({rhs.fsObj, sideC});
                 }
             },
-            [](const ChildPathRef&) {} /*right only*/, compareHashedPathNoCase<sideP, sideC>);
+            [](const ChildPathRef&) {} /*right only*/, comparePathNoCase<sideP, sideC>);
         }
     }
 }

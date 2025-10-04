@@ -63,7 +63,7 @@ OsVersionDetail zen::getOsVersionDetail() //throw SysError
         throw SysError(L"Operating system release could not be determined."); //should never happen!
     //osVersion is usually available, except for Arch Linux: https://freefilesync.org/forum/viewtopic.php?t=7276
     //  lsb_release Release is "rolling"
-    //  etc/os-release: VERSION_ID is missing
+    //  /etc/os-release: VERSION_ID is missing, but there is BUILD_ID=rolling instead
 
     std::vector<std::wstring_view> verDigits = splitCpy<std::wstring_view>(osVersion, L'.', SplitOnEmpty::allow); //e.g. "7.7.1908"
     verDigits.resize(2);

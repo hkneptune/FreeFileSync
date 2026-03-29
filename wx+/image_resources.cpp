@@ -56,14 +56,16 @@ ImageHolder xbrzScale(int width, int height, const unsigned char* imageRgb, cons
     //-----------------------------------------------------
     //convert BGRA to RGB + alpha
     ImageHolder trgImg(hqWidth, hqHeight, true /*withAlpha*/);
+    unsigned char* rgb   = trgImg.getRgb();
+    unsigned char* alpha = trgImg.getAlpha();
 
-    std::for_each(xbrTrg, xbrTrg + hqWidth * hqHeight, [rgb = trgImg.getRgb(), alpha = trgImg.getAlpha()](uint32_t col) mutable
+    for (const uint32_t col : std::span(xbrTrg, hqWidth * hqHeight))
     {
         *alpha++ = xbrz::getAlpha(col);
         *rgb++   = xbrz::getRed  (col);
         *rgb++   = xbrz::getGreen(col);
         *rgb++   = xbrz::getBlue (col);
-    });
+    }
     return trgImg;
 }
 

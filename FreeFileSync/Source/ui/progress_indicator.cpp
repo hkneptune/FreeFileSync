@@ -184,7 +184,6 @@ CompareProgressPanel::Impl::Impl(wxFrame& parentWindow) :
 
     //make sure standard height matches ProcessPhase::binaryCompare statistics layout (== largest)
 
-    //init graph
     m_panelProgressGraph->setAttributes(Graph2D::MainAttributes().setMinY(0).setMaxY(2).
                                         setLabelX(XLabelPos::none).
                                         setLabelY(YLabelPos::none).
@@ -809,8 +808,8 @@ SyncProgressDialogImpl<TopLevelDialog>::SyncProgressDialogImpl(long style, //wxF
     if (!jobNames.empty())
     {
         tmp = jobNames[0];
-        std::for_each(jobNames.begin() + 1, jobNames.end(), [&](const std::wstring& jobName)
-        { tmp += L" + " + jobName; });
+        for (const std::wstring& jobName : std::span(jobNames.begin() + 1, jobNames.end()))
+            tmp += L" + " + jobName;
     }
     return tmp;
 }
@@ -933,9 +932,6 @@ syncStat_(&syncStat)
     this->Show(); //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
     //Hide(); -> avoids old position flash before Center() on GNOME but causes hang on KDE? https://freefilesync.org/forum/viewtopic.php?t=10103#p42404
 #endif
-
-#warning("need this!? if yes, surely after WindowLayout::setInitial!?")
-    //pnl_.Layout();
 
     WindowLayout::setInitial(*this, dlgRect, this->GetSize() /*defaultSize*/);
 

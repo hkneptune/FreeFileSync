@@ -718,7 +718,7 @@ S numberTo2(const Num& number, std::integral_constant<NumberType, NumberType::fl
     {
         S output;
 
-        for (const char c : std::string_view(buffer, strEnd))
+        for (const char c : std::span(buffer, strEnd))
             output += static_cast<GetCharTypeT<S>>(c);
 
         return output;
@@ -825,7 +825,7 @@ double stringToFloat(const wchar_t* first, const wchar_t* last)
 {
     std::string buf; //let's rely on SSO
 
-    for (const wchar_t c : std::wstring_view(first, last))
+    for (const wchar_t c : std::span(first, last))
         buf += static_cast<char>(c);
 
     return fromChars(buf.c_str(), buf.c_str() + buf.size());
@@ -867,7 +867,7 @@ Num extractInteger(const S& str, bool& hasMinusSign) //very fast conversion to i
 
     Num number = 0;
 
-    for (const CharType c : std::basic_string_view<CharType>(first, last))
+    for (const CharType c : std::span(first, last))
         if (static_cast<CharType>('0') <= c && c <= static_cast<CharType>('9'))
         {
             number *= 10;
@@ -977,7 +977,8 @@ Num hashString(const S& str)
     const auto* const strFirst = strBegin(str);
 
     FNV1aHash<Num> hash;
-    std::for_each(strFirst, strFirst + strLength(str), [&hash](CharType c) { hash.add(c); });
+    for (const CharType c : std::span(strFirst, strLength(str)))
+        hash.add(c);
     return hash.get();
 }
 
@@ -1018,7 +1019,8 @@ struct StringHashAsciiNoCase
         const auto* const strFirst = strBegin(str);
 
         FNV1aHash<size_t> hash;
-        std::for_each(strFirst, strFirst + strLength(str), [&hash](CharType c) { hash.add(asciiToLower(c)); });
+        for (const CharType c : std::span(strFirst, strLength(str)))
+            hash.add(asciiToLower(c));
         return hash.get();
     }
 };

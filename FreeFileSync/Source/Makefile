@@ -1,12 +1,15 @@
 CXX ?= g++
 exeName = FreeFileSync_$(shell arch)
 
-CXXFLAGS += -std=c++23 -pipe -DWXINTL_NO_GETTEXT_MACRO -I../.. -I../../zenXml -include "zen/i18n.h" -include "zen/warn_static.h" \
+CXXFLAGS += -std=c++23 -pipe -DWXINTL_NO_GETTEXT_MACRO -I../.. -I../../zenXml -include "zen/i18n.h" \
            -Wall -Wfatal-errors -Wmissing-include-dirs -Wswitch-enum -Wcast-align -Wnon-virtual-dtor -Wno-unused-function -Wshadow -Wno-maybe-uninitialized \
-           -O3 -DNDEBUG `wx-config --cxxflags --debug=no` -pthread
+           -O3 -DNDEBUG -pthread
 
-LDFLAGS += -s `wx-config --libs std, aui, richtext --debug=no` -pthread
+LDFLAGS += -s -pthread
 
+
+CXXFLAGS += `wx-config --cxxflags --debug=no`
+LDFLAGS  += `wx-config --libs std, aui, richtext --debug=no`
 
 CXXFLAGS += `pkg-config --cflags openssl`
 LDFLAGS  += `pkg-config --libs openssl`

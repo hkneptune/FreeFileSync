@@ -81,7 +81,7 @@ void drawRectangleBorder(wxDC& dc, const wxRect& rect, const wxColor& col, int b
 
 /*  figure out wxWidgets cross-platform high DPI mess:
 
-    1. "wxsize"    := what wxWidgets is using: device-dependent on Windows, device-indepent on macOS (...mostly)
+    1. "wxsize"    := what wxWidgets is using: device-dependent on Windows, device-indepent on GTK3/macOS (...mostly)
     2. screen unit := device-dependent size in pixels
     3. DIP         := device-independent pixels
 
@@ -93,9 +93,21 @@ void drawRectangleBorder(wxDC& dc, const wxRect& rect, const wxColor& col, int b
 inline
 double getScreenDpiScale()
 {
-    //https://github.com/wxWidgets/wxWidgets/blob/d9d05c2bb201078f5e762c42458ca2f74af5b322/include/wx/window.h#L2060
-    const double scale = 1.0;
+    assert(wxTheApp); //only call after wxWidgets was initalized!
+    static const double scale = []
+    {
+        /* Standard DPI:
+             Windows/Ubuntu: 96 x 96
+             macOS: wxWidgets uses DIP (note: wxScreenDC().GetPPI() returns 72 x 72 which is a lie; looks like 96 x 96)       */
+        constexpr int defaultDpi = 96; //on Windows same as wxDisplay::GetStdPPIValue() (however returns 72 on macOS!)
 
+        const int dpiY = wxScreenDC().GetPPI().y; //perf: buffering for calls to ::GetDeviceCaps() needed!?
+        return static_cast<double>(dpiY) / defaultDpi;
+    }();
+    /* wxScreenDC().GetContentScaleFactor():
+          Windows: always returns 1, despite 140% desktop scaling!
+          Linux:   always returns 1, even with display scale set to 200% on Ubuntu!
+                   Caveat: fractional scaling apparently ignored => behaves like 100%       */
     return scale;
 }
 
@@ -103,6 +115,7 @@ double getScreenDpiScale()
 inline
 double getWxsizeDpiScale()
 {
+    //https://github.com/wxWidgets/wxWidgets/blob/d9d05c2bb201078f5e762c42458ca2f74af5b322/include/wx/window.h#L2060
 #ifndef wxHAS_DPI_INDEPENDENT_PIXELS
 #error why is wxHAS_DPI_INDEPENDENT_PIXELS not defined?
 #endif
@@ -170,6 +183,13 @@ inline
 wxRect getBoundingBox(const wxRect& rect1, const wxRect& rect2)
 {
     return rect1.Union(rect2); //another misnomer
+}
+
+
+inline //work around yet another wxWidgets screw up: WTF does "operator-(wxPoint, wxPoint)" return wxPoint instead of wxSize!??
+wxSize subtract(const wxPoint& lhs, const wxPoint& rhs)
+{
+    return wxSize{lhs.x - rhs.x, lhs.y - rhs.y}; 
 }
 
 
@@ -313,6 +333,7 @@ public:
     {
         assert(wnd.IsDoubleBuffered());
         dc_.emplace<wxPaintDC>(&wnd);
+        static_cast<wxDC&>(*this).DisableAutomaticBoundingBoxUpdates(); //MOOOAAAR perf!?
     }
 
     operator wxDC& ()

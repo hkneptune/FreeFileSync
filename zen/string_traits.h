@@ -71,10 +71,8 @@ struct GetCharTypeImpl<S, true>
 template <> struct GetCharTypeImpl<char,    false> { using Type = char; };
 template <> struct GetCharTypeImpl<wchar_t, false> { using Type = wchar_t; };
 
-template <> struct GetCharTypeImpl<std::basic_string_view<char         >, false> { using Type = char; };
-template <> struct GetCharTypeImpl<std::basic_string_view<wchar_t      >, false> { using Type = wchar_t; };
-template <> struct GetCharTypeImpl<std::basic_string_view<const char   >, false> { using Type = char; };
-template <> struct GetCharTypeImpl<std::basic_string_view<const wchar_t>, false> { using Type = wchar_t; };
+template <> struct GetCharTypeImpl<std::basic_string_view<char   >, false> { using Type = char; };
+template <> struct GetCharTypeImpl<std::basic_string_view<wchar_t>, false> { using Type = wchar_t; };
 
 
 ZEN_INIT_DETECT_MEMBER_TYPE(value_type)
@@ -138,10 +136,8 @@ inline const wchar_t* strBegin(const wchar_t* str) { return str; }
 inline const char*    strBegin(const char&    ch)  { return &ch; }
 inline const wchar_t* strBegin(const wchar_t& ch)  { return &ch; }
 
-inline const char*    strBegin(const std::basic_string_view<char         >& ref) { return ref.data(); }
-inline const wchar_t* strBegin(const std::basic_string_view<wchar_t      >& ref) { return ref.data(); }
-inline const char*    strBegin(const std::basic_string_view<const char   >& ref) { return ref.data(); }
-inline const wchar_t* strBegin(const std::basic_string_view<const wchar_t>& ref) { return ref.data(); }
+inline const char*    strBegin(const std::basic_string_view<char   >& ref) { return ref.data(); }
+inline const wchar_t* strBegin(const std::basic_string_view<wchar_t>& ref) { return ref.data(); }
 
 template <class S, typename = std::enable_if_t<StringTraits<S>::isStringClass>> inline
 size_t strLength(const S& str) //SFINAE: T must be a "string"
@@ -154,10 +150,8 @@ inline size_t strLength(const wchar_t* str) { return cStringLength(str); }
 inline size_t strLength(char)               { return 1; }
 inline size_t strLength(wchar_t)            { return 1; }
 
-inline size_t strLength(const std::basic_string_view<char         >& ref) { return ref.length(); }
-inline size_t strLength(const std::basic_string_view<wchar_t      >& ref) { return ref.length(); }
-inline size_t strLength(const std::basic_string_view<const char   >& ref) { return ref.length(); }
-inline size_t strLength(const std::basic_string_view<const wchar_t>& ref) { return ref.length(); }
+inline size_t strLength(const std::basic_string_view<char   >& ref) { return ref.length(); }
+inline size_t strLength(const std::basic_string_view<wchar_t>& ref) { return ref.length(); }
 }
 
 

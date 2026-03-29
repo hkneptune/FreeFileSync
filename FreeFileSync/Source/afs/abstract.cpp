@@ -244,15 +244,11 @@ AFS::FileCopyResult AFS::copyFileTransactional(const AbstractPath& sourcePath, c
 
 void AFS::createFolderIfMissingRecursion(const AbstractPath& folderPath) //throw FileError
 {
-    auto getItemType2 = [&](const AbstractPath& itemPath) //throw FileError
+    auto getItemTypeImpl = [](const AbstractPath& itemPath) //throw SysError
     {
         try
         { return getItemType(itemPath); } //throw FileError
-        catch (const FileError& e) //need to add context!
-        {
-            throw FileError(replaceCpy(_("Cannot create directory %x."), L"%x", fmtPath(getDisplayPath(folderPath))),
-                            replaceCpy(e.toString(), L"\n\n", L'\n'));
-        }
+        catch (const FileError& e) { throw SysError(replaceCpy(e.toString(), L"\n\n", L'\n')); } //needs additional context!
     };
 
     try
@@ -261,22 +257,25 @@ void AFS::createFolderIfMissingRecursion(const AbstractPath& folderPath) //throw
         //- do NOT use getItemTypeIfExists()! race condition when multiple threads are calling createDirectoryIfMissingRecursion(): https://freefilesync.org/forum/viewtopic.php?t=10137#p38062
         //- find first existing + accessible parent folder (backwards iteration):
         AbstractPath folderPathEx = folderPath;
-        RingBuffer<Zstring> folderNames; //caveat: 1. might have been created in the meantime 2. getItemType2() may have failed with access error
+        RingBuffer<Zstring> folderNames; //caveat: 1. might have been created in the meantime 2. getItemTypeImpl() may have failed with access error
         for (;;)
-            try
-            {
-                if (getItemType2(folderPathEx) == ItemType::file /*obscure, but possible*/) //throw FileError
-                    throw SysError(replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(getItemName(folderPathEx))));
-                break;
-            }
-            catch (FileError&) //not yet existing or access error
+        {
+            ItemType type;
+            try { type = getItemTypeImpl(folderPathEx); /*throw SysError*/ }
+            catch (SysError&) //not yet existing or access error
             {
                 const std::optional<AbstractPath> parentPath = getParentPath(folderPathEx);
                 if (!parentPath)//device root => quick access test
                     throw;
                 folderNames.push_front(getItemName(folderPathEx));
                 folderPathEx = *parentPath;
+                continue;
             }
+
+            if (type == ItemType::file /*obscure, but possible*/)
+                throw SysError(replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(getItemName(folderPathEx))));
+            break;
+        }
         //-----------------------------------------------------------
 
         AbstractPath folderPathNew = folderPathEx;
@@ -287,18 +286,16 @@ void AFS::createFolderIfMissingRecursion(const AbstractPath& folderPath) //throw
 
                 createFolderPlain(folderPathNew); //throw FileError
             }
-            catch (FileError&)
+            catch (const FileError& e)
             {
-                try
-                {
-                    if (getItemType2(folderPathNew) == ItemType::file /*obscure, but possible*/) //throw FileError
-                        throw SysError(replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(getItemName(folderPathNew))));
-                    else
-                        continue; //already existing => possible, if createDirectoryIfMissingRecursion() is run in parallel
-                }
-                catch (FileError&) {} //not yet existing or access error
+                ItemType type;
+                try { type = getItemTypeImpl(folderPathNew); /*throw SysError*/ }
+                //(not yet existing) or access error:
+                catch (const SysError& e2) { throw FileError(replaceCpy(e.toString(), L"\n\n", L'\n'), e2.toString()); }
 
-                throw;
+                if (type == ItemType::file /*obscure, but possible*/)
+                    throw SysError(replaceCpy(_("The name %x is already used by another item."), L"%x", fmtPath(getItemName(folderPathNew))));
+                //else: already existing => possible, if createDirectoryIfMissingRecursion() is run in parallel
             }
     }
     catch (const SysError& e)

@@ -407,8 +407,7 @@ void BatchStatusHandler::reportFatalError(const std::wstring& msg)
 Statistics::ErrorStats BatchStatusHandler::getErrorStats() const
 {
     //errorLog_ is an "append only" structure, so we can make getErrorStats() complexity "constant time":
-    std::for_each(errorLog_.ref().begin() + errorStatsRowsChecked_, errorLog_.ref().end(), [&](const LogEntry& entry)
-    {
+    for (const LogEntry& entry : std::span(errorLog_.ref().begin() + errorStatsRowsChecked_, errorLog_.ref().end()))
         switch (entry.type)
         {
             case MSG_TYPE_INFO:
@@ -420,7 +419,6 @@ Statistics::ErrorStats BatchStatusHandler::getErrorStats() const
                 ++errorStatsBuf_.errorCount;
                 break;
         }
-    });
     errorStatsRowsChecked_ = errorLog_.ref().size();
 
     return errorStatsBuf_;

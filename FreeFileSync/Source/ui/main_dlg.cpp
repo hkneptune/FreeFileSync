@@ -1045,7 +1045,6 @@ imgFileManagerSmall_([]
     treegrid::init(*m_gridOverview);
     cfggrid ::init(*m_gridCfgHistory);
 
-
     //initialize and load configuration
     setGlobalCfgOnInit(globalCfg); //calls auiMgr_.Update()
     setConfig(guiCfg, cfgFilePaths); //expects auiMgr_.Update(): e.g. recalcMaxFolderPairsVisible()
@@ -6032,7 +6031,7 @@ void MainDialog::updateGuiForFolderPair()
 
     //make sure user cannot fully shrink additional folder pairs
     dirPane.MinSize(dipToWxsize(100), firstPairHeight + addPairCountMin * addPairHeight);
-    dirPane.BestSize(-1,            firstPairHeight + addPairCountOpt * addPairHeight);
+    dirPane.BestSize(-1,              firstPairHeight + addPairCountOpt * addPairHeight);
 
     //########################################################################################################################
     //wxAUI hack: call wxAuiPaneInfo::Fixed() to apply best size:
@@ -6083,7 +6082,7 @@ void MainDialog::insertAddFolderPair(const std::vector<LocalPairConfig>& newPair
         if (!folderPairScrapyard_.empty()) //construct cheaply from "spare parts"
         {
             newPair = folderPairScrapyard_.back().release(); //transfer ownership
-            folderPairScrapyard_.pop_back();
+            folderPairScrapyard_.pop_back();                 //
             newPair->Show();
         }
         else
@@ -6100,7 +6099,10 @@ void MainDialog::insertAddFolderPair(const std::vector<LocalPairConfig>& newPair
             const wxSize optionsIconSize = loadImage("item_add").GetSize();
             setImage(*(newPair->m_bpButtonFolderPairOptions), resizeCanvas(mirrorIfRtl(loadImage("button_arrow_right")), optionsIconSize, wxALIGN_CENTER));
 
-            //set width of left folder panel
+            //important: make sure panel has proper default height!
+            newPair->GetSizer()->SetSizeHints(newPair); //~=Fit() +SetMinSize()
+
+            //set width of left folder panel: *after* SetSizeHints()! see MainDialog::onResizeLeftFolderWidth()
             const int width = m_panelTopLeft->GetSize().GetWidth();
             newPair->m_panelLeft->SetMinSize({width, -1});
 
@@ -6114,9 +6116,6 @@ void MainDialog::insertAddFolderPair(const std::vector<LocalPairConfig>& newPair
             newPair->m_bpButtonLocalCompCfg->Bind(wxEVT_COMMAND_BUTTON_CLICKED, [this](wxCommandEvent& event) { onLocalCompCfg  (event); });
             newPair->m_bpButtonLocalSyncCfg->Bind(wxEVT_COMMAND_BUTTON_CLICKED, [this](wxCommandEvent& event) { onLocalSyncCfg  (event); });
             newPair->m_bpButtonLocalFilter ->Bind(wxEVT_COMMAND_BUTTON_CLICKED, [this](wxCommandEvent& event) { onLocalFilterCfg(event); });
-
-            //important: make sure panel has proper default height!
-            newPair->GetSizer()->SetSizeHints(newPair); //~=Fit() + SetMinSize()
         }
 
         bSizerAddFolderPairs->Insert(pos + i, newPair, 0, wxEXPAND);
@@ -6312,12 +6311,11 @@ void MainDialog::onMenuExportFileList(wxCommandEvent& event)
         }
         if (!colAttrRight.empty())
         {
-            std::for_each(colAttrRight.begin(), colAttrRight.end() - 1,
-                          [&](const Grid::ColAttributes& ca)
+            for (const Grid::ColAttributes& ca : std::span(colAttrRight.begin(), colAttrRight.end() - 1))
             {
                 header += fmtValue(provRight->getColumnLabel(ca.type));
                 header += CSV_SEP;
-            });
+            }
             header += fmtValue(provRight->getColumnLabel(colAttrRight.back().type));
         }
         header += LINE_BREAK;
@@ -6329,8 +6327,8 @@ void MainDialog::onMenuExportFileList(wxCommandEvent& event)
                 !jobNames.empty())
             {
                 title = utfTo<Zstring>(jobNames[0]);
-                std::for_each(jobNames.begin() + 1, jobNames.end(), [&](const std::wstring& jobName)
-                { title += Zstr(" + ") + utfTo<Zstring>(jobName); });
+                for (const std::wstring& jobName : std::span(jobNames.begin() + 1, jobNames.end()))
+                    title += Zstr(" + ") + utfTo<Zstring>(jobName);
             }
 
             const Zstring shortGuid = printNumber<Zstring>(Zstr("%04x"), static_cast<unsigned int>(getCrc16(generateGUID())));

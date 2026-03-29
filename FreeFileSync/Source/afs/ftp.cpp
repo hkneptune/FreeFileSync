@@ -1446,7 +1446,7 @@ private:
 
         std::vector<FtpItem> output;
 
-        std::for_each(it, lines.end(), [&](const std::string_view line)
+        for (const std::string_view line : std::span(it, lines.end()))
         {
             auto& ownerGroupCount = [&] -> std::optional<int>&
             {
@@ -1483,7 +1483,7 @@ private:
             if (item.itemName != Zstr(".") &&
                 item.itemName != Zstr(".."))
                 output.push_back(item);
-        });
+        }
 
         return output;
     }

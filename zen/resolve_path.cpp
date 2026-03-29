@@ -54,8 +54,14 @@ Zstring resolveRelativePath(const Zstring& relativePath)
     }
     //get rid of some cruft (just like GetFullPathName())
     replace(pathTmp, "/./", '/');
+
     if (endsWith(pathTmp, "/."))
-        pathTmp.pop_back(); //keep the "/" => consider pathTmp == "/."
+    {
+        pathTmp.pop_back();
+        if (pathTmp.size() != 1)
+            pathTmp.pop_back(); 
+        //else: keep the "/" => consider pathTmp == "/."
+    }
 
     //what about "/../"? might be relative to symlinks => preserve!
 

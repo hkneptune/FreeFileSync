@@ -369,7 +369,7 @@ public:
 
             if (rect.pos)
             {
-                const int dlgArea = rect.size.GetWidth() * rect.size.GetHeight();
+                const wxPoint dlgCenter = *rect.pos + rect.size / 2;
 
                 wxRect rectAllDisp;
 
@@ -380,10 +380,8 @@ public:
 
                     rectAllDisp = getBoundingBox(rectAllDisp, rectDisp);
 
-                    const wxRect rectOverlap = getIntersection(rectDisp, wxRect(*rect.pos, rect.size));
-
-                    //at least 10% of the dialog should be visible on at least one display!
-                    if (rectOverlap.GetWidth() * rectOverlap.GetHeight() > 0.1 * dlgArea &&
+                    //if dialog center is not part of any display, user probably doesn't want to restore to this location anyway
+                    if (rectDisp.Contains(dlgCenter) &&
                         //don't allow position that would hide the title bar: Windows/macOS do not correct invalid y-positions
                         rect.pos->y >= rectDisp.y - dipToWxsize(5) /*some leeway needed?*/)
                         newPos = rect.pos;
@@ -393,15 +391,11 @@ public:
             }
         }
 
-        //old comment: "wxGTK's wxWindow::SetSize seems unreliable and behaves like a wxWindow::SetClientSize
-        //              => use wxWindow::SetClientSize instead (no such issue on Windows/macOS!)
-        //2018-10-15: Weird new problem on CentOS/Ubuntu: SetClientSize() + SetPosition() fail to set correct dialog *position*, but SetSize() + SetPosition() do!
-        //              => old issues with SetSize() seem to be gone... => revert to SetSize()
         if (newPos)
-            topWin.SetSize(wxRect(*newPos, newSize));
+            topWin.SetSize(wxRect(*newPos, newSize), wxSIZE_ALLOW_MINUS_ONE);
         else
         {
-            //wxWindow::Center() aligns the dialog to *bottom* of the screen if height > screenheight => title bar hidden!!!
+            //if dialog height > display height, wxWindow::Center() aligns the dialog to *bottom* of the screen => title bar hidden!!!
             newSize = getIntersection(newSize, wxDisplay(&topWin).GetClientArea().GetSize());
 
             topWin.SetSize(newSize);
@@ -409,10 +403,7 @@ public:
         }
 
         if (rect.isMaximized) //no real need to support both maximize and full screen functions
-        {
             topWin.Maximize(true);
-        }
-
 
 #if 0 //wxWidgets alternative: apparently no benefits (not even on Wayland! but strange decisions: why restore the minimized state!???)
         class GeoSerializer : public wxTopLevelWindow::GeometrySerializer
@@ -448,49 +439,40 @@ public:
 #endif
     }
 
-    //destructive! changes window size!
+    //window-modifying: changes window size!
     static Rect getBeforeClose(wxTopLevelWindow& topWin)
     {
-        //we need to portably retrieve non-iconized, non-maximized size and position
-        //  non-portable: Win32 GetWindowPlacement(); wxWidgets take: wxTopLevelWindow::SaveGeometry/RestoreToGeometry()
-        if (topWin.IsIconized()) //width/height are invalid while window is minimized (e.g. Windows: x,y = -32000; width = 160, height = 28)
-            topWin.Iconize(false);
+        Rect rect;
+        bool validSizePos = true;
+        const wxSize sizeOrig = topWin.GetSize();
 
-        bool wasMaximized = false;
-        if (topWin.IsMaximized()) //evaluate AFTER uniconizing!
+        if (topWin.IsMaximized())
         {
             topWin.Maximize(false);
-            wasMaximized = true;
+            rect.isMaximized = true;
         }
 
-        Rect rect
-        {
-            .size = topWin.GetSize(),
-            .pos  = topWin.GetPosition(),
-            .isMaximized = wasMaximized,
-        };
+        rect.size = topWin.GetSize();
+        rect.pos  = topWin.GetPosition();
 
-        if (wasMaximized)
-            if (!topWin.IsShown() //=> Win: can't trust size GetSize()/GetPosition(): still at full screen size!
-                //wxGTK: returns full screen size and strange position (65/-4)
-                //OS X 10.9 (but NO issue on 10.11!) returns full screen size and strange position (0/-22)
-                || rect.pos->y < 0
-               )
+        if (rect.isMaximized && rect.size == sizeOrig) //wxGTK3: still returns full screen size due to deferred sizing!?
+            validSizePos = false;
+
+        if (!validSizePos) //reuse previous values:
+        {
+            const auto it = initialRects_.find(&topWin);
+            if (it != initialRects_.end())
             {
-                //reuse previous values:
-                const auto it = initialRects_.find(&topWin);
-                if (it != initialRects_.end())
-                {
-                    rect.size = it->second.size;
-                    rect.pos  = it->second.pos;
-                }
-                else
-                {
-                    assert(false);
-                    rect.size = wxSize();
-                    rect.pos = std::nullopt;
-                }
+                rect.size = it->second.size;
+                rect.pos  = it->second.pos;
             }
+            else
+            {
+                assert(false);
+                rect.size = wxSize();
+                rect.pos = std::nullopt;
+            }
+        }
 
         return rect;
 

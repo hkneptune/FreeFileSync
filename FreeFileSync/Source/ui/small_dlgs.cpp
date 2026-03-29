@@ -2405,6 +2405,7 @@ DownloadProgressWindow::Impl::Impl(wxWindow* parent, int64_t fileSizeTotal) :
     DownloadProgressDlgGenerated(parent),
     bytesTotal_(fileSizeTotal)
 {
+    SetExtraStyle(GetExtraStyle() | wxWS_EX_TRANSIENT);
 
     setStandardButtonLayout(*bSizerStdButtons, StdButtons().setCancel(m_buttonCancel));
 

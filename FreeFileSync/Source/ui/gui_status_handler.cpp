@@ -320,8 +320,7 @@ void StatusHandlerTemporaryPanel::reportFatalError(const std::wstring& msg)
 Statistics::ErrorStats StatusHandlerTemporaryPanel::getErrorStats() const
 {
     //errorLog_ is an "append only" structure, so we can make getErrorStats() complexity "constant time":
-    std::for_each(errorLog_.begin() + errorStatsRowsChecked_, errorLog_.end(), [&](const LogEntry& entry)
-    {
+    for (const LogEntry& entry : std::span(errorLog_.begin() + errorStatsRowsChecked_, errorLog_.end()))
         switch (entry.type)
         {
             case MSG_TYPE_INFO:
@@ -333,7 +332,6 @@ Statistics::ErrorStats StatusHandlerTemporaryPanel::getErrorStats() const
                 ++errorStatsBuf_.errorCount;
                 break;
         }
-    });
     errorStatsRowsChecked_ = errorLog_.size();
 
     return errorStatsBuf_;
@@ -680,8 +678,7 @@ void StatusHandlerFloatingDialog::reportFatalError(const std::wstring& msg)
 Statistics::ErrorStats StatusHandlerFloatingDialog::getErrorStats() const
 {
     //errorLog_ is an "append only" structure, so we can make getErrorStats() complexity "constant time":
-    std::for_each(errorLog_.ref().begin() + errorStatsRowsChecked_, errorLog_.ref().end(), [&](const LogEntry& entry)
-    {
+    for (const LogEntry& entry : std::span(errorLog_.ref().begin() + errorStatsRowsChecked_, errorLog_.ref().end()))
         switch (entry.type)
         {
             case MSG_TYPE_INFO:
@@ -693,7 +690,6 @@ Statistics::ErrorStats StatusHandlerFloatingDialog::getErrorStats() const
                 ++errorStatsBuf_.errorCount;
                 break;
         }
-    });
     errorStatsRowsChecked_ = errorLog_.ref().size();
 
     return errorStatsBuf_;

@@ -600,7 +600,7 @@ void checkPathRaceCondition(const BaseFolderPair& baseFolderP, const BaseFolderP
             //e.g.  C:\folder <-> C:\folder\sub    =>  find "sub" inside C:\folder
             std::vector<const ContainerObject*> childFolderP{&baseFolderP};
 
-            std::for_each(relPathC.begin() + relPathP.size(), relPathC.end(), [&](const Zstring& itemName)
+            for (const Zstring& itemName : std::span(relPathC.begin() + relPathP.size(), relPathC.end()))
             {
                 std::vector<const ContainerObject*> childFolderP2;
 
@@ -611,7 +611,7 @@ void checkPathRaceCondition(const BaseFolderPair& baseFolderP, const BaseFolderP
                 //no "break": yes, weird, but there could be more than one (for case-sensitive file system)
 
                 childFolderP = std::move(childFolderP2);
-            });
+            }
 
             std::vector<ChildPathRef> pathRefsP;
             for (const ContainerObject* childFolder : childFolderP)
@@ -2771,14 +2771,14 @@ void fff::synchronize(const std::chrono::system_clock::time_point& syncStartTime
                                _("To avoid conflicts, set up exclude filters so that each updated file is included by only one folder pair.") + L"\n\n";
 
             auto prevItem = pathRaceItems[0];
-            std::for_each(pathRaceItems.begin(), pathRaceItems.begin() + std::min(pathRaceItems.size(), CONFLICTS_PREVIEW_MAX), [&](const PathRaceItem& item)
+            for (const PathRaceItem& item : std::span(pathRaceItems.begin(), std::min(pathRaceItems.size(), CONFLICTS_PREVIEW_MAX)))
             {
                 if (comparePathNoCase(item, prevItem) != std::weak_ordering::equivalent)
                     msg += L"\n"; //visually separate path groups
 
                 msg += formatRaceItem(item) + L"\n";
                 prevItem = item;
-            });
+            }
 
             if (pathRaceItems.size() > CONFLICTS_PREVIEW_MAX)
                 msg += L"\n[...]  " + replaceCpy(_P("Showing %y of 1 item", "Showing %y of %x items", pathRaceItems.size()), //%x used as plural form placeholder!

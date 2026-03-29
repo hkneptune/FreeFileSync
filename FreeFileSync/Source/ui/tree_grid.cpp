@@ -166,7 +166,8 @@ void calcPercentage(std::vector<std::pair<uint64_t, int*>>& workList)
             return lhs.first * 100U % bytesTotal > rhs.first * 100U % bytesTotal;
         });
 
-        std::for_each(workList.begin(), workList.begin() + remainingPercent, [&](std::pair<uint64_t, int*>& pair) { ++*pair.second; });
+        for (std::pair<uint64_t, int*>& pair : std::span(workList.begin(), remainingPercent))
+            ++*pair.second;
     }
 }
 }

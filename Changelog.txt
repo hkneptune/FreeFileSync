@@ -1,4 +1,16 @@
-FreeFileSync 14.8
+FreeFileSync 14.9 [2026-03-29]
+------------------------------
+Support 200% display scaling for high-DPI monitors (Linux)
+Trimmed text-to-image bounding box
+Improved center grid tooltip (macOS, Linux)
+Work around "getcwd() failed" for console execute (Linux)
+Fixed calculating main window size and position on exit
+Fixed multi-folder-pair horizontal sizing glitch
+Fixed Donation Edition incorrect activation count (Linux)
+Fixed error during log file cleanup when running multiple FFS instances
+
+
+FreeFileSync 14.8 [2026-02-22]
 ------------------------------
 Automatically detect proxy settings for Google Drive (Windows)
 Fixed file filter considering parent folder as match candidate

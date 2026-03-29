@@ -7,6 +7,7 @@
 #ifndef TYPE_TRAITS_H_3425628658765467
 #define TYPE_TRAITS_H_3425628658765467
 
+#include <span>
 #include <algorithm>
 #include <type_traits>
 
@@ -45,13 +46,13 @@ constexpr uint32_t arrayHash(T (&arr)[N]) //don't bother making FNV1aHash conste
 {
     uint32_t hashVal = 2166136261U; //FNV-1a base
 
-    std::for_each(&arr[0], &arr[N], [&hashVal](T n)
+    for (const T n : std::span(arr, N))
     {
         //static_assert(isInteger<T> || std::is_same_v<T, char> || std::is_same_v<T, wchar_t>);
         static_assert(sizeof(T) <= sizeof(hashVal));
         hashVal ^= static_cast<uint32_t>(n);
         hashVal *= 16777619U; //prime
-    });
+    }
     return hashVal;
 }
 

@@ -31,7 +31,7 @@ uint16_t getCrc16(ByteIterator first, ByteIterator last) //http://www.sunshine2k
     static_assert(sizeof(typename std::iterator_traits<ByteIterator>::value_type) == 1);
 
     uint16_t crc = 0;
-    std::for_each(first, last, [&](unsigned char b)
+    for (const unsigned char b : std::span(first, last))
     {
         constexpr uint16_t crcTable[] =
         {
@@ -56,7 +56,7 @@ uint16_t getCrc16(ByteIterator first, ByteIterator last) //http://www.sunshine2k
         static_assert(arrayHash(crcTable) == 728085957);
 
         crc = (crc >> 8) ^ crcTable[(crc ^ b) & 0xFF];
-    });
+    }
     return crc;
 }
 
@@ -67,7 +67,7 @@ uint32_t getCrc32(ByteIterator first, ByteIterator last) //https://en.wikipedia.
     static_assert(sizeof(typename std::iterator_traits<ByteIterator>::value_type) == 1);
 
     uint32_t crc = 0xFFFFFFFF;
-    std::for_each(first, last, [&](unsigned char b)
+    for (const unsigned char b : std::span(first, last))
     {
         constexpr uint32_t crcTable[] =
         {
@@ -102,7 +102,7 @@ uint32_t getCrc32(ByteIterator first, ByteIterator last) //https://en.wikipedia.
         static_assert(arrayHash(crcTable) == 2988069445);
 
         crc = (crc >> 8) ^ crcTable[(crc ^ b) & 0xFF];
-    });
+    }
     return crc ^ 0xFFFFFFFF;
 }
 }

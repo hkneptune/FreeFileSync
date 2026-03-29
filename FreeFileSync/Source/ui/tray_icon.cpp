@@ -19,24 +19,25 @@ using namespace fff;
 
 namespace
 {
-void fillRange(wxImage& img, int pixelFirst, int pixelLast, const wxColor& col) //tolerant input range
+void fillRange(wxImage& img, int pixFirst, int pixLast, const wxColor& col) //tolerant input range
 {
     const int width  = img.GetWidth ();
     const int height = img.GetHeight();
 
     if (width > 0 && height > 0)
     {
-        pixelFirst = std::max(pixelFirst, 0);
-        pixelLast  = std::min(pixelLast, width * height);
+        pixFirst = std::max(pixFirst, 0);
+        pixLast  = std::min(pixLast, width * height);
 
-        if (pixelFirst < pixelLast)
+        if (pixFirst < pixLast)
         {
             const unsigned char r = col.Red  (); //
             const unsigned char g = col.Green(); //getting RGB involves virtual function calls!
             const unsigned char b = col.Blue (); //
 
-            unsigned char* rgb = img.GetData() + pixelFirst * 3;
-            for (int x = pixelFirst; x < pixelLast; ++x)
+            unsigned char* rgb    = img.GetData() + pixFirst * 3;
+            unsigned char* rgbEnd = img.GetData() + pixLast  * 3;
+            while (rgb < rgbEnd)
             {
                 *rgb++ = r;
                 *rgb++ = g;
@@ -44,7 +45,7 @@ void fillRange(wxImage& img, int pixelFirst, int pixelLast, const wxColor& col) 
             }
 
             if (img.HasAlpha()) //make progress indicator fully opaque:
-                std::fill(img.GetAlpha() + pixelFirst, img.GetAlpha() + pixelLast, wxIMAGE_ALPHA_OPAQUE);
+                ::memset(img.GetAlpha() + pixFirst, wxIMAGE_ALPHA_OPAQUE, pixLast - pixFirst);
         }
     }
 }
@@ -72,10 +73,10 @@ wxBitmap FfsTrayIcon::ProgressIconGenerator::get(double fraction)
     if (!logo_.IsOk() || logo_.GetWidth() <= 0 || logo_.GetHeight() <= 0)
         return wxIcon();
 
-    const int pixelCount = logo_.GetWidth() * logo_.GetHeight();
-    const int startFillPixel = std::clamp<int>(std::floor(fraction * pixelCount), 0, pixelCount);
+    const int pixCount = logo_.GetWidth() * logo_.GetHeight();
+    const int pixStart = std::clamp<int>(std::floor(fraction * pixCount), 0, pixCount);
 
-    if (startPixBuf_ != startFillPixel)
+    if (startPixBuf_ != pixStart)
     {
         wxImage genImage(logo_.Copy()); //workaround wxWidgets' screwed-up design from hell: their copy-construction implements reference-counting WITHOUT copy-on-write!
 
@@ -83,19 +84,19 @@ wxBitmap FfsTrayIcon::ProgressIconGenerator::get(double fraction)
         brighten(genImage, -200 * (1 - fraction));
 
         //fill black border row
-        if (startFillPixel <= pixelCount - genImage.GetWidth())
+        if (pixStart <= pixCount - genImage.GetWidth())
         {
             /*    --------
                   ---bbbbb
                   bbbbSyyy  S : start yellow remainder
                   yyyyyyyy                          */
 
-            int bStart = startFillPixel - genImage.GetWidth();
+            int bStart = pixStart - genImage.GetWidth();
             if (bStart % genImage.GetWidth() != 0) //add one more black pixel, see ascii-art
                 --bStart;
-            fillRange(genImage, bStart, startFillPixel, *wxBLACK);
+            fillRange(genImage, bStart, pixStart, *wxBLACK);
         }
-        else if (startFillPixel < pixelCount)
+        else if (pixStart < pixCount)
         {
             /* special handling for last row:
                   --------
@@ -103,18 +104,18 @@ wxBitmap FfsTrayIcon::ProgressIconGenerator::get(double fraction)
                   ---bbbbb
                   ---bSyyy  S : start yellow remainder            */
 
-            int bStart = startFillPixel - genImage.GetWidth() - 1;
+            int bStart = pixStart - genImage.GetWidth() - 1;
             int bEnd = (bStart / genImage.GetWidth() + 1) * genImage.GetWidth();
 
             fillRange(genImage, bStart, bEnd, *wxBLACK);
-            fillRange(genImage, startFillPixel - 1, startFillPixel, *wxBLACK);
+            fillRange(genImage, pixStart - 1, pixStart, *wxBLACK);
         }
 
         //fill yellow remainder
-        fillRange(genImage, startFillPixel, pixelCount, wxColor(240, 200, 0));
+        fillRange(genImage, pixStart, pixCount, wxColor(240, 200, 0));
 
         iconBuf_ = toScaledBitmap(genImage);
-        startPixBuf_ = startFillPixel;
+        startPixBuf_ = pixStart;
     }
 
     return iconBuf_;

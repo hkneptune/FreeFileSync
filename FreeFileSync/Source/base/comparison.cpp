@@ -837,13 +837,12 @@ void matchFolders(const MapType& mapLeft, const MapType& mapRight, ProcessLeftOn
                 if (!tryMatchRange(itCase, itEndCase))
                 {
                     const Zstringc& conflictMsg = getConflictAmbiguousItemName(itCase->ref->first);
-                    std::for_each(itCase, itEndCase, [&](const FileRef& fr)
-                    {
+
+                    for (const FileRef& fr : std::span(itCase, itEndCase))
                         if (fr.side == SelectSide::left)
                             lo(*fr.ref, &conflictMsg);
                         else
                             ro(*fr.ref, &conflictMsg);
-                    });
                 }
                 itCase = itEndCase;
             }

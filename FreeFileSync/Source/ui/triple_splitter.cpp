@@ -60,6 +60,9 @@ TripleSplitter::TripleSplitter(wxWindow* parent,
     Bind(wxEVT_PAINT, [this](wxPaintEvent& event) { onPaintEvent(event); });
     Bind(wxEVT_SIZE,  [this](wxSizeEvent&  event) { updateWindowSizes(); event.Skip(); });
 
+    //perf: WS_EX_COMPOSITED vs BufferedPaintDC doesn't matter
+    //MSWDisableComposited(); -> see comment in grid.cpp
+
     Bind(wxEVT_LEFT_DOWN,    [this](wxMouseEvent& event) { onMouseLeftDown  (event); });
     Bind(wxEVT_LEFT_UP,      [this](wxMouseEvent& event) { onMouseLeftUp    (event); });
     Bind(wxEVT_MOTION,       [this](wxMouseEvent& event) { onMouseMovement  (event); });

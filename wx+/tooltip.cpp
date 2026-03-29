@@ -5,14 +5,10 @@
 // *****************************************************************************
 #include "tooltip.h"
 #include <zen/zstring.h>
-#include <wx/dialog.h>
-#include <wx/stattext.h>
-#include <wx/sizer.h>
-#include <wx/settings.h>
 #include <wx/app.h>
+#include <wx/popupwin.h>
+#include <wx/stattext.h>
 #include "bitmap_button.h"
-#include "dc.h"
-    #include <gtk/gtk.h>
 
 using namespace zen;
 
@@ -23,15 +19,13 @@ const int TIP_WINDOW_OFFSET_DIP = 20;
 }
 
 
-class Tooltip::TooltipDlgGenerated : public wxDialog
+class Tooltip::TooltipDlgGenerated : public wxPopupWindow
 {
 public:
-    TooltipDlgGenerated(wxWindow* parent) : //Suse Linux/X11: needs parent window, else there are z-order issues
-        wxDialog(parent, wxID_ANY, L"" /*title*/, wxDefaultPosition, wxDefaultSize, wxSIMPLE_BORDER /*style*/)
-        //wxSIMPLE_BORDER side effect: removes title bar on KDE
+    TooltipDlgGenerated(wxWindow* parent) : wxPopupWindow(parent, wxSIMPLE_BORDER)
     {
-        SetSizeHints(wxDefaultSize, wxDefaultSize);
         SetExtraStyle(this->GetExtraStyle() | wxWS_EX_TRANSIENT);
+
         SetBackgroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_INFOBK));   //both required: on Ubuntu background is black, foreground white!
         SetForegroundColour(wxSystemSettings::GetColour(wxSYS_COLOUR_INFOTEXT)); //
 
@@ -43,10 +37,7 @@ public:
         bSizer158->Add(staticTextMain_, 0, wxALL | wxALIGN_CENTER_HORIZONTAL | wxALIGN_CENTER_VERTICAL, 5);
 
         SetSizer(bSizer158);
-
     }
-
-    bool AcceptsFocus() const override { return false; } //any benefit?
 
     wxStaticText* staticTextMain_ = nullptr;
     wxStaticBitmap* bitmapLeft_   = nullptr;
@@ -85,13 +76,13 @@ void Tooltip::show(const wxString& text, wxPoint mousePos, const wxImage* img)
     //GTK3 size calculation requires visible window: https://github.com/wxWidgets/wxWidgets/issues/16088
     //=> call wxWindow::Show() to "execute"
 
-    const wxPoint newPos = mousePos + wxPoint(wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft ?
+    wxPoint newPos = mousePos + wxPoint(wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft ?
                                               - dipToWxsize(TIP_WINDOW_OFFSET_DIP) - tipWindow_->GetSize().GetWidth() :
                                               dipToWxsize(TIP_WINDOW_OFFSET_DIP),
                                               dipToWxsize(TIP_WINDOW_OFFSET_DIP));
 
     if (newPos != tipWindow_->GetScreenPosition())
-        tipWindow_->Move(newPos);
+        tipWindow_->Move(newPos, wxSIZE_ALLOW_MINUS_ONE);
     //caveat: possible endless loop! mouse pointer must NOT be within tipWindow!
     //else it will trigger a wxEVT_LEAVE_WINDOW on middle grid which will hide the window, causing the window to be shown again via this method, etc.
 

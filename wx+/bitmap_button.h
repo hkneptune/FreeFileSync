@@ -77,8 +77,8 @@ void setBitmapTextLabel(wxBitmapButton& btn, const wxImage& img, const wxString&
     const int extra = margin + border + std::max(pad, padding); //SetMinSize() relates to *outer* button size including margin + border + padding
 
     //SetMinSize() instead of SetSize() is needed for wxWidgets layout determination to work correctly
-    btn.SetMinSize({         screenToWxsize(imgTxt.GetWidth ()) + 2 * extra,
-                             std::max(screenToWxsize(imgTxt.GetHeight()) + 2 * extra, getDefaultButtonHeight())});
+    btn.SetMinSize({screenToWxsize(imgTxt.GetWidth ()) + 2 * extra,
+                    std::max(screenToWxsize(imgTxt.GetHeight()) + 2 * extra, getDefaultButtonHeight())});
 
     setImage(btn, imgTxt);
 }

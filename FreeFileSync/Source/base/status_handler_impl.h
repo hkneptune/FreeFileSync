@@ -439,7 +439,7 @@ private:
             if (expectedSteps <=  10000) return 2;
             if (expectedSteps <= 100000) return 3;
             //return static_cast<int>(std::ceil(std::log10(expectedSteps))) - 2; -> overkill!
-            /**/                         return 4;
+            return 4;
         }();
         return zen::formatProgressPercent(fraction, decPlaces);
     }

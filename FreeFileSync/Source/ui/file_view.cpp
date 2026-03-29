@@ -5,7 +5,6 @@
 // *****************************************************************************
 
 #include "file_view.h"
-#include <span>
 #include <zen/stl_tools.h>
 #include <zen/thread.h>
 

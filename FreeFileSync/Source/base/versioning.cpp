@@ -546,10 +546,8 @@ void fff::applyVersioningLimit(const std::set<VersioningLimitFolder>& folderLimi
                     [](const VersionInfo& lhs, const VersionInfo& rhs) { return lhs.versionTime < rhs.versionTime; });
                     //oldest versions sorted to the front
 
-                    std::for_each(versions.begin(), versions.end() - versionsToKeep, [&](const VersionInfo& vi)
-                    {
+                    for (const VersionInfo& vi : std::span(versions.begin(), versions.end() - versionsToKeep))
                         itemsToDelete.emplace(vi.filePath, vi.isSymlink);
-                    });
                 }
             }
     }

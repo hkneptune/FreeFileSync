@@ -9,7 +9,6 @@
 #include <zen/scope_guard.h>
 #include <wx/app.h>
 #include <wx/dcmemory.h>
-//#include <wx/settings.h>
 #include <wx+/color_tools.h>
 #include <wx+/dc.h>
 #include <xBRZ/src/xbrz_tools.h>
@@ -42,8 +41,6 @@ void copySubImage(const wxImage& src, wxPoint srcPos,
             std::clamp(pos.x, 0, img.GetWidth ()),
             std::clamp(pos.y, 0, img.GetHeight())};
     };
-    auto subtract = [](const wxPoint& lhs, const wxPoint& rhs) { return wxSize{lhs.x - rhs.x, lhs.y - rhs.y}; };
-    //work around yet another wxWidgets screw up: WTF does "operator-(wxPoint, wxPoint)" return wxPoint instead of wxSize!??
 
     const wxPoint trgPos2    = pointClamp(trgPos,             trg);
     const wxPoint trgPos2End = pointClamp(trgPos + blockSize, trg);
@@ -121,6 +118,49 @@ void copyImageLayover(const wxImage& src,
         }
     }
 }
+
+
+wxRect getVisibleBox(const unsigned char* alpha, int width, int height)
+{
+    assert(width >= 0 && height >= 0);
+    if (width <= 0 || height <= 0)
+        return {};
+
+    int i = width * height - 1;
+    while (alpha[i] == wxIMAGE_ALPHA_TRANSPARENT)
+        if (--i < 0)
+			return {};
+    int yMax = i / width;
+    int xMax = i % width;
+
+    int j = 0;
+    while (alpha[j] == wxIMAGE_ALPHA_TRANSPARENT)
+        ++j;
+    int yMin = j / width;
+    int xMin = j % width;
+
+    const unsigned char* alphaRow = alpha + (yMin + 1) * width;
+
+    for (int y = yMin + 1; y <= yMax; ++y, alphaRow += width)
+        for (int x = 0; x < xMin; ++x)
+            if (alphaRow[x] != wxIMAGE_ALPHA_TRANSPARENT)
+            {
+                xMin = x;
+                break;
+            }
+
+    alphaRow -= 2 * width;
+
+    for (int y = yMax - 1; y >= yMin; --y, alphaRow -= width)
+        for (int x = width - 1; x > xMax; --x)
+            if (alphaRow[x] != wxIMAGE_ALPHA_TRANSPARENT)
+            {
+                xMax = x;
+                break;
+            }
+
+    return {xMin, yMin, xMax - xMin + 1, yMax - yMin + 1};
+}
 }
 
 
@@ -173,33 +213,28 @@ wxImage zen::stackImages(const wxImage& img1, const wxImage& img2, ImageStackLay
 }
 
 
-wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const wxColor& col, ImageStackAlignment textAlign)
+wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const wxColor& col)
 {
+    assert(!contains(text, L'\n'));
+
     wxMemoryDC dc; //the context used for bitmaps
     setScaleFactor(dc, getScreenDpiScale());
-    dc.SetFont(font); //the font parameter of GetTextExtent() is not evaluated on OS X, wxWidgets 2.9.5, so apply it to the DC directly!
+    dc.SetFont(font); //the font parameter of GetTextExtent() is not used on macOS, wxWidgets 2.9.5, so apply it to the DC directly!
 
-    std::vector<std::pair<wxString, wxSize>> lineInfo; //text + extent
-    for (const wxString& line : splitCpy(text, L'\n', SplitOnEmpty::allow))
-        lineInfo.emplace_back(line, dc.GetTextExtent(line)); //GetTextExtent() returns (0, 0) for empty string!
-    //------------------------------------------------------------------------------------------------
-
-    int maxWidth   = 0;
-    int lineHeight = 0;
-    for (const auto& [lineText, lineSize] : lineInfo)
-    {
-        maxWidth   = std::max(maxWidth,   lineSize.GetWidth());
-        lineHeight = std::max(lineHeight, lineSize.GetHeight());
-    }
-    if (maxWidth == 0 || lineHeight == 0)
+    wxSize size = dc.GetTextExtent(text); //GetTextExtent() returns (0, 0) for empty string!
+    if (size.GetWidth() <= 0 || size.GetHeight() <= 0)
         return wxNullImage;
 
+    //GetTextExtent() is slightly incorrect on GTK3 with 200% scaling: apparently returns "extent for 100% scaling" x 2 => GTK3 bug?
+    size.x += std::max(size.x / 4, 10); //enlarge by 25%, then trim later via getVisibleBox()
+
+    //------------------------------------------------------------------------------------------------
     const bool darkMode = relativeContrast(col, *wxBLACK) > //wxSystemSettings::GetAppearance().IsDark() ?
                           relativeContrast(col, *wxWHITE);  //=> no, make it text color-dependent
     //small but noticeable difference; due to "ClearType"?
 
-    wxBitmap newBitmap(wxsizeToScreen(maxWidth),
-                       wxsizeToScreen(static_cast<int>(lineHeight * lineInfo.size()))); //seems we don't need to pass 24-bit depth here even for high-contrast color schemes
+    wxBitmap newBitmap(wxsizeToScreen(size.GetWidth()),
+                       wxsizeToScreen(size.GetHeight())); //seems we don't need to pass 24-bit depth here even for high-contrast color schemes
     newBitmap.SetScaleFactor(getScreenDpiScale());
     {
         dc.SelectObject(newBitmap); //copies scale factor from wxBitmap
@@ -214,57 +249,55 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
         dc.SetTextBackground(darkMode ? *wxBLACK : *wxWHITE); //for proper alpha-channel calculation
         dc.SetTextForeground(darkMode ? *wxWHITE : *wxBLACK); //
 
-        int posY = 0;
-        for (const auto& [lineText, lineSize] : lineInfo)
-        {
-            if (!lineText.empty())
-                switch (textAlign)
-                {
-                    case ImageStackAlignment::left:
-                        dc.DrawText(lineText, wxPoint(0, posY));
-                        break;
-                    case ImageStackAlignment::right:
-                        dc.DrawText(lineText, wxPoint(maxWidth - lineSize.GetWidth(), posY));
-                        break;
-                    case ImageStackAlignment::center:
-                        dc.DrawText(lineText, wxPoint((maxWidth - lineSize.GetWidth()) / 2, posY));
-                        break;
-                }
-            posY += lineHeight;
-        }
+        dc.DrawText(text, 0, 0);
     }
 
-    wxImage output(newBitmap.ConvertToImage());
-    output.SetAlpha();
-    //wxDC::DrawLabel() doesn't respect alpha channel => calculate alpha values manually:
+    wxImage img(newBitmap.ConvertToImage());
+    //calculate alpha values manually:
+    //Limitation: alpha should be applied in gamma-decoded linear RGB space: https://ssp.impulsetrain.com/gamma-premult.html
+    //=> however wxDC::DrawText most likely applied alpha in gamma-encoded sRGB => following simple calculations should be fine:
+    img.SetAlpha();
+    {
+        unsigned char* alpha = img.GetAlpha();
+        unsigned char* rgb   = img.GetData();
+        unsigned char* rgbEnd = rgb + 3 * img.GetWidth() * img.GetHeight();
+        
+        if (darkMode) //black(0,0,0) becomes wxIMAGE_ALPHA_TRANSPARENT(0), white(255,255,255) becomes wxIMAGE_ALPHA_OPAQUE(255)
+            for (; rgb < rgbEnd; rgb += 3)
+                *alpha++ = static_cast<unsigned char>(numeric::intDivRound(rgb[0] + rgb[1] + rgb[2], 3)); //mixed-mode arithmetics!
+        else //black(0,0,0) becomes wxIMAGE_ALPHA_OPAQUE(255), white(255,255,255) becomes wxIMAGE_ALPHA_TRANSPARENT(0)
+            for (; rgb < rgbEnd; rgb += 3)
+                *alpha++ = static_cast<unsigned char>(numeric::intDivRound(3 * 255 - rgb[0] - rgb[1] - rgb[2], 3)); //mixed-mode arithmetics!
+    }
 
-    unsigned char* rgb   = output.GetData();
-    unsigned char* alpha = output.GetAlpha();
-    const int pixelCount = output.GetWidth() * output.GetHeight();
+    const wxRect box = getVisibleBox(img.GetAlpha(), img.GetWidth(), img.GetHeight());
+    assert(box.x + box.width < img.GetWidth()); //we enlarged wxDC::GetTextExtent(), so last colum should be empty!
+
+    if (box.width <= 0 || box.height <= 0)
+    {
+        assert(false);
+        return wxNullImage;
+    }
+
+    wxImage output(box.width, img.GetHeight()); //let's keep wxDC::GetTextExtent height until further
+    output.SetAlpha();
+
+    copyImageBlock<1>(img.GetAlpha() + box.x, img.GetWidth(),
+                      output.GetAlpha(), output.GetWidth(),
+                      output.GetWidth(), output.GetHeight());
 
     const unsigned char r = col.Red  (); //
     const unsigned char g = col.Green(); //getting RGB involves virtual function calls!
     const unsigned char b = col.Blue (); //
 
-    //Limitation: alpha should be applied in gamma-decoded linear RGB space: https://ssp.impulsetrain.com/gamma-premult.html
-    //=> however wxDC::DrawText most likely applied alpha in gamma-encoded sRGB => following simple calculations should be fine:
-
-    if (darkMode) //black(0,0,0) becomes wxIMAGE_ALPHA_TRANSPARENT(0), white(255,255,255) becomes wxIMAGE_ALPHA_OPAQUE(255)
-        for (int i = 0; i < pixelCount; ++i)
-        {
-            *alpha++ = static_cast<unsigned char>(numeric::intDivRound(rgb[0] + rgb[1] + rgb[2], 3)); //mixed-mode arithmetics!
-            *rgb++ = r; //
-            *rgb++ = g; //apply actual text color
-            *rgb++ = b; //
-        }
-    else //black(0,0,0) becomes wxIMAGE_ALPHA_OPAQUE(255), white(255,255,255) becomes wxIMAGE_ALPHA_TRANSPARENT(0)
-        for (int i = 0; i < pixelCount; ++i)
-        {
-            *alpha++ = static_cast<unsigned char>(numeric::intDivRound(3 * 255 - rgb[0] - rgb[1] - rgb[2], 3)); //mixed-mode arithmetics!
-            *rgb++ = r; //
-            *rgb++ = g; //apply actual text color
-            *rgb++ = b; //
-        }
+    unsigned char* rgb = output.GetData();
+    unsigned char* rgbEnd = rgb + 3 * output.GetWidth() * output.GetHeight();
+    while (rgb < rgbEnd)
+    {
+        *rgb++ = r; //
+        *rgb++ = g; //apply actual text color
+        *rgb++ = b; //
+    }
 
     return output;
 }
@@ -329,7 +362,7 @@ wxImage zen::resizeCanvas(const wxImage& img, wxSize newSize, int alignment)
     std::memset(output.GetAlpha(), wxIMAGE_ALPHA_TRANSPARENT, newSize.x * newSize.y);
 
     copySubImage(img, wxPoint(), output, newPos, img.GetSize());
-    //about 50x faster than e.g. wxImage::Resize!!! surprise :>
+    //about 50x faster than wxImage::Resize!!! surprise :>
     return output;
 }
 
@@ -408,12 +441,12 @@ wxImage zen::shrinkImage(const wxImage& img, int maxWidth /*optional*/, int maxH
 
 void zen::convertToVanillaImage(wxImage& img)
 {
+    const int width  = img.GetWidth ();
+    const int height = img.GetHeight();
+    if (width <= 0 || height <= 0) return;
+
     if (!img.HasAlpha())
     {
-        const int width  = img.GetWidth ();
-        const int height = img.GetHeight();
-        if (width <= 0 || height <= 0) return;
-
         unsigned char maskR = 0;
         unsigned char maskG = 0;
         unsigned char maskB = 0;
@@ -429,11 +462,9 @@ void zen::convertToVanillaImage(wxImage& img)
         if (haveMask)
         {
             img.SetMask(false);
-            unsigned char*       alpha = img.GetAlpha();
-            const unsigned char* rgb   = img.GetData();
+            const unsigned char* rgb = img.GetData();
 
-            const int pixelCount = width * height;
-            for (int i = 0; i < pixelCount; ++i)
+            for (unsigned char& a : std::span(img.GetAlpha(), width * height))
             {
                 const unsigned char r = *rgb++;
                 const unsigned char g = *rgb++;
@@ -442,14 +473,12 @@ void zen::convertToVanillaImage(wxImage& img)
                 if (r == maskR &&
                     g == maskG &&
                     b == maskB)
-                    alpha[i] = wxIMAGE_ALPHA_TRANSPARENT;
+                    a = wxIMAGE_ALPHA_TRANSPARENT;
             }
         }
     }
     else
-    {
         assert(!img.HasMask());
-    }
 }
 
 
@@ -463,8 +492,9 @@ wxImage zen::rectangleImage(wxSize size, const wxColor& col)
     const unsigned char b = col.Blue (); //
 
     unsigned char* rgb = img.GetData();
-    const int pixelCount = size.GetWidth() * size.GetHeight();
-    for (int i = 0; i < pixelCount; ++i)
+    unsigned char* rgbEnd = rgb + 3 * size.GetWidth() * size.GetHeight();
+
+    while (rgb < rgbEnd)
     {
         *rgb++ = r;
         *rgb++ = g;
@@ -493,8 +523,9 @@ wxImage zen::rectangleImage(wxSize size, const wxColor& innerCol, const wxColor&
         for (int y = 0; y < heightInner; ++y)
         {
             unsigned char* rgb = img.GetData () + 3 * (borderWidth + (borderWidth + y) * size.GetWidth());
+            unsigned char* rgbEnd = rgb + 3 * widthInner;
 
-            for (int x = 0; x < widthInner; ++x)
+            while (rgb < rgbEnd)
             {
                 *rgb++ = r;
                 *rgb++ = g;

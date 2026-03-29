@@ -8,7 +8,6 @@
 #define CURL_WRAP_H_2879058325032785032789645
 
 #include <chrono>
-#include <span>
 #include <functional>
 #include <zen/sys_error.h>
 

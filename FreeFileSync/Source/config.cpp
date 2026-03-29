@@ -1612,12 +1612,12 @@ void readConfig(const XmlIn& in, GlobalConfig& cfg, int formatVer)
         assert(!v.empty());
         perspective.clear();
 
-        std::for_each(v.begin(), v.end() - 1, [&](wxString& item)
+        for (wxString& item : std::span(v.begin(), v.end() - 1))
         {
             editItem(item);
             perspective += item;
             perspective += delim;
-        });
+        }
         editItem(v.back());
         perspective += v.back();
     };

@@ -195,13 +195,13 @@ namespace
 [[nodiscard]] std::string jsonUnescape(const std::string& str)
 {
     std::string output;
-    std::basic_string<impl::Char16> utf16Buf;
+    std::vector<impl::Char16> utf16Buf;
 
     auto flushUtf16 = [&]
     {
         if (!utf16Buf.empty())
         {
-            UtfDecoder<impl::Char16> decoder(utf16Buf.c_str(), utf16Buf.size());
+            UtfDecoder<impl::Char16> decoder(utf16Buf.data(), utf16Buf.size());
             while (std::optional<impl::CodePoint> cp = decoder.getNext())
                 codePointToUtf<char>(*cp, [&](const char c) { output += c; });
             utf16Buf.clear();
@@ -244,8 +244,8 @@ namespace
                         isHexDigit(it[3])   &&
                         isHexDigit(it[4]))
                     {
-                        utf16Buf += static_cast<impl::Char16>(static_cast<unsigned char>(unhexify(it[1], it[2])) * 256 +
-                                                              static_cast<unsigned char>(unhexify(it[3], it[4])));
+                        utf16Buf.push_back(static_cast<impl::Char16>(static_cast<unsigned char>(unhexify(it[1], it[2])) * 256 +
+                                                                     static_cast<unsigned char>(unhexify(it[3], it[4]))));
                         it += 4;
                     }
                     else //unknown escape sequence!

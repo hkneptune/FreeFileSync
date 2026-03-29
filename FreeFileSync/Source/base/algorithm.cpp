@@ -433,7 +433,8 @@ private:
                     { return file->getFilePrint<side>() != prevPrint; });
 
                     //remove from model: do *not* store invalid file prints in sync.ffs_db!
-                    std::for_each(dupFirst, dupLast, [](FilePair* file) { file->clearFilePrint<side>(); });
+                    for (FilePair* file : std::span(dupFirst, dupLast))
+                        file->clearFilePrint<side>();
                     it = dupLast - 1;
                 }
 
@@ -1200,10 +1201,8 @@ std::optional<PathDependency> fff::getPathDependency(const AbstractPath& itemPat
             if (std::equal(relPathP.begin(), relPathP.end(), relPathC.begin(), [](const Zstring& lhs, const Zstring& rhs) { return equalNoCase(lhs, rhs); }))
             {
                 Zstring relDirPath;
-                std::for_each(relPathC.begin() + relPathP.size(), relPathC.end(), [&](const Zstring& itemName)
-                {
+                for (const Zstring& itemName : std::span(relPathC.begin() + relPathP.size(), relPathC.end()))
                     relDirPath = appendPath(relDirPath, itemName);
-                });
 
                 return PathDependency{leftParent ? itemPathL : itemPathR, relDirPath};
             }

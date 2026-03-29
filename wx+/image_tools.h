@@ -31,7 +31,7 @@ enum class ImageStackAlignment //one-dimensional unlike wxAlignment
 };
 wxImage stackImages(const wxImage& img1, const wxImage& img2, ImageStackLayout dir, ImageStackAlignment align, int gap = 0);
 
-wxImage createImageFromText(const wxString& text, const wxFont& font, const wxColor& col, ImageStackAlignment textAlign = ImageStackAlignment::left); //center/left/right
+wxImage createImageFromText(const wxString& text, const wxFont& font, const wxColor& col);
 
 wxImage layOver(const wxImage& back, const wxImage& front, int alignment = wxALIGN_CENTER);
 
@@ -83,7 +83,7 @@ inline
 wxImage greyScaleIfDisabled(const wxImage& img, bool enabled)
 {
     if (enabled) //avoid ternary WTF
-        return img;
+        return img; //ref-counted
     else
         return greyScale(img);
 }
@@ -92,45 +92,48 @@ wxImage greyScaleIfDisabled(const wxImage& img, bool enabled)
 inline
 double getAvgBrightness(const wxImage& img) //TODO: consider gamma-encoded sRGB!?
 {
-    const int pixelCount = img.GetWidth() * img.GetHeight();
-    auto pixBegin = img.GetData();
+    const int width  = img.GetWidth ();
+    const int height = img.GetHeight();
+    if (width <= 0 || height <= 0) return 0;
 
-    if (pixelCount > 0 && pixBegin)
+    const unsigned char* rgb = img.GetData();
+    const unsigned char* rgbEnd = rgb + 3 * width * height;
+
+    if (img.HasAlpha())
     {
-        auto pixEnd = pixBegin + 3 * pixelCount; //RGB
+        const unsigned char* alpha = img.GetAlpha();
 
-        if (img.HasAlpha())
+        const double divisor = 3.0 * std::accumulate(alpha, alpha + width * height, 0.0);
+        if (numeric::isNull(divisor))
+            return 0;
+
+        double dividend = 0;
+        while (rgb < rgbEnd)
         {
-            const unsigned char* alphaFirst = img.GetAlpha();
-
-            //calculate average weighted by alpha channel
-            double dividend = 0;
-            for (auto it = pixBegin; it != pixEnd; ++it)
-                dividend += *it * static_cast<double>(alphaFirst[(it - pixBegin) / 3]);
-
-            const double divisor = 3.0 * std::accumulate(alphaFirst, alphaFirst + pixelCount, 0.0);
-
-            return numeric::isNull(divisor) ? 0 : dividend / divisor;
+            const double a = static_cast<double>(*alpha++);
+            dividend += *rgb++ * a;
+            dividend += *rgb++ * a;
+            dividend += *rgb++ * a;
         }
-        else
-            return std::accumulate(pixBegin, pixEnd, 0.0) / (3.0 * pixelCount);
+        return dividend / divisor; //average weighted by alpha channel
     }
-    return 0;
+    else
+        return std::accumulate(rgb, rgbEnd, 0.0) / (3.0 * width * height);
 }
 
 
 inline
 void brighten(wxImage& img, int level)
 {
-    if (auto pixBegin = img.GetData())
-    {
-        const int pixelCount = img.GetWidth() * img.GetHeight();
-        auto pixEnd = pixBegin + 3 * pixelCount; //RGB
-        if (level > 0)
-            std::for_each(pixBegin, pixEnd, [level](unsigned char& c) { c = static_cast<unsigned char>(std::min(c + level, 255)); });
-        else
-            std::for_each(pixBegin, pixEnd, [level](unsigned char& c) { c = static_cast<unsigned char>(std::max(c + level, 0)); });
-    }
+    if (img.GetWidth() <= 0 || img.GetHeight() <= 0)
+        return;
+
+    if (level > 0)
+        for (unsigned char& c : std::span(img.GetData(), 3 * img.GetWidth() * img.GetHeight()))
+            c = static_cast<unsigned char>(std::min(c + level, 255));
+    else
+        for (unsigned char& c : std::span(img.GetData(), 3 * img.GetWidth() * img.GetHeight()))
+            c = static_cast<unsigned char>(std::max(c + level, 0));
 }
 
 

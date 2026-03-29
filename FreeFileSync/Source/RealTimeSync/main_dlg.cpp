@@ -455,11 +455,11 @@ void MainDialog::insertAddFolder(const std::vector<Zstring>& newFolders, size_t 
         bSizerFolders->Insert(pos + i, newFolder, 0, wxEXPAND);
         additionalFolderPanels_.insert(additionalFolderPanels_.begin() + pos + i, newFolder);
 
-        //register events
-        newFolder->m_bpButtonRemoveFolder->Bind(wxEVT_COMMAND_BUTTON_CLICKED, [this](wxCommandEvent& event) { onRemoveFolder(event); });
-
         //make sure panel has proper default height
         newFolder->GetSizer()->SetSizeHints(newFolder); //~=Fit() + SetMinSize()
+
+        //register events
+        newFolder->m_bpButtonRemoveFolder->Bind(wxEVT_COMMAND_BUTTON_CLICKED, [this](wxCommandEvent& event) { onRemoveFolder(event); });
 
         newFolder->setPath(newFolders[i]);
     }

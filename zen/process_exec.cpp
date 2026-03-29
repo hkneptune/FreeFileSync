@@ -126,6 +126,12 @@ std::pair<int /*exit code*/, std::string> processExecuteImpl(const Zstring& file
             if (::dup(fdLifeSignW) == -1) //O_CLOEXEC does NOT propagate with dup()
                 THROW_LAST_SYS_ERROR("dup(fdLifeSignW)");
 
+            if (char* dirPath = ::getcwd(nullptr, 0))
+                ::free(dirPath);
+            else //avoid "sh: 0: getcwd() failed: No such file or directory" streamed to stderr if working directory doesn't exist (anymore)
+                if (::chdir("/") != 0)
+                    THROW_LAST_SYS_ERROR("chdir(/)");
+
             std::vector<const char*> argv{filePath.c_str()};
             for (const Zstring& arg : arguments)
                 argv.push_back(arg.c_str());

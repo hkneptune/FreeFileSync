@@ -109,7 +109,7 @@ std::vector<std::pair<std::string, std::string>> geHttpPostParameters() //throw 
     const char* osArch = cpuArchName;
     params.emplace_back("os_arch", osArch);
 
-    params.emplace_back("dip_scale", numberTo<std::string>(wxScreenDC().GetContentScaleFactor()));
+    params.emplace_back("dip_scale", numberTo<std::string>(getScreenDpiScale()));
 
     const std::string ffsLang = []
     {

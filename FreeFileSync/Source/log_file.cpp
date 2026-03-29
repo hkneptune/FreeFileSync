@@ -577,7 +577,8 @@ void limitLogfileCount(const AbstractPath& logFolderPath, //throw FileError, X
                 if (notifyStatus) notifyStatus(statusPrefix + fmtPath(AFS::getDisplayPath(lfi.filePath))); //throw X
                 try
                 {
-                    AFS::removeFilePlain(lfi.filePath); //throw FileError
+                    AFS::removeFileIfExists(lfi.filePath); //throw FileError
+                    //multiple FFS instances may try to clean up at the same time!
                 }
                 catch (const FileError&) { if (!firstError) firstError = std::current_exception(); };
             }

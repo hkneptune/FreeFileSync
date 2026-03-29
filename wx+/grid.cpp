@@ -23,7 +23,7 @@
 
 using namespace zen;
 
-/* wxWidgets 3.3 defaults to system-powered double-buffering (WS_EX_COMPOSITED) on Windows:
+/* !!OUTDATED!!: wxWidgets 3.3.0 defaults to system-powered double-buffering (WS_EX_COMPOSITED) on Windows:
     => ~60% higher CPU time (test case: scrolling large file list via keyboard) see comment in file_grid.cpp :((
 
         "wxMSW now uses double buffering by default, meaning that updating the
@@ -43,8 +43,12 @@ using namespace zen;
     CAVEAT: MSWDisableComposited() leads to severe flickering for other child windows (e.g. wxStaticBitmap, wxBitmapButton)
         that lack custom double-buffering. It's even worse since wxWidgets in its wisdom sets WS_EX_COMPOSITED
         together with CS_HREDRAW/CS_VREDRAW, https://github.com/vadz/wxWidgets/blob/8de0694a5e9c9d7c24e0af2ccf71454df5e6b9d0/src/msw/window.cpp#L507
-        and MSWDisableComposited() only removes former attribute.      */
-
+        and MSWDisableComposited() only removes former attribute.      
+        
+    ============================================================================================
+    ||  !!!UPDATE!!! wxWidgets 3.3.2 undoes the MADNESS, no more WS_EX_COMPOSITED by default: ||
+    ||  https://github.com/wxWidgets/wxWidgets/pull/25808                                     ||
+    ============================================================================================      */
 
 //let's NOT create wxWidgets objects statically:
 wxColor GridData::getColorSelectionGradientFrom() { return {137, 172, 255}; } //blue: HSL: 158, 255, 196   HSV: 222, 0.46, 1
@@ -57,7 +61,6 @@ namespace
 {
 //------------------------------ Grid Parameters --------------------------------
 wxColor getColorLabelText(bool enabled) { return wxSystemSettings::GetColour(enabled ? wxSYS_COLOUR_BTNTEXT : wxSYS_COLOUR_GRAYTEXT); }
-wxColor getColorGridLine()              { return wxSystemSettings::GetColour(wxSYS_COLOUR_BTNSHADOW); }
 
 wxColor getColorLabelGradientFrom()
 {
@@ -169,7 +172,7 @@ int GridData::getBestSize(const wxReadOnlyDC& dc, size_t row, ColumnType colType
 
 wxRect GridData::drawCellBorder(wxDC& dc, const wxRect& rect) //returns remaining rectangle
 {
-    drawRectangleBorder(dc, rect, getColorGridLine(), dipToWxsize(1), wxRIGHT | wxBOTTOM);
+    drawRectangleBorder(dc, rect, wxSystemSettings::GetColour(wxSYS_COLOUR_GRIDLINES), dipToWxsize(1), wxRIGHT | wxBOTTOM);
 
     return {rect.x, rect.y, rect.width - dipToWxsize(1), rect.height - dipToWxsize(1)};
 }
@@ -406,10 +409,6 @@ private:
 
     void onPaintEvent(wxPaintEvent& event)
     {
-
-#if wxCHECK_VERSION(3, 3, 2)
-        use wxDC::DisableAutomaticBoundingBoxUpdates!?
-#endif
 
         DynBufPaintDC dc(*this, doubleBuffer_);
         assert(GetSize() == GetClientSize());
@@ -1221,6 +1220,8 @@ private:
             assert((mouseClick.GetEventType() == EVENT_GRID_MOUSE_RIGHT_DOWN) == event.RightUp());
 
             activeSelection_.reset(); //release mouse capture *before* sending the event (which might show a modal popup dialog requiring the mouse!!!)
+
+            setMouseHighlight(std::nullopt); //clear because irrelevant for context menu after range-selection!?
 
             const size_t rowFirst = std::min(rowFrom, rowTo);     //sort + convert to half-open range
             const size_t rowLast  = std::max(rowFrom, rowTo) + 1; //
@@ -2148,8 +2149,8 @@ wxRect Grid::getColumnLabelArea(ColumnType colType) const
     if (itCol != absWidths.end())
     {
         ptrdiff_t posX = 0;
-        std::for_each(absWidths.begin(), itCol,
-        [&](const ColumnWidth& cw) { posX += cw.width; });
+        for (const ColumnWidth& cw : std::span(absWidths.begin(), itCol))
+            posX += cw.width;
 
         return wxRect(wxPoint(posX, 0), wxSize(itCol->width, getColumnLabelHeight()));
     }

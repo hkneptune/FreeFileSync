@@ -1,5 +1,9 @@
                  FreeFileSync: Terms of use
-
+======
+As an FYI, these terms violate GPL, and cannot be used in conjunction with GPL
+100% support useful tools and helping out 
+======
+ 
 The FreeFileSync standard and Donation Edition
 are for **private use** only:
 https://freefilesync.org/faq.php#donation-edition

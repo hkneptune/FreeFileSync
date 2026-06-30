@@ -129,7 +129,7 @@ wxRect getVisibleBox(const unsigned char* alpha, int width, int height)
     int i = width * height - 1;
     while (alpha[i] == wxIMAGE_ALPHA_TRANSPARENT)
         if (--i < 0)
-			return {};
+            return {};
     int yMax = i / width;
     int xMax = i % width;
 
@@ -261,7 +261,7 @@ wxImage zen::createImageFromText(const wxString& text, const wxFont& font, const
         unsigned char* alpha = img.GetAlpha();
         unsigned char* rgb   = img.GetData();
         unsigned char* rgbEnd = rgb + 3 * img.GetWidth() * img.GetHeight();
-        
+
         if (darkMode) //black(0,0,0) becomes wxIMAGE_ALPHA_TRANSPARENT(0), white(255,255,255) becomes wxIMAGE_ALPHA_OPAQUE(255)
             for (; rgb < rgbEnd; rgb += 3)
                 *alpha++ = static_cast<unsigned char>(numeric::intDivRound(rgb[0] + rgb[1] + rgb[2], 3)); //mixed-mode arithmetics!

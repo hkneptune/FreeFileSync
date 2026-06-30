@@ -4612,6 +4612,17 @@ void MainDialog::onCompare(wxCommandEvent& event)
                              dirLocks,
                              fpCfgList,
                              statusHandler); //throw CancelProcess
+
+        //play (optional) sound notification
+        if (!globalCfg_.soundFileCompareFinished.empty())
+        {
+            wxLogCollector soundLog; //wxWidgets shows modal error dialog by default => "no, wxWidgets, NO!"
+
+            wxSound::Play(utfTo<wxString>(globalCfg_.soundFileCompareFinished), wxSOUND_ASYNC);
+
+            if (!soundLog.GetMessages().empty())
+                statusHandler.logMessage(utfTo<std::wstring>(soundLog.GetMessages()), PhaseCallback::MsgType::info);
+        }
     }
     catch (CancelProcess&) {}
 
@@ -4628,16 +4639,6 @@ void MainDialog::onCompare(wxCommandEvent& event)
     filegrid::setData(*m_gridMainC,    folderCmp_); //
     treegrid::setData(*m_gridOverview, folderCmp_); //update view on data
     updateGui();                                    //
-
-    //play (optional) sound notification
-    if (!globalCfg_.soundFileCompareFinished.empty())
-    {
-        //wxWidgets shows modal error dialog by default => "no, wxWidgets, NO!"
-        wxLog* oldLogTarget = wxLog::SetActiveTarget(new wxLogStderr); //transfer and receive ownership!
-        ZEN_ON_SCOPE_EXIT(delete wxLog::SetActiveTarget(oldLogTarget));
-
-        wxSound::Play(utfTo<wxString>(globalCfg_.soundFileCompareFinished), wxSOUND_ASYNC);
-    }
 
     if (!IsActive())
         RequestUserAttention(); //this == toplevel win, so we also get the taskbar flash!

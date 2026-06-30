@@ -1,3 +1,11 @@
+FreeFileSync 14.10 [2026-06-28]
+------------------------------
+Added CRC32 verification for application resource files
+Improved error reporting when application files become corrupted
+Fixed access denied error for Windows SFTP server
+Updated toolchain and library dependencies to latest versions
+
+
 FreeFileSync 14.9 [2026-03-29]
 ------------------------------
 Support 200% display scaling for high-DPI monitors (Linux)

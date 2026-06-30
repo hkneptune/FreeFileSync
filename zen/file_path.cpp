@@ -6,6 +6,7 @@
 
 #include "file_path.h"
 #include "zstring.h"
+    #include <unistd.h>
 
 using namespace zen;
 

@@ -7,6 +7,8 @@
 #include "process_priority.h"
 
     #include <sys/resource.h> //setpriority
+    #include <sys/syscall.h>
+    #include <unistd.h> //getpid
 
 using namespace zen;
 

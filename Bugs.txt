@@ -5,7 +5,7 @@ the ones mentioned below. The remaining issues that are yet to be fixed are list
 
 
 -----------------
-| libcurl 8.18.0|
+| libcurl 8.21.0|
 -----------------
 __________________________________________________________________________________________________________
 /lib/ftp.c
@@ -42,6 +42,9 @@ https://github.com/curl/curl/issues/4342
 
 - result = ftp_nb_type(conn, TRUE, FTP_LIST_TYPE);
 + result = ftp_nb_type(conn, data->set.prefer_ascii, FTP_LIST_TYPE);
+
+-                    result = ftp_nb_type(data, ftpc, ftp, TRUE,
++                    result = ftp_nb_type(data, ftpc, ftp, data->state.prefer_ascii,
 
 __________________________________________________________________________________________________________
 

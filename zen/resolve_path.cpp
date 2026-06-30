@@ -59,7 +59,7 @@ Zstring resolveRelativePath(const Zstring& relativePath)
     {
         pathTmp.pop_back();
         if (pathTmp.size() != 1)
-            pathTmp.pop_back(); 
+            pathTmp.pop_back();
         //else: keep the "/" => consider pathTmp == "/."
     }
 

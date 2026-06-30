@@ -8,6 +8,7 @@
 #include <clocale> //setlocale
 #include <zen/file_traverser.h>
 #include <zen/file_io.h>
+#include <wx/log.h>
 #include <wx/zipstrm.h>
 #include <wx/mstream.h>
 #include <wx/uilocale.h>
@@ -128,6 +129,8 @@ std::vector<TranslationInfo> loadTranslations(const Zstring& zipPath) //throw Fi
         }
         //-------------------------------------------------------------
 
+        wxLogCollector zipLog; //wxWidgets shows modal error dialog by default => "no, wxWidgets, NO!"
+
         wxMemoryInputStream byteStream(rawStream.c_str(), rawStream.size()); //does not take ownership
         wxZipInputStream zipStream(byteStream, wxConvUTF8);
 
@@ -140,10 +143,19 @@ std::vector<TranslationInfo> loadTranslations(const Zstring& zipPath) //throw Fi
 
             if (std::string stream(entry->GetSize(), '\0');
                 zipStream.ReadAll(stream.data(), stream.size()))
+            {
+                if (entry->GetCrc() != getCrc32(stream)) //wxZip does NOT check CRC32!
+                    throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(zipPath)), 
+                        _("File content is corrupted.") + L" [" + utfTo<std::wstring>(entry->GetName()) + L']');
+
                 streams.emplace_back(zipPath + Zstr(':') + utfTo<Zstring>(entry->GetName()), std::move(stream));
+            }
             else
-                assert(false);
+                break; //error
         }
+
+        if (zipStream.GetLastError() != wxSTREAM_EOF || !zipLog.GetMessages().empty())
+             throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(zipPath)), utfTo<std::wstring>(zipLog.GetMessages()));
     }();
     //--------------------------------------------------------------------
 
@@ -177,8 +189,7 @@ std::vector<TranslationInfo> loadTranslations(const Zstring& zipPath) //throw Fi
             throw FileError(replaceCpy(replaceCpy(replaceCpy(_("Error parsing file %x, row %y, column %z."),
                                                              L"%x", fmtPath(filePath)),
                                                   L"%y", formatNumber(e.row + 1)),
-                                       L"%z", formatNumber(e.col + 1))
-                            + L"\n\n" + e.msg);
+                                       L"%z", formatNumber(e.col + 1)), e.msg);
         }
 
     std::sort(translations.begin(), translations.end(), [](const TranslationInfo& lhs, const TranslationInfo& rhs)

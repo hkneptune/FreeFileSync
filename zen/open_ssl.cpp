@@ -55,36 +55,22 @@ std::wstring formatLastOpenSSLError(const char* functionName)
 }
 
 
-void zen::openSslInit()
+void zen::openSslInit() //https://wiki.openssl.org/index.php/Library_Initialization
 {
-    //official Wiki:           https://wiki.openssl.org/index.php/Library_Initialization
-    //see apps_shutdown():     https://github.com/openssl/openssl/blob/master/apps/openssl.c
-    //see Curl_ossl_cleanup(): https://github.com/curl/curl/blob/master/lib/vtls/openssl.c
-
     assert(runningOnMainThread());
+
+
     //explicitly init OpenSSL on main thread: seems to initialize atomically! But it still might help to avoid issues:
     //https://www.openssl.org/docs/manmaster/man3/OPENSSL_init_ssl.html
     if (::OPENSSL_init_ssl(OPENSSL_INIT_SSL_DEFAULT | OPENSSL_INIT_NO_LOAD_CONFIG, nullptr) != 1)
         logExtraError(_("Error during process initialization.") + L"\n\n" + formatLastOpenSSLError("OPENSSL_init_ssl"));
 }
 
-
 void zen::openSslTearDown() {}
-//OpenSSL 1.1.0+ deprecates all clean up functions
-//=> so much the theory, in practice it leaks, of course: https://github.com/openssl/openssl/issues/6283
+
+
 namespace
 {
-struct OpenSslThreadCleanUp
-{
-    ~OpenSslThreadCleanUp()
-    {
-        ::OPENSSL_thread_stop();
-    }
-};
-thread_local OpenSslThreadCleanUp tearDownOpenSslThreadData;
-
-//================================================================================
-
 std::shared_ptr<EVP_PKEY> generateRsaKeyPair(int bits) //throw SysError
 {
     EVP_PKEY_CTX* keyCtx = ::EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, //int id

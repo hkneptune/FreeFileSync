@@ -1323,14 +1323,31 @@ struct InputStreamSftp : public AFS::InputStream
         {
             session_ = getSharedSftpSession(login); //throw SysError
 
-            session_->executeBlocking("libssh2_sftp_open", //throw SysError, SysErrorSftpProtocol
-                                      [&](const SshSession::Details& sd) //noexcept!
+            auto retrieveOpenHandle = [&](unsigned long flags)
             {
-                fileHandle_ = ::libssh2_sftp_open(sd.sftpChannel, getLibssh2Path(filePath), LIBSSH2_FXF_READ, 0);
-                if (!fileHandle_)
-                    return std::min(::libssh2_session_last_errno(sd.sshSession), LIBSSH2_ERROR_SOCKET_NONE);
-                return LIBSSH2_ERROR_NONE;
-            });
+                session_->executeBlocking("libssh2_sftp_open", //throw SysError, SysErrorSftpProtocol
+                                          [&](const SshSession::Details& sd) //noexcept!
+                {
+                    fileHandle_ = ::libssh2_sftp_open(sd.sftpChannel, getLibssh2Path(filePath), flags, 0 /*mode*/);
+                    if (!fileHandle_)
+                        return std::min(::libssh2_session_last_errno(sd.sshSession), LIBSSH2_ERROR_SOCKET_NONE);
+
+                    return LIBSSH2_ERROR_NONE;
+                });
+            };
+
+            try
+            {
+                retrieveOpenHandle(LIBSSH2_FXF_READ); //throw SysError, SysErrorSftpProtocol
+            }
+            catch (const SysErrorSftpProtocol& e2)
+            {
+                //for Windows SFTP server we need fallback to "LIBSSH2_FXF_READ | LIBSSH2_FXF_WRITE": https://freefilesync.org/forum/viewtopic.php?t=13107
+                if (e2.sftpErrorCode == LIBSSH2_FX_PERMISSION_DENIED)
+                    retrieveOpenHandle(LIBSSH2_FXF_READ | LIBSSH2_FXF_WRITE); //throw SysError, SysErrorSftpProtocol
+                else
+                    throw;
+            }
         }
         catch (const SysError& e) { throw FileError(replaceCpy(_("Cannot open file %x."), L"%x", fmtPath(displayPath_)), e.toString()); }
     }

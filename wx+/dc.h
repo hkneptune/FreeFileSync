@@ -189,7 +189,7 @@ wxRect getBoundingBox(const wxRect& rect1, const wxRect& rect2)
 inline //work around yet another wxWidgets screw up: WTF does "operator-(wxPoint, wxPoint)" return wxPoint instead of wxSize!??
 wxSize subtract(const wxPoint& lhs, const wxPoint& rhs)
 {
-    return wxSize{lhs.x - rhs.x, lhs.y - rhs.y}; 
+    return wxSize{lhs.x - rhs.x, lhs.y - rhs.y};
 }
 
 

@@ -77,9 +77,9 @@ void Tooltip::show(const wxString& text, wxPoint mousePos, const wxImage* img)
     //=> call wxWindow::Show() to "execute"
 
     wxPoint newPos = mousePos + wxPoint(wxTheApp->GetLayoutDirection() == wxLayout_RightToLeft ?
-                                              - dipToWxsize(TIP_WINDOW_OFFSET_DIP) - tipWindow_->GetSize().GetWidth() :
-                                              dipToWxsize(TIP_WINDOW_OFFSET_DIP),
-                                              dipToWxsize(TIP_WINDOW_OFFSET_DIP));
+                                        - dipToWxsize(TIP_WINDOW_OFFSET_DIP) - tipWindow_->GetSize().GetWidth() :
+                                        dipToWxsize(TIP_WINDOW_OFFSET_DIP),
+                                        dipToWxsize(TIP_WINDOW_OFFSET_DIP));
 
     if (newPos != tipWindow_->GetScreenPosition())
         tipWindow_->Move(newPos, wxSIZE_ALLOW_MINUS_ONE);

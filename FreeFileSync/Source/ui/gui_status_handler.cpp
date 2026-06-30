@@ -508,11 +508,12 @@ StatusHandlerFloatingDialog::DlgOptions StatusHandlerFloatingDialog::showResult(
     if (!taskCancelled() && !suspend && !autoClose && //only play when actually showing results dialog
         !soundFileSyncComplete_.empty())
     {
-        //wxWidgets shows modal error dialog by default => "no, wxWidgets, NO!"
-        wxLog* oldLogTarget = wxLog::SetActiveTarget(new wxLogStderr); //transfer and receive ownership!
-        ZEN_ON_SCOPE_EXIT(delete wxLog::SetActiveTarget(oldLogTarget));
+                wxLogCollector soundLog; //wxWidgets shows modal error dialog by default => "no, wxWidgets, NO!"
 
         wxSound::Play(utfTo<wxString>(soundFileSyncComplete_), wxSOUND_ASYNC);
+
+        if (!soundLog.GetMessages().empty())
+            logMsg(errorLog_.ref(), utfTo<std::wstring>(soundLog.GetMessages()), MSG_TYPE_INFO);
     }
     //if (::GetForegroundWindow() != GetHWND())
     //    RequestUserAttention(); -> probably too much since task bar is already colorized with Taskbar::Status::error or Status::normal

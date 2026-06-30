@@ -43,8 +43,8 @@ using namespace zen;
     CAVEAT: MSWDisableComposited() leads to severe flickering for other child windows (e.g. wxStaticBitmap, wxBitmapButton)
         that lack custom double-buffering. It's even worse since wxWidgets in its wisdom sets WS_EX_COMPOSITED
         together with CS_HREDRAW/CS_VREDRAW, https://github.com/vadz/wxWidgets/blob/8de0694a5e9c9d7c24e0af2ccf71454df5e6b9d0/src/msw/window.cpp#L507
-        and MSWDisableComposited() only removes former attribute.      
-        
+        and MSWDisableComposited() only removes former attribute.
+
     ============================================================================================
     ||  !!!UPDATE!!! wxWidgets 3.3.2 undoes the MADNESS, no more WS_EX_COMPOSITED by default: ||
     ||  https://github.com/wxWidgets/wxWidgets/pull/25808                                     ||

@@ -9,8 +9,9 @@
 #include <zen/thread.h>
 #include <zen/file_io.h>
 #include <zen/file_traverser.h>
-#include <wx/zipstrm.h>
+#include <wx/log.h>
 #include <wx/mstream.h>
+#include <wx/zipstrm.h>
 #include <xBRZ/src/xbrz.h>
 #include <xBRZ/src/xbrz_tools.h>
 #include "image_tools.h"
@@ -176,11 +177,34 @@ private:
 ImageBuffer::ImageBuffer(const Zstring& zipPath) //throw FileError
 {
     std::vector<std::pair<Zstring /*file name*/, std::string /*byte stream*/>> streams;
-
-    try //to load from ZIP first:
+    [&]
     {
+        std::string rawStream;
+        try //to load from ZIP first:
+        {
+            rawStream = getFileContent(zipPath, nullptr /*notifyUnbufferedIO*/); //throw FileError
+        }
+        catch (FileError&) //fall back to folder: dev build (only!?)
+        {
+            const Zstring fallbackFolder = beforeLast(zipPath, Zstr(".zip"), IfNotFoundReturn::none);
+            if (!itemExists(fallbackFolder)) //throw FileError
+                throw;
+
+            traverseFolder(fallbackFolder, [&](const FileInfo& fi)
+            {
+                if (endsWith(fi.fullPath, Zstr(".png")))
+                {
+                    std::string stream = getFileContent(fi.fullPath, nullptr /*notifyUnbufferedIO*/); //throw FileError
+                    streams.emplace_back(fi.itemName, std::move(stream));
+                }
+            }, nullptr, nullptr); //throw FileError
+            return;
+        }
+    //--------------------------------------------------------------------
+
+        wxLogCollector zipLog; //wxWidgets shows modal error dialog by default => "no, wxWidgets, NO!"
+
         //wxFFileInputStream/wxZipInputStream loads in junks of 512 bytes => WTF!!! => implement sane file loading:
-        const std::string rawStream = getFileContent(zipPath, nullptr /*notifyUnbufferedIO*/); //throw FileError
         wxMemoryInputStream memStream(rawStream.c_str(), rawStream.size()); //does not take ownership
         wxZipInputStream zipStream(memStream, wxConvUTF8);
         //do NOT rely on wxConvLocal! On failure shows unhelpful popup "Cannot convert from the charset 'Unknown encoding (-1)'!"
@@ -188,25 +212,19 @@ ImageBuffer::ImageBuffer(const Zstring& zipPath) //throw FileError
         while (const auto& entry = std::unique_ptr<wxZipEntry>(zipStream.GetNextEntry())) //take ownership!
             if (std::string stream(entry->GetSize(), '\0');
                 zipStream.ReadAll(stream.data(), stream.size()))
-                streams.emplace_back(utfTo<Zstring>(entry->GetName()), std::move(stream));
-            else
-                assert(false);
-    }
-    catch (FileError&) //fall back to folder: dev build (only!?)
-    {
-        const Zstring fallbackFolder = beforeLast(zipPath, Zstr(".zip"), IfNotFoundReturn::none);
-        if (!itemExists(fallbackFolder)) //throw FileError
-            throw;
-
-        traverseFolder(fallbackFolder, [&](const FileInfo& fi)
-        {
-            if (endsWith(fi.fullPath, Zstr(".png")))
             {
-                std::string stream = getFileContent(fi.fullPath, nullptr /*notifyUnbufferedIO*/); //throw FileError
-                streams.emplace_back(fi.itemName, std::move(stream));
+                if (entry->GetCrc() != getCrc32(stream)) //wxZip does NOT check CRC32!
+                    throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(zipPath)), 
+                        _("File content is corrupted.") + L" [" + utfTo<std::wstring>(entry->GetName()) + L']');
+
+                streams.emplace_back(utfTo<Zstring>(entry->GetName()), std::move(stream));
             }
-        }, nullptr, nullptr); //throw FileError
-    }
+            else
+                break; //error
+
+        if (zipStream.GetLastError() != wxSTREAM_EOF || !zipLog.GetMessages().empty())
+            throw FileError(replaceCpy(_("Cannot read file %x."), L"%x", fmtPath(zipPath)), utfTo<std::wstring>(zipLog.GetMessages()));
+    }();
     //--------------------------------------------------------------------
 
     wxImage::AddHandler(new wxPNGHandler/*ownership passed*/); //activate support for .png files

@@ -9,6 +9,7 @@
 
 #include <functional>
 #include "sys_error.h"
+    #include <unistd.h> //sysconf
 //keep header clean from specific stream implementations! (e.g.file_io.h)! used by abstract.h!
 
 

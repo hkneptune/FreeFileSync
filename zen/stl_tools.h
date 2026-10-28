@@ -157,6 +157,29 @@ private:
     Iterator last_;
 };
 
+
+class BadAllocWithSize : public std::bad_alloc
+{
+public:
+    explicit BadAllocWithSize(size_t allocSize) noexcept
+    {
+        [[maybe_unused]] const int rv = std::snprintf(errorMsg_, sizeof(errorMsg_), "Memory allocation failed: %zu bytes", allocSize);
+    }
+
+    const char* what() const noexcept override { return errorMsg_; }
+
+private:
+    char errorMsg_[100]; //max: 32 (format string) + 20 (SIZE_MAX) + 1 (null)
+};
+
+
+
+
+
+
+
+
+
 //######################## implementation ########################
 
 template <class T, class Alloc, class Predicate> inline

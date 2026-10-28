@@ -23,7 +23,7 @@ protected:
     //::operator new/delete show same performance characterisics like malloc()/free()!
     static void* allocate(size_t size) { return ::operator new (size); } //throw std::bad_alloc
     static void  deallocate(void* ptr) { ::operator delete (ptr); }
-    static size_t calcCapacity(size_t length) { return std::max<size_t>(16, std::max(length + length / 2, length)); }
+    static size_t calcCapacity(size_t length) { return std::max(16uz, std::max(length + length / 2, length)); }
     //- size_t might overflow! => better catch here than return a too small size covering up the real error: a way too large length!
     //- any growth rate should not exceed golden ratio: 1.618033989
 };

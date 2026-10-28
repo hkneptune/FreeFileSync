@@ -32,7 +32,7 @@ void zen::libcurlInit()
 
     try
     {
-        ASSERT_SYSERROR(::curl_global_init(CURL_GLOBAL_NOTHING /*CURL_GLOBAL_DEFAULT = CURL_GLOBAL_SSL|CURL_GLOBAL_WIN32*/) == CURLE_OK);
+        ASSERT_SYSERROR(::curl_global_init(CURL_GLOBAL_NOTHING /*CURL_GLOBAL_DEFAULT = CURL_GLOBAL_SSL|CURL_GLOBAL_WINSOCK*/) == CURLE_OK);
     }
     catch (const SysError& e) { logExtraError(_("Error during process initialization.") + L"\n\n" + e.toString()); }
 }
@@ -113,29 +113,7 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
     //CURLOPT_SERVER_RESPONSE_TIMEOUT: does not apply to HTTP
 
 
-    std::exception_ptr userCallbackException;
-
-    //libcurl does *not* set FD_CLOEXEC for us! https://github.com/curl/curl/issues/2252
-    auto onSocketCreate = [&](curl_socket_t curlfd, curlsocktype purpose)
-    {
-        assert(::fcntl(curlfd, F_GETFD) == 0);
-        if (::fcntl(curlfd, F_SETFD, FD_CLOEXEC) == -1) //=> RACE-condition if other thread calls fork/execv before this thread sets FD_CLOEXEC!
-        {
-            userCallbackException = std::make_exception_ptr(SysError(formatSystemError("fcntl(FD_CLOEXEC)", errno)));
-            return CURL_SOCKOPT_ERROR;
-        }
-        return CURL_SOCKOPT_OK;
-    };
-
-    using SocketCbType = decltype(onSocketCreate);
-    using SocketCbWrapperType =            int (*)(SocketCbType* clientp, curl_socket_t curlfd, curlsocktype purpose); //needed for cdecl function pointer cast
-    SocketCbWrapperType onSocketCreateWrapper = [](SocketCbType* clientp, curl_socket_t curlfd, curlsocktype purpose)
-    {
-        return (*clientp)(curlfd, purpose); //free this poor little C-API from its shackles and redirect to a proper lambda
-    };
-
-    setCurlOption({CURLOPT_SOCKOPTFUNCTION, onSocketCreateWrapper}); //throw SysError
-    setCurlOption({CURLOPT_SOCKOPTDATA, &onSocketCreate}); //throw SysError
+    //Linux/macOS: libcurl *does* set SOCK_CLOEXEC/FD_CLOEXEC for us: https://github.com/curl/curl/pull/18968 https://github.com/curl/curl/pull/20442
 
     //libcurl forwards this char-string to OpenSSL as is, which - thank god - accepts UTF8
     if (caCertFilePath_.empty())
@@ -150,6 +128,8 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
     //hopefully latest version from https://curl.haxx.se/docs/caextract.html
     //CURLOPT_SSL_VERIFYPEER => already active by default
     //CURLOPT_SSL_VERIFYHOST =>
+
+    std::exception_ptr userCallbackException;
 
     //---------------------------------------------------
     auto onHeaderReceived = [&](const char* buffer, size_t len)
@@ -200,7 +180,7 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
                 [!] let's NOT use "incomplete read Posix semantics" for libcurl!
                 who knows if libcurl buffers properly, or if it requests incomplete packages!?     */
             const size_t bytesRead = readRequest({buffer, bytesToRead}); //throw X; return "bytesToRead" bytes unless end of stream
-            assert(bytesRead == bytesToRead || bytesRead == 0 || readRequest({buffer, bytesToRead}) == 0);
+            assert(bytesRead == bytesToRead || readRequest({buffer, bytesToRead}) == 0);
             return bytesRead;
         }
         catch (...)
@@ -223,8 +203,8 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
     {
         setCurlOption({CURLOPT_WRITEDATA, &onBytesReceived}); //throw SysError
         setCurlOption({CURLOPT_WRITEFUNCTION, onBytesReceivedWrapper}); //throw SysError
-        //{CURLOPT_BUFFERSIZE, 256 * 1024} -> defaults is 16 kB which seems to correspond to SSL packet size
-        //=> setting larget buffers size does nothing (recv still returns only 16 kB)
+        //{CURLOPT_BUFFERSIZE, 256 * 1024} -> defaults is 16 KB which seems to correspond to SSL packet size
+        //=> setting larget buffers size does nothing (recv still returns only 16 KB)
     }
     if (readRequest)
     {
@@ -234,7 +214,7 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
 
         setCurlOption({CURLOPT_READDATA, &getBytesToSend}); //throw SysError
         setCurlOption({CURLOPT_READFUNCTION, getBytesToSendWrapper}); //throw SysError
-        //{CURLOPT_UPLOAD_BUFFERSIZE, 256 * 1024} -> default is 64 kB. apparently no performance improvement for larger buffers like 256 kB
+        //{CURLOPT_UPLOAD_BUFFERSIZE, 256 * 1024} -> default is 64 KB. apparently no performance improvement for larger buffers like 256 KB
 
         //Contradicting options: CURLOPT_READFUNCTION, CURLOPT_POSTFIELDS:
         if (std::any_of(extraOptions.begin(), extraOptions.end(), [](const CurlOption& o) { return o.option == CURLOPT_POSTFIELDS; }))
@@ -245,20 +225,18 @@ HttpSession::Result HttpSession::perform(const std::string& serverRelPath,
     /**/ throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!"); //Option already used here!
 
     //---------------------------------------------------
-    curl_slist* headers = nullptr; //"libcurl will not copy the entire list so you must keep it!"
-    ZEN_ON_SCOPE_EXIT(::curl_slist_free_all(headers));
+    CurlSlist headers; //"libcurl will not copy the entire list so you must keep it!"
 
     for (const std::string& headerLine : extraHeaders)
-        headers = ::curl_slist_append(headers, headerLine.c_str());
+        headers.append(headerLine);
 
     //WTF!!! 1-sec delay when server doesn't support "Expect: 100-continue"!! https://stackoverflow.com/questions/49670008/how-to-disable-expect-100-continue-in-libcurl
-    headers = ::curl_slist_append(headers, "Expect:"); //guess, what: www.googleapis.com doesn't support it! e.g. gdriveUploadFile()
+    headers.append("Expect:"); //guess, what: www.googleapis.com doesn't support it! e.g. gdriveUploadFile()
     //CURLOPT_EXPECT_100_TIMEOUT_MS: should not be needed
 
     //CURLOPT_TCP_NODELAY => already set by default https://brooker.co.za/blog/2024/05/09/nagle.html
 
-    if (headers)
-        setCurlOption({CURLOPT_HTTPHEADER, headers}); //throw SysError
+    setCurlOption({CURLOPT_HTTPHEADER, headers.get()}); //throw SysError
     //---------------------------------------------------
 
     for (const CurlOption& option : extraOptions)

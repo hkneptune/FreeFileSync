@@ -354,7 +354,10 @@ public:
 
     static void setInitial(wxTopLevelWindow& topWin, const Rect& rect, wxSize defaultSize)
     {
-        initialRects_[&topWin] = rect;
+        if (topWin.GetId() == wxID_ANY || initialRects_.contains(topWin.GetId()))
+            throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
+
+        initialRects_[topWin.GetId()] = rect;
 
         wxSize newSize = defaultSize;
         std::optional<wxPoint> newPos;
@@ -458,19 +461,15 @@ public:
 
         if (!validSizePos) //reuse previous values:
         {
-            const auto it = initialRects_.find(&topWin);
-            if (it != initialRects_.end())
-            {
-                rect.size = it->second.size;
-                rect.pos  = it->second.pos;
-            }
-            else
-            {
-                assert(false);
-                rect.size = wxSize();
-                rect.pos = std::nullopt;
-            }
+            const auto it = initialRects_.find(topWin.GetId());
+            if (it == initialRects_.end())
+                throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
+
+            rect.size = it->second.size;
+            rect.pos  = it->second.pos;
         }
+
+        initialRects_.erase(topWin.GetId());
 
         return rect;
 
@@ -498,6 +497,6 @@ public:
     }
 
 private:
-    inline static std::unordered_map<const wxTopLevelWindow* /*don't access! use as key only!*/, Rect> initialRects_;
+    inline static std::unordered_map<wxWindowID, Rect> initialRects_;
 };
 }

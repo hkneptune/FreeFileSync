@@ -19,5 +19,7 @@ void colorThemeInit(wxApp& app, ColorTheme colTheme); //throw FileError
 void colorThemeCleanup();
 
 bool equalAppearance(ColorTheme colTheme1, ColorTheme colTheme2);
-void changeColorTheme(ColorTheme colTheme); //throw FileError
+
+DEFINE_NEW_FILE_ERROR(ErrorRestartRequired)
+void changeColorTheme(ColorTheme colTheme); //throw ErrorRestartRequired, FileError
 }

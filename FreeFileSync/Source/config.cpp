@@ -906,23 +906,15 @@ template <> inline
 bool readStruc(const XmlElement& input, ConfigFileItem& value)
 {
     bool success = true;
-    success = input.getAttribute("LastSync",  value.lastRunStats.startTime) && success;
-    success = input.getAttribute("Result",    value.lastRunStats.syncResult) && success;
-
-    if (input.hasAttribute("CfgPath")) //TODO: remove after migration! 2020-02-09
-        success = input.getAttribute("CfgPath", value.cfgFilePath) && success; //
-    else
-        success = input.getAttribute("Config", value.cfgFilePath) && success;
+    success = input.getAttribute("LastSync", value.lastRunStats.startTime ) && success;
+    success = input.getAttribute("Result",   value.lastRunStats.syncResult) && success;
+    success = input.getAttribute("Config",   value.cfgFilePath) && success;
 
     //FFS portable: use special syntax for config file paths: e.g. "%ffs_drive%\SyncJob.ffs_gui"
     value.cfgFilePath = resolvePortablePath(value.cfgFilePath);
 
     Zstring logFilePhrase;
-    if (input.hasAttribute("LogPath")) //TODO: remove after migration! 2020-02-09
-        success = input.getAttribute("LogPath", logFilePhrase) && success; //
-    else
-        success = input.getAttribute("Log", logFilePhrase) && success;
-
+    success = input.getAttribute("Log", logFilePhrase) && success;
     value.lastRunStats.logFilePath = createAbstractPath(resolvePortablePath(logFilePhrase));
 
     if (!input.hasAttribute("Items")) //TODO: remove after migration! 2023-05-13
@@ -1145,13 +1137,6 @@ void readConfig(const XmlIn& in, LocalPairConfig& lpc, std::map<AfsDevice, size_
     setParallelOps(lpc.folderPathPhraseLeft,  parallelOpsL);
     setParallelOps(lpc.folderPathPhraseRight, parallelOpsR);
 
-    //TODO: remove after migration! 2020-04-24
-    if (formatVer < 16)
-    {
-        replaceAsciiNoCase(lpc.folderPathPhraseLeft,  Zstr("%weekday%"), Zstr("%WeekDayName%"));
-        replaceAsciiNoCase(lpc.folderPathPhraseRight, Zstr("%weekday%"), Zstr("%WeekDayName%"));
-    }
-
     //###########################################################
     //alternate comp configuration (optional)
     if (XmlIn inLocalCmp = in["Compare"])
@@ -1282,18 +1267,8 @@ void readConfig(const XmlIn& in, MainConfiguration& mainCfg, int formatVer)
 
     in["LogFolder"](mainCfg.altLogFolderPathPhrase);
 
-    //TODO: remove after migration! 2020-04-24
-    if (formatVer < 16)
-        replaceAsciiNoCase(mainCfg.altLogFolderPathPhrase,  Zstr("%weekday%"), Zstr("%WeekDayName%"));
-
-    //TODO: remove if parameter migration after some time! 2020-01-30
-    if (formatVer < 15)
-        ;
-    else
-    {
-        in["EmailNotification"](mainCfg.emailNotifyAddress);
-        in["EmailNotification"].attribute("Condition", mainCfg.emailNotifyCondition);
-    }
+    in["EmailNotification"](mainCfg.emailNotifyAddress);
+    in["EmailNotification"].attribute("Condition", mainCfg.emailNotifyCondition);
 }
 
 
@@ -1307,25 +1282,7 @@ void readConfig(const XmlIn& in, FfsGuiConfig& cfg, int formatVer)
     readConfig(in, cfg.mainCfg, formatVer);
 
     if (formatVer < 19) //TODO: remove after migration! 2023-06-09
-    {
-        XmlIn inGui = in["Gui"];
-        //TODO: remove after migration! 2020-10-14
-        if (formatVer < 17)
-        {
-            if (inGui["MiddleGridView"])
-            {
-                std::string tmp;
-                inGui["MiddleGridView"](tmp);
-
-                if (tmp == "Category")
-                    cfg.gridViewType = GridViewType::difference;
-                else if (tmp == "Action")
-                    cfg.gridViewType = GridViewType::action;
-            }
-        }
-        else
-            inGui["GridViewType"](cfg.gridViewType);
-    }
+        in["Gui"]["GridViewType"](cfg.gridViewType);
     else
         in["GridViewType"](cfg.gridViewType);
 }
@@ -1350,16 +1307,11 @@ void readConfig(const XmlIn& in, GlobalConfig& cfg, int formatVer)
 {
     assert(cfg.dpiLayouts.empty());
 
-    XmlIn in2 = in;
-
-    if (in["General"]) //TODO: remove old parameter after migration! 2020-12-03
-        in2 = in["General"];
-
     //TODO: remove after migration! 2022-04-18
-    if (in2["Language"].hasAttribute("Name"))
+    if (in["Language"].hasAttribute("Name"))
     {
         std::string lngName;
-        in2["Language"].attribute("Name", lngName);
+        in["Language"].attribute("Name", lngName);
 
         if (lngName == "English (US)")
             cfg.programLanguage = wxLANGUAGE_ENGLISH_US;
@@ -1377,38 +1329,35 @@ void readConfig(const XmlIn& in, GlobalConfig& cfg, int formatVer)
             cfg.programLanguage = static_cast<wxLanguage>(lngInfo->Language);
     }
     else
-        in2["Language"].attribute("Code", cfg.programLanguage);
+        in["Language"].attribute("Code", cfg.programLanguage);
 
-    in2["ColorTheme"].attribute("Appearance", cfg.appColorTheme);
+    in["ColorTheme"].attribute("Appearance", cfg.appColorTheme);
 
-    in2["FailSafeFileCopy"         ].attribute("Enabled", cfg.failSafeFileCopy);
-    in2["CopyLockedFiles"          ].attribute("Enabled", cfg.copyLockedFiles);
-    in2["CopyFilePermissions"      ].attribute("Enabled", cfg.copyFilePermissions);
-    in2["FileTimeTolerance"        ].attribute("Seconds", cfg.fileTimeTolerance);
-    in2["RunWithBackgroundPriority"].attribute("Enabled", cfg.runWithBackgroundPriority);
-    in2["LockDirectoriesDuringSync"].attribute("Enabled", cfg.createLockFile);
-    in2["VerifyCopiedFiles"        ].attribute("Enabled", cfg.verifyFileCopy);
-    in2["LogFiles"                 ].attribute("MaxAge",  cfg.logfilesMaxAgeDays);
-    in2["LogFiles"                 ].attribute("Format",  cfg.logFormat);
+    in["FailSafeFileCopy"         ].attribute("Enabled", cfg.failSafeFileCopy);
+    in["CopyLockedFiles"          ].attribute("Enabled", cfg.copyLockedFiles);
+    in["CopyFilePermissions"      ].attribute("Enabled", cfg.copyFilePermissions);
+    in["FileTimeTolerance"        ].attribute("Seconds", cfg.fileTimeTolerance);
+    in["RunWithBackgroundPriority"].attribute("Enabled", cfg.runWithBackgroundPriority);
+    in["LockDirectoriesDuringSync"].attribute("Enabled", cfg.createLockFile);
+    in["VerifyCopiedFiles"        ].attribute("Enabled", cfg.verifyFileCopy);
+    in["LogFiles"                 ].attribute("MaxAge",  cfg.logfilesMaxAgeDays);
+    in["LogFiles"                 ].attribute("Format",  cfg.logFormat);
 
     //TODO: remove old parameter after migration! 2021-03-06
     if (formatVer < 21)
     {
-        in2["ProgressDialog"].attribute("Width",     cfg.dpiLayouts[getDpiScalePercent()].progressDlg.size.x);
-        in2["ProgressDialog"].attribute("Height",    cfg.dpiLayouts[getDpiScalePercent()].progressDlg.size.y);
-        in2["ProgressDialog"].attribute("Maximized", cfg.dpiLayouts[getDpiScalePercent()].progressDlg.isMaximized);
+        in["ProgressDialog"].attribute("Width",     cfg.dpiLayouts[getDpiScalePercent()].progressDlg.size.x);
+        in["ProgressDialog"].attribute("Height",    cfg.dpiLayouts[getDpiScalePercent()].progressDlg.size.y);
+        in["ProgressDialog"].attribute("Maximized", cfg.dpiLayouts[getDpiScalePercent()].progressDlg.isMaximized);
     }
 
-    in2["ProgressDialog"].attribute("AutoClose", cfg.progressDlgAutoClose);
+    in["ProgressDialog"].attribute("AutoClose", cfg.progressDlgAutoClose);
 
-    XmlIn inOpt = in2["OptionalDialogs"];
-    inOpt["ConfirmStartSync"                ].attribute("Show", cfg.confirmDlgs.confirmSyncStart);
-    inOpt["ConfirmSaveConfig"               ].attribute("Show", cfg.confirmDlgs.confirmSaveConfig);
-    inOpt["ConfirmSwapSides"                ].attribute("Show", cfg.confirmDlgs.confirmSwapSides);
-    if (formatVer < 12) //TODO: remove old parameter after migration! 2019-02-09
-        inOpt["ConfirmExternalCommandMassInvoke"].attribute("Show", cfg.confirmDlgs.confirmCommandMassInvoke);
-    else
-        inOpt["ConfirmCommandMassInvoke"].attribute("Show", cfg.confirmDlgs.confirmCommandMassInvoke);
+    XmlIn inOpt = in["OptionalDialogs"];
+    inOpt["ConfirmStartSync"              ].attribute("Show", cfg.confirmDlgs.confirmSyncStart);
+    inOpt["ConfirmSaveConfig"             ].attribute("Show", cfg.confirmDlgs.confirmSaveConfig);
+    inOpt["ConfirmSwapSides"              ].attribute("Show", cfg.confirmDlgs.confirmSwapSides);
+    inOpt["ConfirmCommandMassInvoke"      ].attribute("Show", cfg.confirmDlgs.confirmCommandMassInvoke);
     inOpt["WarnFolderNotExisting"         ].attribute("Show", cfg.warnDlgs.warnFolderNotExisting);
     inOpt["WarnFoldersDifferInCase"       ].attribute("Show", cfg.warnDlgs.warnFoldersDifferInCase);
     inOpt["WarnUnresolvedConflicts"       ].attribute("Show", cfg.warnDlgs.warnUnresolvedConflicts);
@@ -1427,34 +1376,21 @@ void readConfig(const XmlIn& in, GlobalConfig& cfg, int formatVer)
     //TODO: remove after migration! 2021-12-02
     if (formatVer < 23)
     {
-        in2["NotificationSound"].attribute("CompareFinished", cfg.soundFileCompareFinished);
-        in2["NotificationSound"].attribute("SyncFinished",    cfg.soundFileSyncFinished);
+        in["NotificationSound"].attribute("CompareFinished", cfg.soundFileCompareFinished);
+        in["NotificationSound"].attribute("SyncFinished",    cfg.soundFileSyncFinished);
     }
     else
     {
-        in2["Sounds"]["CompareFinished"].attribute("Path", cfg.soundFileCompareFinished);
-        in2["Sounds"]["SyncFinished"   ].attribute("Path", cfg.soundFileSyncFinished);
-        in2["Sounds"]["AlertPending"   ].attribute("Path", cfg.soundFileAlertPending);
+        in["Sounds"]["CompareFinished"].attribute("Path", cfg.soundFileCompareFinished);
+        in["Sounds"]["SyncFinished"   ].attribute("Path", cfg.soundFileSyncFinished);
+        in["Sounds"]["AlertPending"   ].attribute("Path", cfg.soundFileAlertPending);
     }
 
-    //TODO: remove if parameter migration after some time! 2019-05-29
-    if (formatVer < 13)
-    {
-        if (!cfg.soundFileCompareFinished.empty()) cfg.soundFileCompareFinished = appendPath(getResourceDirPath(), cfg.soundFileCompareFinished);
-        if (!cfg.soundFileSyncFinished   .empty()) cfg.soundFileSyncFinished    = appendPath(getResourceDirPath(), cfg.soundFileSyncFinished);
-    }
-    else
-    {
-        cfg.soundFileCompareFinished = resolvePortablePath(cfg.soundFileCompareFinished);
-        cfg.soundFileSyncFinished    = resolvePortablePath(cfg.soundFileSyncFinished);
-        cfg.soundFileAlertPending    = resolvePortablePath(cfg.soundFileAlertPending);
-    }
+    cfg.soundFileCompareFinished = resolvePortablePath(cfg.soundFileCompareFinished);
+    cfg.soundFileSyncFinished    = resolvePortablePath(cfg.soundFileSyncFinished);
+    cfg.soundFileAlertPending    = resolvePortablePath(cfg.soundFileAlertPending);
 
     XmlIn inMainWin = in["MainDialog"];
-
-    //TODO: remove old parameter after migration! 2020-12-03
-    if (in["Gui"])
-        inMainWin = in["Gui"]["MainDialog"];
 
     //TODO: remove old parameter after migration! 2021-03-06
     if (formatVer < 21)
@@ -1489,15 +1425,6 @@ void readConfig(const XmlIn& in, GlobalConfig& cfg, int formatVer)
 
     inConfig["Configurations"](cfg.mainDlg.config.fileHistory);
 
-    //TODO: remove after migration! 2019-11-30
-    if (formatVer < 15)
-    {
-        const Zstring lastRunConfigPath = appendPath(getConfigDirPath(), Zstr("LastRun.ffs_gui"));
-        for (ConfigFileItem& item : cfg.mainDlg.config.fileHistory)
-            if (equalNativePath(item.cfgFilePath, lastRunConfigPath))
-                item.backColor = wxColor(0xdd, 0xdd, 0xdd); //light grey from onCfgGridContext()
-    }
-
     inConfig["LastUsed"](cfg.mainDlg.config.lastUsedFiles);
     cfg.mainDlg.config.lastUsedFiles = resolvePortablePath(cfg.mainDlg.config.lastUsedFiles);
 
@@ -1514,21 +1441,11 @@ void readConfig(const XmlIn& in, GlobalConfig& cfg, int formatVer)
 
     XmlIn inFilePanel = inMainWin["FilePanel"];
 
-    //TODO: remove after migration! 2020-10-13
-    if (formatVer < 19)
-        ; //new icon layout => let user re-evaluate settings
-    else
-    {
-        inFilePanel.attribute("ShowIcons", cfg.mainDlg.showIcons);
-        inFilePanel.attribute("IconSize",  cfg.mainDlg.iconSize);
-    }
+    inFilePanel.attribute("ShowIcons",  cfg.mainDlg.showIcons);
+    inFilePanel.attribute("IconSize",   cfg.mainDlg.iconSize);
     inFilePanel.attribute("SashOffset", cfg.mainDlg.sashOffset);
 
-    //TODO: remove if parameter migration after some time! 2020-01-30
-    if (formatVer < 16)
-        inFilePanel.attribute("MaxFolderPairsShown", cfg.mainDlg.folderPairsVisibleMax);
-    else
-        inFilePanel.attribute("FolderPairsMax", cfg.mainDlg.folderPairsVisibleMax);
+    inFilePanel.attribute("FolderPairsMax", cfg.mainDlg.folderPairsVisibleMax);
 
     //TODO: remove old parameter after migration! 2021-03-06
     if (formatVer < 21)
@@ -1577,9 +1494,6 @@ void readConfig(const XmlIn& in, GlobalConfig& cfg, int formatVer)
     inDefFilter.attribute("Excluded", cfg.mainDlg.viewFilterDefault.excluded);
 
     XmlIn diffView = inDefFilter["Difference"];
-    //TODO: remove after migration! 2020-10-13
-    if (formatVer < 19)
-        diffView = inDefFilter["CategoryView"];
 
     diffView.attribute("LeftOnly",   cfg.mainDlg.viewFilterDefault.leftOnly);
     diffView.attribute("RightOnly",  cfg.mainDlg.viewFilterDefault.rightOnly);
@@ -1588,9 +1502,6 @@ void readConfig(const XmlIn& in, GlobalConfig& cfg, int formatVer)
     diffView.attribute("Different",  cfg.mainDlg.viewFilterDefault.different);
 
     XmlIn actView = inDefFilter["Action"];
-    //TODO: remove after migration! 2020-10-13
-    if (formatVer < 19)
-        actView = inDefFilter["ActionView"];
 
     actView.attribute("CreateLeft",  cfg.mainDlg.viewFilterDefault.createLeft);
     actView.attribute("CreateRight", cfg.mainDlg.viewFilterDefault.createRight);
@@ -1605,76 +1516,10 @@ void readConfig(const XmlIn& in, GlobalConfig& cfg, int formatVer)
     if (formatVer < 21)
         inMainWin["Perspective"](cfg.dpiLayouts[getDpiScalePercent()].panelLayout);
 
-    //TODO: remove after migration! 2019-11-30
-    auto splitEditMerge = [](wxString& perspective, wchar_t delim, const std::function<void(wxString& item)>& editItem)
-    {
-        std::vector<wxString> v = splitCpy(perspective, delim, SplitOnEmpty::allow);
-        assert(!v.empty());
-        perspective.clear();
+    in["FolderHistory" ].attribute("MaxSize", cfg.folderHistoryMax);
 
-        for (wxString& item : std::span(v.begin(), v.end() - 1))
-        {
-            editItem(item);
-            perspective += item;
-            perspective += delim;
-        }
-        editItem(v.back());
-        perspective += v.back();
-    };
-
-    //TODO: remove after migration! 2019-11-30
-    if (formatVer < 15)
-    {
-        //set minimal TopPanel height => search and set actual height to 0 and let MainDialog's min-size handling kick in:
-        std::optional<int> tpDir;
-        std::optional<int> tpLayer;
-        std::optional<int> tpRow;
-        splitEditMerge(cfg.dpiLayouts[getDpiScalePercent()].panelLayout, L'|', [&](wxString& paneCfg)
-        {
-            if (contains(paneCfg, L"name=TopPanel"))
-                splitEditMerge(paneCfg, L';', [&](wxString& paneAttr)
-            {
-                if (startsWith(paneAttr, L"dir="))
-                    tpDir = stringTo<int>(afterFirst(paneAttr, L'=', IfNotFoundReturn::none));
-                else if (startsWith(paneAttr, L"layer="))
-                    tpLayer = stringTo<int>(afterFirst(paneAttr, L'=', IfNotFoundReturn::none));
-                else if (startsWith(paneAttr, L"row="))
-                    tpRow = stringTo<int>(afterFirst(paneAttr, L'=', IfNotFoundReturn::none));
-            });
-        });
-
-        if (tpDir && tpLayer && tpRow)
-        {
-            const wxString tpSize = L"dock_size(" +
-                                    numberTo<wxString>(*tpDir  ) + L"," +
-                                    numberTo<wxString>(*tpLayer) + L"," +
-                                    numberTo<wxString>(*tpRow  ) + L")=";
-
-            splitEditMerge(cfg.dpiLayouts[getDpiScalePercent()].panelLayout, L'|', [&](wxString& paneCfg)
-            {
-                if (startsWith(paneCfg, tpSize))
-                    paneCfg = tpSize + L"0";
-            });
-        }
-    }
-
-    //TODO: remove if parameter migration after some time! 2020-01-30
-    if (formatVer < 16)
-        ;
-    else if (formatVer < 20) //TODO: remove old parameter after migration! 2020-12-03
-        in["Gui"]["FolderHistory" ].attribute("MaxSize", cfg.folderHistoryMax);
-    else
-        in["FolderHistory" ].attribute("MaxSize", cfg.folderHistoryMax);
-
-    if (formatVer < 20) //TODO: remove old parameter after migration! 2020-12-03
-    {
-        in["Gui"]["SftpKeyFile"].attribute("LastSelected", cfg.sftpKeyFileLastSelected);
-    }
-    else
-    {
-        in["SftpKeyFile"].attribute("LastSelected", cfg.sftpKeyFileLastSelected);
-        cfg.sftpKeyFileLastSelected = resolvePortablePath(cfg.sftpKeyFileLastSelected);
-    }
+    in["SftpKeyFile"].attribute("LastSelected", cfg.sftpKeyFileLastSelected);
+    cfg.sftpKeyFileLastSelected = resolvePortablePath(cfg.sftpKeyFileLastSelected);
 
     if (formatVer < 22) //TODO: remove old parameter after migration! 2021-07-31
     {
@@ -1682,82 +1527,26 @@ void readConfig(const XmlIn& in, GlobalConfig& cfg, int formatVer)
     else
         readConfig(in["DefaultFilter"], cfg.defaultFilter);
 
-    if (formatVer < 20) //TODO: remove old parameter after migration! 2020-12-03
-    {
-        in["Gui"]["VersioningFolderHistory"](cfg.versioningFolderHistory);
-        in["Gui"]["VersioningFolderHistory"].attribute("LastSelected", cfg.versioningFolderLastSelected);
-    }
-    else
-    {
-        in["VersioningFolderHistory"](cfg.versioningFolderHistory);
-        in["VersioningFolderHistory"].attribute("LastSelected", cfg.versioningFolderLastSelected);
-        cfg.versioningFolderLastSelected = resolvePortablePath(cfg.versioningFolderLastSelected);
-    }
+    in["VersioningFolderHistory"](cfg.versioningFolderHistory);
+    in["VersioningFolderHistory"].attribute("LastSelected", cfg.versioningFolderLastSelected);
+    cfg.versioningFolderLastSelected = resolvePortablePath(cfg.versioningFolderLastSelected);
+
     in["LogFolder"](cfg.logFolderPhrase);
     cfg.logFolderPhrase = resolvePortablePath(cfg.logFolderPhrase);
 
-    if (formatVer < 20) //TODO: remove old parameter after migration! 2020-12-03
-    {
-        in["Gui"]["LogFolderHistory"](cfg.logFolderHistory);
-        in["Gui"]["LogFolderHistory"].attribute("LastSelected", cfg.logFolderLastSelected);
-    }
-    else
-    {
-        in["LogFolderHistory"](cfg.logFolderHistory);
-        in["LogFolderHistory"].attribute("LastSelected", cfg.logFolderLastSelected);
-        cfg.logFolderHistory      = resolvePortablePath(cfg.logFolderHistory);
-        cfg.logFolderLastSelected = resolvePortablePath(cfg.logFolderLastSelected);
-    }
+    in["LogFolderHistory"](cfg.logFolderHistory);
+    in["LogFolderHistory"].attribute("LastSelected", cfg.logFolderLastSelected);
+    cfg.logFolderHistory      = resolvePortablePath(cfg.logFolderHistory);
+    cfg.logFolderLastSelected = resolvePortablePath(cfg.logFolderLastSelected);
 
-    if (formatVer < 20) //TODO: remove old parameter after migration! 2020-12-03
-    {
-        in["Gui"]["EmailHistory"](cfg.emailHistory);
-        in["Gui"]["EmailHistory"].attribute("MaxSize", cfg.emailHistoryMax);
-    }
-    else
-    {
-        in["EmailHistory"](cfg.emailHistory);
-        in["EmailHistory"].attribute("MaxSize", cfg.emailHistoryMax);
-    }
+    in["EmailHistory"](cfg.emailHistory);
+    in["EmailHistory"].attribute("MaxSize", cfg.emailHistoryMax);
 
-    if (formatVer < 20) //TODO: remove old parameter after migration! 2020-12-03
-    {
-        in["Gui"]["CommandHistory"](cfg.commandHistory);
-        in["Gui"]["CommandHistory"].attribute("MaxSize", cfg.commandHistoryMax);
-    }
-    else
-    {
-        in["CommandHistory"](cfg.commandHistory);
-        in["CommandHistory"].attribute("MaxSize", cfg.commandHistoryMax);
-    }
+    in["CommandHistory"](cfg.commandHistory);
+    in["CommandHistory"].attribute("MaxSize", cfg.commandHistoryMax);
 
-    //TODO: remove if parameter migration after some time! 2020-01-30
-    if (formatVer < 15)
-        if (cfg.commandHistoryMax <= 8)
-            cfg.commandHistoryMax = GlobalConfig().commandHistoryMax;
+    in["ExternalApps"](cfg.externalApps);
 
-
-    if (formatVer < 20) //TODO: remove old parameter after migration! 2020-12-03
-        in["Gui"]["ExternalApps"](cfg.externalApps);
-    else
-        in["ExternalApps"](cfg.externalApps);
-
-    //TODO: remove after migration! 2019-11-30
-    if (formatVer < 15)
-        for (ExternalApp& item : cfg.externalApps)
-        {
-            replace(item.cmdLine, Zstr("%folder_path%"),  Zstr("%parent_path%"));
-            replace(item.cmdLine, Zstr("%folder_path2%"), Zstr("%parent_path2%"));
-        }
-
-    //TODO: remove after migration! 2020-06-13
-    if (formatVer < 18)
-        for (ExternalApp& item : cfg.externalApps)
-        {
-            trim(item.cmdLine);
-            if (item.cmdLine == "xdg-open \"%parent_path%\"")
-                item.cmdLine = "xdg-open \"$(dirname %local_path%)\"";
-        }
 
     //TODO: remove after migration! 2022-04-29
     if (formatVer < 24)
@@ -1786,16 +1575,8 @@ void readConfig(const XmlIn& in, GlobalConfig& cfg, int formatVer)
             removeQuotes(Zstr("%parent_paths%"));
         }
 
-    if (formatVer < 20) //TODO: remove old parameter after migration! 2020-12-03
-    {
-        in["Gui"]["LastOnlineCheck"  ](cfg.lastUpdateCheck);
-        in["Gui"]["LastOnlineVersion"](cfg.lastOnlineVersion);
-    }
-    else
-    {
-        in["LastOnlineCheck"  ](cfg.lastUpdateCheck);
-        in["LastOnlineVersion"](cfg.lastOnlineVersion);
-    }
+    in["LastOnlineCheck"  ](cfg.lastUpdateCheck);
+    in["LastOnlineVersion"](cfg.lastOnlineVersion);
 
     in["WelcomeDialogVersion"](cfg.welcomeDialogLastVersion);
 
@@ -2090,18 +1871,15 @@ void writeConfig(const MainConfiguration& mainCfg, XmlOut& out)
 {
     XmlOut outCmp = out["Compare"];
     writeConfig(mainCfg.cmpCfg, outCmp);
-    //###########################################################
 
     XmlOut outSync = out["Synchronize"];
     writeConfig(mainCfg.syncCfg, mainCfg.deviceParallelOps, outSync);
-    //###########################################################
 
     XmlOut outFilter = out["Filter"];
     writeConfig(mainCfg.globalFilter, outFilter);
 
     //###########################################################
     XmlOut outFp = out["FolderPairs"];
-    //write folder pairs
     writeConfig(mainCfg.firstPair, mainCfg.deviceParallelOps, outFp);
 
     for (const LocalPairConfig& lpc : mainCfg.additionalPairs)

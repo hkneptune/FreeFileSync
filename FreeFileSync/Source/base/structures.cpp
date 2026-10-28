@@ -187,7 +187,7 @@ SyncDirectionConfig fff::getDefaultSyncCfg(SyncVariant syncVar)
 size_t fff::getDeviceParallelOps(const std::map<AfsDevice, size_t>& deviceParallelOps, const AfsDevice& afsDevice)
 {
     auto it = deviceParallelOps.find(afsDevice);
-    return std::max<size_t>(it != deviceParallelOps.end() ? it->second : 1, 1);
+    return std::max(it != deviceParallelOps.end() ? it->second : 1uz, 1uz);
 }
 
 

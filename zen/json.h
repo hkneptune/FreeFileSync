@@ -34,10 +34,10 @@ public:
 
     JsonObject(const JsonObject& other);
 
-    JsonObject& operator=(const JsonObject& other) { JsonObject(other).swap(*this); return *this; }
+    JsonObject& operator=(const JsonObject& other);
 
-    JsonObject           (JsonObject&& tmp) noexcept { swap(tmp); }
-    JsonObject& operator=(JsonObject&& tmp) noexcept { swap(tmp); return *this; }
+    JsonObject           (JsonObject&& tmp) noexcept;
+    JsonObject& operator=(JsonObject&& tmp) noexcept;
 
 private:
     void swap(JsonObject& other) noexcept;
@@ -122,6 +122,12 @@ JsonObject::JsonObject(const JsonObject& other) : values_(other.values_)
     for (auto it = values_.begin(); it != values_.end(); ++it)
         valuesByName_.emplace(it->first, it);
 }
+
+
+//clang requires JsonValue to be fully defined:
+inline JsonObject::JsonObject           (JsonObject&& tmp) noexcept { swap(tmp); }
+inline JsonObject& JsonObject::operator=(JsonObject&& tmp) noexcept { swap(tmp); return *this; }
+inline JsonObject& JsonObject::operator=(const JsonObject& other) { JsonObject(other).swap(*this); return *this; }
 
 
 inline

@@ -5,6 +5,7 @@
 // *****************************************************************************
 
 #include "file_path.h"
+#include "thread.h"
 #include "zstring.h"
     #include <unistd.h>
 
@@ -39,12 +40,12 @@ std::optional<PathComponents> zen::parsePathComponents(const Zstring& itemPath)
 
     if (!pc && startsWith(itemPath, "/media/")) //Ubuntu: e.g. /media/zenju/DEVICE_NAME
         if (const std::optional<Zstring> username = getEnvironmentVar("USER"))
-            if (startsWith(itemPath, std::string("/media/") + *username + "/"))
+            if (startsWith(itemPath, "/media/" + *username + "/"))
                 pc = doParse(4 /*sepCountVolumeRoot*/, false /*rootWithSep*/);
 
     if (!pc && startsWith(itemPath, "/run/media/")) //CentOS, Suse: e.g. /run/media/zenju/DEVICE_NAME
         if (const std::optional<Zstring> username = getEnvironmentVar("USER"))
-            if (startsWith(itemPath, std::string("/run/media/") + *username + "/"))
+            if (startsWith(itemPath, "/run/media/" + *username + "/"))
                 pc = doParse(5 /*sepCountVolumeRoot*/, false /*rootWithSep*/);
 
     if (!pc && startsWith(itemPath, "/run/user/")) //Ubuntu, e.g.: /run/user/1000/gvfs/smb-share:server=192.168.62.145,share=folder
@@ -94,7 +95,7 @@ Zstring zen::appendSeparator(Zstring path) //support rvalue references!
 }
 
 
-bool zen::isValidRelPath(const Zstring& relPath)
+bool zen::isValidRelPath(const ZstringView relPath)
 {
     //relPath is expected to use FILE_NAME_SEPARATOR!
     if constexpr (FILE_NAME_SEPARATOR != Zstr('/' )) if (contains(relPath, Zstr('/' ))) return false;

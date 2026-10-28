@@ -38,7 +38,7 @@ Zstring zen::getLoginUser() //throw FileError
         userIdNo != 0) //nofail; non-root
     {
         //ugh, the world's stupidest API:
-        std::vector<char> buf(std::max<long>(10000, ::sysconf(_SC_GETPW_R_SIZE_MAX))); //::sysconf may return long(-1) or even a too small size!! WTF!
+        std::vector<char> buf(std::max(10000L, ::sysconf(_SC_GETPW_R_SIZE_MAX))); //::sysconf may return long(-1) or even a too small size!! WTF!
         passwd buf2 = {};
         passwd* pwEntry = nullptr;
         if (const int rv = ::getpwuid_r(userIdNo,   //uid_t uid
@@ -236,7 +236,7 @@ Zstring zen::getUserHome() //throw FileError
     const Zstring loginUser = getLoginUser(); //throw FileError
 
     //ugh, the world's stupidest API:
-    std::vector<char> buf(std::max<long>(10000, ::sysconf(_SC_GETPW_R_SIZE_MAX))); //::sysconf may return long(-1) or even a too small size!! WTF!
+    std::vector<char> buf(std::max(10000L, ::sysconf(_SC_GETPW_R_SIZE_MAX))); //::sysconf may return long(-1) or even a too small size!! WTF!
     passwd buf2 = {};
     passwd* pwEntry = nullptr;
     if (const int rv = ::getpwnam_r(loginUser.c_str(), //const char *name

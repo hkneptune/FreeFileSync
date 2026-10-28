@@ -520,7 +520,7 @@ void massParallelExecute(const std::vector<std::pair<AbstractPath, ParallelWorkI
         const size_t statusPrio = deviceThreadGroups.size();
 
         const Zstring& deviceGroupName = threadGroupName + Zstr(' ') + utfTo<Zstring>(AFS::getDisplayPath(AbstractPath(afsDevice, AfsPath())));
-        deviceThreadGroups.emplace_back(1, deviceGroupName);
+        deviceThreadGroups.emplace_back(deviceGroupName, 1);
         auto& threadGroup = deviceThreadGroups.back();
 
         for (const std::pair<AbstractPath, ParallelWorkItem>* item : wl)

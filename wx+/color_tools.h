@@ -22,7 +22,7 @@ inline
 unsigned char srgbEncode(double c)
 {
     const double c_ = c <= 0.0031308 ? c * 12.92 : std::pow(c, 1 / 2.4) * 1.055 - 0.055;
-    return std::clamp<int>(std::round(c_ * 255), 0, 255);
+    return std::clamp(std::round(c_ * 255), 0.0, 255.0);
 }
 
 
@@ -184,7 +184,7 @@ wxColor hsvColor(double h, double s, double v) //h within [0, 360), s, v within 
 
     auto to8Bit = [](double val) -> unsigned char
     {
-        return std::clamp<int>(std::round(val * 255), 0, 255);
+        return std::clamp(std::round(val * 255), 0.0, 255.0);
     };
 
     const unsigned char p  = to8Bit(v * (1 - s));

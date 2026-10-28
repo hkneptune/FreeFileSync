@@ -12,7 +12,7 @@
 namespace zen
 {
 /*  implement streaming API on top of libcurl's icky callback-based design
-        + curl uses READBUFFER_SIZE download buffer size, but returns via a retarded sendf.c::chop_write() writing in small junks of CURL_MAX_WRITE_SIZE (16 kB)
+        + curl uses READBUFFER_SIZE download buffer size, but returns via a retarded sendf.c::chop_write() writing in small junks of CURL_MAX_WRITE_SIZE (16 KB)
         => support copying arbitrarily-large files: https://freefilesync.org/forum/viewtopic.php?t=4471
         => maximum performance through async processing (prefetching + output buffer!)
         => cost per worker thread creation ~ 1/20 ms                                         */

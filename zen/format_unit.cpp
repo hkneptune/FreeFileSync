@@ -181,7 +181,7 @@ std::wstring zen::formatUtcToLocalTime(time_t utcTime)
         if (const TimeComp tc = getUtcTime(utcTime);
             tc != TimeComp())
         {
-            wchar_t buf[128] = {}; //the only way to format abnormally large or invalid modTime: std::strftime() will fail!
+            wchar_t buf[128] = {}; //the only way to format abnormally large or invalid modTime when std::strftime() would fail!
             if (const int rv = std::swprintf(buf, std::size(buf), L"%d-%02d-%02d  %02d:%02d:%02d GMT", tc.year, tc.month, tc.day, tc.hour, tc.minute, tc.second);
                 0 < rv && rv < std::ssize(buf))
                 return std::wstring(buf, rv);

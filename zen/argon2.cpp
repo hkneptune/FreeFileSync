@@ -39,7 +39,7 @@
 #include <cassert>
 #include <cstdint>
 
-#if   defined __GNUC__ //including clang
+#if  def __GNUC__ //including clang
     #pragma GCC diagnostic ignored "-Wimplicit-fallthrough" //"this statement may fall through"
     #pragma GCC diagnostic ignored "-Wcast-align" //"cast from 'char *' to 'blake2b *' increases required alignment from 1 to 8"
 #endif

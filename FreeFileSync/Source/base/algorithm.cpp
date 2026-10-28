@@ -749,13 +749,13 @@ private:
     template <SelectSide side>
     SyncDirection getSyncDirForChange(CudAction change) const
     {
-        const auto& changedirs = selectParam<side>(dirs_.left, dirs_.right);
+        const auto& changeDirs = selectParam<side>(dirs_.left, dirs_.right);
         switch (change)
         {
             case CudAction::noChange: return SyncDirection::none;
-            case CudAction::create:  return changedirs.create;
-            case CudAction::update:  return changedirs.update;
-            case CudAction::delete_: return changedirs.delete_;
+            case CudAction::create:  return changeDirs.create;
+            case CudAction::update:  return changeDirs.update;
+            case CudAction::delete_: return changeDirs.delete_;
         }
         throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
     }
@@ -781,7 +781,9 @@ private:
             if (changeR != CudAction::noChange) //change on right
                 fsObj.setSyncDir(dirR);
             else //no change on either side
-                fsObj.setSyncDirConflict(txtNoSideChanged_); //obscure, but possible if user widens "fileTimeTolerance"
+                fsObj.setSyncDirConflict(txtNoSideChanged_); //obscure, but theoretically possible due to "fileTimeTolerance" and "ignoreTimeShiftMinutes":
+            //neither side changed relative to the last synchronous state,
+            //the DB entries are still in sync, yet the current sides are not equal (=> no transitivity)
         }
     }
 
@@ -868,10 +870,10 @@ void fff::redetermineSyncDirection(const std::vector<std::pair<BaseFolderPair*, 
                     }
                     else //fallback:
                     {
-                        std::wstring msg = _("Database file is not available: Setting default directions for synchronization.");
+                        std::wstring msg = _("Database file is not available: Setting default directions for synchronization."); 
                         if (directCfgs.size() > 1)
-                            msg += SPACED_DASH + getShortDisplayNameForFolderPair(baseFolder->getAbstractPath<SelectSide::left >(),
-                                                                                  baseFolder->getAbstractPath<SelectSide::right>());                        
+                            msg += L" [" + getShortDisplayNameForFolderPair(baseFolder->getAbstractPath<SelectSide::left >(),
+                                                                            baseFolder->getAbstractPath<SelectSide::right>()) + L']';
                         try { callback.logMessage(msg, PhaseCallback::MsgType::warning); /*throw X*/} catch (...) {};
 
                         SetSyncDirViaDifferences::execute(getDiffDirDefault(changeDirs), *baseFolder);
@@ -968,42 +970,31 @@ private:
     void recurse(ContainerObject& conObj) const
     {
         for (FilePair& file : conObj.files())
-            processFile(file);
+            if (Eval<strategy>::process(file))
+                file.setActive(file.passFileFilter(filter_));
+
         for (SymlinkPair& symlink : conObj.symlinks())
-            processLink(symlink);
+            if (Eval<strategy>::process(symlink))
+                symlink.setActive(symlink.passFileFilter(filter_));
+
         for (FolderPair& folder : conObj.subfolders())
-            processDir(folder);
-    }
-
-    void processFile(FilePair& file) const
-    {
-        if (Eval<strategy>::process(file))
-            file.setActive(file.passFileFilter(filter_));
-    }
-
-    void processLink(SymlinkPair& symlink) const
-    {
-        if (Eval<strategy>::process(symlink))
-            symlink.setActive(symlink.passFileFilter(filter_));
-    }
-
-    void processDir(FolderPair& folder) const
-    {
-        bool childItemMightMatch = true;
-        const bool filterPassed = folder.passDirFilter(filter_, &childItemMightMatch);
-
-        if (Eval<strategy>::process(folder))
-            folder.setActive(filterPassed);
-
-        if (!childItemMightMatch) //use same logic like directory traversing: evaluate filter in subdirs only if objects *could* match
         {
-            //exclude all files dirs in subfolders => incompatible with STRATEGY_OR!
-            auto onFsItem = [](FileSystemObject& fsObj) { fsObj.setActive(false); };
-            visitFSObjectRecursively(static_cast<ContainerObject&>(folder), onFsItem, onFsItem, onFsItem);
-            return;
-        }
+            bool childItemMightMatch = true;
+            const bool filterPassed = folder.passDirFilter(filter_, &childItemMightMatch);
 
-        recurse(folder);
+            if (Eval<strategy>::process(folder))
+                folder.setActive(filterPassed);
+
+            if (!childItemMightMatch) //use same logic like directory traversing: evaluate filter in subdirs only if objects *could* match
+            {
+                //exclude all files dirs in subfolders => incompatible with STRATEGY_OR!
+                auto onFsItem = [](FileSystemObject& fsObj) { fsObj.setActive(false); };
+                visitFSObjectRecursively(static_cast<ContainerObject&>(folder), onFsItem, onFsItem, onFsItem);
+                return;
+            }
+
+            recurse(folder);
+        }
     }
 
     const PathFilter& filter_;

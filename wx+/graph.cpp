@@ -6,6 +6,7 @@
 
 #include "graph.h"
 #include <cassert>
+#include <stdexcept>
 #include <algorithm>
 #include <zen/basic_math.h>
 #include <zen/scope_guard.h>
@@ -21,7 +22,7 @@ wxDEFINE_EVENT(EVENT_GRAPH_SELECTION, GraphSelectEvent);
 }
 
 
-double zen::nextNiceNumber(double blockSize) //round to next number which is a convenient to read block size
+double zen::nearestNiceNumber(double blockSize) //round to next number which is a convenient to read block size
 {
     if (blockSize <= 0)
         return 0;
@@ -66,10 +67,9 @@ class ConvertCoord //convert between screen and input data coordinates
 public:
     ConvertCoord(double valMin, double valMax, size_t screenSize) :
         min_(valMin),
+        screenSizeP1_(screenSize + 1),
         scaleToReal_(screenSize == 0 ? 0 : (valMax - valMin) / screenSize),
-        scaleToScr_(numeric::isNull((valMax - valMin)) ? 0 : screenSize / (valMax - valMin)),
-        outOfBoundsLow_ (-1 * scaleToReal_ + valMin),
-        outOfBoundsHigh_((screenSize + 1) * scaleToReal_ + valMin) { if (outOfBoundsLow_ > outOfBoundsHigh_) std::swap(outOfBoundsLow_, outOfBoundsHigh_); }
+        scaleToScr_(numeric::isNull(valMax - valMin) ? 0 : screenSize / (valMax - valMin)) {}
 
     double screenToReal(double screenPos) const //map [0, screenSize] -> [valMin, valMax]
     {
@@ -82,17 +82,15 @@ public:
     int realToScreenRound(double realPos) const //returns -1 and screenSize + 1 if out of bounds!
     {
         //catch large double values: if double is larger than what int can represent => undefined behavior!
-        realPos = std::clamp(realPos, outOfBoundsLow_, outOfBoundsHigh_);
-        return std::round(realToScreen(realPos));
+        const double screenPos = std::clamp(realToScreen(realPos), -1.0, screenSizeP1_);
+        return std::round(screenPos);
     }
 
 private:
     const double min_;
+    const double screenSizeP1_;
     const double scaleToReal_;
     const double scaleToScr_;
-
-    double outOfBoundsLow_;
-    double outOfBoundsHigh_;
 };
 
 
@@ -224,49 +222,50 @@ void drawCornerText(wxDC& dc, const wxRect& graphArea, const wxString& txt, Grap
 template <class Function, class Function2>
 void cutPoints(std::vector<CurvePoint>& curvePoints, std::vector<unsigned char>& oobMarker, Function isInside, Function2 getIntersection, bool doPolygonCut)
 {
-    assert(curvePoints.size() == oobMarker.size());
+    if (curvePoints.size() != oobMarker.size())
+        throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
 
-    if (curvePoints.size() != oobMarker.size() || curvePoints.empty()) return;
+    const size_t origSize = curvePoints.size();
+    if (origSize == 0) return;
 
-    auto isMarkedOob = [&](size_t index) { return oobMarker[index] != 0; }; //test if point is start of an OOB line
+    //use (already existing!) tail capacity as output buffer
+    curvePoints.reserve(origSize * 2);
+    oobMarker  .reserve(origSize * 2);
 
-    std::vector<CurvePoint>    curvePointsTmp;
-    std::vector<unsigned char> oobMarkerTmp;
-    curvePointsTmp.reserve(curvePoints.size()); //allocating memory for these containers is one
-    oobMarkerTmp  .reserve(oobMarker  .size()); //of the more expensive operations of Graph2D!
+    auto isOob = [&](size_t index) { return oobMarker[index] != 0; }; //test if point is start of an OOB line
 
-    auto savePoint = [&](const CurvePoint& pt, bool markedOob) { curvePointsTmp.push_back(pt); oobMarkerTmp.push_back(markedOob); };
+    //pass pt by *value* (only 16 bytes = 2 SSE/AVX registers) to prevent reference invalidation during vector<>::push_back
+    auto savePoint = [&](CurvePoint pt, bool markedOob) { curvePoints.push_back(pt); oobMarker.push_back(markedOob); };
 
     bool pointInside = isInside(curvePoints[0]);
     if (pointInside)
-        savePoint(curvePoints[0], isMarkedOob(0));
+        savePoint(curvePoints[0], isOob(0));
 
-    for (size_t index = 1; index < curvePoints.size(); ++index)
+    for (size_t index = 1; index < origSize; ++index)
     {
         if (isInside(curvePoints[index]) != pointInside)
         {
             pointInside = !pointInside;
             const CurvePoint is = getIntersection(curvePoints[index - 1], curvePoints[index]); //getIntersection returns "to" when delta is zero
-            savePoint(is, !pointInside || isMarkedOob(index - 1));
+            savePoint(is, !pointInside || isOob(index - 1));
         }
         if (pointInside)
-            savePoint(curvePoints[index], isMarkedOob(index));
+            savePoint(curvePoints[index], isOob(index));
     }
 
     //make sure the output polygon area is correctly shaped if either begin or end points are cut
-    if (doPolygonCut) //note: impacts min/max height-calculations!
-        if (curvePoints.size() >= 3)
-            if (isInside(curvePoints.front()) != pointInside)
-            {
-                assert(!oobMarkerTmp.empty());
-                oobMarkerTmp.back() = true;
+    if (doPolygonCut && //note: impacts min/max height-calculations!
+        origSize >= 3 &&
+        isInside(curvePoints[0]) != pointInside)
+    {
+        oobMarker.back() = true;
 
-                const CurvePoint is = getIntersection(curvePoints.back(), curvePoints.front());
-                savePoint(is, true);
-            }
+        const CurvePoint is = getIntersection(curvePoints[origSize - 1], curvePoints[0]);
+        savePoint(is, true);
+    }
 
-    curvePointsTmp.swap(curvePoints);
-    oobMarkerTmp  .swap(oobMarker);
+    curvePoints.erase(curvePoints.begin(), curvePoints.begin() + origSize);
+    oobMarker  .erase(oobMarker  .begin(), oobMarker  .begin() + origSize);
 }
 
 
@@ -314,12 +313,10 @@ void cutPointsOutsideY(std::vector<CurvePoint>& curvePoints, std::vector<unsigne
 }
 
 
-std::vector<CurvePoint> ContinuousCurveData::getPoints(double minX, double maxX, const wxSize& areaSizePx) const
+void ContinuousCurveData::getPoints(double minX, double maxX, const wxSize& areaSizePx, std::vector<CurvePoint>& points) const
 {
-    std::vector<CurvePoint> points;
-
     const int pixelWidth = areaSizePx.GetWidth();
-    if (pixelWidth <= 1) return points;
+    if (pixelWidth <= 0) return;
     const ConvertCoord cvrtX(minX, maxX, pixelWidth - 1); //map [minX, maxX] to [0, pixelWidth - 1]
 
     const std::pair<double, double> rangeX = getRangeX();
@@ -337,22 +334,19 @@ std::vector<CurvePoint> ContinuousCurveData::getPoints(double minX, double maxX,
         for (int i = posFrom; i <= posTo; ++i)
         {
             const double x = cvrtX.screenToReal(i);
-            points.emplace_back(CurvePoint{x, getValue(x)});
+            points.push_back({x, getValue(x)});
         }
     }
-    return points;
 }
 
 
-std::vector<CurvePoint> SparseCurveData::getPoints(double minX, double maxX, const wxSize& areaSizePx) const
+void SparseCurveData::getPoints(double minX, double maxX, const wxSize& areaSizePx, std::vector<CurvePoint>& points) const
 {
-    std::vector<CurvePoint> points;
-
     const int pixelWidth = areaSizePx.GetWidth();
-    if (pixelWidth <= 1) return points;
+    if (pixelWidth <= 0) return;
     const ConvertCoord cvrtX(minX, maxX, pixelWidth - 1); //map [minX, maxX] to [0, pixelWidth - 1]
     const std::pair<double, double> rangeX = getRangeX();
-
+     
     auto addPoint = [&](const CurvePoint& pt)
     {
         if (!points.empty())
@@ -362,7 +356,7 @@ std::vector<CurvePoint> SparseCurveData::getPoints(double minX, double maxX, con
 
             if (addSteps_)
                 if (pt.y != points.back().y)
-                    points.emplace_back(CurvePoint{pt.x, points.back().y}); //[!] aliasing parameter not yet supported via emplace_back: VS bug! => make copy
+                    points.push_back({pt.x, points.back().y}); //[!] aliasing parameter not yet supported via emplace_back: VS bug! => make copy
         }
         points.push_back(pt);
     };
@@ -423,7 +417,6 @@ std::vector<CurvePoint> SparseCurveData::getPoints(double minX, double maxX, con
             }
         }
     }
-    return points;
 }
 
 
@@ -523,7 +516,7 @@ void Graph2D::render(wxDC& dc) const
     //wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE);
 
     const int xLabelHeight = attr_.xLabelHeight ? *attr_.xLabelHeight : GetCharHeight() + dipToWxsize(2) /*margin*/;
-    const int yLabelWidth  = attr_.yLabelWidth  ? *attr_.yLabelWidth  : dc.GetTextExtent(L"1.23457e+07").x;
+    const int yLabelWidth  = attr_.yLabelWidth  ? *attr_.yLabelWidth  : dc.GetTextExtent(L"1.23456e+07").x;
 
     /*  -----------------------
         |        |   x-label  |
@@ -531,7 +524,7 @@ void Graph2D::render(wxDC& dc) const
         |y-label | graph area |
         |----------------------  */
 
-    wxRect graphArea  = clientRect;
+    wxRect graphArea = clientRect;
     int xLabelPosY = clientRect.y;
     int yLabelPosX = clientRect.x;
 
@@ -604,8 +597,12 @@ void Graph2D::render(wxDC& dc) const
         double minY = attr_.minY ? *attr_.minY :  std::numeric_limits<double>::infinity(); //automatic: ensure values are initialized by first curve
         double maxY = attr_.maxY ? *attr_.maxY : -std::numeric_limits<double>::infinity(); //
 
-        std::vector<std::vector<CurvePoint>>    curvePoints(curves_.size());
-        std::vector<std::vector<unsigned char>> oobMarker  (curves_.size()); //effectively a std::vector<bool> marking points that start an out-of-bounds line
+        curvePointsBuf_.resize(curves_.size());
+        oobMarkerBuf_  .resize(curves_.size());
+        for (auto& buf : curvePointsBuf_) buf.clear();
+        for (auto& buf :   oobMarkerBuf_) buf.clear();
+        std::vector<std::vector<CurvePoint>>&    curvePoints = curvePointsBuf_;
+        std::vector<std::vector<unsigned char>>& oobMarker   = oobMarkerBuf_; //effectively a std::vector<bool> marking points that start an out-of-bounds line
 
         for (size_t index = 0; index < curves_.size(); ++index)
         {
@@ -613,7 +610,7 @@ void Graph2D::render(wxDC& dc) const
             std::vector<CurvePoint>& points = curvePoints[index];
             auto&                    marker = oobMarker  [index];
 
-            points = curve.getPoints(minX, maxX, graphArea.GetSize());
+            curve.getPoints(minX, maxX, graphArea.GetSize(), points);
             marker.resize(points.size()); //default value: false
             if (!points.empty())
             {
@@ -642,25 +639,27 @@ void Graph2D::render(wxDC& dc) const
                                          minimalBlockSizePx.GetHeight() * 3,
                                          *attr_.labelFmtY);
 
-            if (graphArea.width <= 1 || graphArea.height <= 1)
+            if (graphArea.width <= 0 || graphArea.height <= 0)
                 return;
 
             const ConvertCoord cvrtX(minX, maxX, graphArea.width  - 1); //map [minX, maxX] to [0, pixelWidth - 1]
             const ConvertCoord cvrtY(maxY, minY, graphArea.height - 1); //map [minY, maxY] to [pixelHeight - 1, 0]
 
             //calculate curve coordinates on graph area
-            std::vector<std::vector<wxPoint>> drawPoints(curves_.size());
+            drawPointsBuf_.resize(curves_.size());
+            for (auto& buf : drawPointsBuf_) buf.clear();
+            std::vector<std::vector<wxPoint>>& drawPoints = drawPointsBuf_;
 
             for (size_t index = 0; index < curves_.size(); ++index)
             {
-                auto& cp = curvePoints[index];
+                auto& points = curvePoints[index];
 
                 //add two artificial points to fill the curve area towards x-axis => do this before cutPointsOutsideY() to handle curve leaving upper bound
                 if (curves_[index].second.fillMode == CurveFillMode::curve)
-                    if (!cp.empty())
+                    if (!points.empty())
                     {
-                        cp.emplace_back(CurvePoint{cp.back ().x, minY}); //add lower right and left corners
-                        cp.emplace_back(CurvePoint{cp.front().x, minY}); //[!] aliasing parameter not yet supported via emplace_back: VS bug! => make copy
+                        points.push_back({points.back ().x, minY}); //add lower right and left corners
+                        points.push_back({points.front().x, minY}); //[!] aliasing parameter not yet supported via emplace_back: VS bug! => make copy
                         oobMarker[index].back() = true;
                         oobMarker[index].push_back(true);
                         oobMarker[index].push_back(true);
@@ -670,10 +669,10 @@ void Graph2D::render(wxDC& dc) const
                 //1. realToScreenRound() deforms out-of-range values!
                 //2. pixels that are grossly out of range can be a severe performance problem when drawing on the DC (Windows)
                 const bool doPolygonCut = curves_[index].second.fillMode != CurveFillMode::none;
-                cutPointsOutsideY(cp, oobMarker[index], minY, maxY, doPolygonCut);
+                cutPointsOutsideY(points, oobMarker[index], minY, maxY, doPolygonCut);
 
                 auto& dp = drawPoints[index];
-                for (const CurvePoint& pt : cp)
+                for (const CurvePoint& pt : points)
                     dp.push_back(wxSize(cvrtX.realToScreenRound(pt.x),
                                         cvrtY.realToScreenRound(pt.y)) + graphArea.GetTopLeft());
             }
@@ -764,11 +763,11 @@ void Graph2D::render(wxDC& dc) const
                 dc.SetClippingRegion(graphArea); //prevent thick curves from drawing slightly outside
                 ZEN_ON_SCOPE_EXIT(dc.DestroyClippingRegion());
 
-                for (auto it = curves_.begin(); it != curves_.end(); ++it)
-                {
-                    dc.SetPen({it->second.color, it->second.lineWidth});
+                for (size_t index = 0; index != curves_.size(); ++index)
+                {                    
+                    const CurveAttributes& attr = curves_[index].second;
+                    dc.SetPen({attr.color, attr.lineWidth});
 
-                    const size_t index = it - curves_.begin();
                     const std::vector<wxPoint>& points = drawPoints[index];
                     const auto&                 marker = oobMarker [index];
                     assert(points.size() == marker.size());

@@ -189,6 +189,13 @@ bool Application::OnInit()
     else assert(!oldHandler);
 
 
+    /* prevent process termination on broken sockets/pipes and have send()/write() return EPIPE instead.
+       => global alternative to ::send(..., MSG_NOSIGNAL) on Linux and ::setsockopt(SO_NOSIGPIPE) on macOS */
+    if (auto oldHandler = ::signal(SIGPIPE, SIG_IGN);
+        oldHandler == SIG_ERR)
+        logExtraError(_("Error during process initialization.") + L"\n\n" + formatSystemError("signal(SIGPIPE)", getLastError()));
+    else assert(!oldHandler);
+
     //Windows User Experience Interaction Guidelines: tool tips should have 5s timeout, info tips no timeout => compromise:
     wxToolTip::Enable(true); //wxWidgets screw-up: wxToolTip::SetAutoPop is no-op if global tooltip window is not yet constructed: wxToolTip::Enable creates it
     wxToolTip::SetAutoPop(15'000); //https://docs.microsoft.com/en-us/windows/win32/uxguide/ctrl-tooltips-and-infotips
@@ -201,7 +208,7 @@ bool Application::OnInit()
 
     auto onSystemShutdown = [](int /*unused*/ = 0)
     {
-        onSystemShutdownRunTasks();
+        onSystemShutdownRunTasks(); //Linux/macOs: allocating memory during SIGTERM callback entails small deadlock risk
 
         //- it's futile to try and clean up while the process is in full swing (CRASH!) => just terminate!
         //- system sends close events to all open dialogs: If one of these calls wxCloseEvent::Veto(),
@@ -219,6 +226,8 @@ bool Application::OnInit()
         oldHandler == SIG_ERR)
         logExtraError(_("Error during process initialization.") + L"\n\n" + formatSystemError("signal(SIGTERM)", getLastError()));
     else assert(!oldHandler);
+    //-------------------------------------------------------
+    //-------------------------------------------------------
 
     //Note: app start is deferred: batch mode requires the wxApp eventhandler to be established for UI update events. This is not the case at the time of OnInit()!
     CallAfter([&] { onEnterEventLoop(); });

@@ -33,6 +33,6 @@ bool zen::runningOnMainThread()
     if (const auto globalTId = globalMainThreadId.get())
         return std::this_thread::get_id() == *globalTId;
 
-    assert(false);
+    //assert(false); -> fires on Linux when constructing file_path.cpp::globalEnvVars
     return true; //called during static initialization => "very likely" the main thread :>
 }

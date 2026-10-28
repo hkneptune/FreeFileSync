@@ -286,7 +286,7 @@ void DirCallback::onFile(const AFS::FileInfo& fi) //throw ThreadStopRequest
     //update status information no matter if item is excluded or not!
     if (cfg_.acb.mayReportCurrentFile(cfg_.threadIdx, cfg_.lastReportTime))
         cfg_.acb.reportCurrentFile(AFS::getDisplayPath(AFS::appendRelPath(cfg_.baseFolderPath, relPath)));
-
+    
     //------------------------------------------------------------------------------------
     //apply filter before processing (use relative name!)
     if (!cfg_.filter.ref().passFileFilter(relPath))

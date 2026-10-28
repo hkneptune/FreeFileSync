@@ -8,6 +8,7 @@
 #include "sys_error.h"
     #include <idn2.h>
     #include <unistd.h> //close
+    #include <signal.h>
     #include <sys/socket.h>
     #include <netinet/tcp.h> //TCP_NODELAY
     #include <netdb.h> //getaddrinfo
@@ -75,6 +76,11 @@ public:
         //               "If the pNodeName parameter points to a string equal to "localhost", all loopback addresses on the local computer are returned."
         if (trimCpy(server).empty())
             throw SysError(_("Server name must not be empty."));
+
+    //verify that ::signal(SIGPIPE, SIG_IGN) was set globally for this process
+    // => better alternative to ::send(..., MSG_NOSIGNAL) on Linux and ::setsockopt(SO_NOSIGPIPE) on macOS
+   [[maybe_unused]] struct sigaction act{};
+    assert(::sigaction(SIGPIPE, nullptr, &act) == 0 && act.sa_handler == SIG_IGN);
 
         Zstring nodeName = server; //macOS supports IDN out of the box, it seems :) - unlike Linux:
         if (!isAsciiString(server))

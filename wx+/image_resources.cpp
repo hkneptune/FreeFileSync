@@ -71,7 +71,7 @@ ImageHolder xbrzScale(int width, int height, const unsigned char* imageRgb, cons
 }
 
 
-auto createScalerTask(const std::string& imageName, const wxImage& img, int hqScale, Protected<std::vector<std::pair<std::string, ImageHolder>>>& protResult)
+auto makeScalerTask(const std::string& imageName, const wxImage& img, int hqScale, Protected<std::vector<std::pair<std::string, ImageHolder>>>& protResult)
 {
     assert(runningOnMainThread());
     return [imageName,
@@ -92,19 +92,17 @@ class HqParallelScaler
 public:
     explicit HqParallelScaler(int hqScale) : hqScale_(hqScale) { assert(hqScale > 1); }
 
-    ~HqParallelScaler() { threadGroup_ = {}; } //imgKeeper_ must out-live threadGroup!!!
-
     void add(const std::string& imageName, const wxImage& img)
     {
         assert(runningOnMainThread());
         imgKeeper_.push_back(img); //retain (ref-counted) wxImage so that the rgb/alpha pointers remain valid after passed to threads
-        threadGroup_->run(createScalerTask(imageName, img, hqScale_, protResult_));
+        threadGroup_.run(makeScalerTask(imageName, img, hqScale_, protResult_));
     }
 
     std::unordered_map<std::string, wxImage, BinaryStringHash, std::equal_to<>> waitAndGetResult()
     {
         assert(runningOnMainThread());
-        threadGroup_->wait();
+        threadGroup_.wait();
 
         std::unordered_map<std::string, wxImage, BinaryStringHash, std::equal_to<>> output;
 
@@ -126,8 +124,9 @@ private:
     std::vector<wxImage> imgKeeper_;
     Protected<std::vector<std::pair<std::string, ImageHolder>>> protResult_;
 
-    using TaskType = FunctionReturnTypeT<decltype(&createScalerTask)>;
-    std::optional<ThreadGroup<TaskType>> threadGroup_{std::in_place, std::max<int>(std::thread::hardware_concurrency(), 1), Zstr("xBRZ Scaler")};
+    using TaskType = FunctionReturnTypeT<decltype(&makeScalerTask)>;
+    //lifetime: create *after* dependent variables (imgKeeper_, protResult_)
+    ThreadGroup<TaskType> threadGroup_{Zstr("xBRZ Scaler")};
     //hardware_concurrency() == 0 if "not computable or well defined"
 };
 

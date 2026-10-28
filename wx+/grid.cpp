@@ -1291,7 +1291,7 @@ private:
             if (activeSelection_)
                 activeSelection_->evalMousePos(); //call on both mouse movement + timer event!
             else
-                setMouseHighlight(rowHover != HoverArea::none ? std::make_optional<MouseHighlight>({static_cast<size_t>(row), rowHover}) : std::nullopt);
+                setMouseHighlight(rowHover != HoverArea::none ? std::make_optional<MouseHighlight>(static_cast<size_t>(row), rowHover) : std::nullopt);
         }
     }
 
@@ -1554,8 +1554,8 @@ void Grid::updateWindowSizes(bool updateScrollbar)
         {
             ptrdiff_t yFrom = CalcUnscrolledPosition(wxPoint(0, 0)).y;
             ptrdiff_t yTo   = CalcUnscrolledPosition(wxPoint(0, mainWinHeightGross - 1)).y ;
-            yFrom = std::clamp<ptrdiff_t>(yFrom, 0, logicalHeight - 1);
-            yTo   = std::clamp<ptrdiff_t>(yTo,   0, logicalHeight - 1);
+            yFrom = std::clamp(yFrom, 0z, logicalHeight - 1);
+            yTo   = std::clamp(yTo,   0z, logicalHeight - 1);
 
             const ptrdiff_t rowFrom = rowLabelWin_->getRowAtPos(yFrom);
             const ptrdiff_t rowTo   = rowLabelWin_->getRowAtPos(yTo);
@@ -1668,8 +1668,8 @@ wxSize Grid::GetSizeAvailableForScrollTarget(const wxSize& size)
         {
             ptrdiff_t yFrom = CalcUnscrolledPosition(wxPoint(0, 0)).y;
             ptrdiff_t yTo   = CalcUnscrolledPosition(wxPoint(0, mainWinHeightGross - 1)).y ;
-            yFrom = std::clamp<ptrdiff_t>(yFrom, 0, logicalHeight - 1);
-            yTo   = std::clamp<ptrdiff_t>(yTo,   0, logicalHeight - 1);
+            yFrom = std::clamp(yFrom, 0z, logicalHeight - 1);
+            yTo   = std::clamp(yTo,   0z, logicalHeight - 1);
 
             const ptrdiff_t rowFrom = rowLabelWin_->getRowAtPos(yFrom);
             const ptrdiff_t rowTo   = rowLabelWin_->getRowAtPos(yTo);
@@ -1731,14 +1731,14 @@ void Grid::onKeyDown(wxKeyEvent& event)
     auto moveCursorTo = [&](ptrdiff_t row)
     {
         if (rowCount > 0)
-            setGridCursor(std::clamp<ptrdiff_t>(row, 0, rowCount - 1), GridEventPolicy::allow);
+            setGridCursor(std::clamp(row, 0z, rowCount - 1), GridEventPolicy::allow);
     };
 
     auto selectWithCursorTo = [&](ptrdiff_t row)
     {
         if (rowCount > 0)
         {
-            row = std::clamp<ptrdiff_t>(row, 0, rowCount - 1);
+            row = std::clamp(row, 0z, rowCount - 1);
             const ptrdiff_t anchorRow = mainWin_->getAnchor();
 
             mainWin_->setCursor(row, anchorRow);
@@ -1896,8 +1896,8 @@ void Grid::selectRange2(size_t rowFirst, size_t rowLast, bool positive, const Gr
 {
     assert(rowFirst <= rowLast);
     assert(getRowCount() == selection_.gridSize());
-    rowFirst = std::clamp<size_t>(rowFirst, 0, selection_.gridSize());
-    rowLast  = std::clamp<size_t>(rowLast,  0, selection_.gridSize());
+    rowFirst = std::clamp(rowFirst, 0uz, selection_.gridSize());
+    rowLast  = std::clamp(rowLast,  0uz, selection_.gridSize());
 
     if (rowFirst < rowLast && !selection_.matchesRange(rowFirst, rowLast, positive))
     {
@@ -2128,7 +2128,7 @@ std::pair<ptrdiff_t, ptrdiff_t> Grid::getVisibleRows(const wxRect& clientRect) c
         const int rowTo   = getRowAtWinPos(clientRect.GetBottom());
 
         return {std::max(rowFrom, 0),
-                std::min<ptrdiff_t>((rowTo) + 1, getRowCount())};
+                std::min<ptrdiff_t>(rowTo + 1, getRowCount())};
     }
     return {};
 }

@@ -1125,10 +1125,10 @@ void ConfigDialog::toggleSyncDirButton(DirectionByChange::Changes DirectionByCha
 namespace
 {
 auto updateDirButton(wxBitmapButton& button, SyncDirection dir,
-                     const char* imgNameLeft, const char* imgNameNone, const char* imgNameRight,
+                     const std::string_view imgNameLeft, const std::string_view imgNameNone, std::string_view imgNameRight,
                      SyncOperation opLeft, SyncOperation opNone, SyncOperation opRight)
 {
-    const char* imgName = nullptr;
+    std::string_view imgName;
     switch (dir)
     {
         case SyncDirection::left:
@@ -1506,7 +1506,7 @@ void ConfigDialog::setMiscSyncOptions(const MiscSyncConfig& miscCfg)
     //----------------------------------------------------------------------------
     m_checkBoxIgnoreErrors  ->SetValue(miscCfg.ignoreErrors);
     m_checkBoxAutoRetry     ->SetValue(miscCfg.autoRetryCount > 0);
-    m_spinCtrlAutoRetryCount->SetValue(std::max<size_t>(miscCfg.autoRetryCount, 0));
+    m_spinCtrlAutoRetryCount->SetValue(miscCfg.autoRetryCount);
     m_spinCtrlAutoRetryDelay->SetValue(miscCfg.autoRetryDelay.count());
     //----------------------------------------------------------------------------
     m_comboBoxPostSyncCommand->setValue(miscCfg.postSyncCommand);

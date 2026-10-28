@@ -437,7 +437,10 @@ void updateTopButton(wxBitmapButton& btn,
                      const char* extraIconName /*optional*/,
                      const wxColor& highlightCol /*optional*/)
 {
-    const wxColor backCol = highlightCol.IsOk() ? highlightCol : btn.GetBackgroundColour();
+    wxColor backCol = highlightCol.IsOk() ? highlightCol : btn.GetBackgroundColour();
+    if (backCol.IsTransparent()) //wxMAC: btn.GetBackgroundColour() == wxTransparentColor since wx 3.3.4!
+        backCol = wxSystemSettings::GetColour(wxSYS_COLOUR_BTNFACE);
+
     wxImage iconImg = highlightCol.IsOk() ? img : greyScale(img);
 
     wxImage btnLabelImg = createImageFromText(btn.GetLabelText(), btn.GetFont(),
@@ -1134,8 +1137,8 @@ imgFileManagerSmall_([]
     //1. setConfig() indirectly calls cfggrid::addAndSelect() which changes cfg history scroll position
     //2. Grid::makeRowVisible() requires final window height! => do this after window resizing is complete
     if (m_gridCfgHistory->getRowCount() > 0)
-        m_gridCfgHistory->scrollTo(std::clamp<size_t>(globalCfg.mainDlg.config.topRowPos, //must be set *after* wxAuiManager::LoadPerspective() to have any effect
-                                                      0, m_gridCfgHistory->getRowCount() - 1));
+        m_gridCfgHistory->scrollTo(std::clamp(globalCfg.mainDlg.config.topRowPos, //must be set *after* wxAuiManager::LoadPerspective() to have any effect
+                                              0uz, m_gridCfgHistory->getRowCount() - 1));
     //first selected item should *always* be visible:
     const std::vector<size_t> selectedRows = m_gridCfgHistory->getSelectedRows();
     if (!selectedRows.empty())
@@ -2545,7 +2548,7 @@ void MainDialog::onTreeGridSelection(GridSelectEvent& event)
 
     if (leadRow >= 0)
     {
-        leadRow = std::max<ptrdiff_t>(0, leadRow - 1); //scroll one more row
+        leadRow = std::max(0z, leadRow - 1); //scroll one more row
 
         m_gridMainL->scrollTo(leadRow); //
         m_gridMainC->scrollTo(leadRow); //scroll all of them (including "scroll master")
@@ -3126,6 +3129,9 @@ void MainDialog::resetLayout()
     m_splitterMain->setSashOffset(0);
     auiMgr_.LoadPerspective(defaultPerspective_, false /*don't call wxAuiManager::Update() => already done in updateGuiForFolderPair() */);
     updateGuiForFolderPair();
+
+    //LoadPerspective() also hides the log panel: undo
+    showLogPanel(m_bpButtonToggleLog->isActive());
 
     //progress dialog size:
     globalCfg_.dpiLayouts[getDpiScalePercent()].progressDlg.size        = wxSize();
@@ -5304,7 +5310,8 @@ void MainDialog::setLastOperationLog(const ProcessSummary& summary, const std::s
     //m_panelTimeStats->Layout(); //
 
     const wxImage& logImg = layOver(loadImage("log_file"), logOverlayImage, wxALIGN_BOTTOM | wxALIGN_RIGHT);
-    const wxSize maxSize = getMaxSize(logImg.GetSize() + wxSize(dipToScreen(10), dipToScreen(10)), {0, m_bpButtonViewType->GetMinSize().y});
+    const wxSize maxSize = getMaxSize(logImg.GetSize() + wxSize(dipToScreen(10), dipToScreen(10)),
+    {0, m_bpButtonViewType->GetBitmapLabel().GetSize().y});
 
     m_bpButtonToggleLog->init(layOver(generatePressedButtonBack(maxSize), logImg), logImg, 0 /*pad*/);
 
@@ -5536,7 +5543,7 @@ void MainDialog::updateGridViewData()
                 wxImage imgButtonPressed  = stackImages(imgCategory,     imgCountPressed,  ImageStackLayout::horizontal, ImageStackAlignment::bottom);
                 wxImage imgButtonReleased = stackImages(imgIconReleased, imgCountReleased, ImageStackLayout::horizontal, ImageStackAlignment::bottom);
 
-                const wxSize maxSize = getMaxSize(imgButtonPressed.GetSize(), {0, m_bpButtonViewType->GetMinSize().y});
+                const wxSize maxSize = getMaxSize(imgButtonPressed.GetSize(), {0, m_bpButtonViewType->GetBitmapLabel().GetSize().y});
 
                 btn.init(mirrorIfRtl(layOver(generatePressedButtonBack(maxSize), imgButtonPressed)),
                          mirrorIfRtl(imgButtonReleased), 0 /*pad*/);
@@ -6021,32 +6028,36 @@ void MainDialog::updateGuiForFolderPair()
                                          m_panelDirectoryPairs->ClientToWindowSize(m_panelTopCenter->GetSize()).y); //
     const int addPairHeight = !additionalFolderPairs_.empty() ? additionalFolderPairs_[0]->GetSize().y : 0;
 
-    const double addPairCountMax = std::max(globalCfg_.mainDlg.folderPairsVisibleMax - 1 + 0.5, 1.5);
+    const double addPairCountMax = std::max(globalCfg_.mainDlg.folderPairsVisibleMax - 1 + 0.5 /*indicate additional folders*/, 1.5);
 
-    const double addPairCountMin = std::min<double>(1.5,             additionalFolderPairs_.size()); //add 0.5 to indicate additional folders
-    const double addPairCountOpt = std::min<double>(addPairCountMax, additionalFolderPairs_.size()); //
+    //make sure user cannot fully hide additional folder pairs
+    const double addPairCountMin = std::min<double>(1.5, additionalFolderPairs_.size());
+    const double addPairCountOpt = std::min<double>(additionalFolderPairs_.size(), addPairCountMax);
     addPairCountLast_ = addPairCountOpt;
 
     wxAuiPaneInfo& dirPane = auiMgr_.GetPane(m_panelDirectoryPairs);
+    if (dirPane.IsHorizontal())
+    {
+        dirPane.min_size.x = dipToWxsize(100);
+        dirPane.min_size.y  = firstPairHeight + addPairCountMin * addPairHeight;
+        dirPane.best_size.y = firstPairHeight + addPairCountOpt * addPairHeight;
+        dirPane.dock_size = 0; //triggers size re-calculate (alternative: set to = best_size.y since !dirPane.HasBorder())
 
-    //make sure user cannot fully shrink additional folder pairs
-    dirPane.MinSize(dipToWxsize(100), firstPairHeight + addPairCountMin * addPairHeight);
-    dirPane.BestSize(-1,              firstPairHeight + addPairCountOpt * addPairHeight);
+        //########################################################################################################################
+        //wxAUI hack: call wxAuiPaneInfo::Fixed() to apply best size:
+        dirPane.Fixed();
+        auiMgr_.Update();
 
-    //########################################################################################################################
-    //wxAUI hack: call wxAuiPaneInfo::Fixed() to apply best size:
-    dirPane.Fixed();
-    auiMgr_.Update();
+        //now make resizable again
+        dirPane.Resizable();
+        auiMgr_.Update();
+        //alternative: dirPane.Hide() + .Show() seems to work equally well
 
-    //now make resizable again
-    dirPane.Resizable();
-    auiMgr_.Update();
-    //alternative: dirPane.Hide() + .Show() seems to work equally well
+        //########################################################################################################################
 
-    //########################################################################################################################
-
-    //it seems there is no GetSizer()->SetSizeHints(this)/Fit() required due to wxAui "magic"
-    //=> *massive* perf improvement on OS X!
+        //it seems there is no GetSizer()->SetSizeHints(this)/Fit() required due to wxAui "magic"
+        //=> *massive* perf improvement on OS X!
+    }
 }
 
 
@@ -6061,11 +6072,13 @@ void MainDialog::recalcMaxFolderPairsVisible()
 
     if (addPairCountLast_ && firstPairHeight > 0 && addPairHeight > 0)
     {
-        const double addPairCountCurrent = (m_panelDirectoryPairs->GetSize().y - firstPairHeight) / (1.0 * addPairHeight); //include m_panelDirectoryPairs window borders!
+        const double addPairCountCurrent = (m_panelDirectoryPairs->GetSize().y - firstPairHeight) / (1.0 * addPairHeight);
+        //m_panelDirectoryPairs window borders subtract out!
 
         if (std::abs(addPairCountCurrent - *addPairCountLast_) > 0.4) //=> presumely changed by user!
         {
-            globalCfg_.mainDlg.folderPairsVisibleMax = std::round(addPairCountCurrent) + 1;
+            globalCfg_.mainDlg.folderPairsVisibleMax = 1 + std::round(addPairCountCurrent - 0.1 /*
+            round values like exact 1.5 down, see updateGuiForFolderPair() "indicate additional folders"*/ );
         }
     }
 }
@@ -6220,14 +6233,14 @@ void MainDialog::onMenuOptions(wxCommandEvent& event)
             }
         try
         {
-            changeColorTheme(globalCfg_.appColorTheme); //throw FileError
+            changeColorTheme(globalCfg_.appColorTheme); //throw ErrorRestartRequired, FileError
             //should work on macOS/Linux, but not on Windows (until wxWidgets fixes their s...)
 
             //show new dialog, then delete old one
             MainDialog::create(getConfig(), activeConfigFiles_, getGlobalCfgBeforeExit(), globalCfgFilePath_, false /*startComparison*/);
             Destroy();
         }
-        catch (FileError&) //changing color scheme failed => restart app
+        catch (ErrorRestartRequired&)//changing color scheme failed => restart app
         {
             onSystemShutdownRunTasks(); //LastRun.ffs_gui + GlobalSettings.xml +...
             try
@@ -6248,6 +6261,10 @@ void MainDialog::onMenuOptions(wxCommandEvent& event)
             //don't continue after having called onSystemShutdownRunTasks()
             // => also avoid ~MainDialog() calling getGlobalCfgBeforeExit() a second time and saving cfg needlessly
             terminateProcess(static_cast<int>(FfsExitCode::success));
+        }
+        catch (const FileError& e)
+        {
+            showNotificationDialog(this, DialogInfoType::error, PopupDialogCfg().setDetailInstructions(e.toString()));
         }
     }
 }

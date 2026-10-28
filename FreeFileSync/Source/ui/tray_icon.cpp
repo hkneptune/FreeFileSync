@@ -74,7 +74,7 @@ wxBitmap FfsTrayIcon::ProgressIconGenerator::get(double fraction)
         return wxIcon();
 
     const int pixCount = logo_.GetWidth() * logo_.GetHeight();
-    const int pixStart = std::clamp<int>(std::floor(fraction * pixCount), 0, pixCount);
+    const int pixStart = std::clamp(std::floor(fraction * pixCount), 0.0, pixCount * 1.0);
 
     if (startPixBuf_ != pixStart)
     {

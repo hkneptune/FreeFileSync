@@ -5,6 +5,7 @@
 // *****************************************************************************
 
 #include "db_file.h"
+#include <array>
 #include <bit> //std::endian
 #include <zen/guid.h>
 #include <zen/crc.h>
@@ -12,6 +13,7 @@
 #include <zen/zlib_wrap.h>
 #include "../afs/native.h"
 #include "status_handler_impl.h"
+
 using namespace zen;
 using namespace fff;
 
@@ -140,21 +142,17 @@ DbStreams loadStreams(const AbstractPath& dbPath, const IoCallback& notifyUnbuff
             throw SysError(_("File content is corrupted.") + L" (invalid header)");
 
         const int version = readNumber<int32_t>(memStreamIn); //throw SysErrorUnexpectedEos
-
-        if (version == DB_FILE_VERSION) //catch data corruption ASAP + don't rely on std::bad_alloc for consistency checking
-            // => only "partially" useful for container/stream metadata since the streams data is zlib-compressed
-        {
-            assert(byteStream.size() >= sizeof(uint32_t)); //obviously (after header check)
-            MemoryStreamOut crcStreamOut;
-            writeNumber<uint32_t>(crcStreamOut, getCrc32(byteStream.begin(), byteStream.end() - sizeof(uint32_t)));
-
-            if (!endsWith(byteStream, crcStreamOut.ref()))
-                throw SysError(_("File content is corrupted.") + L" (invalid checksum)");
-        }
-        else if (version == 10) //TODO: remove migration code at some time! v10 used until 2020-02-07
-            ;
-        else
+        if (version != DB_FILE_VERSION)
             throw SysError(_("Unsupported data format.") + L' ' + replaceCpy(_("Version: %x"), L"%x", numberTo<std::wstring>(version)));
+
+        //catch data corruption ASAP + don't rely on std::bad_alloc for consistency checking
+        // => only "partially" useful for container/stream metadata since the streams data is zlib-compressed
+        assert(byteStream.size() >= sizeof(uint32_t)); //obviously (after header check)
+        MemoryStreamOut crcStreamOut;
+        writeNumber<uint32_t>(crcStreamOut, getCrc32(byteStream.begin(), byteStream.end() - sizeof(uint32_t)));
+
+        if (!endsWith(byteStream, crcStreamOut.ref()))
+            throw SysError(_("File content is corrupted.") + L" (invalid checksum)");
 
         DbStreams output;
 
@@ -196,46 +194,11 @@ public:
             generator.recurse(dbFolder);
             //PERF_STOP
 
-            std::vector<std::future<std::string>> compressedStreams;
-
-            ThreadGroup<std::packaged_task<std::string()>> threadGroup {std::max(std::thread::hardware_concurrency(), 1U), Zstr("Compress sync.ffs_db")};
-
-            //PERF_START => test case "1 million file pairs": 286 ms
-            for (const std::string* rawStream :
-                 {
-                     &generator.streamOutNames_     .ref(),
-                     &generator.streamOutModtime_   .ref(),
-                     &generator.streamOutFilePrint_ .ref(),
-                     &generator.streamOutFileSize_  .ref(),
-                     &generator.streamOutItemCounts_.ref(),
-                     &generator.streamOutCmpVars_   .ref(),
-                 })
-            {
-                std::packaged_task<std::string()> pt([rawStream]
-                {
-                    /* Zlib: optimal level - test case 1 million files
-                    level|size [MB]|time [ms]
-                      0    49.54      272 (uncompressed)
-                      1    14.53     1013
-                      2    14.13     1106
-                      3    13.76     1288
-                      4    13.20     1526 - best compromise between speed and compression
-                      5    12.73     1916
-                      6    12.58     2765
-                      7    12.54     3633
-                      8    12.51     9032
-                      9    12.50    19698 (maximal compression) */
-                    return compress(*rawStream, 4 /*level*/); //throw SysError
-                });
-                compressedStreams.emplace_back(pt.get_future());
-                threadGroup.run(std::move(pt));
-            }
-
             MemoryStreamOut streamOut;
-
-            for (auto& futStream : compressedStreams)
-                writeContainer(streamOut, futStream.get() /*throw SysError*/);
+            //PERF_START => test case "1 million file pairs": 286 ms
+            generator.serialize(streamOut); //throw SysError
             //PERF_STOP
+            const std::string_view bufOut = streamOut.ref();
 
             MemoryStreamOut outL;
             MemoryStreamOut outR;
@@ -243,12 +206,11 @@ public:
             writeNumber<int32_t>(outL, DB_STREAM_VERSION);
             writeNumber<int32_t>(outR, DB_STREAM_VERSION);
 
-            //split "streamOut" into left and right streams:
-            const std::string& buf = streamOut.ref();
-            const size_t halfSize = buf.size() / 2;
+            //split "bufOut" into left and right streams:
+            const size_t halfSize = bufOut.size() / 2;
 
-            outL.write(buf.c_str(), halfSize);
-            outR.write(buf.c_str() + halfSize, buf.size() - halfSize);
+            outL.write(bufOut.data(), halfSize);
+            outR.write(bufOut.data() + halfSize, bufOut.size() - halfSize);
 
             streamL = std::move(outL.ref());
             streamR = std::move(outR.ref());
@@ -295,30 +257,58 @@ private:
         }
     }
 
-    void writeItemName(const Zstring& str)
+    void writeItemName(const Zstring& itemName)
     {
-        const auto& utfStr = utfTo<std::string>(str);
-        const char* cstr = utfStr.c_str();
-        const size_t size = strSize(cstr); //let's NOT risk DB file corruption if there ever is an embedded \0 for whatever reason!
-        assert(size == utfStr.size());
+        const auto& utfName = itemName;
+        //let's NOT risk DB file corruption if there ever is an embedded \0 for whatever reason!
+        if (utfName.size() != std::strlen(utfName.c_str()))
+            throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Unexpected null character in file name:" + '\n' + utfName.c_str());
 
-        writeArray(streamOutNames_, cstr, size + 1 /* null-terminator */);
+        writeArray(streamOutNames_, utfName.c_str(), utfName.size() + 1 /* null-terminator */);
         //=> 5% size reduction compared to: writeContainer(streamOutNames_, utfTo<std::string>(str));
+    }
+
+    void serialize(MemoryStreamOut& streamOut) //throw SysError
+    {
+        for (const std::string& stream :
+             parallelTransform<std::string_view>(
+    {
+        streamOutNames_     .ref(),
+        streamOutModtime_   .ref(),
+        streamOutFilePrint_ .ref(),
+        streamOutFileSize_  .ref(),
+        streamOutItemCounts_.ref(),
+        streamOutCmpVars_   .ref(),
+    },
+    /* zlib: optimal level - test case 1 million files
+    level|size [MB]|time [ms]
+      0    49.54      272 (uncompressed)
+      1    14.53     1013
+      2    14.13     1106
+      3    13.76     1288
+      4    13.20     1526 - best compromise between speed and compression
+      5    12.73     1916
+      6    12.58     2765
+      7    12.54     3633
+      8    12.51     9032
+      9    12.50    19698 (maximal compression) */
+    [](const std::string_view s) { return compress(s, 4 /*level*/); /*throw SysError*/ }, Zstr("Compress sync.ffs_db")))
+        writeContainer(streamOut, stream);
     }
 
     /*  maximize zlib compression by grouping similar data: => 30% size reduction!
 
         other ideas: - use empty item name as sentinel    => only 0,17% size reduction!
-                     - separate file from folder names    => 0.5% size reduction (and 5% smaller runtime)
+                     - separate file from folder names    => 0.5% size reduction (and 5% shorter runtime)
                      - maximum zlib compression (level 9) => 7% size reduction possible
 
         compression times [ms]: test case 1 million file pairs
                Names       281
-               Modtime     98
+               Modtime      98
                FilePrint   160
-               FileSize    88
-               ItemCounts  6
-               CmpVars     16            */
+               FileSize     88
+               ItemCounts    6
+               CmpVars      16            */
     MemoryStreamOut streamOutNames_;
     MemoryStreamOut streamOutModtime_;   //data with bias to lead side (= always left in this context)
     MemoryStreamOut streamOutFilePrint_; //
@@ -352,28 +342,16 @@ public:
 
             if (streamVersion == DB_STREAM_VERSION)
             {
-                std::string buf;
-                buf.append(streamIn1.buf().begin() + streamIn1.pos(), streamIn1.buf().end());
-                buf.append(streamIn2.buf().begin() + streamIn2.pos(), streamIn2.buf().end());
+                std::string bufIn;
+                bufIn.append(streamIn1.buf().begin() + streamIn1.pos(), streamIn1.buf().end());
+                bufIn.append(streamIn2.buf().begin() + streamIn2.pos(), streamIn2.buf().end());
 
-                MemoryStreamIn streamIn(buf);
+                MemoryStreamIn streamIn(bufIn);
+                StreamParser parser(streamVersion, streamIn); //throw SysError
 
-                //PERF_START => test case "1 million file pairs": 96 ms
-                const std::string bufNames      = decompress(readContainer<std::string>(streamIn)); //
-                const std::string bufModtime    = decompress(readContainer<std::string>(streamIn)); //
-                const std::string bufFilePrint  = decompress(readContainer<std::string>(streamIn)); //throw SysError
-                const std::string bufFileSize   = decompress(readContainer<std::string>(streamIn)); //
-                const std::string bufItemCounts = decompress(readContainer<std::string>(streamIn)); //
-                const std::string bufCmpVars    = decompress(readContainer<std::string>(streamIn)); //
-                //PERF_STOP
+                if (streamIn.pos() != streamIn.buf().size())
+                    throw SysError(_("File content is corrupted.") + L" (unexpected trailing data)");
 
-                StreamParser parser(streamVersion,
-                                    bufNames,
-                                    bufModtime,
-                                    bufFilePrint,
-                                    bufFileSize,
-                                    bufItemCounts,
-                                    bufCmpVars);
                 //PERF_START => test case "1 million file pairs": 380 ms
                 if (leadStreamLeft)
                     parser.recurse<SelectSide::left>(output.ref()); //throw SysError
@@ -419,20 +397,29 @@ public:
     }
 
 private:
-    StreamParser(int streamVersion,
-                 const std::string& bufNames,
-                 const std::string& bufModtime,
-                 const std::string& bufFilePrint,
-                 const std::string& bufFileSize,
-                 const std::string& bufItemCounts,
-                 const std::string& bufCmpVars) :
-        streamVersion_(streamVersion),
-        streamInNames_     (bufNames),
-        streamInModtime_   (bufModtime),
-        streamInFilePrint_ (bufFilePrint),
-        streamInFileSize_  (bufFileSize),
-        streamInItemCounts_(bufItemCounts),
-        streamInCmpVars_   (bufCmpVars) {}
+    StreamParser(int streamVersion, MemoryStreamIn& streamIn) : //throw SysError
+        streamVersion_(streamVersion)
+    {
+        const std::array streams
+        {
+            &streamInNames_,
+            &streamInModtime_,
+            &streamInFilePrint_,
+            &streamInFileSize_,
+            &streamInItemCounts_,
+            &streamInCmpVars_,
+        };
+
+        for (size_t i = 0; i < streams.size(); ++ i)
+            streamsBuf_.emplace_back(readContainer<std::string>(streamIn)); //throw SysErrorUnexpectedEos
+
+        //PERF_START => test case "1 million file pairs": 96 ms -> this was *before* we used parallelTransform!
+        streamsBuf_ = parallelTransform(streamsBuf_, [](const std::string_view s) { return decompress(s); /*throw SysError*/ }, Zstr("Decompress sync.ffs_db"));
+        //PERF_STOP
+
+        for (size_t i = 0; i < streams.size(); ++i)
+            *streams[i] = MemoryStreamIn(streamsBuf_[i]);
+    }
 
     template <SelectSide leadSide>
     void recurse(InSyncFolder& container) //throw SysError
@@ -507,6 +494,7 @@ private:
     }
 
     [[maybe_unused]] const int streamVersion_;
+    std::vector<std::string> streamsBuf_;
     MemoryStreamIn streamInNames_;
     MemoryStreamIn streamInModtime_;   //data with bias to lead side
     MemoryStreamIn streamInFilePrint_; //
@@ -674,7 +662,7 @@ private:
             if (toPreserve.contains(v.first))
                 return false;
             //all items not existing in "currentFiles" have either been deleted meanwhile or been excluded via filter:
-            const Zstring& itemRelPath = appendPath(parentRelPath, v.first.normStr);
+            const Zstring itemRelPath = appendPath(parentRelPath, v.first.normStr);
             return filter_.passFileFilter(itemRelPath);
             //note: items subject to traveral errors are also excluded by this file filter here! see comparison.cpp, modified file filter for read errors
         });
@@ -714,7 +702,7 @@ private:
             if (toPreserve.contains(v.first))
                 return false;
             //all items not existing in "currentSymlinks" have either been deleted meanwhile or been excluded via filter:
-            const Zstring& itemRelPath = appendPath(parentRelPath, v.first.normStr);
+            const Zstring itemRelPath = appendPath(parentRelPath, v.first.normStr);
             return filter_.passFileFilter(itemRelPath);
         });
     }
@@ -747,7 +735,7 @@ private:
         //delete removed items (= "in-sync") from database
         eraseIf(dbFolders, [&](InSyncFolder::FolderList::value_type& v)
         {
-            const Zstring& itemRelPath = appendPath(parentRelPath, v.first.normStr);
+            const Zstring itemRelPath = appendPath(parentRelPath, v.first.normStr);
 
             if (auto it = toPreserve.find(v.first); it != toPreserve.end())
             {

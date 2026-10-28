@@ -360,7 +360,7 @@ void zen::moveAndRenameItem(const Zstring& pathFrom, const Zstring& pathTo, bool
 
 namespace
 {
-void setWriteTimeNative(const Zstring& itemPath, const timespec& modTime, ProcSymlink procSl) //throw FileError
+void setFileTimeNative(const Zstring& itemPath, const timespec& modTime, ProcSymlink procSl) //throw FileError
 {
     /* [2013-05-01] sigh, we can't use utimensat() on NTFS volumes on Ubuntu: silent failure!!! what morons are programming this shit???
         => fallback to "retarded-idiot version"! -- DarkByte
@@ -376,10 +376,10 @@ void setWriteTimeNative(const Zstring& itemPath, const timespec& modTime, ProcSy
             => fdutimensat: https://github.com/coreutils/gnulib/blob/master/lib/fdutimensat.c                  */
     const timespec newTimes[2]
     {
-        {.tv_sec = ::time(nullptr)}, //access time; don't use UTIME_NOW/UTIME_OMIT: more bugs! https://freefilesync.org/forum/viewtopic.php?t=1701
+        {.tv_sec = ::time(nullptr)}, //access time; don't use UTIME_NOW/UTIME_OMIT: more bugs! https://freefilesync.org/forum/viewtopic.php?t=1701#p6893
         modTime,
     };
-    //test: even modTime == 0 is correctly applied (no NOOP!) test2: same behavior for "utime()"
+    //test: modTime == 0 is correctly applied (no NOOP!) test2: same behavior for "utime()"
 
     //hell knows why files on gvfs-mounted Samba shares fail to open(O_WRONLY) returning EOPNOTSUPP:
     //https://freefilesync.org/forum/viewtopic.php?t=2803 => utimensat() works (but not for gvfs SFTP or CIFS)
@@ -420,8 +420,11 @@ void setWriteTimeNative(const Zstring& itemPath, const timespec& modTime, ProcSy
 
 void zen::setFileTime(const Zstring& filePath, time_t modTime, ProcSymlink procSl) //throw FileError
 {
-    setWriteTimeNative(filePath, timetToNativeFileTime(modTime),
-                       procSl); //throw FileError
+    const auto modTimeNative = timetToNativeFileTime(modTime);
+
+    setFileTimeNative(filePath,
+                      modTimeNative,
+                      procSl); //throw FileError
 }
 
 
@@ -665,7 +668,7 @@ void zen::copySymlink(const Zstring& sourcePath, const Zstring& targetPath) //th
     if (::lstat(sourcePath.c_str(), &sourceInfo) != 0)
         THROW_LAST_FILE_ERROR(replaceCpy(_("Cannot read file attributes of %x."), L"%x", fmtPath(sourcePath)), "lstat");
 
-    setWriteTimeNative(targetPath, sourceInfo.st_mtim, ProcSymlink::asLink); //throw FileError
+    setFileTimeNative(targetPath, sourceInfo.st_mtim, ProcSymlink::asLink); //throw FileError
 }
 
 
@@ -741,15 +744,6 @@ FileCopyResult zen::copyNewFile(const Zstring& sourceFile, const Zstring& target
 
     const auto targetFileIdx = fileOut.getStatBuffered().st_ino; //throw FileError
 
-    //try to set modTime while handle is open without error handling (similar to CopyFileEx)
-    const timespec newTimes[2]
-    {
-        {.tv_sec = ::time(nullptr)}, //access time; don't use UTIME_NOW/UTIME_OMIT: more bugs! https://freefilesync.org/forum/viewtopic.php?t=1701
-        sourceInfo.st_mtim,
-    };
-    ::futimens(fileOut.getHandle(), newTimes);
-
-
     //close output file handle; also good place to catch errors when closing stream!
     fileOut.close(); //throw FileError
     //==========================================================================================================
@@ -759,12 +753,13 @@ FileCopyResult zen::copyNewFile(const Zstring& sourceFile, const Zstring& target
     std::optional<FileError> errorModTime;
     try
     {
-        /*  we cannot set the target file times (::futimes) while the file descriptor is still open after a write operation:
-            this triggers bugs on Samba shares where the modification time is set to current time instead.
+        /*  we cannot set target modTime while the file handle is still open (e.g. via ::futimes):
+            Samba shares flush data during handle close() which often sets modTime to current time
             Linux: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=340236
                    http://comments.gmane.org/gmane.linux.file-systems.cifs/2854
             macOS: https://freefilesync.org/forum/viewtopic.php?t=356             */
-        setWriteTimeNative(targetFile, sourceInfo.st_mtim, ProcSymlink::follow); //throw FileError
+        setFileTimeNative(targetFile, sourceInfo.st_mtim, ProcSymlink::follow); //throw FileError
+
     }
     catch (const FileError& e) { errorModTime = e; /*might slice derived class?*/ }
 

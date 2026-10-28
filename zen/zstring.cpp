@@ -288,7 +288,6 @@ bool equalNoCase(const Zstring& lhs, const Zstring& rhs)
     const bool isAsciiR = isAsciiString(rhs); //
 
     //fast-path: no extra memory allocations
-    //caveat: ASCII-char and non-ASCII Unicode *can* compare case-insensitive equal!!! e.g. i and ı https://freefilesync.org/forum/viewtopic.php?t=9718
     if (isAsciiL && isAsciiR)
     {
         if (lhs.size() != rhs.size())
@@ -301,6 +300,7 @@ bool equalNoCase(const Zstring& lhs, const Zstring& rhs)
         return true;
     }
 
+    //caveat: ASCII-char and non-ASCII Unicode *can* compare case-insensitive equal!!! e.g. i and ı https://freefilesync.org/forum/viewtopic.php?t=9718
     return (isAsciiL ? getAsciiUpperCase(lhs) : getUpperCaseNonAscii(lhs)) ==
            (isAsciiR ? getAsciiUpperCase(rhs) : getUpperCaseNonAscii(rhs));
 }

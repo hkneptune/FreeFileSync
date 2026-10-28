@@ -118,14 +118,14 @@ std::pair<InputIterator, InputIterator> minMaxElement(InputIterator first, Input
 #endif
 
 
-template <class T, class InputIterator> inline
-auto roundToGrid(T val, InputIterator first, InputIterator last)
+template <class T, class BiDiIterator> inline
+auto roundToGrid(T val, BiDiIterator first, BiDiIterator last)
 {
     assert(std::is_sorted(first, last));
     if (first == last)
-        return static_cast<decltype(*first)>(val);
+        return static_cast<std::iter_value_t<BiDiIterator>>(val);
 
-    InputIterator it = std::lower_bound(first, last, val);
+    BiDiIterator it = std::lower_bound(first, last, val);
     if (it == last)
         return *--last;
     if (it == first)
@@ -140,7 +140,8 @@ auto roundToGrid(T val, InputIterator first, InputIterator last)
 template <class T> inline
 bool isNull(T value)
 {
-    return abs(value) <= std::numeric_limits<T>::epsilon(); //epsilon is 0 für integral types => less-equal
+    static_assert(zen::isFloat<T>);
+    return std::abs(value) < std::numeric_limits<T>::epsilon();
 }
 
 
@@ -300,15 +301,15 @@ double mad(RandomAccessIterator first, RandomAccessIterator last) //note: invali
     const double m = median(first, last);
 
     //the second median needs to operate on absolute residuals => avoid transforming input range which may have less than double precision!
-    auto lessMedAbs = [m](double lhs, double rhs) { return abs(lhs - m) < abs(rhs - m); };
+    auto lessMedAbs = [m](double lhs, double rhs) { return std::abs(lhs - m) < std::abs(rhs - m); };
 
     std::nth_element(first, first + n / 2, last, lessMedAbs); //complexity: O(n)
-    const double midVal = abs(*(first + n / 2) - m);
+    const double midVal = std::abs(*(first + n / 2) - m);
 
     if (n % 2 != 0)
         return midVal;
     else //n is even and >= 2 in this context: return mean of two middle values
-        return 0.5 * (abs(*std::max_element(first, first + n / 2, lessMedAbs) - m) + midVal);
+        return 0.5 * (std::abs(*std::max_element(first, first + n / 2, lessMedAbs) - m) + midVal);
 }
 
 
@@ -328,10 +329,10 @@ double stdDeviation(InputIterator first, InputIterator last, double* arithMean)
         ++n;
         const double val = *first - mean;
 
-        if (abs(val) > scale)
+        if (std::abs(val) > scale)
         {
             q = (n - 1.0) / n + q * power<2>(scale / val);
-            scale = abs(val);
+            scale = std::abs(val);
         }
         else
             q += (n - 1.0) * power<2>(val / scale) / n;
@@ -353,7 +354,7 @@ double norm2(InputIterator first, InputIterator last)
     double scale  = 1;
     for (; first != last; ++first)
     {
-        const double tmp = abs(*first);
+        const double tmp = std::abs(*first);
         if (tmp > scale)
         {
             result = 1 + result * power<2>(scale / tmp);

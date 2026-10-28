@@ -73,8 +73,8 @@ constexpr std::chrono::seconds HTTP_SESSION_MAX_IDLE_TIME  (20);
 constexpr std::chrono::seconds HTTP_SESSION_CLEANUP_INTERVAL(4);
 constexpr std::chrono::seconds GDRIVE_SYNC_INTERVAL         (5);
 
-const size_t GDRIVE_BLOCK_SIZE_DOWNLOAD =  64 * 1024; //libcurl returns blocks of only 16 kB as returned by recv() even if we request larger blocks via CURLOPT_BUFFERSIZE
-const size_t GDRIVE_BLOCK_SIZE_UPLOAD   =  64 * 1024; //libcurl requests blocks of 64 kB. larger blocksizes set via CURLOPT_UPLOAD_BUFFERSIZE do not seem to make a difference
+const size_t GDRIVE_BLOCK_SIZE_DOWNLOAD =  64 * 1024; //libcurl returns blocks of only 16 KB as returned by recv() even if we request larger blocks via CURLOPT_BUFFERSIZE
+const size_t GDRIVE_BLOCK_SIZE_UPLOAD   =  64 * 1024; //libcurl requests blocks of 64 KB. larger blocksizes set via CURLOPT_UPLOAD_BUFFERSIZE do not seem to make a difference
 const size_t GDRIVE_STREAM_BUFFER_SIZE = 1024 * 1024; //unit: [byte]
 //stream buffer should be big enough to facilitate prefetching during alternating read/write operations => e.g. see serialize.h::unbufferedStreamCopy()
 
@@ -594,7 +594,6 @@ GdriveAccessInfo gdriveAuthorizeAccess(const std::string& gdriveLoginHint, const
                                            SOCK_CLOEXEC); //int flags
         if (clientSocket == invalidSocket)
             THROW_LAST_SYS_ERROR_WSA("accept");
-
 
         //receive first line of HTTP request
         std::string reqLine;
@@ -1544,8 +1543,8 @@ void gdriveDownloadFileImpl(const std::string& fileId, const std::function<void(
 
     const HttpSession::Result httpResult = gdriveHttpsRequest("/drive/v3/files/" + fileId + '?' + queryParams, {} /*extraHeaders*/, {} /*extraOptions*/,
                                                               [&](std::span<const char> buf)
-                                                              /*  libcurl feeds us a shitload of tiny kB-sized zlib-decompressed pieces of data!
-                                                                  libcurl's zlib buffer is sized at ridiculous 16 kB!
+                                                              /*  libcurl feeds us a shitload of tiny KB-sized zlib-decompressed pieces of data!
+                                                                  libcurl's zlib buffer is sized at ridiculous 16 KB!
                                                                   => if this ever becomes a perf issue: roll our own zlib decompression!   */
     {
         if (headBytes.size() < 16 * 1024) //don't access writeBlock() yet in case of error! (=> support acknowledgeAbuse retry handling)
@@ -1874,7 +1873,7 @@ public:
         sharedDriveName_(sharedDriveName),
         accessBuf_(accessBuf) { assert(!driveId.empty() && sharedDriveName != Zstr("My Drive")); }
 
-    GdriveFileState(MemoryStreamIn& stream, GdriveAccessBuffer& accessBuf) : //throw SysError
+    GdriveFileState(int streamVersion, MemoryStreamIn& stream, GdriveAccessBuffer& accessBuf) : //throw SysError
         accessBuf_(accessBuf)
     {
         lastSyncToken_   = readContainer<std::string>(stream); //
@@ -1913,6 +1912,8 @@ public:
 
     void serialize(MemoryStreamOut& stream) const
     {
+        //group output stream data by type? (see db_file.cpp) => 18% db file size reduction possible! (testcase: 100k items)
+
         writeContainer(stream, lastSyncToken_);
         writeContainer(stream, driveId_);
         writeContainer(stream, utfTo<std::string>(sharedDriveName_));
@@ -2402,14 +2403,14 @@ public:
         accessBuf_(accessBuf),
         myDrive_(getMyDriveId(accessBuf.getAccessToken()), Zstring() /*sharedDriveName*/, accessBuf) {} //throw SysError
 
-    GdriveDrivesBuffer(MemoryStreamIn& stream, GdriveAccessBuffer& accessBuf) : //throw SysError
+    GdriveDrivesBuffer(int streamVersion, MemoryStreamIn& stream, GdriveAccessBuffer& accessBuf) : //throw SysError
         accessBuf_(accessBuf),
-        myDrive_(stream, accessBuf) //throw SysError
+        myDrive_(streamVersion, stream, accessBuf) //throw SysError
     {
         size_t sharedDrivesCount = readNumber<uint32_t>(stream); //SysErrorUnexpectedEos
         while (sharedDrivesCount-- != 0)
         {
-            auto fileState = makeSharedRef<GdriveFileState>(stream, accessBuf); //throw SysError
+            auto fileState = makeSharedRef<GdriveFileState>(streamVersion, stream, accessBuf); //throw SysError
             sharedDrives_.emplace(fileState.ref().getDriveId(), fileState);
         }
     }
@@ -2814,42 +2815,14 @@ private:
 
             const std::shared_ptr<int> timeoutSec2 = std::make_shared<int>(timeoutSec); //context option: valid only for duration of this call!
 
-            //TODO: remove migration code at some time! 2020-07-03
             if (!std::equal(std::begin(formatDescr), std::end(formatDescr), std::begin(DB_FILE_DESCR)))
+                throw SysError(_("File content is corrupted.") + L" (invalid header)");
+
+            const int streamVersion = readNumber<int32_t>(streamIn); //throw SysErrorUnexpectedEos
+
+            if (streamVersion == DB_FILE_VERSION ||
+                streamVersion == 4) //TODO: remove migration code at some time! 2021-05-15
             {
-                const std::string& uncompressedStream = decompress(byteStream); //throw SysError
-                MemoryStreamIn streamIn2(uncompressedStream);
-                //-------- file format header --------
-                const char DB_FILE_DESCR_OLD[] = "FreeFileSync: Google Drive Database";
-                char tmp2[sizeof(DB_FILE_DESCR_OLD)] = {};
-                readArray(streamIn2, &tmp2, sizeof(tmp2)); //throw SysErrorUnexpectedEos
-
-                if (!std::equal(std::begin(tmp2), std::end(tmp2), std::begin(DB_FILE_DESCR_OLD)))
-                    throw SysError(_("File content is corrupted.") + L" (invalid header)");
-
-                const int version = readNumber<int32_t>(streamIn2); //throw SysErrorUnexpectedEos
-                if (version != 1 && //TODO: remove migration code at some time! 2019-12-05
-                    version != 2 && //TODO: remove migration code at some time! 2020-06-11
-                    version != 3)   //TODO: remove migration code at some time! 2020-07-03
-                    throw SysError(_("Unsupported data format.") + L' ' + replaceCpy(_("Version: %x"), L"%x", numberTo<std::wstring>(version)));
-
-                //version 1 + 2: fully discard old state due to missing "ownedByMe" attribute + shortcut support
-                //version 3:     fully discard old state due to revamped shared drive handling
-                auto accessBuf = makeSharedRef<GdriveAccessBuffer>(streamIn2); //throw SysError
-                accessBuf.ref().setContextTimeout(timeoutSec2); //not used by GdriveDrivesBuffer(), but let's be consistent
-                auto drivesBuf = makeSharedRef<GdriveDrivesBuffer>(accessBuf.ref()); //throw SysError
-                return UserSession{accessBuf, drivesBuf};
-            }
-            else
-            {
-                if (!std::equal(std::begin(formatDescr), std::end(formatDescr), std::begin(DB_FILE_DESCR)))
-                    throw SysError(_("File content is corrupted.") + L" (invalid header)");
-
-                const int version = readNumber<int32_t>(streamIn); //throw SysErrorUnexpectedEos
-                if (version != 4 &&
-                    version != DB_FILE_VERSION)
-                    throw SysError(_("Unsupported data format.") + L' ' + replaceCpy(_("Version: %x"), L"%x", numberTo<std::wstring>(version)));
-
                 const std::string& uncompressedStream = decompress({streamIn.buf().begin() + streamIn.pos(), streamIn.buf().end()}); //throw SysError
                 MemoryStreamIn streamInBody(uncompressedStream);
 
@@ -2858,14 +2831,16 @@ private:
                 auto drivesBuf = [&]
                 {
                     //TODO: remove migration code at some time! 2021-05-15
-                    if (version <= 4) //fully discard old state due to revamped shared drive handling
+                    if (streamVersion <= 4) //fully discard old state due to revamped shared drive handling
                         return makeSharedRef<GdriveDrivesBuffer>(accessBuf.ref()); //throw SysError
                     else
-                        return makeSharedRef<GdriveDrivesBuffer>(streamInBody, accessBuf.ref()); //throw SysError
+                        return makeSharedRef<GdriveDrivesBuffer>(streamVersion, streamInBody, accessBuf.ref()); //throw SysError
                 }();
 
                 return UserSession{accessBuf, drivesBuf};
             }
+            else
+                throw SysError(_("Unsupported data format.") + L' ' + replaceCpy(_("Version: %x"), L"%x", numberTo<std::wstring>(streamVersion)));
         }
         catch (const SysError& e)
         {

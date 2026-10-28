@@ -82,7 +82,7 @@ uint32_t gradientARGB(uint32_t pixFront, uint32_t pixBack)
 //
 
 
-#if   defined __GNUC__
+#if  def __GNUC__
     #define FORCE_INLINE __attribute__((always_inline)) inline
 #else
     #define FORCE_INLINE inline
@@ -127,8 +127,8 @@ public:
     template <size_t I, size_t J>
     uint32_t& ref() const
     {
-        static const size_t I_old = MatrixRotation<rotDeg, I, J, N>::I_old;
-        static const size_t J_old = MatrixRotation<rotDeg, I, J, N>::J_old;
+        constexpr size_t I_old = MatrixRotation<rotDeg, I, J, N>::I_old;
+        constexpr size_t J_old = MatrixRotation<rotDeg, I, J, N>::J_old;
         return *(out_ + J_old + I_old * outWidth_);
     }
 
@@ -1101,7 +1101,7 @@ struct ColorDistanceARGB
             2. if a1 = 0,  distance should be: a2 * distYCbCr(black, white) = a2 * 255
             3. if a1 = 1,  ??? maybe: 255 * (1 - a2) + a2 * distYCbCr()
 
-            std::min(a1, a2) * distYCbCrBuffered(pix1, pix2) + 255 * abs(a1 - a2);
+            std::min(a1, a2) * distYCbCrBuffered(pix1, pix2) + 255 * std::abs(a1 - a2);
 
             alternative? std::sqrt(a1 * a2 * square(distYCbCrBuffered(pix1, pix2)) + square(255 * (a1 - a2)));   */
 

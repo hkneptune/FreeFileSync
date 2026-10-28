@@ -16,7 +16,7 @@ const int HTTP_ACCESS_TIMEOUT_SEC = 20;
 
 const size_t HTTP_BLOCK_SIZE_DOWNLOAD = 64 * 1024;
 //- InternetReadFile() is buffered + prefetching
-//- libcurl returns blocks of only 16 kB as returned by recv() even if we request larger blocks via CURLOPT_BUFFERSIZE
+//- libcurl returns blocks of only 16 KB as returned by recv() even if we request larger blocks via CURLOPT_BUFFERSIZE
     const size_t HTTP_STREAM_BUFFER_SIZE = 1024 * 1024; //unit: [byte]
     //stream buffer should be big enough to facilitate prefetching during alternating read/write operations => e.g. see serialize.h::unbufferedStreamCopy()
 

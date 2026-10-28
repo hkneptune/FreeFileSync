@@ -592,7 +592,7 @@ std::vector<SharedRef<BaseFolderPair>> ComparisonBuffer::compareByContent(const 
         AsyncCallback acb;                       //
         std::function<void()> scheduleMoreTasks; //manage life time: enclose ThreadGroup!
 
-        ThreadGroup<std::function<void()>> tg(std::numeric_limits<size_t>::max(), Zstr("Binary Comparison"));
+        ThreadGroup<std::function<void()>> tg(Zstr("Binary Comparison"), std::numeric_limits<size_t>::max());
 
         scheduleMoreTasks = [&, txtComparingContentOfFiles = _("Comparing content of files %x")]
         {
@@ -603,7 +603,7 @@ std::vector<SharedRef<BaseFolderPair>> ComparisonBuffer::compareByContent(const 
                 BinaryWorkload& bwl = fpWorkload[j];
                 ParallelOps& posL = bwl.parallelOpsL;
                 ParallelOps& posR = bwl.parallelOpsR;
-                const size_t newTaskCount = std::min<size_t>({1                 - posL.current, 1                 - posR.current, bwl.filesToCompareBytewise.size()});
+                const size_t newTaskCount = std::min({1uz               - posL.current, 1uz               - posR.current, bwl.filesToCompareBytewise.size()});
                 if (&posL != &posR)
                     posL.current += newTaskCount; //
                 posR.current += newTaskCount;     //consider aliasing!
@@ -720,7 +720,7 @@ const Zstringc* MergeSides::checkFailedRead(FileSystemObject& fsObj, const Zstri
     {
         fsObj.setActive(false);
         fsObj.setCategoryConflict(*errorMsg); //peak memory: Zstringc is ref-counted, unlike std::string!
-        static_assert(std::is_same_v<const Zstringc&, decltype(*errorMsg)>);
+        static_assert(std::is_same_v<const Zstringc*, decltype(errorMsg)>);
     }
     return errorMsg;
 }

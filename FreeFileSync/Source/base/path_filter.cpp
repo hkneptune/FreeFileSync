@@ -251,33 +251,29 @@ void NameFilter::addExclusion(const Zstring& excludePhrase)
 }
 
 
-bool NameFilter::passFileFilter(const Zstring& relFilePath) const
+bool NameFilter::passFileFilter(const ZstringNoCase& relFilePath) const
 {
-    assert(!startsWith(relFilePath, FILE_NAME_SEPARATOR));
+    assert(!startsWith(relFilePath.upperCase, FILE_NAME_SEPARATOR));
+    //require normalized input: 1. ignore Unicode normalization form 2. ignore case
 
-    //normalize input: 1. ignore Unicode normalization form 2. ignore case
-    const Zstring& pathFmt = getUpperCase(relFilePath);
+    const ZstringView parentPath = beforeLast<ZstringView>(relFilePath.upperCase, FILE_NAME_SEPARATOR, IfNotFoundReturn::none);
 
-    const ZstringView parentPath = beforeLast<ZstringView>(pathFmt, FILE_NAME_SEPARATOR, IfNotFoundReturn::none);
-
-    if (excludeFilter.fileMasks.matches<false /*allowParentMatch*/>(pathFmt) || //either match on file or any parent folder
+    if (excludeFilter.fileMasks.matches<false /*allowParentMatch*/>(relFilePath.upperCase) || //either match on file or any parent folder
         (!parentPath.empty() && excludeFilter.folderMasks.matches<true /*allowParentMatch*/>(parentPath))) //match on any parent folder only
         return false;
 
-    return includeFilter.fileMasks.matches<false /*allowParentMatch*/>(pathFmt) ||
+    return includeFilter.fileMasks.matches<false /*allowParentMatch*/>(relFilePath.upperCase) ||
            (!parentPath.empty() && includeFilter.folderMasks.matches<true /*allowParentMatch*/>(parentPath));
 }
 
 
-bool NameFilter::passDirFilter(const Zstring& relDirPath, bool* childItemMightMatch) const
+bool NameFilter::passDirFilter(const ZstringNoCase& relDirPath, bool* childItemMightMatch) const
 {
-    assert(!startsWith(relDirPath, FILE_NAME_SEPARATOR));
+    assert(!startsWith(relDirPath.upperCase, FILE_NAME_SEPARATOR));
     assert(!childItemMightMatch || *childItemMightMatch); //check correct usage
+    //require normalized input: 1. ignore Unicode normalization form 2. ignore case
 
-    //normalize input: 1. ignore Unicode normalization form 2. ignore case
-    const Zstring& pathFmt = getUpperCase(relDirPath);
-
-    if (excludeFilter.folderMasks.matches<true /*allowParentMatch*/>(pathFmt))
+    if (excludeFilter.folderMasks.matches<true /*allowParentMatch*/>(relDirPath.upperCase))
     {
         if (childItemMightMatch)
             *childItemMightMatch = false; //perf: no need to traverse deeper; subfolders/subfiles would be excluded by filter anyway!
@@ -289,12 +285,12 @@ bool NameFilter::passDirFilter(const Zstring& relDirPath, bool* childItemMightMa
         return false;
     }
 
-    if (includeFilter.folderMasks.matches<true /*allowParentMatch*/>(pathFmt))
+    if (includeFilter.folderMasks.matches<true /*allowParentMatch*/>(relDirPath.upperCase))
         return true;
 
     if (childItemMightMatch)
-        *childItemMightMatch = includeFilter.fileMasks  .matchesBegin(pathFmt) || //might match a file  or folder in subdirectory
-                               includeFilter.folderMasks.matchesBegin(pathFmt);   //
+        *childItemMightMatch = includeFilter.fileMasks  .matchesBegin(relDirPath.upperCase) || //might match a file  or folder in subdirectory
+                               includeFilter.folderMasks.matchesBegin(relDirPath.upperCase);   //
     return false;
 }
 

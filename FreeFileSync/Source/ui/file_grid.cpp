@@ -426,7 +426,7 @@ public:
             const ptrdiff_t visibleRowCount = rowLast - rowFirst;
 
             //preload icons not yet on screen:
-            const int preloadSize = 2 * std::max<ptrdiff_t>(20, visibleRowCount); //:= sum of lines above and below of visible range to preload
+            const int preloadSize = 2 * std::max(20z, visibleRowCount); //:= sum of lines above and below of visible range to preload
             //=> use full visible height to handle "next page" command and a minimum of 20 for excessive mouse wheel scrolls
 
             for (ptrdiff_t i = 0; i < preloadSize; ++i)

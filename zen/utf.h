@@ -302,11 +302,20 @@ bool isValidUtf(const UtfString& str)
 template <class UtfString> inline
 size_t unicodeLength(const UtfString& str) //return number of code points (+ correctly handle broken UTF encoding)
 {
-    size_t uniLen = 0;
-    UtfDecoder<GetCharTypeT<UtfString>> decoder(strBegin(str), strSize(str));
-    while (decoder.getNext())
-        ++uniLen;
-    return uniLen;
+    const size_t size = strSize(str);
+    const auto* first = strBegin(str);
+
+    for (size_t i = 0; i < size; ++i)
+        if (!isAsciiChar(first[i]))
+        {
+            size_t uniLen = i;
+
+            UtfDecoder<GetCharTypeT<UtfString>> decoder(first + i, size - i);
+            while (decoder.getNext())
+                ++uniLen;
+            return uniLen;
+        } //else: the happy path!
+    return size;
 }
 
 

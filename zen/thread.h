@@ -151,7 +151,8 @@ template <class Function>
 class ThreadGroup
 {
 public:
-    ThreadGroup(size_t threadCountMax, const Zstring& groupName) : threadCountMax_(threadCountMax), groupName_(groupName)
+    ThreadGroup(const Zstring& groupName, size_t threadCountMax = std::max(std::thread::hardware_concurrency(), 1U)) :
+         threadCountMax_(threadCountMax), groupName_(groupName)
     { if (threadCountMax == 0) throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!"); }
 
     ThreadGroup           (ThreadGroup&& tmp) noexcept = default; //noexcept *required* to support move for reallocations in std::vector and std::swap!!!
@@ -240,7 +241,7 @@ private:
                 task(); //throw ThreadStopRequest?
                 dummy.lock();
 
-                if (--(workLoad.tasksPending) == 0)
+                if (--workLoad.tasksPending == 0)
                     if (!workLoad.onCompletionCallbacks.empty())
                     {
                         std::vector<std::function<void()>> callbacks = std::exchange(workLoad.onCompletionCallbacks, {});
@@ -271,6 +272,69 @@ private:
 };
 
 
+template <class T, class Function> inline
+auto parallelTransform(const std::vector<T>& items, Function&& fun /*throw X*/, const Zstring& threadGroupName) //throw X
+{
+    using Result = decltype(fun(std::declval<const T&>()));
+
+    std::vector<std::optional<Result>> results(items.size());
+
+    std::mutex lockFinished;
+    bool allDone = false;
+    std::exception_ptr firstException;
+    std::condition_variable conditionFinished;
+
+    auto makeTask = [&](size_t i)
+    {
+        return [&, i]
+        {
+            try
+            {
+                results[i] = fun(items[i]); //throw X
+            }
+            catch (...)
+            {
+                {
+                    std::lock_guard<std::mutex> dummy(lockFinished);
+                    if (!firstException)
+                        firstException = std::current_exception();
+                }
+                conditionFinished.notify_one();
+            }
+        };
+    };
+
+    //lifetime: create *after* dependent variables
+    ThreadGroup<decltype(makeTask(0))> threadGroup(threadGroupName);
+
+    for (size_t i = 0; i < items.size(); ++i)
+        threadGroup.run(makeTask(i));
+
+    threadGroup.notifyWhenDone([&]
+    {
+        {
+            std::lock_guard<std::mutex> dummy(lockFinished);
+            allDone = true;
+        }
+        conditionFinished.notify_one();
+    });
+
+    {
+        std::unique_lock<std::mutex> dummy(lockFinished);
+        conditionFinished.wait(dummy, [&] { return allDone || firstException; });
+
+        if (firstException)
+            std::rethrow_exception(firstException); //throw X => ~ThreadGroup cancels outstanding tasks
+    }
+
+    std::vector<Result> out;
+    out.reserve(items.size());
+
+    for (std::optional<Result>& r : results)
+        out.emplace_back(std::move(*r));
+
+    return out;
+}
 
 
 

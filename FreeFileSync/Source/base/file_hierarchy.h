@@ -1430,18 +1430,33 @@ void SymlinkPair::setSyncedTo(time_t lastWriteTimeTrg,
 inline
 bool FolderPair::passDirFilter(const PathFilter& filter, bool* childItemMightMatch) const
 {
-    const Zstring& relPathL = getRelativePath<SelectSide::left >();
-    const Zstring& relPathR = getRelativePath<SelectSide::right>();
-    assert(relPathL.c_str() == relPathR.c_str() || relPathL!= relPathR);
+    assert(getRelativePath<SelectSide::left >().c_str() ==
+           getRelativePath<SelectSide::right>().c_str() ||
+           getRelativePath<SelectSide::left >()!=
+           getRelativePath<SelectSide::right>());
+
+    const ZstringNoCase relPathL = getRelativePath<SelectSide::left>();
 
     if (filter.passDirFilter(relPathL, childItemMightMatch))
-        return relPathL.c_str() == relPathR.c_str() /*perf!*/ || equalNoCase(relPathL, relPathR) ||
+    {
+        if (getRelativePath<SelectSide::left >().c_str() ==
+            getRelativePath<SelectSide::right>().c_str() /*perf!*/)
+            return true;
+
+        const ZstringNoCase relPathR = getRelativePath<SelectSide::right>();
+        return relPathL == relPathR || //case-insensitive comparison
                filter.passDirFilter(relPathR, childItemMightMatch);
+    }
     else
     {
         if (childItemMightMatch && *childItemMightMatch &&
-            relPathL.c_str() != relPathR.c_str() /*perf!*/ && !equalNoCase(relPathL, relPathR))
-            filter.passDirFilter(relPathR, childItemMightMatch);
+            getRelativePath<SelectSide::left >().c_str() !=
+            getRelativePath<SelectSide::right>().c_str() /*perf!*/)
+        {
+            const ZstringNoCase relPathR = getRelativePath<SelectSide::right>();
+            if (relPathL != relPathR) //case-insensitive comparison
+                filter.passDirFilter(relPathR, childItemMightMatch);
+        }
         return false;
     }
 }
@@ -1460,7 +1475,7 @@ bool FileSystemObject::passFileFilter(const PathFilter& filter) const
            getItemName<SelectSide::left >() !=
            getItemName<SelectSide::right>());
 
-    const Zstring relPathL = getRelativePath<SelectSide::left>();
+    const ZstringNoCase relPathL = getRelativePath<SelectSide::left>();
 
     if (!filter.passFileFilter(relPathL))
         return false;
@@ -1471,9 +1486,9 @@ bool FileSystemObject::passFileFilter(const PathFilter& filter) const
         getItemName<SelectSide::right>().c_str())                //
         return true;
 
-    const Zstring relPathR = getRelativePath<SelectSide::right>();
+    const ZstringNoCase relPathR = getRelativePath<SelectSide::right>();
 
-    if (equalNoCase(relPathL, relPathR))
+    if (relPathL == relPathR) //case-insensitive comparison
         return true;
 
     return filter.passFileFilter(relPathR);

@@ -78,12 +78,12 @@ public:
 private:
     std::pair<double, double> getRangeX() const override { return {0, 1}; }
 
-    std::vector<CurvePoint> getPoints(double minX, double maxX, const wxSize& areaSizePx) const override
+    void getPoints(double minX, double maxX, const wxSize& areaSizePx, std::vector<CurvePoint>& points) const override
     {
         const double yLow  = drawTop_ ? 1 : -1; //draw partially out of vertical bounds to not render top/bottom borders of the bars
         const double yHigh = drawTop_ ? 3 :  1; //
 
-        return
+        points =
         {
             {0,         yHigh},
             {fraction_, yHigh},
@@ -100,9 +100,9 @@ class CurveDataProgressSeparatorLine : public CurveData
 {
     std::pair<double, double> getRangeX() const override { return {0, 1}; }
 
-    std::vector<CurvePoint> getPoints(double minX, double maxX, const wxSize& areaSizePx) const override
+    void getPoints(double minX, double maxX, const wxSize& areaSizePx, std::vector<CurvePoint>& points) const override
     {
-        return
+        points =
         {
             {0, 1},
             {1, 1},
@@ -533,9 +533,9 @@ public:
 private:
     std::pair<double, double> getRangeX() const override { return {x1_, x2_}; }
 
-    std::vector<CurvePoint> getPoints(double minX, double maxX, const wxSize& areaSizePx) const override
+    void getPoints(double minX, double maxX, const wxSize& areaSizePx, std::vector<CurvePoint>& points) const override
     {
-        return
+        points =
         {
             {x1_, y1_},
             {x2_, y2_},
@@ -558,12 +558,12 @@ public:
 private:
     std::pair<double, double> getRangeX() const override { return {x_, x_}; }
 
-    std::vector<CurvePoint> getPoints(double minX, double maxX, const wxSize& areaSizePx) const override
+    void getPoints(double minX, double maxX, const wxSize& areaSizePx, std::vector<CurvePoint>& points) const override
     {
-        return
+        points =
         {
             {x_, y_},
-            {x_, 0 },
+            {x_, 0 }
         };
     }
 
@@ -607,8 +607,8 @@ struct LabelFormatterItemCount : public LabelFormatter
 
         const double steps[] = {1, 2, 5, 10};
         if (itemsProposed <= 10)
-            return numeric::roundToGrid(itemsProposed, std::begin(steps), std::end(steps)); //like nextNiceNumber(), but without the 2.5 step!
-        return nextNiceNumber(itemsProposed);
+            return numeric::roundToGrid(itemsProposed, std::begin(steps), std::end(steps)); //like nearestNiceNumber(), but without the 2.5 step!
+        return nearestNiceNumber(itemsProposed);
     }
 
     wxString formatText(double value, double optimalBlockSize) const override
@@ -632,9 +632,9 @@ struct LabelFormatterTimeElapsed : public LabelFormatter
             return 60 * numeric::roundToGrid(secProposed / 60, std::begin(stepsMin), std::end(stepsMin));
 
         if (secProposed <= 3600 * 24)
-            return 3600 * nextNiceNumber(secProposed / 3600); //round to full hours
+            return 3600 * nearestNiceNumber(secProposed / 3600); //round to full hours
 
-        return 24 * 3600 * nextNiceNumber(secProposed / (24 * 3600)); //round to full days
+        return 24 * 3600 * nearestNiceNumber(secProposed / (24 * 3600)); //round to full days
     }
 
     wxString formatText(double timeElapsed, double optimalBlockSize) const override

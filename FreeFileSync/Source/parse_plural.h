@@ -105,30 +105,30 @@ private:
 
 namespace impl
 {
-template <class BinaryOp, class ParamType, class ResultType>
-struct BinaryExp : public Expr<ResultType>
+template <class BinaryOp, class Param, class Result>
+struct BinaryExp : public Expr<Result>
 {
-    using ExpLhs = std::shared_ptr<Expr<ParamType>>;
-    using ExpRhs = std::shared_ptr<Expr<ParamType>>;
+    using ExpLhs = std::shared_ptr<Expr<Param>>;
+    using ExpRhs = std::shared_ptr<Expr<Param>>;
 
     BinaryExp(const ExpLhs& lhs, const ExpRhs& rhs) : lhs_(lhs), rhs_(rhs) { assert(lhs && rhs); }
-    ResultType eval() const override { return BinaryOp()(lhs_->eval(), rhs_->eval()); }
+    Result eval() const override { return BinaryOp()(lhs_->eval(), rhs_->eval()); }
 private:
     ExpLhs lhs_;
     ExpRhs rhs_;
 };
 
 
-template <class BinaryOp, class ParamType> inline
+template <class BinaryOp, class Param> inline
 std::shared_ptr<Expression> makeBiExp(const std::shared_ptr<Expression>& lhs, const std::shared_ptr<Expression>& rhs) //throw ParsingError
 {
-    auto exLeft  = std::dynamic_pointer_cast<Expr<ParamType>>(lhs);
-    auto exRight = std::dynamic_pointer_cast<Expr<ParamType>>(rhs);
+    auto exLeft  = std::dynamic_pointer_cast<Expr<Param>>(lhs);
+    auto exRight = std::dynamic_pointer_cast<Expr<Param>>(rhs);
     if (!exLeft || !exRight)
         throw ParsingError();
 
-    using ResultType = decltype(BinaryOp()(std::declval<ParamType>(), std::declval<ParamType>()));
-    return std::make_shared<BinaryExp<BinaryOp, ParamType, ResultType>>(exLeft, exRight);
+    using Result = decltype(BinaryOp()(std::declval<Param>(), std::declval<Param>()));
+    return std::make_shared<BinaryExp<BinaryOp, Param, Result>>(exLeft, exRight);
 }
 
 

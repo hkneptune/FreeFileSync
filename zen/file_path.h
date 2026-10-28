@@ -33,7 +33,7 @@ Zstring getFileExtension(const ZstringView filePath);
 
 Zstring appendSeparator(Zstring path); //support rvalue references!
 
-bool isValidRelPath(const Zstring& relPath);
+bool isValidRelPath(const ZstringView relPath);
 
 Zstring appendPath(const Zstring& basePath, const Zstring& relPath);
 

@@ -127,6 +127,13 @@ bool Application::OnInit()
     else assert(!oldHandler);
 
 
+    /* prevent process termination on broken sockets/pipes and have send()/write() return EPIPE instead.
+       => global alternative to ::send(..., MSG_NOSIGNAL) on Linux and ::setsockopt(SO_NOSIGPIPE) on macOS */
+    if (auto oldHandler = ::signal(SIGPIPE, SIG_IGN);
+        oldHandler == SIG_ERR)
+        logExtraError(_("Error during process initialization.") + L"\n\n" + formatSystemError("signal(SIGPIPE)", getLastError()));
+    else assert(!oldHandler);
+
     try { colorThemeInit(*this, globalCfg.appColorTheme); } //throw FileError
     catch (const FileError& e) { logExtraError(e.toString()); } //not critical in this context
 
@@ -139,7 +146,7 @@ bool Application::OnInit()
 
     auto onSystemShutdown = [](int /*unused*/ = 0)
     {
-        onSystemShutdownRunTasks();
+        onSystemShutdownRunTasks(); //Linux/macOs: allocating memory during SIGTERM callback entails small deadlock risk
 
         //it's futile to try and clean up while the process is in full swing (CRASH!) => just terminate!
         terminateProcess(static_cast<int>(FfsExitCode::cancelled));

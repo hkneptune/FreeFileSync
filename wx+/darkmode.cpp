@@ -7,6 +7,7 @@
 #include "darkmode.h"
 #include <zen/sys_version.h>
 #include <wx/settings.h>
+#include <wx/window.h>
 #include "color_tools.h"
     #include <gtk/gtk.h>
 
@@ -52,14 +53,15 @@ std::optional<bool> globalDefaultThemeIsDark;
 void zen::colorThemeInit(wxApp& app, ColorTheme colTheme) //throw FileError
 {
     assert(!refGlobalColorHook());
+    assert(wxTopLevelWindows.empty());
 
     globalDefaultThemeIsDark = wxSystemSettings::GetAppearance().AreAppsDark();
-    ZEN_ON_SCOPE_EXIT(if (!refGlobalColorHook()) refGlobalColorHook() = std::make_unique<SysColorsHook>()); //*after* SetAppearance() and despite errors
+    ZEN_ON_SCOPE_EXIT(if (!refGlobalColorHook()) refGlobalColorHook() = std::make_unique<SysColorsHook>()); //*after* SetAppearance()
 
     //caveat: on macOS there are more themes than light/dark: https://developer.apple.com/documentation/appkit/nsappearance/name-swift.struct
     if (colTheme != ColorTheme::System && //"System" is already the default for macOS/Linux(GTK3)
         darkModeAvailable())
-        changeColorTheme(colTheme); //throw FileError
+        changeColorTheme(colTheme); //throw (ErrorRestartRequired), FileError
 }
 
 
@@ -78,18 +80,19 @@ bool zen::equalAppearance(ColorTheme colTheme1, ColorTheme colTheme2)
 }
 
 
-void zen::changeColorTheme(ColorTheme colTheme) //throw FileError
+void zen::changeColorTheme(ColorTheme colTheme) //throw ErrorRestartRequired, FileError
 {
     if (colTheme == ColorTheme::System) //SetAppearance(System) isn't working reliably! surprise!?
         colTheme = *globalDefaultThemeIsDark ? ColorTheme::Dark : ColorTheme::Light;
 
     try
     {
-        ZEN_ON_SCOPE_SUCCESS(refGlobalColorHook() = std::make_unique<SysColorsHook>()); //*after* SetAppearance()
-        if (wxApp::AppearanceResult rv = wxTheApp->SetAppearance(colTheme);
+        if (const wxApp::AppearanceResult rv = wxTheApp->SetAppearance(colTheme);
             rv != wxApp::AppearanceResult::Ok)
-            throw SysError(formatSystemError("wxApp::SetAppearance",
-                                             rv == wxApp::AppearanceResult::CannotChange ? L"CannotChange" : L"Failure", L"" /*errorMsg*/));
+            assert(rv != wxApp::AppearanceResult::CannotChange), //unused since wx 3.3.4
+                   throw SysError(formatSystemError("wxApp::SetAppearance", L"", L"" /*errorMsg*/));
+                
+        refGlobalColorHook() = std::make_unique<SysColorsHook>();
     }
     catch (const SysError& e) { throw FileError(_("Failed to update the color theme."), e.toString()); }
 }

@@ -7,6 +7,7 @@
 
 #include <functional>
 #include "sys_error.h"
+    #include <bit>
     #include <unistd.h> //sysconf
 //keep header clean from specific stream implementations! (e.g.file_io.h)! used by abstract.h!
 
@@ -95,6 +96,8 @@ private:
 //buffered input/output stream reference implementations:
 struct MemoryStreamIn
 {
+    MemoryStreamIn() {}
+
     explicit MemoryStreamIn(const std::string_view& stream) : memRef_(stream) {}
 
     MemoryStreamIn(std::string&&) = delete; //careful: do NOT store reference to a temporary!
@@ -114,9 +117,9 @@ struct MemoryStreamIn
 
 private:
     //MemoryStreamIn         (const MemoryStreamIn&) = delete; -> why not allow copying?
-    MemoryStreamIn& operator=(const MemoryStreamIn&) = delete;
+    //MemoryStreamIn& operator=(const MemoryStreamIn&) = delete;
 
-    const std::string_view memRef_;
+    std::string_view memRef_;
     size_t pos_ = 0;
 };
 
@@ -302,6 +305,28 @@ void unbufferedSave(const BinContainer& cont,
         bufPos += tryWrite(cont.data() + bufPos, std::min(bufPosEnd - bufPos, blockSize)); //throw X
 }
 
+[[nodiscard]] inline
+void* allocPageAligned(size_t size) //deallocate with ::free()
+{
+    const long pageSize = ::sysconf(_SC_PAGESIZE); //-1 on error
+    if (pageSize <= 0)
+        throw std::runtime_error("sysconf(_SC_PAGESIZE) failed");
+
+    const size_t alignment = static_cast<size_t>(pageSize); //e.g. 4096 on x64, 16 KB on ARM64
+    assert(alignment >= sizeof(void*) && std::has_single_bit(alignment)); //required by posix_memalign()
+
+    void* rawBuf = nullptr;
+    const int rv = ::posix_memalign(&rawBuf, alignment, size);
+    if (rv != 0)
+    {
+        if (rv == ENOMEM)
+            throw BadAllocWithSize(size);
+        else //EINVAL
+            throw std::runtime_error("posix_memalign(" + numberTo<std::string>(alignment) + ", " + numberTo<std::string>(size) + "): invalid alignment");
+    }
+    return rawBuf;
+}
+
 
 template <class Function1, class Function2> inline
 uint64_t /*streamSize*/ unbufferedStreamCopy(Function1 tryRead /*(void* buffer, size_t bytesToRead) throw X; may return short; only 0 means EOF*/,
@@ -309,10 +334,10 @@ uint64_t /*streamSize*/ unbufferedStreamCopy(Function1 tryRead /*(void* buffer, 
                                              Function2 tryWrite /*(const void* buffer, size_t bytesToWrite) throw X; may return short*/,
                                              size_t blockSizeOut) //throw X
 {
-    /*  caveat: buffer block sizes might not be a power of 2:
+    /*  caveat: buffer block sizes might not be powers of 2:
          - f_iosize for network share on macOS
          - libssh2 uses weird packet sizes like MAX_SFTP_OUTGOING_SIZE (30000), and will send incomplete packages if block size is not an exact multiple :(
-         - MTP uses file size as blocksize if under 256 kB (=> can be as small as 1 byte! https://freefilesync.org/forum/viewtopic.php?t=9823)
+         - MTP uses file size as blocksize if under 256 KB (=> can be as small as 1 byte! https://freefilesync.org/forum/viewtopic.php?t=9823)
         => that's a problem because we want input/output sizes to be multiples of each other to help avoid the std::memmove() below */
 #if 0
     blockSizeIn  = std::bit_ceil(blockSizeIn);
@@ -322,11 +347,12 @@ uint64_t /*streamSize*/ unbufferedStreamCopy(Function1 tryRead /*(void* buffer, 
         throw std::logic_error(std::string(__FILE__) + '[' + numberTo<std::string>(__LINE__) + "] Contract violation!");
 
     const size_t bufCapacity = blockSizeOut - 1 + blockSizeIn;
-    const size_t alignment = ::sysconf(_SC_PAGESIZE); //-1 on error => posix_memalign() will fail
-    assert(alignment >= sizeof(void*) && std::has_single_bit(alignment)); //required by posix_memalign()
-    std::byte* buf = nullptr;
-    errno = ::posix_memalign(reinterpret_cast<void**>(&buf), alignment, bufCapacity);
-    ZEN_ON_SCOPE_EXIT(::free(buf));
+    //Linux: "cp" source: "for best results, BUF should be "well"-aligned" - mkay... https://github.com/coreutils/coreutils/blob/master/src/copy.c#L233
+    //macOS: - tryRead/tryWrite require page-aligned buffer for F_NOCACHE: https://developer.apple.com/forums/thread/25464#85794022
+    //       - alas: 1. "blockSize % page size = 0" not guaranteed (see comment above) 2. short reads/writes possible
+    void* rawBuf = allocPageAligned(bufCapacity); //throw std::bad_alloc
+    ZEN_ON_SCOPE_EXIT(::free(rawBuf));
+    std::byte* const buf = static_cast<std::byte*>(rawBuf); //reinterpret_cast<void**> for posix_memalign() would be UB!
 
     uint64_t streamSize = 0;
     size_t bufPosEnd = 0;

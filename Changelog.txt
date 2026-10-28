@@ -1,3 +1,12 @@
+FreeFileSync 14.13 [2026-10-16]
+-------------------------------
+Reduced window flickering during resize (Windows 10)
+Prevent process termination on broken pipe errors (Linux/macOS)
+Work around SMB driver dropping modification time (macOS)
+Fixed privilege drop after auto-update (Linux)
+Correctly save minimum folder pair list height (Linux, macOS)
+
+
 FreeFileSync 14.12 [2026-09-09]
 -------------------------------
 Further reduced size of database files by 16%

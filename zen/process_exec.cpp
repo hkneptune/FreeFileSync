@@ -132,6 +132,12 @@ std::pair<int /*exit code*/, std::string> processExecuteImpl(const Zstring& file
                 if (::chdir("/") != 0)
                     THROW_LAST_SYS_ERROR("chdir(/)");
 
+            //reset inherited signal dispositions (see application.cpp) so child process behaves normally!
+            if (::signal(SIGHUP, SIG_DFL) == SIG_ERR)
+                THROW_LAST_SYS_ERROR("signal(SIGHUP)");
+            if (::signal(SIGPIPE, SIG_DFL) == SIG_ERR)
+                THROW_LAST_SYS_ERROR("signal(SIGPIPE)");
+
             std::vector<const char*> argv{filePath.c_str()};
             for (const Zstring& arg : arguments)
                 argv.push_back(arg.c_str());

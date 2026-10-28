@@ -42,6 +42,32 @@ struct CurlOption
 };
 
 
+class CurlSlist
+{
+public:
+    CurlSlist() {}
+    ~CurlSlist() { ::curl_slist_free_all(list_); }
+
+    void append(const std::string& data) { append(data.c_str()); }
+
+    void append(const char* data) //fix broken curl_slist_append()
+    {
+        curl_slist* next = ::curl_slist_append(list_, data);
+        if (!next)
+            throw std::bad_alloc();
+        list_ = next;
+    }
+
+    curl_slist* get() const { return list_; }
+
+private:
+    CurlSlist           (const CurlSlist&) = delete;
+    CurlSlist& operator=(const CurlSlist&) = delete;
+
+    curl_slist* list_ = nullptr;
+};
+
+
 class HttpSession
 {
 public:

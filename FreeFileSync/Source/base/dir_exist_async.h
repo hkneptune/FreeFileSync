@@ -54,7 +54,7 @@ FolderStatus getFolderStatusParallel(const std::set<AbstractPath>& folderPaths,
 
     for (const auto& [device, deviceFolderPaths] : perDevicePaths)
     {
-        deviceThreadGroups.emplace_back(1,           Zstr("DirExist: ") + utfTo<Zstring>(AFS::getDisplayPath(AbstractPath(device, AfsPath()))));
+        deviceThreadGroups.emplace_back(Zstr("DirExist: ") + utfTo<Zstring>(AFS::getDisplayPath(AbstractPath(device, AfsPath()))), 1);
         deviceThreadGroups.back().detach(); //don't wait on hanging threads if user cancels
 
         //1. login to network share, connect with Google Drive, etc.

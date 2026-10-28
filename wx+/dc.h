@@ -229,7 +229,7 @@ public:
             const wxRect dcArea(dc.GetSize());
 
             //since wxWidgets 3.3.0 the DC may be pre-clipped to wxDC::GetSize() or smaller (related to double-buffering)
-            //=> consider "no clipping" and "clipped to wxDC::GetSize()" equivalent!
+            //=> consider "no clipping" and "clipped to wxDC::GetSize()" as equivalent!
             wxRect rectClip;
             if (dc.GetClippingBox(rectClip))
             {
